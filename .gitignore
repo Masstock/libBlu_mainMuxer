@@ -1,0 +1,12 @@
+.vscode
+desktop.ini
+
+*.exe
+*.exe.stackdump
+*.dll
+*.log
+*.cmd
+*.ts
+*.m2ts
+
+mainMuxer

@@ -1,0 +1,68 @@
+#
+# libBlu mainMuxer dependencies.
+# Inspired from the libxml2 DEPENDENCIES file.
+#
+# 3 levels of "dependencies":
+#  - 'Mandatory': Strictly required.
+#  - 'Optionnal': Only required for specified functionnalities, extensions.
+#  - 'Not required': Not a dependency, won't be used.
+#
+# Links are provided for comfort. But it might be more practicle to
+# use your system package manager.
+# Development on Windows as been done using MSYS2 and its included pacman
+# package manager.
+#
+
+Execution dependencies:
+
+* libPng, the official PNG reference library
+  + Optionnal.
+    Only used in the IGS compiler, without no IGS can be generated from XML.
+    Version 16 used during development, older versions non tested.
+  + Homepage:
+    http://www.libpng.org/pub/png/libpng.html
+
+Build dependencies:
+
+* A C toolchain (compiler, linker...)
+  + Mandatory
+    GCC recommanded.
+  + GCC homepage:
+    https://gcc.gnu.org
+
+* A 'make' utility.
+  + Mandatory.
+    Plateform native or GNU Make recommanded.
+  + GNU Make homepage:
+    https://www.gnu.org/software/make
+
+* A 'lex' lexer generator utility.
+  + Mandatory
+    Used in the INI configuration file parser.
+    Flex recommanded (code might use some extensions).
+    Can be disabled by switching COMPILE_WITH_INI_OPTIONS flag to 0 in
+    makefile.
+  + flex homepage:
+    https://github.com/westes/flex
+
+* A 'yacc' parser generator utility.
+  + Mandatory
+    Used in the INI configuration file parser.
+    GNU Bison recommanded (code might use some extensions).
+    Can be disabled by switching COMPILE_WITH_INI_OPTIONS flag to 0 in
+    makefile.
+  + GNU Bison homepage:
+    https://www.gnu.org/software/bison
+
+* libxml2, XML files parsing library
+  + Mandatory
+    Used in the IGS compiler.
+    Can be disabled by switching COMPILE_WITH_IGS_COMPILER flag to 0 in
+    makefile.
+  + Homepage:
+    https://www.xmlsoft.org
+
+* libiconv, GNU unicode library.
+  + Windows: Mandatory, Other systems: Not required.
+  + Homepage:
+    https://www.gnu.org/software/libiconv/

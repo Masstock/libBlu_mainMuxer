@@ -1,0 +1,10 @@
+MUXOPT --start-time 1048560
+V_MPEG4/ISO/AVC, "tests/pgs/ARSLAN_BD1/00057.track_4113.264"
+A_LPCM, "tests/pgs/ARSLAN_BD1/00057.track_4352.wav"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4608.sup"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4609.sup"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4610.sup"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4611.sup"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4612.sup"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4613.sup"
+M_HDMV/PGS, "tests/pgs/ARSLAN_BD1/00057.track_4614.sup"

@@ -1,0 +1,989 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+  <xs:element name="igs">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="parameters" minOccurs="1" maxOccurs="1">
+          <xs:annotation>
+            <xs:documentation>Interactive Graphics Stream common parameters.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="video" minOccurs="0" maxOccurs="1">
+                <xs:annotation>
+                  <xs:documentation>Video sequence properties.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:annotation>
+                    <xs:documentation>Possible &lt;width&gt;x&lt;height&gt; arguments values combination are: 720x480, 720x576, 1280x720, 1440x1080 and 1920x1080.</xs:documentation>
+                  </xs:annotation>
+                  <xs:sequence/>
+                  <xs:attribute name="width" use="optional" default="1920">
+                    <xs:annotation>
+                      <xs:documentation>IGS associated video height in pixels (1920, 1440, 1280 or 720).</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="720"/>
+                        <xs:enumeration value="1280"/>
+                        <xs:enumeration value="1440"/>
+                        <xs:enumeration value="1920"/>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                  <xs:attribute name="height" use="optional" default="1080">
+                    <xs:annotation>
+                      <xs:documentation>IGS associated video height in pixels (1080, 720, 480 or 576).</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="480"/>
+                        <xs:enumeration value="576"/>
+                        <xs:enumeration value="720"/>
+                        <xs:enumeration value="1080"/>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                  <xs:attribute name="framerate" use="optional" default="23.976">
+                    <xs:annotation>
+                      <xs:documentation>Frame-rate value per second (23.976, 24, 25, 29.970, 50 or 59.940).</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="23.976"/>
+                        <xs:enumeration value="24"/>
+                        <xs:enumeration value="25"/>
+                        <xs:enumeration value="29.970"/>
+                        <xs:enumeration value="50"/>
+                        <xs:enumeration value="59.940"/>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="uop" minOccurs="0" maxOccurs="1" type="uopType">
+                <xs:annotation>
+                  <xs:documentation>User Operations permission common mask, this mask is applied to each page. Define commands user can perform or not.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="composition" minOccurs="1" maxOccurs="1">
+          <xs:annotation>
+            <xs:documentation>Interactive Graphics Stream compositions definition.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="composition_descriptor" maxOccurs="1" minOccurs="1">
+                <xs:annotation>
+                  <xs:documentation>Composition descriptor parameters.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:attribute name="state" use="optional" default="EpochStart">
+                    <xs:annotation>
+                      <xs:documentation>Type of the display set containing the composition, possible values are "NormalCase", "AcquisitionPoint", "EpochStart" and "EpochContinue".</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="NormalCase">
+                          <xs:annotation>
+                            <xs:documentation>The composition only contains updated elements from a previous composition in a Epoch Start display set.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                        <xs:enumeration value="AcquisitionPoint">
+                          <xs:annotation>
+                            <xs:documentation>The composition contains all elements needed for the next composition.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                        <xs:enumeration value="EpochStart">
+                          <xs:annotation>
+                            <xs:documentation>The composition is the first of a new epoch and contains all elements for the next composition.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                        <xs:enumeration value="EpochContinue">
+                          <xs:annotation>
+                            <xs:documentation>The composition is part of a epoch started from a previous graphics stream after a seamless connection and contains all elements for the next composition.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="parameters" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Composition parameters.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="time_out_pts">
+                      <xs:annotation>
+                        <xs:documentation>Time-out values.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:sequence/>
+                        <xs:attribute name="composition" use="optional" default="0">
+                          <xs:annotation>
+                            <xs:documentation>Only if User Interface Model is set to "Pop-Up", set the end time of the Display Period containing the composition in 90kHz clock ticks, at which the composition is no longer displayed. If this value is 0, the Display Period is never "timed-out".</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:unsignedLong">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="8589934591"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="selection" use="optional" default="0">
+                          <xs:annotation>
+                            <xs:documentation>Only if User Interface Model is set to "Pop-Up", set the selection end time of Display Period containing the composition in 90kHz clock ticks, at which the user can no longer select or activate buttons. If this value is 0, the selection Display Period is never "timed-out".</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:unsignedLong">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="8589934591"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="user" use="optional" default="0">
+                          <xs:annotation>
+                            <xs:documentation>Set the duration after the last user operation at which the current composition page is timed-out. If this value is 0, the page is not timed out after user inactivity.</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:unsignedInt">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="16777215"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="model">
+                      <xs:annotation>
+                        <xs:documentation>Composition muxing and displaying models modes.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:attribute name="stream" use="optional" default="OoM">
+                          <xs:annotation>
+                            <xs:documentation>Composition muxing mode, if set as "Multiplexed", the IGS is to be muxed with other (video, audio...) streams in the same clip. If set as "OoM", Out-of-Mux, the IGS is muxed solely in its own clip and used as a SubPath clip in playlists.</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                              <xs:enumeration value="OoM"/>
+                              <xs:enumeration value="Multiplexed"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="user_interface" default="Normal">
+                          <xs:annotation>
+                            <xs:documentation>Composition user-interface mode, if set as "Pop-Up", composition is used as a Pop-Up menu. If set as "Normal", the menu is used as a always-on screen menu.</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                              <xs:enumeration value="Pop-Up"/>
+                              <xs:enumeration value="Normal"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="reference_imgs" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Define reference picture. References pictures can be refered by their defined name and cropped. E.g. this allows to use the same picture file with every frame of an animation, declared as a reference picture and crop it back in buttons.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="img" maxOccurs="unbounded" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Reference picture definition.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:attribute name="name" type="xs:string" use="required">
+                          <xs:annotation>
+                            <xs:documentation>Picture unique name, used as a identifier.</xs:documentation>
+                          </xs:annotation>
+                        </xs:attribute>
+                        <xs:attribute name="path" type="xs:string" use="required">
+                          <xs:annotation>
+                            <xs:documentation>Picture file path.</xs:documentation>
+                          </xs:annotation>
+                        </xs:attribute>
+                        <xs:attribute name="cutting_x" use="optional" default="0">
+                          <xs:annotation>
+                            <xs:documentation>Horizontal cutting offset in pixels (e.g. "10" means the 10px at the left will be cutted-off).</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:integer">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="4294967296"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="cutting_y" use="optional" default="0">
+                          <xs:annotation>
+                            <xs:documentation>Vertical cutting offset in pixels (e.g. "10" means the 10px at the top will be cutted-off).</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:integer">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="4294967296"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="width" default="0" use="optional">
+                          <xs:annotation>
+                            <xs:documentation>Horizontal size in pixels (e.g "10" means the picture horizontal size is limited to 10 pixels, the remaining pixels at right are cutted-off).</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:integer">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="4294967296"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="height" use="optional" default="0">
+                          <xs:annotation>
+                            <xs:documentation>Vertical size in pixels (e.g "10" means the picture vertical size is limited to 10 pixels, the remaining pixels at bottom are cutted-off).</xs:documentation>
+                          </xs:annotation>
+                          <xs:simpleType>
+                            <xs:restriction base="xs:integer">
+                              <xs:minInclusive value="0"/>
+                              <xs:maxInclusive value="4294967296"/>
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="page" maxOccurs="255" minOccurs="1">
+                <xs:annotation>
+                  <xs:documentation>Composition pages.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="parameters" maxOccurs="1" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Page associated parameters.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="uop" type="uopType" maxOccurs="1" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Page specific user-operations restriction mask.</xs:documentation>
+                            </xs:annotation>
+                          </xs:element>
+                          <xs:element name="animation_frame_rate_code" default="0" maxOccurs="1" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Animations frame-rate divisor used to compute animations frame-rate according to video frame-rate (e.g. if video framerate is set to 30 fps, and this value to 2, animations will be reproduced at 15 fps).</xs:documentation>
+                            </xs:annotation>
+                            <xs:simpleType>
+                              <xs:restriction base="xs:unsignedByte">
+                                <xs:minInclusive value="0"/>
+                                <xs:maxInclusive value="255"/>
+                              </xs:restriction>
+                            </xs:simpleType>
+                          </xs:element>
+                          <xs:element name="default_selected_button" maxOccurs="1" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Initially selected button ID at composition reproduction start. This ID must be one of the page BOGs default selected button ID. If this value is set to 65535 (0xFFFF), no button shall be selected automatically. By default, this value is set to the first defined button in the first BOG (if present).</xs:documentation>
+                            </xs:annotation>
+                            <xs:simpleType>
+                              <xs:restriction base="xs:unsignedShort">
+                                <xs:minInclusive value="0"/>
+                                <xs:maxInclusive value="65535"/>
+                              </xs:restriction>
+                            </xs:simpleType>
+                          </xs:element>
+                          <xs:element name="default_activated_button" default="65535" maxOccurs="1" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Button ID activated by default at selection time-out. If this value is 65534 (0xFFFE), the button selected at the selection time-out is activated. If this value is 65535 (0xFFFF), no button is automatically activated. Otherwise, the specified button ID must be part of the page</xs:documentation>
+                            </xs:annotation>
+                            <xs:simpleType>
+                              <xs:restriction base="xs:unsignedShort">
+                                <xs:minInclusive value="0"/>
+                                <xs:maxInclusive value="65535"/>
+                              </xs:restriction>
+                            </xs:simpleType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="in_effects" type="xs:string" maxOccurs="1" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Page In-Effects, TODO, not currently implemented.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="out_effects" type="xs:string" maxOccurs="1" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Page Out-Effects, TODO, not currently implemented.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="bog" maxOccurs="255" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Page associated Button Overlap Groups.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="default_valid_button" default="65535" maxOccurs="1" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Define the button displayed by default in the BOG by its ID, meaning used button ID must be part of the BOG. If this value is 0xFFFF (65535), no button from the BOG shall be displayed. By default, this value is set to the ID of the first button.</xs:documentation>
+                            </xs:annotation>
+                            <xs:simpleType>
+                              <xs:restriction base="xs:unsignedShort">
+                                <xs:minInclusive value="0"/>
+                                <xs:maxInclusive value="65535"/>
+                              </xs:restriction>
+                            </xs:simpleType>
+                          </xs:element>
+                          <xs:element name="button" maxOccurs="255" minOccurs="1">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="button_numeric_select_value" default="65535" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>Button numeric selection value (allows to turn the button as selected by entering this value on the remote).</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:simpleType>
+                                    <xs:restriction base="xs:unsignedShort">
+                                      <xs:minInclusive value="0"/>
+                                      <xs:maxInclusive value="65535"/>
+                                    </xs:restriction>
+                                  </xs:simpleType>
+                                </xs:element>
+                                <xs:element name="auto_action_flag" type="xs:boolean" default="false" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>Auto-activation mode. If this value is "true", the button is automatically activated when selected. Otherwise, if this value is "false", the button needs to be activated manually by the user.</xs:documentation>
+                                  </xs:annotation>
+                                </xs:element>
+                                <xs:element name="horizontal_position" maxOccurs="1" minOccurs="1">
+                                  <xs:annotation>
+                                    <xs:documentation>On screen button top left horizontal position in pixels.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:simpleType>
+                                    <xs:restriction base="xs:unsignedShort">
+                                      <xs:minInclusive value="0"/>
+                                      <xs:maxInclusive value="65535"/>
+                                    </xs:restriction>
+                                  </xs:simpleType>
+                                </xs:element>
+                                <xs:element name="vertical_position" maxOccurs="1" minOccurs="1">
+                                  <xs:annotation>
+                                    <xs:documentation>On screen button top left vertical position in pixels.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:simpleType>
+                                    <xs:restriction base="xs:unsignedShort">
+                                      <xs:minInclusive value="0"/>
+                                      <xs:maxInclusive value="65535"/>
+                                    </xs:restriction>
+                                  </xs:simpleType>
+                                </xs:element>
+                                <xs:element name="neighbor_info" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>Button neighbor buttons definition.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="upper_button" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>"Upper" neighbor button ID, selected when the Up arrow button is used.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:simpleType>
+                                          <xs:restriction base="xs:unsignedShort">
+                                            <xs:minInclusive value="0"/>
+                                            <xs:maxInclusive value="65535"/>
+                                          </xs:restriction>
+                                        </xs:simpleType>
+                                      </xs:element>
+                                      <xs:element name="lower_button" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>"Lower" neighbor button ID, selected when the Down arrow button is used.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:simpleType>
+                                          <xs:restriction base="xs:unsignedShort">
+                                            <xs:minInclusive value="0"/>
+                                            <xs:maxInclusive value="65535"/>
+                                          </xs:restriction>
+                                        </xs:simpleType>
+                                      </xs:element>
+                                      <xs:element name="left_button" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>"Left" neighbor button ID, selected when the Left arrow button is used.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:simpleType>
+                                          <xs:restriction base="xs:unsignedShort">
+                                            <xs:minInclusive value="0"/>
+                                            <xs:maxInclusive value="65535"/>
+                                          </xs:restriction>
+                                        </xs:simpleType>
+                                      </xs:element>
+                                      <xs:element name="right_button" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>"Right" neighbor button ID, selected when the Right arrow button is used.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:simpleType>
+                                          <xs:restriction base="xs:unsignedShort">
+                                            <xs:minInclusive value="0"/>
+                                            <xs:maxInclusive value="65535"/>
+                                          </xs:restriction>
+                                        </xs:simpleType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="normal_state_info" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>Normal state graphics.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="graphic" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>Normal state graphics definition.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="ref_pic" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:attribute name="name" type="xs:string" use="required"/>
+                                                <xs:attribute name="cutting_x" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="cutting_y" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="width" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="height" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                              </xs:complexType>
+                                            </xs:element>
+                                            <xs:element name="img" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:attribute name="path" type="xs:string" use="required"/>
+                                                <xs:attribute name="cutting_x" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="cutting_y" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="width" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="height" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="repeat_flag" type="xs:boolean" maxOccurs="1" minOccurs="0" default="false">
+                                        <xs:annotation>
+                                          <xs:documentation>Animation sequence repeating flag. If this value is "true", the button animation sequence is continuously repeated.</xs:documentation>
+                                        </xs:annotation>
+                                      </xs:element>
+                                      <xs:element name="complete_flag" type="xs:boolean" maxOccurs="1" minOccurs="0" default="false">
+                                        <xs:annotation>
+                                          <xs:documentation>Animation sequence completion flag. If this value is "true", the button animation sequence is completed prior switching to selected state. Otherwise, if "false", the animation display is aborted.</xs:documentation>
+                                        </xs:annotation>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="selected_state_info" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>Selected state graphics.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="sound_id" maxOccurs="1" minOccurs="0" default="255">
+                                        <xs:annotation>
+                                          <xs:documentation>Sound id played when the button switches to selected state.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:simpleType>
+                                          <xs:restriction base="xs:unsignedByte">
+                                            <xs:minInclusive value="0"/>
+                                            <xs:maxInclusive value="255"/>
+                                          </xs:restriction>
+                                        </xs:simpleType>
+                                      </xs:element>
+                                      <xs:element name="graphic" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>Selected state graphics definition.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="ref_pic" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:attribute name="name" type="xs:string" use="required"/>
+                                                <xs:attribute name="cutting_x" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="cutting_y" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="width" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="height" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                              </xs:complexType>
+                                            </xs:element>
+                                            <xs:element name="img" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:attribute name="path" type="xs:string" use="required"/>
+                                                <xs:attribute name="cutting_x" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="cutting_y" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="width" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="height" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="repeat_flag" type="xs:boolean" maxOccurs="1" minOccurs="0" default="false">
+                                        <xs:annotation>
+                                          <xs:documentation>Animation sequence repeating flag. If this value is &quot;true&quot;, the button animation sequence is continuously repeated.</xs:documentation>
+                                        </xs:annotation>
+                                      </xs:element>
+                                      <xs:element name="complete_flag" type="xs:boolean" maxOccurs="1" minOccurs="0" default="false">
+                                        <xs:annotation>
+                                          <xs:documentation>Animation sequence completion flag. If this value is "true", the button animation sequence is completed prior switching back to normal state. Otherwise, if "false", the animation display is aborted. If the button switches to activated state, animation display is aborded regardless of this flag.</xs:documentation>
+                                        </xs:annotation>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="activated_state_info" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>Activated state graphics.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="sound_id" maxOccurs="1" minOccurs="0" default="255">
+                                        <xs:annotation>
+                                          <xs:documentation>Sound id played when the button switches to activated state.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:simpleType>
+                                          <xs:restriction base="xs:unsignedByte">
+                                            <xs:minInclusive value="0"/>
+                                            <xs:maxInclusive value="255"/>
+                                          </xs:restriction>
+                                        </xs:simpleType>
+                                      </xs:element>
+                                      <xs:element name="graphic" maxOccurs="1" minOccurs="0">
+                                        <xs:annotation>
+                                          <xs:documentation>Activated state graphics definition.</xs:documentation>
+                                        </xs:annotation>
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="ref_pic" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:attribute name="name" type="xs:string" use="required"/>
+                                                <xs:attribute name="cutting_x" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="cutting_y" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="width" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="height" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                              </xs:complexType>
+                                            </xs:element>
+                                            <xs:element name="img" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:attribute name="path" type="xs:string" use="required"/>
+                                                <xs:attribute name="cutting_x" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="cutting_y" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="width" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                                <xs:attribute name="height" use="optional" default="0">
+                                                  <xs:simpleType>
+                                                    <xs:restriction base="xs:integer">
+                                                      <xs:minInclusive value="0"/>
+                                                      <xs:maxInclusive value="4294967296"/>
+                                                    </xs:restriction>
+                                                  </xs:simpleType>
+                                                </xs:attribute>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="commands" maxOccurs="1" minOccurs="0">
+                                  <xs:annotation>
+                                    <xs:documentation>HDMV VM commands. Executed on button activation.</xs:documentation>
+                                  </xs:annotation>
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="command" type="command" minOccurs="0" maxOccurs="255"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                              <xs:attribute name="id" use="optional">
+                                <xs:annotation>
+                                  <xs:documentation>This value identify uniquely the button in the epoch. If not present, the incremented value of the previous button is used (or 0 if this button is the first one).</xs:documentation>
+                                </xs:annotation>
+                                <xs:simpleType>
+                                  <xs:restriction base="xs:unsignedShort">
+                                    <xs:minInclusive value="0"/>
+                                    <xs:maxInclusive value="8159"/>
+                                  </xs:restriction>
+                                </xs:simpleType>
+                              </xs:attribute>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="id" use="optional">
+                    <xs:annotation>
+                      <xs:documentation>This value identify uniquely the page in the epoch. If not present, the incremented value of the previous page is used (or 0 if this page is the first one).</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:unsignedByte">
+                        <xs:minInclusive value="0"/>
+                        <xs:maxInclusive value="254"/>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" use="optional" default="" form="unqualified">
+        <xs:annotation>
+          <xs:documentation>IGS compiler XML version, currently not used but might be defined in future.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:string"/>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="command">
+    <xs:attribute name="code">
+      <xs:annotation>
+        <xs:documentation>Command opcode.</xs:documentation>
+      </xs:annotation>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="0x[0-9a-fA-F]+|[0-9]+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="destination">
+      <xs:annotation>
+        <xs:documentation>Command destination.</xs:documentation>
+      </xs:annotation>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="0x[0-9a-fA-F]+|[0-9]+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="source">
+      <xs:annotation>
+        <xs:documentation>Command source.</xs:documentation>
+      </xs:annotation>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="0x[0-9a-fA-F]+|[0-9]+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="uopType">
+    <xs:annotation>
+      <xs:documentation>User Operations mask table, define permissions and prohibitions of user operations globally or per page. By default, every operation is allowed. A field set to "false" forbids associated operation. Value "true" can be used to overwrite a global prohibition.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="mask" default="0" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Explicit mask value, as a 64bits value. If used in a page, this value overwrites global mask value.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="chapter_search" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Chapter search operation.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="time_search" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Jump by user-input timecode.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="skip_to_next_point" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Skipping to next playitem in playlist.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="skip_back_to_previous_point" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Skipping-back to the previous playitem in playlist.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="stop" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Stop playback.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="pause_on" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Hold playback and freeze image, interactive operations are suspended (such as changing selected button or activation).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="still_off" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Disable still-picture mode and resume normal playback (has only meaning if playback is in still-picture mode).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="forward_play" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Trick mode fast forward with visual feedback.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="backward_play" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Trick mode rewind with visual feedback.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="resume" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Resume playback of latest suspended movie object.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="move_up_selected_button" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Switching button defined as the upper one as the new selected button according to current selected button neighbor informations (by using up arrow on the remote).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="move_down_selected_button" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Switching button defined as the lower one as the new selected button according to current selected button neighbor informations (by using down arrow on the remote).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="move_left_selected_button" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Switching button defined as the left one as the new selected button according to current selected button neighbor informations (by using left arrow on the remote).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="move_right_selected_button" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Switching button defined as the right one as the new selected button according to current selected button neighbor informations (by using right arrow on the remote).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="select_button" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Selecting a button by its defined numeric value.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="activate_button" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Activate the button in selected state.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="select_button_and_activate" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Selecting and activate a button by its defined numeric value.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="primary_audio_stream_number_change" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Change the active primary audio track.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="angle_number_change" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Change the active video angle.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="popup_on" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>If user interface is "Pop-Up", enabling Pop-Up menu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="popup_off" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>If user interface is "Pop-Up", disabling Pop-Up menu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="PG_textST_enable_disable" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Switch active PG/TextST stream as displayed or not.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="PG_textST_stream_number_change" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Change active PG/TextST track.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="secondary_video_enable_disable" default="false" type="xs:boolean">
+              <xs:annotation>
+                <xs:documentation>Switch active secondary video stream as displayed or not.</xs:documentation>
+              </xs:annotation></xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="secondary_video_stream_number_change" default="false" type="xs:boolean">
+              <xs:annotation>
+                <xs:documentation>Change active secondary video track.</xs:documentation>
+              </xs:annotation></xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="secondary_audio_enable_disable" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Switch active secondary audio stream as displayed or not.</xs:documentation>
+        </xs:annotation></xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="secondary_audio_stream_number_change" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Change active secondary audio track.</xs:documentation>
+        </xs:annotation></xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="PiP_PG_textST_stream_number_change" default="false" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Change active PG/TextST track for PiP (this operation cannot be used with PG_textST_stream_number_change operation at the same time).</xs:documentation>
+        </xs:annotation></xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

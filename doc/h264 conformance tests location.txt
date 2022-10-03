@@ -1,0 +1,60 @@
+Conformance tests implementation progress
+
+A.3.1
+a) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+b) Not yet implemented (DPB HRD related) // Medium
+c) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+d) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+e) h264_checks checkH264SequenceParametersSetCompliance()
+f) h264_checks checkH264SequenceParametersSetCompliance()
+g) h264_checks checkH264SequenceParametersSetCompliance()
+h) h264_checks checkH264SequenceParametersSetCompliance()
+i) h264_hrdVerifier initH264CpbHrdContextHandler()
+j) h264_hrdVerifier initH264CpbHrdContextHandler()
+k) Not yet implemented (SliceData related) // Low
+l) Not yet implemented (SliceData related) // Low
+m) Not yet implemented (SliceData related) // Low
+n) Not yet implemented (SliceData related) // Low
+
+A.3.2
+a) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+b) Not yet implemented (DPB HRD related) // Medium
+c) h264_checks checkH264SequenceParametersSetCompliance()
+d) h264_checks checkH264SequenceParametersSetCompliance()
+e) h264_checks checkH264SequenceParametersSetCompliance()
+f) Not yet implemented (DPB HRD related) // Medium
+g) Not yet implemented (SliceData related) // Low
+h) Not yet implemented (SliceData related) // Low
+i) Not yet implemented (SliceData related) // Low
+j) Not yet implemented (SliceData related) // Low
+
+A.3.3
+a) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+b) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+c) h264_checks checkH264SequenceParametersSetCompliance()
+d) h264_checks checkH264SequenceParametersSetCompliance()
+e) Not yet implemented (SliceData related) // Low
+f) Not yet implemented (SliceData related) // Low
+g) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+h) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+i) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+j) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+k) Not yet implemented (SliceData related) // Low
+
+C.3
+1) h264_hrdVerifier checkH264CpbHrdConformanceTests()
+2) h264_hrdVerifier processAUH264CpbHrdContext()
+3) h264_hrdVerifier processAUH264CpbHrdContext()
+4) Partially implemented (depend on A.3.2 and A.3.3 constraints application) // Various
+5) h264_hrdVerifier processAUH264CpbHrdContext()
+6) Not yet implemented (DPB HRD/SliceData related) // Low
+7) Not yet implemented (depend on A.3.2 and A.3.3 constraints application) // Various
+
+E.2.1
+motion_vectors_over_pic_boundaries_flag) Not yet implemented (SliceData related) // Low
+max_bytes_per_pic_denom) Not yet implemented (CPB HRD related) // High
+max_bits_per_mb_denom) Not yet implemented (SliceData related) // Low
+log2_max_mv_length_horizontal) Not yet implemented (SliceData related) // Low
+log2_max_mv_length_vertical) Not yet implemented (SliceData related) // Low
+max_num_reorder_frames) Not yet implemented (DPB HRD related) // Medium
+max_dec_frame_buffering) Not yet implemented (DPB HRD related) // Medium
