@@ -1,8 +1,5 @@
 # Releases history
 
-Version 0.4 (Initial Public pre-Release)
-- Initial release.
-
 Version 0.5
 - HDMV IGS/PGS support.
 - HDMV IGS (Menus) generation from a descriptive XML file.
@@ -13,3 +10,6 @@ Version 0.5
 - Input files parsing speed HEAVLY increased.
 - Debugging and errors management as been simplified.
 - A lot of bug fixes.
+
+Version 0.4 (Initial Public pre-Release)
+- Initial release.

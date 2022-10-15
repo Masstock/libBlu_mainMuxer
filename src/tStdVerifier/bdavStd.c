@@ -267,7 +267,7 @@ int addESPesFrameToBdavStd(
   LibbluStreamPtr stream,
   size_t headerLength,
   size_t payloadLength,
-  uint64_t referentialPcr
+  uint64_t referentialStc
 )
 {
   LibbluESPtr es;
@@ -290,11 +290,11 @@ int addESPesFrameToBdavStd(
   ) {
     removalTimestamp =
       curPesPacket.extData.h264.cpbRemovalTime
-      + referentialPcr
+      + referentialStc
     ;
     outputTimestamp =
       curPesPacket.extData.h264.dpbOutputTime
-      + referentialPcr
+      + referentialStc
     ;
   }
   else {

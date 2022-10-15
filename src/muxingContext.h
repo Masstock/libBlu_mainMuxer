@@ -37,10 +37,10 @@ typedef struct {
   LibbluStreamPtr elementaryStreams[LIBBLU_MAX_NB_STREAMS];
   LibbluESFormatUtilities elementaryStreamsUtilities[LIBBLU_MAX_NB_STREAMS];
 
-  double currentPcr;           /**< Current Program Clock Reference value,
+  double currentStc;           /**< Current System Time Clock value,
     in #MAIN_CLOCK_27MHZ ticks.                                              */
-  uint64_t currentAt;          /**< Current muxing packets Arrival Timestamp,
-    floor(#currentPcr) derivated.                                             */
+  uint64_t currentStcTs;       /**< Current System Time Clock Timestamp,
+    floor(#currentStc) derivated.                                            */
 
   struct {
     bool carriedByES;
@@ -67,15 +67,16 @@ typedef struct {
   LibbluStreamPtr null;
 
   /* Used for computation parameters: */
-  double bytePcrDuration;
-  /* In MAIN_CLOCK_27MHZ ticks (= MAIN_CLOCK_27MHZ * 8 / MuxingSettings.muxRate). */
-  double tpPcrDuration;
-  /* TS packet duration, In MAIN_CLOCK_27MHZ ticks (= 188 * bytePcrDuration). */
-  uint64_t tpPcrIncrementation;  /**< floor(tpPcrDuration) */
-  uint64_t referentialPcr; /* PCR referential value in #MAIN_CLOCK_27MHZ ticks. */
-  /* uint64_t initialPcr; */
-  uint64_t stdBufDelay;  /**< Initial STD buffering delay.
-    Initial muxing PCR value can be retrived with formula 'referentialPcr' - 'stdBufDelay' */
+  double byteStcDuration;  /**< In MAIN_CLOCK_27MHZ ticks
+    (= MAIN_CLOCK_27MHZ * 8 / MuxingSettings.muxRate).                       */
+  double tpStcDuration;    /**< TS packet transmission duration,
+    (= 188 * byteStcDuration). It is the time required for one TP to be
+    transmitted at mux-rate in MAIN_CLOCK_27MHZ ticks.                       */
+  uint64_t tpStcIncrementation;  /**< floor(tpStcDuration) */
+  uint64_t referentialStc; /* Referential initial STC value in #MAIN_CLOCK_27MHZ ticks. */
+  uint64_t stdBufDelay;  /**< STD buffering delay, virtual time between
+    muxer and demuxer STCs. Initial STC value can be retrived with formula
+    'referentialStc' - 'stdBufDelay' */
 
   /* Progression */
   unsigned nbTsPacketsMuxed;  /**< Number of transport packets muxed.        */
@@ -170,22 +171,22 @@ static inline bool dataRemainingLibbluMuxingContext(
   return (0 < ctx->elementaryStreamsHeap->usedSize);
 }
 
-static inline void updateCurrentPcrLibbluMuxingContext(
+static inline void updateCurrentStcLibbluMuxingContext(
   LibbluMuxingContextPtr ctx,
   const double value
 )
 {
-  ctx->currentPcr = value;
-  ctx->currentAt = (uint64_t) MAX(0, value);
+  ctx->currentStc = value;
+  ctx->currentStcTs = (uint64_t) MAX(0, value);
 }
 
-static inline void increaseCurrentPcrLibbluMuxingContext(
+static inline void increaseCurrentStcLibbluMuxingContext(
   LibbluMuxingContextPtr ctx
 )
 {
-  updateCurrentPcrLibbluMuxingContext(
+  updateCurrentStcLibbluMuxingContext(
     ctx,
-    ctx->currentPcr + ctx->tpPcrDuration
+    ctx->currentStc + ctx->tpStcDuration
   );
 }
 

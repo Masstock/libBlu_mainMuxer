@@ -111,20 +111,20 @@ int addStreamHeap(
  * \brief Return true if the heap top stream timing value as been reached.
  *
  * \param heap Heap to check.
- * \param currentAt Current timing value in #MAIN_CLOCK_27MHZ ticks.
+ * \param currentStcTs Current timing value in #MAIN_CLOCK_27MHZ ticks.
  * \return true Time value reached.
  * \return false Empty heap or not reached time value.
  */
 static inline bool streamIsReadyStreamHeap(
   StreamHeapPtr heap,
-  uint64_t currentAt
+  uint64_t currentStcTs
 )
 {
   assert(NULL != heap);
 
   return
     (0 < heap->usedSize)
-    && (heap->content[0].timer.tsPt <= currentAt)
+    && (heap->content[0].timer.tsPt <= currentStcTs)
   ;
 }
 

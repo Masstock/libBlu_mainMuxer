@@ -90,10 +90,10 @@ static inline size_t computeSizeAdaptationFieldExtensionParameters(
 
 static inline uint64_t computePcrFieldValue(
   double pcr,
-  double bytePcrDuration
+  double byteStcDuration
 )
 {
-  return (uint64_t) (pcr + TP_PCR_FIELD_OFF * bytePcrDuration);
+  return (uint64_t) (pcr + TP_PCR_FIELD_OFF * byteStcDuration);
 }
 
 typedef struct {

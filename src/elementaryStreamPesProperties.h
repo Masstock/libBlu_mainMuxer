@@ -47,7 +47,7 @@ typedef int (*LibbluESPesPacketHeaderPrepFun) (
 int prepareLibbluESPesPacketProperties(
   LibbluESPesPacketProperties * dst,
   EsmsPesPacketNodePtr scriptNode,
-  uint64_t referentialPcr,
+  uint64_t referentialStc,
   uint64_t referentialTs,
   LibbluESPesPacketHeaderPrepFun preparePesHeader,
   LibbluStreamCodingType codingType
@@ -90,7 +90,7 @@ static inline void destroyLibbluESPesPacketPropertiesNode(
 
 LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   EsmsPesPacketNodePtr scriptNode,
-  uint64_t referentialPcr,
+  uint64_t referentialStc,
   uint64_t referentialTs,
   LibbluESPesPacketHeaderPrepFun preparePesHeader,
   LibbluStreamCodingType codingType

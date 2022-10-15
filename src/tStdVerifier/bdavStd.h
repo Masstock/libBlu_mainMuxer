@@ -54,7 +54,7 @@ int addESPesFrameToBdavStd(
   LibbluStreamPtr stream,
   size_t headerLength,
   size_t payloadLength,
-  uint64_t referentialPcr
+  uint64_t referentialStc
 );
 
 int addESTsFrameToBdavStd(

@@ -216,16 +216,14 @@ static void printHelp(
   P("  --no-extra-header   Suppress addition of BDAV 4 bytes TP_extra_header");
   P("                      on MPEG-2 transport stream packets.              ");
   P("                                                                       ");
-  P("  --start-time        (In 90kHz clock ticks) define starting PTS clock ");
+  P("  --start-time=<value>                                                 ");
+  P("                      (In 90kHz clock ticks) define starting PTS clock ");
   P("                      timestamp (range: 90000 - 1620000000000).        ");
   P("                      Default: 54000000 (600s.)                        ");
   P("                                                                       ");
-  P("  --mux-rate          (In bits per sec.) define maximum multiplex rate.");
+  P("  --mux-rate=<value>  (In bits per sec.) define maximum multiplex rate ");
+  P("                      (range: 500000 - 120000000).                     ");
   P("                      Default: 48000000 (48Mbps)                       ");
-  P("                                                                       ");
-  P("                       WARNING: --start-time and --mux-rate does not   ");
-  P("                        use '=' separator for option but a simple      ");
-  P("                        space.                                         ");
   P("                                                                       ");
   P("  --force-esms        Force regeneration of an input stream script file");
   P("                      regardless of a compatible existent one (which   ");
@@ -240,15 +238,14 @@ static void printHelp(
   P("                      could be too high for those good-old red lasers).");
   P("                                                                       ");
 #if !DISABLE_T_STD_BUFFER_VER
-  P("  --disable-tstd                                                       ");
-  P("                      Disable use of MPEG T-STD buffer verifier during ");
+  P("  --disable-tstd      Disable use of MPEG T-STD buffer verifier during ");
   P("                      mux. The verifier ensure accurate generated      ");
   P("                      stream buffering compliance according to MPEG-TS ");
   P("                      and BDAV specific specs but at an important speed");
   P("                      cost.                                            ");
   P("                                                                       ");
 #endif
-  P(" Codec specific parameters:                                            ");
+  P(" Tracks specific parameters:                                           ");
   P("                                                                       ");
   P("  --esms=<filename>   Allow to specify a specific script file to use.  ");
   P("                      (Compatibility is always checked, if script is   ");
@@ -259,12 +256,12 @@ static void printHelp(
   P("                      checks, enables DTS-Express tracks, apply        ");
   P("                      appropriate MPEG-2 TS descriptors and PIDs...    ");
   P("                                                                       ");
-  P(" Dolby Audio specific parameters:                                      ");
+  P("   Dolby Audio specific parameters:                                    ");
   P("                                                                       ");
   P("  --core              Extracts and mux only retro-compatible AC-3 audio");
   P("                      core.                                            ");
   P("                                                                       ");
-  P(" DTS Audio specific parameters:                                        ");
+  P("   DTS Audio specific parameters:                                      ");
   P("                                                                       ");
   P("  --core              Extracts and mux only retro-compatible DCA core. ");
   P("                       NOTE: Not available with DTS-Express.           ");
@@ -272,7 +269,7 @@ static void printHelp(
   P("  --pbr=<filename>    Indicate DTSPBR file to use if PBR smoothing     ");
   P("                      process is required by input file (.dtshd).      ");
   P("                                                                       ");
-  P(" H.264 Video specific parameters:                                      ");
+  P("   H.264 Video specific parameters:                                    ");
   P("                                                                       ");
   P("  --fps=<value>       Change in SPS VUI input frame-rate to specified  ");
   P("                      one.                                             ");
@@ -297,8 +294,7 @@ static void printHelp(
   P("  --disable-fixes     Disable all potential fixes (broken SPS VUI      ");
   P("                      fixes, duplicated NALUs removal...).             ");
   P("                                                                       ");
-  P("  --disable-hrd-verifier                                               ");
-  P("                      Disable Rec. ITU-T H.264 integrated HRD Verifier.");
+  P("  --disable-hrd-verif Disable Rec. ITU-T H.264 integrated HRD Verifier.");
   P("                                                                       ");
   P("  --echo-hrd-cpb      Enable display of Rec. ITU-T H.264 HRD CPB       ");
   P("                      buffering model on terminal. This option is      ");
