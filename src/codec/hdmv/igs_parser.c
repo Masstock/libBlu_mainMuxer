@@ -10,21 +10,77 @@
 
 #include "igs_parser.h"
 
+/** \~english
+ * \brief Test if filepath finishes with #IGS_COMPILER_FILE_EXT string.
+ *
+ * \param filepath Input filepath to test.
+ * \return true Filepath ends with #IGS_COMPILER_FILE_EXT string.
+ * \return false Filepath does not end with #IGS_COMPILER_FILE_EXT string.
+ */
+static bool isIgsCompilerFile_ext(
+  const lbc * filepath
+)
+{
+  const lbc * filepathExt;
+  size_t filepathSize;
+
+  filepathSize = lbc_strlen(filepath);
+  if (filepathSize < IGS_COMPILER_FILE_EXT_SIZE)
+    return false;
+  filepathExt = &filepath[filepathSize - IGS_COMPILER_FILE_EXT_SIZE];
+
+  return lbc_equal(filepathExt, IGS_COMPILER_FILE_EXT);
+}
+
+/** \~english
+ * \brief Test if file starts with #IGS_COMPILER_FILE_MAGIC magic string.
+ *
+ * \param filepath Input filepath to test.
+ * \return true The file starts with #IGS_COMPILER_FILE_MAGIC magic.
+ * \return false The file does not start with #IGS_COMPILER_FILE_MAGIC magic.
+ */
+static bool isIgsCompilerFile_magic(
+  const lbc * filepath
+)
+{
+  FILE * fd;
+  char magic[IGS_COMPILER_FILE_MAGIC_SIZE];
+  bool ret;
+
+  ret = false;
+  if (NULL == (fd = lbc_fopen(filepath, "rb")))
+    goto free_return;
+
+  if (fread(magic, IGS_COMPILER_FILE_MAGIC_SIZE, 1, fd) <= 0)
+    goto free_return;
+
+  ret = (
+    0 == memcmp(
+      magic,
+      IGS_COMPILER_FILE_MAGIC,
+      IGS_COMPILER_FILE_MAGIC_SIZE
+    )
+  );
+
+free_return:
+  if (NULL != fd)
+    fclose(fd);
+
+  errno = 0; /* Reset if error */
+  return ret;
+}
+
 bool isIgsCompilerFile(
   const lbc * filepath
 )
 {
-  int len;
+  assert(NULL != filepath);
 
-  if (
-    NULL == filepath
-    || lbc_strlen(filepath) <= sizeof(IGS_COMPILER_FILE_EXT)
-  )
-    return false;
-
-  len = lbc_strlen(filepath) - lbc_strlen(IGS_COMPILER_FILE_EXT);
-
-  return lbc_equal(filepath + len, IGS_COMPILER_FILE_EXT);
+  /* Check by filename extension (and by file header if unsuccessful) */
+  return
+    isIgsCompilerFile_ext(filepath)
+    || isIgsCompilerFile_magic(filepath)
+  ;
 }
 
 uint64_t computeIgsOdsDecodeDuration(

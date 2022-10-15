@@ -22,7 +22,11 @@
 #  include "compiler/igs_compiler.h"
 #endif
 
-#define IGS_COMPILER_FILE_EXT lbc_str(".xml")
+#define IGS_COMPILER_FILE_EXT  lbc_str(".xml")
+#define IGS_COMPILER_FILE_EXT_SIZE  4
+
+#define IGS_COMPILER_FILE_MAGIC  "<?xml"
+#define IGS_COMPILER_FILE_MAGIC_SIZE  5
 
 #define IGS_DEBUG_FORCE_RETIME false
 
