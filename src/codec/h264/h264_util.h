@@ -12,6 +12,7 @@
 
 #include "../../util.h"
 #include "../../elementaryStreamOptions.h"
+#include "../../esms/scriptCreation.h"
 #include "h264_hrdVerifier.h"
 #include "h264_error.h"
 #include "h264_data.h"
@@ -40,9 +41,11 @@ typedef struct {
   ((H264WarningFlags) {false})
 
 typedef struct {
-  unsigned h264SourceFileIdx;
+  EsmsFileHeaderPtr esms;
+  BitstreamWriterPtr esmsFile;
+
   H264NalDeserializerContext file;
-  BitstreamWriterPtr esmsScriptOutputFile;
+  unsigned esmsSrcFileIdx;
 
   H264AccessUnitDelimiterParameters accessUnitDelimiter;
   bool accessUnitDelimiterPresent;
@@ -101,12 +104,16 @@ unsigned getH264BrNal(
 
 /* Handling functions : */
 H264ParametersHandlerPtr initH264ParametersHandler(
-  BitstreamReaderPtr inputFile,
-  const LibbluESSettingsOptions * options
+  const LibbluESParsingSettings * settings
 );
 
 void resetH264ParametersHandler(
   H264ParametersHandlerPtr handle
+);
+
+int completeH264ParametersHandler(
+  H264ParametersHandlerPtr handle,
+  const LibbluESParsingSettings * settings
 );
 
 void destroyH264ParametersHandler(

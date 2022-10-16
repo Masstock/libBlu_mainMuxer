@@ -568,8 +568,10 @@ int main(
       "Expect a input META filename (see -h/--help).\n"
     );
 
-  if (initLibbluMuxingSettings(&param, outputTsFilepath, confFile) < 0)
+  if (initLibbluMuxingSettings(&param, outputTsFilepath, confFile) < 0) {
+    cleanLibbluMuxingSettings(param);
     goto free_return;
+  }
 
   LIBBLU_MUX_SETTINGS_SET_OPTION(
     &param,
@@ -609,7 +611,6 @@ int main(
   return 0;
 
 free_return:
-  cleanLibbluMuxingSettings(param);
   destroyIniFileContext(confFile);
 
   duration = clock() - start;

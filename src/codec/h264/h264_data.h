@@ -1071,6 +1071,18 @@ typedef struct {
   uint8_t type;
 } H264NalDeserializerContext;
 
+int initH264NalDeserializerContext(
+  H264NalDeserializerContext * dst,
+  const lbc * filepath
+);
+
+static inline void cleanH264NalDeserializerContext(
+  H264NalDeserializerContext ctx
+)
+{
+  closeBitstreamReader(ctx.inputFile);
+}
+
 typedef enum {
   H264_UNRESTRICTED_CHROMA_FORMAT_IDC = 0,
 

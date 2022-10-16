@@ -60,14 +60,12 @@ bool isStartOfANewH264AU(
 
 int processAccessUnit(
   H264ParametersHandlerPtr handle,
-  LibbluESParsingSettings * settings,
-  EsmsFileHeaderPtr h264Infos
+  LibbluESParsingSettings * settings
 );
 
 int processCompleteAccessUnit(
   H264ParametersHandlerPtr handle,
-  const LibbluESSettingsOptions options,
-  EsmsFileHeaderPtr h264Infos
+  const LibbluESSettingsOptions options
 );
 
 /* access_unit_delimiter_rbsp() NAL */

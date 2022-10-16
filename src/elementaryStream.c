@@ -446,8 +446,6 @@ static int addPesPacketToBdavStdLibbluES(
       .doNotRemove = false
     }
   );
-
-  return 0;
 }
 
 int buildAndQueueNextPesPacketPropertiesLibbluES(
@@ -679,12 +677,8 @@ int buildNextPesPacketLibbluES(
 
   /* Add to stream buffering model chain if used */
   if (NULL != es->lnkdBufList) {
-    return addPesPacketToBdavStdLibbluES(
-      es,
-      node->prop,
-      pid,
-      refPcr
-    );
+    if (addPesPacketToBdavStdLibbluES(es, node->prop, pid, refPcr) < 0)
+      return -1;
   }
 
   destroyLibbluESPesPacketPropertiesNode(node, false);

@@ -35,15 +35,14 @@ int buildH264HrdParameters(
 );
 
 size_t appendH264SequenceParametersSet(
-  H264ParametersHandlerPtr h264Input,
-  EsmsFileHeaderPtr h264Infos,
+  H264ParametersHandlerPtr handle,
   size_t insertingOffset,
   H264SPSDataParameters * param
 );
 
 int rebuildH264SPSNalVuiParameters(
   H264SPSDataParameters * spsParam,
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   const LibbluESSettingsOptions options
 );
 
@@ -57,25 +56,25 @@ int rebuildH264SPSNalVuiHRDParameters(
 );
 
 int patchH264SequenceParametersSet(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   const LibbluESSettingsOptions options
 );
 
 #if 0
 int buildH264SeiBufferingPeriodMessage(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
   H264SeiBufferingPeriod * param
 );
 
 int buildH264SeiMessage(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
   H264SeiMessageParameters * param
 );
 
 int buildH264SupplementalEnhancementInformation(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
   H264SeiRbspParameters * param
 );
@@ -85,21 +84,21 @@ bool isH264SeiBufferingPeriodPatchMessage(
 );
 
 size_t appendH264Sei(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   EsmsFileHeaderPtr h264Infos,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 );
 
 size_t appendH264SeiBufferingPeriodPlaceHolder(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   EsmsFileHeaderPtr h264Infos,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 );
 
 int patchH264SeiBufferingPeriodMessageParameters(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264SeiMessageParameters * seiMessage,
   const unsigned seqParametersSetId,
   const H264HrdBufferingPeriodParameters * hrdParam,
@@ -107,11 +106,11 @@ int patchH264SeiBufferingPeriodMessageParameters(
 );
 
 int insertH264SeiBufferingPeriodPlaceHolder(
-  H264ParametersHandlerPtr h264Input
+  H264ParametersHandlerPtr handle
 );
 
 int completeH264SeiBufferingPeriodComputation(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   EsmsFileHeaderPtr h264Infos
 );
 #endif

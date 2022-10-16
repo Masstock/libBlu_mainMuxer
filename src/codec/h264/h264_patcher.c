@@ -146,8 +146,7 @@ int buildH264HrdParameters(
 }
 
 size_t appendH264SequenceParametersSet(
-  H264ParametersHandlerPtr h264Input,
-  EsmsFileHeaderPtr h264Infos,
+  H264ParametersHandlerPtr handle,
   size_t insertingOffset,
   H264SPSDataParameters * param
 )
@@ -166,12 +165,12 @@ size_t appendH264SequenceParametersSet(
 
   bool constantSps;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != param);
   assert(insertingOffset <= 0xFFFFFFFF);
 
-  for (i = 0; i < h264Input->modNalLst.nbSequenceParametersSet; i++) {
-    modNalUnit = h264Input->modNalLst.sequenceParametersSets + i;
+  for (i = 0; i < handle->modNalLst.nbSequenceParametersSet; i++) {
+    modNalUnit = handle->modNalLst.sequenceParametersSets + i;
 
     /* Checking if an identical pre-builded SPS Nal is available. */
     constantSps = constantH264SequenceParametersSetCheck(
@@ -182,7 +181,7 @@ size_t appendH264SequenceParametersSet(
     if (constantSps) {
       /* Compatible, write pre-builded Nal. */
       ret = appendAddDataBlockCommand(
-        h264Infos,
+        handle->esms,
         insertingOffset,
         INSERTION_MODE_ERASE,
         modNalUnit->dataSectionIdx
@@ -566,19 +565,19 @@ size_t appendH264SequenceParametersSet(
    */
 
 #if !DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION
-  if (!isDataBlocksNbLimitReachedEsms(h264Infos)) {
-    h264Input->modNalLst.sequenceParametersSets =
+  if (!isDataBlocksNbLimitReachedEsms(handle->esms)) {
+    handle->modNalLst.sequenceParametersSets =
       (H264ModifiedNalUnit *) realloc(
-        h264Input->modNalLst.sequenceParametersSets,
-        (++h264Input->modNalLst.nbSequenceParametersSet)
+        handle->modNalLst.sequenceParametersSets,
+        (++handle->modNalLst.nbSequenceParametersSet)
         * sizeof(H264ModifiedNalUnit)
       )
     ;
-    if (NULL == h264Input->modNalLst.sequenceParametersSets)
+    if (NULL == handle->modNalLst.sequenceParametersSets)
       LIBBLU_H264_ERROR_RETURN("Memory allocation error.\n");
 
-    modNalUnit = &h264Input->modNalLst.sequenceParametersSets[
-      h264Input->modNalLst.nbSequenceParametersSet-1
+    modNalUnit = &handle->modNalLst.sequenceParametersSets[
+      handle->modNalLst.nbSequenceParametersSet-1
     ];
 
     modNalUnit->linkedParam = (H264SPSDataParameters *) malloc(
@@ -595,7 +594,7 @@ size_t appendH264SequenceParametersSet(
 
     modNalUnit->length = H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(spsNal);
     ret = appendDataBlockEsms(
-      h264Infos,
+      handle->esms,
       spsNal->array,
       H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(spsNal),
       &modNalUnit->dataSectionIdx
@@ -604,7 +603,7 @@ size_t appendH264SequenceParametersSet(
       return 0;
 
     ret = appendAddDataBlockCommand(
-      h264Infos,
+      handle->esms,
       insertingOffset, INSERTION_MODE_ERASE,
       modNalUnit->dataSectionIdx
     );
@@ -612,7 +611,7 @@ size_t appendH264SequenceParametersSet(
   else {
     /* Direct NAL injection : */
     ret = appendAddDataCommand(
-      h264Infos,
+      handle->esms,
       insertingOffset, INSERTION_MODE_ERASE,
       H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(spsNal),
       spsNal->array
@@ -621,7 +620,7 @@ size_t appendH264SequenceParametersSet(
 #else
   /* Direct NAL injection : */
   ret = appendAddDataCommand(
-    h264Infos,
+    handle->esms,
     insertingOffset, INSERTION_MODE_ERASE,
     H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(spsNal),
     spsNal->array
@@ -639,7 +638,7 @@ size_t appendH264SequenceParametersSet(
 
 int rebuildH264SPSNalVuiParameters(
   H264SPSDataParameters * spsParam,
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   const LibbluESSettingsOptions options
 )
 {
@@ -647,24 +646,24 @@ int rebuildH264SPSNalVuiParameters(
   H264VuiColourDescriptionParameters * colourDesc;
 
   assert(NULL != spsParam);
-  assert(NULL != h264Input);
+  assert(NULL != handle);
 
   assert(spsParam->vuiParametersPresent);
-  assert(h264Input->sequenceParametersSetPresent);
+  assert(handle->sequenceParametersSetPresent);
 
   vuiParam = &spsParam->vuiParameters;
   colourDesc = &vuiParam->videoSignalType.colourDescription;
 
   LIBBLU_DEBUG_COM("Applying SPS Nal VUI parameters updating.\n");
 
-  if (h264Input->curProgParam.useVuiRebuilding) {
+  if (handle->curProgParam.useVuiRebuilding) {
     vuiParam->videoSignalTypePresent = true;
     vuiParam->videoSignalType.videoFormat = H264_VIDEO_FORMAT_NTSC;
     vuiParam->videoSignalType.videoFullRange = false;
     vuiParam->videoSignalType.colourDescPresent = true;
 
     /* Set VUI Color Description parameters : */
-    switch (h264Input->sequenceParametersSet.data.FrameHeight) {
+    switch (handle->sequenceParametersSet.data.FrameHeight) {
       case 576: /* SD PAL */
         colourDesc->colourPrimaries = H264_COLOR_PRIM_BT470BG;
         colourDesc->transferCharact = H264_TRANS_CHAR_BT470BG;
@@ -684,7 +683,7 @@ int rebuildH264SPSNalVuiParameters(
     }
   }
 
-  if (h264Input->curProgParam.useVuiUpdate) {
+  if (handle->curProgParam.useVuiUpdate) {
     switch (options.fpsChange) {
       case 0x0: /* No change */
         break;
@@ -737,21 +736,21 @@ int rebuildH264SPSNalVuiParameters(
     if (0x00 != options.levelChange) {
       if (
         options.levelChange < spsParam->levelIdc
-        && !h264Input->curProgParam.usageOfLowerLevel
+        && !handle->curProgParam.usageOfLowerLevel
       ) {
         LIBBLU_WARNING(
           "Usage of a lower level than initial one, stream may not respect "
           "new level-related constraints.\n"
         );
 
-        /* updateH264LevelLimits(h264Input, spsParam->levelIdc); */
-        h264Input->curProgParam.usageOfLowerLevel = true;
+        /* updateH264LevelLimits(handle, spsParam->levelIdc); */
+        handle->curProgParam.usageOfLowerLevel = true;
       }
 
       spsParam->levelIdc = options.levelChange;
     }
 
-  } /* if (h264Input->curProgParam.useVuiUpdate) */
+  } /* if (handle->curProgParam.useVuiUpdate) */
 
   return 0; /* OK */
 }
@@ -813,7 +812,7 @@ int rebuildH264SPSNalVuiHRDParameters(
 }
 
 int patchH264SequenceParametersSet(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   const LibbluESSettingsOptions options
 )
 {
@@ -822,17 +821,17 @@ int patchH264SequenceParametersSet(
   bool update;
   H264SPSDataParameters updatedSpsDataParam;
 
-  assert(NULL != h264Input);
-  assert(h264Input->sequenceParametersSetPresent);
+  assert(NULL != handle);
+  assert(handle->sequenceParametersSetPresent);
 
   update = false;
 
   if (
-    h264Input->curProgParam.useVuiRebuilding
-    || h264Input->curProgParam.useVuiUpdate
+    handle->curProgParam.useVuiRebuilding
+    || handle->curProgParam.useVuiUpdate
   ) {
     /* SPS VUI parameters fix/updating */
-    updatedSpsDataParam = h264Input->sequenceParametersSet.data;
+    updatedSpsDataParam = handle->sequenceParametersSet.data;
 
     if (!updatedSpsDataParam.vuiParametersPresent)
       LIBBLU_ERROR_RETURN(
@@ -840,7 +839,7 @@ int patchH264SequenceParametersSet(
       );
 
     ret = rebuildH264SPSNalVuiParameters(
-      &updatedSpsDataParam, h264Input, options
+      &updatedSpsDataParam, handle, options
     );
     if (ret < 0)
       return -1;
@@ -851,7 +850,7 @@ int patchH264SequenceParametersSet(
   if (options.forceRebuildSei) {
     /* SPS HRD parameters check (updating fields lengths) */
     if (!update)
-      updatedSpsDataParam = h264Input->sequenceParametersSet.data;
+      updatedSpsDataParam = handle->sequenceParametersSet.data;
 
     if (rebuildH264SPSNalVuiHRDParameters(&updatedSpsDataParam) < 0)
       return -1;
@@ -861,7 +860,7 @@ int patchH264SequenceParametersSet(
 
   if (update)
     return replaceCurNalCell(
-      h264Input,
+      handle,
       &updatedSpsDataParam,
       sizeof(H264SPSDataParameters)
     );
@@ -870,7 +869,7 @@ int patchH264SequenceParametersSet(
 
 #if 0
 int buildH264SeiBufferingPeriodMessage(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
   H264SeiBufferingPeriod * param
 )
@@ -882,7 +881,7 @@ int buildH264SeiBufferingPeriodMessage(
   H264VuiParameters * vuiParam;
   H264HrdBufferingPeriodParameters * hrdParam;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != seiNal);
   assert(NULL != param);
 
@@ -891,18 +890,18 @@ int buildH264SeiBufferingPeriodMessage(
    * if so, Buffering Period SEI message shouldn't be present.
    */
 
-  if (!h264Input->sequenceParametersSetPresent)
+  if (!handle->sequenceParametersSetPresent)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, missing SPS.\n"
     );
 
-  if (!h264Input->sequenceParametersSet.data.vuiParametersPresent)
+  if (!handle->sequenceParametersSet.data.vuiParametersPresent)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, "
       "missing VUI parameters in SPS.\n"
     );
 
-  vuiParam = &h264Input->sequenceParametersSet.data.vuiParameters;
+  vuiParam = &handle->sequenceParametersSet.data.vuiParameters;
 
   /**
    * Check for NalHrdBpPresentFlag and VclHrdBpPresentFlag equal to 0b0,
@@ -957,7 +956,7 @@ int buildH264SeiBufferingPeriodMessage(
 }
 
 int buildH264SeiMessage(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
   H264SeiMessageParameters * param
 )
@@ -967,7 +966,7 @@ int buildH264SeiMessage(
 
   size_t bigValue;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != seiNal);
   assert(NULL != param);
 
@@ -995,7 +994,7 @@ int buildH264SeiMessage(
   switch (param->payloadType) {
     case H264_SEI_TYPE_BUFFERING_PERIOD:
       ret = buildH264SeiBufferingPeriodMessage(
-        h264Input, seiNal, &param->bufferingPeriod
+        handle, seiNal, &param->bufferingPeriod
       );
       break;
 
@@ -1010,7 +1009,7 @@ int buildH264SeiMessage(
 }
 
 int buildH264SupplementalEnhancementInformation(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
   H264SeiRbspParameters * param
 )
@@ -1018,13 +1017,13 @@ int buildH264SupplementalEnhancementInformation(
   /* sei_rbsp() */
   unsigned msgIdx;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != seiNal);
   assert(NULL != param);
 
   for (msgIdx = 0; msgIdx < param->messagesNb; msgIdx++) {
     /* sei_message() */
-    if (buildH264SeiMessage(h264Input, seiNal, &param->messages[msgIdx]) < 0)
+    if (buildH264SeiMessage(handle, seiNal, &param->messages[msgIdx]) < 0)
       return -1;
   }
 
@@ -1048,8 +1047,8 @@ bool isH264SeiBufferingPeriodPatchMessage(
 }
 
 size_t appendH264Sei(
-  H264ParametersHandlerPtr h264Input,
-  EsmsFileHeaderPtr h264Infos,
+  H264ParametersHandlerPtr handle,
+  EsmsFileHeaderPtr handle->esms,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 )
@@ -1061,7 +1060,7 @@ size_t appendH264Sei(
   H264NalHeaderParameters seiNalParam;
   H264NalByteArrayHandlerPtr seiNal;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != param);
   assert(insertingOffset <= 0xFFFFFFFF);
 
@@ -1076,7 +1075,7 @@ size_t appendH264Sei(
 
   /* sei_rbsp() */
   ret = buildH264SupplementalEnhancementInformation(
-    h264Input, seiNal, param
+    handle, seiNal, param
   );
   if (ret < 0)
     return 0;
@@ -1086,7 +1085,7 @@ size_t appendH264Sei(
 
   /* Direct NAL injection : */
   ret = appendAddDataCommand(
-    h264Infos,
+    handle->esms,
     insertingOffset, INSERTION_MODE_ERASE,
     H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(seiNal),
     seiNal->array
@@ -1102,8 +1101,8 @@ size_t appendH264Sei(
 }
 
 size_t appendH264SeiBufferingPeriodPlaceHolder(
-  H264ParametersHandlerPtr h264Input,
-  EsmsFileHeaderPtr h264Infos,
+  H264ParametersHandlerPtr handle,
+  EsmsFileHeaderPtr handle->esms,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 )
@@ -1121,12 +1120,12 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
   H264ModifiedNalUnit * seiModNalUnit;
   bool * seiModNalUnitPres;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != param);
   assert(insertingOffset <= 0xFFFFFFFF);
 
-  seiModNalUnit = &h264Input->modNalLst.bufferingPeriodSeiMsg;
-  seiModNalUnitPres = &h264Input->modNalLst.patchBufferingPeriodSeiPresent;
+  seiModNalUnit = &handle->modNalLst.bufferingPeriodSeiMsg;
+  seiModNalUnitPres = &handle->modNalLst.patchBufferingPeriodSeiPresent;
 
   if (!*seiModNalUnitPres) {
     assert(NULL == seiModNalUnit->linkedParam);
@@ -1142,7 +1141,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 
     /* sei_rbsp() */
     ret = buildH264SupplementalEnhancementInformation(
-      h264Input, seiNal, param
+      handle, seiNal, param
     );
     if (ret < 0)
       return 0;
@@ -1157,7 +1156,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
     seiModNalUnit->length = H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(seiNal);
 
     ret = appendDataBlockEsms(
-      h264Infos,
+      handle->esms,
       seiNal->array,
       H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(seiNal),
       &seiModNalUnit->dataSectionIdx
@@ -1172,7 +1171,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
   assert(NULL != seiModNalUnit->linkedParam);
 
   ret = appendAddDataBlockCommand(
-    h264Infos,
+    handle->esms,
     insertingOffset,
     INSERTION_MODE_ERASE,
     seiModNalUnit->dataSectionIdx
@@ -1186,7 +1185,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 }
 
 int patchH264SeiBufferingPeriodMessageParameters(
-  H264ParametersHandlerPtr h264Input,
+  H264ParametersHandlerPtr handle,
   H264SeiMessageParameters * seiMessage,
   const unsigned seqParametersSetId,
   const H264HrdBufferingPeriodParameters * hrdParam,
@@ -1201,7 +1200,7 @@ int patchH264SeiBufferingPeriodMessageParameters(
 
   H264SeiBufferingPeriod * param;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
   assert(NULL != seiMessage);
 
   LIBBLU_DEBUG_COM(
@@ -1213,18 +1212,18 @@ int patchH264SeiBufferingPeriodMessageParameters(
    * if so, Buffering Period SEI message shouldn't be present.
    */
 
-  if (!h264Input->sequenceParametersSetPresent)
+  if (!handle->sequenceParametersSetPresent)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, missing SPS.\n"
     );
 
-  if (!h264Input->sequenceParametersSet.data.vuiParametersPresent)
+  if (!handle->sequenceParametersSet.data.vuiParametersPresent)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, "
       "missing VUI parameters in SPS.\n"
     );
 
-  vuiParam = &h264Input->sequenceParametersSet.data.vuiParameters;
+  vuiParam = &handle->sequenceParametersSet.data.vuiParameters;
 
   /**
    * Check for NalHrdBpPresentFlag and VclHrdBpPresentFlag equal to 0b0,
@@ -1269,7 +1268,7 @@ int patchH264SeiBufferingPeriodMessageParameters(
 }
 
 int insertH264SeiBufferingPeriodPlaceHolder(
-  H264ParametersHandlerPtr h264Input
+  H264ParametersHandlerPtr handle
 )
 {
   int ret;
@@ -1281,8 +1280,8 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
   H264AUNalUnitPtr nalUnit;
 
-  assert(NULL != h264Input);
-  assert(h264Input->sequenceParametersSetPresent);
+  assert(NULL != handle);
+  assert(handle->sequenceParametersSetPresent);
 
   /* Setting default empty SEI parameters : */
 
@@ -1298,7 +1297,7 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
   /* Build H264SeiRbspParameters structure : */
   ret = patchH264SeiBufferingPeriodMessageParameters(
-    h264Input,
+    handle,
     &newSeiNalParam.messages[0],
     0x0,
     nalHrd, vclHrd
@@ -1308,7 +1307,7 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
   /* Creating new NALU to receive created SEI. */
   nalUnit = createNewNalCell(
-    h264Input,
+    handle,
     NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION
   );
   if (NULL == nalUnit)
@@ -1316,19 +1315,19 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
   /* Replace empty NALU parameters with created ones. */
   ret = replaceCurNalCell(
-    h264Input,
+    handle,
     &newSeiNalParam,
     sizeof(H264SeiRbspParameters)
   );
   if (ret < 0)
     return -1;
 
-  return addNalCellToAccessUnit(h264Input); /* Push created NALU in AU pile. */
+  return addNalCellToAccessUnit(handle); /* Push created NALU in AU pile. */
 }
 
 int completeH264SeiBufferingPeriodComputation(
-  H264ParametersHandlerPtr h264Input,
-  EsmsFileHeaderPtr h264Infos
+  H264ParametersHandlerPtr handle,
+  EsmsFileHeaderPtr handle->esms
 )
 {
   /* Only support first one schedSel. */
@@ -1358,20 +1357,20 @@ int completeH264SeiBufferingPeriodComputation(
   H264NalHeaderParameters seiNalParam;
   H264NalByteArrayHandlerPtr seiNal;
 
-  assert(NULL != h264Input);
+  assert(NULL != handle);
 
-  if (!h264Input->modNalLst.patchBufferingPeriodSeiPresent)
+  if (!handle->modNalLst.patchBufferingPeriodSeiPresent)
     return 0; /* Nothing to do. */
 
   /* All AU in stream cannot be zero-size... */
-  assert(0 != h264Input->curProgParam.largestFrameSize);
-  assert(0 != h264Input->curProgParam.largestIFrameSize);
+  assert(0 != handle->curProgParam.largestFrameSize);
+  assert(0 != handle->curProgParam.largestIFrameSize);
 
   /* Usually, required parameters presence has been checked before. */
-  assert(h264Input->sequenceParametersSetPresent);
-  assert(h264Input->sequenceParametersSet.data.vuiParametersPresent);
+  assert(handle->sequenceParametersSetPresent);
+  assert(handle->sequenceParametersSet.data.vuiParametersPresent);
 
-  vuiParam = &h264Input->sequenceParametersSet.data.vuiParameters;
+  vuiParam = &handle->sequenceParametersSet.data.vuiParameters;
   nalHrdPresent = vuiParam->nalHrdParamPresent;
   vclHrdPresent = vuiParam->vclHrdParamPresent;
 
@@ -1384,7 +1383,7 @@ int completeH264SeiBufferingPeriodComputation(
 
     nalBitRate = vuiParam->nalHrdParam.schedSel[0].bitRate;
 
-    nalMaxCpbBufferingDelay = h264Input->curProgParam.largestFrameSize * 8l / nalBitRate;
+    nalMaxCpbBufferingDelay = handle->curProgParam.largestFrameSize * 8l / nalBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", nalMaxCpbBufferingDelay);
 
     nalResultInitCpbRemovalDelay = ceil(nalMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
@@ -1419,7 +1418,7 @@ int completeH264SeiBufferingPeriodComputation(
 
     vclBitRate = vuiParam->vclHrdParam.schedSel[0].bitRate;
 
-    vclMaxCpbBufferingDelay = h264Input->curProgParam.largestFrameSize * 8l / vclBitRate;
+    vclMaxCpbBufferingDelay = handle->curProgParam.largestFrameSize * 8l / vclBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", vclMaxCpbBufferingDelay);
 
     vclResultInitCpbRemovalDelay = ceil(vclMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
@@ -1460,7 +1459,7 @@ int completeH264SeiBufferingPeriodComputation(
 
   if (
     patchH264SeiBufferingPeriodMessageParameters(
-      h264Input,
+      handle,
       &newSeiNalParam.messages[0],
       0x0,
       nalHrd, vclHrd
@@ -1476,10 +1475,10 @@ int completeH264SeiBufferingPeriodComputation(
     return -1; /* Error */
 
   /* sei_rbsp() */
-  if (buildH264SupplementalEnhancementInformation(h264Input, seiNal, &newSeiNalParam) < 0)
+  if (buildH264SupplementalEnhancementInformation(handle, seiNal, &newSeiNalParam) < 0)
     return -1;
 
-  seiModNalUnit = &h264Input->modNalLst.bufferingPeriodSeiMsg;
+  seiModNalUnit = &handle->modNalLst.bufferingPeriodSeiMsg;
 
   if (seiModNalUnit->length < H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(seiNal))
     LIBBLU_H264_ERROR_RETURN(
@@ -1488,7 +1487,7 @@ int completeH264SeiBufferingPeriodComputation(
 
   /* Replace place-holder NALU with updated one. */
   ret = updateDataBlockEsms(
-    h264Infos,
+    handle->esms,
     seiNal->array,
     H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(seiNal),
     seiModNalUnit->dataSectionIdx

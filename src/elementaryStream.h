@@ -263,26 +263,6 @@ static inline void initLibbluES(
       .type = -1,
       .codingType = -1
     },
-
-    .lnkdBufList = NULL,
-
-    .scriptFile = NULL,
-
-    /* .nbStreamFiles = 0, */
-
-    .pesPacketsScriptsQueue = NULL,
-    .pesPacketsScriptsQueueLastNode = NULL,
-    .pesPacketsScriptsQueueSize = 0,
-
-    .pesPacketsQueue = NULL,
-    .pesPacketsQueueLastNode = NULL,
-    .pesPacketsQueueSize = 0,
-
-    .parsedProperties = false,
-    .initializedPesCutting = false,
-    .endOfScriptReached = false,
-
-    .nbPesPacketsMuxed = 0
   };
 
   initLibbluESFmtSpecProp(&dst->fmtSpecProp, FMT_SPEC_INFOS_NONE);

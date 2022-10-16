@@ -530,24 +530,14 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
 
   /* Set default fields to avoid undefined behaviour in case of error leading
   to a free_return escape. */
-  ctx->settings = settings;
+  *ctx = (LibbluMuxingContext) {
+    .settings = settings
+  };
+
   initLibbluPIDValues(&ctx->pidValues, setBDAVStdLibbluNumberOfESTypes);
-  SET_NULL_ARRAY(ctx->elementaryStreams);
-  ctx->systemStreamsHeap = NULL;
-  ctx->elementaryStreamsHeap = NULL;
   setDefaultPatParameters(&ctx->patParam, 0x0000, 0x0);
   setDefaultPmtParameters(&ctx->pmtParam, 0x0001, PMT_PID);
   setDefaultSitParameters(&ctx->sitParam);
-  ctx->pat = NULL;
-  ctx->pmt = NULL;
-  ctx->sit = NULL;
-  ctx->pcr = NULL;
-  ctx->null = NULL;
-  ctx->nbTsPacketsMuxed = 0;
-  ctx->nbBytesWritten = 0;
-  ctx->progress = 0;
-  ctx->tStdModel = BUF_MODEL_NEW_NODE();
-  ctx->tStdSystemBuffersList = NULL;
 
   tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableTStdBufVerifier);
   forcedScriptBuilding = LIBBLU_MUX_SETTINGS_OPTION(&settings, forceRebuildScripts);

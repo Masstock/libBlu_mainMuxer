@@ -8,5 +8,6 @@ desktop.ini
 *.cmd
 *.ts
 *.m2ts
+*.old
 
 mainMuxer

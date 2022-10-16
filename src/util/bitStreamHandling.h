@@ -129,9 +129,19 @@ static inline BitstreamReaderPtr createBitstreamReaderDefBuf(
  *
  * \param bitStream Reading bitstream object to free.
  */
-void closeBitstreamReader(
+static inline void closeBitstreamReader(
   BitstreamReaderPtr bitStream
-);
+)
+{
+  if (NULL == bitStream)
+    return;
+
+  free(bitStream->byteArray);
+  if (NULL != bitStream->file)
+    fclose(bitStream->file);
+  free(bitStream->buffer);
+  free(bitStream);
+}
 
 /** \~english
  * \brief Creates a bitstream writing handling structure on supplied file.

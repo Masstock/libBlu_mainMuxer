@@ -32,16 +32,7 @@ BitstreamReaderPtr createBitstreamReader(
   BitstreamReaderPtr bitStream;
   char * buffer;
 
-  /* if (NULL == inputFilename)
-    LIBBLU_ERROR_NRETURN(
-      "createBitstreamReader() expect a non-null inputFilename.\n"
-    ); */
   assert(NULL != inputFilename);
-
-  /* if (bufferSize < 32)
-    LIBBLU_ERROR_NRETURN(
-      "createBitstreamReader() expect at least a 32 bytes bufferSize.\n"
-    ); */
   assert(32 < bufferSize);
 
   if (READ_BUFFER_LEN < bufferSize)
@@ -49,19 +40,10 @@ BitstreamReaderPtr createBitstreamReader(
 
   if (NULL == (bitStream = (BitstreamReaderPtr) malloc(sizeof(BitstreamHandler))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  bitStream->bufferLength = bitStream->byteArrayLength = bufferSize;
-  bitStream->byteArrayOff = bufferSize;
-  bitStream->bitCount = 8; /* By default, a complete byte can be readed at bit level. */
-  bitStream->crcCtx = DEF_CRC_CTX();
-  bitStream->fileOffset = 0;
-  bitStream->buffer = NULL;
+  *bitStream = (BitstreamHandler) {0};
 
   if (NULL == (bitStream->file = lbc_fopen(inputFilename, "rb")))
-    LIBBLU_ERROR_NRETURN(
+    LIBBLU_ERROR_FRETURN(
       "Error happen during input file '%" PRI_LBCS "' opening, "
       "%s (errno: %d).\n",
       inputFilename,
@@ -70,31 +52,34 @@ BitstreamReaderPtr createBitstreamReader(
     );
 
   if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+    LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-  if (setvbuf(bitStream->file, buffer, _IOFBF, IO_VBUF_SIZE) < 0) {
-    perror("Error");
-    LIBBLU_ERROR_NRETURN("Reading buffer definition error.\n");
-  }
+  if (setvbuf(bitStream->file, buffer, _IOFBF, IO_VBUF_SIZE) < 0)
+    LIBBLU_ERROR_FRETURN(
+      "Reading buffer definition error, %s (errno: %d).\n",
+      strerror(errno),
+      errno
+    );
   bitStream->buffer = buffer;
+
+  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
+    LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
+
+  bitStream->bufferLength = bitStream->byteArrayLength = bufferSize;
+  bitStream->byteArrayOff = bufferSize;
+  bitStream->bitCount = 8; /* By default, a complete byte can be readed at bit level. */
+  bitStream->crcCtx = DEF_CRC_CTX();
 
   bitStream->identifier = generatedBistreamIdentifier();
 
   if (getFileSize(inputFilename, &bitStream->fileSize) < 0)
-    LIBBLU_ERROR_NRETURN("Unable to mesure input file length.\n");
+    LIBBLU_ERROR_FRETURN("Unable to mesure input file length.\n");
 
   return bitStream;
-}
 
-void closeBitstreamReader(BitstreamReaderPtr bitStream)
-{
-  if (NULL == bitStream)
-    return;
-
-  free(bitStream->byteArray);
-  fclose(bitStream->file);
-  free(bitStream->buffer);
-  free(bitStream);
+free_return:
+  closeBitstreamReader(bitStream);
+  return NULL;
 }
 
 BitstreamWriterPtr createBitstreamWriter(
@@ -105,32 +90,12 @@ BitstreamWriterPtr createBitstreamWriter(
   BitstreamWriterPtr bitStream;
   char * buffer;
 
-  /* if (NULL == outputFilename)
-    LIBBLU_ERROR_NRETURN(
-      "createBitstreamWriter() expect a non-null outputFilename.\n"
-    ); */
   assert(NULL != outputFilename);
-
-  /* if (bufferSize < 32)
-    LIBBLU_ERROR_NRETURN(
-      "createBitstreamWriter() expect at least a 32 bytes bufferSize.\n"
-    ); */
   assert(32 < bufferSize);
-
 
   if (NULL == (bitStream = (BitstreamWriterPtr) malloc(sizeof(BitstreamHandler))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(sizeof(uint8_t) * bufferSize)))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  bitStream->byteArrayLength = bufferSize;
-  bitStream->byteArrayOff = 0;
-  bitStream->bitCount = 0;
-  bitStream->crcCtx = DEF_CRC_CTX();
-  bitStream->fileSize = 0;
-  bitStream->fileOffset = 0;
-  bitStream->buffer = NULL;
+  *bitStream = (BitstreamHandler) {0};
 
   if (NULL == (bitStream->file = lbc_fopen(outputFilename, "wb")))
     LIBBLU_ERROR_NRETURN(
@@ -149,19 +114,28 @@ BitstreamWriterPtr createBitstreamWriter(
   }
   bitStream->buffer = buffer;
 
+  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+
+  bitStream->byteArrayLength = bufferSize;
+  bitStream->crcCtx = DEF_CRC_CTX();
+
   bitStream->identifier = generatedBistreamIdentifier();
 
   return bitStream;
 }
 
-void closeBitstreamWriter(BitstreamWriterPtr bitStream)
+void closeBitstreamWriter(
+  BitstreamWriterPtr bitStream
+)
 {
   if (NULL == bitStream)
     return;
 
   flushBitstreamWriter(bitStream);
   free(bitStream->byteArray);
-  fclose(bitStream->file);
+  if (NULL != bitStream->file)
+    fclose(bitStream->file);
   free(bitStream->buffer);
   free(bitStream);
 }

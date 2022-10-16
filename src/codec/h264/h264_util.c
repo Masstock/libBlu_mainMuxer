@@ -10,81 +10,85 @@
 
 /* ### H.264 Context : ##################################################### */
 
+static int initInputFileH264ParametersHandle(
+  H264ParametersHandlerPtr handle,
+  const LibbluESParsingSettings * settings
+)
+{
+  return initH264NalDeserializerContext(&handle->file, settings->esFilepath);
+}
+
+static int initOutputFileH264ParametersHandle(
+  H264ParametersHandlerPtr handle,
+  const LibbluESParsingSettings * settings
+)
+{
+  assert(NULL != handle);
+
+  handle->esms = createEsmsFileHandler(
+    ES_VIDEO,
+    settings->options,
+    FMT_SPEC_INFOS_H264
+  );
+  if (NULL == handle->esms)
+    return -1;
+
+  handle->esmsFile = createBitstreamWriter(
+    settings->scriptFilepath,
+    WRITE_BUFFER_LEN
+  );
+  if (NULL == handle->esmsFile)
+    return -1;
+
+  if (appendSourceFileEsms(handle->esms, settings->esFilepath, &handle->esmsSrcFileIdx) < 0)
+    return -1;
+
+  if (writeEsmsHeader(handle->esmsFile) < 0)
+    return -1;
+
+  return 0;
+}
+
 H264ParametersHandlerPtr initH264ParametersHandler(
-  BitstreamReaderPtr inputFile,
-  const LibbluESSettingsOptions * options
+  const LibbluESParsingSettings * settings
 )
 {
   H264ParametersHandlerPtr handle;
-  unsigned i;
 
-  assert(NULL != inputFile);
+  assert(NULL != settings);
 
   LIBBLU_H264_DEBUG(
     "Allocate the %u bytes context.\n",
     sizeof(H264ParametersHandle)
   );
 
-  handle = (H264ParametersHandlerPtr) malloc(sizeof(H264ParametersHandle));
+  handle = (H264ParametersHandlerPtr) calloc(1, sizeof(H264ParametersHandle));
   if (NULL == handle)
-    return NULL;
+    goto free_return;
 
-  handle->file.inputFile = inputFile;
-  handle->file.packetInitialized = false;
-  handle->file.currentRbspCellBits = 0x0;
-  handle->file.remainingRbspCellBits = 0;
-  handle->file.refIdc = 0x0;
-  handle->file.type = 0x0;
-
-  /* AUD */
-  handle->accessUnitDelimiterPresent = false;
-  handle->accessUnitDelimiterValid = false;
-
-  /* SPS */
-  handle->sequenceParametersSetPresent = false;
-  handle->sequenceParametersSetGopValid = false;
-  handle->sequenceParametersSetValid = false;
-
-  /* PPS */
-  for (i = 0; i < H264_MAX_PPS; i++) {
-    handle->picParametersSet[i] = NULL;
-    handle->picParametersSetIdsPresent[i] = false;
-    handle->picParametersSetIdsValid[i] = false;
-  }
-  handle->picParametersSetIdsPresentNb = 0;
-
-  /* SEI */
-  handle->sei.bufferingPeriodPresent = false;
-  handle->sei.picTimingPresent = false;
-  handle->sei.recoveryPointPresent = false;
-
-  /* Slice */
-  handle->slicePresent = false;
-
-  memset(&handle->constraints, 0x0, sizeof(H264ConstraintsParam));
-
-  memset(&handle->curProgParam, 0x0, sizeof(H264CurrentProgressParam));
   handle->curProgParam = (H264CurrentProgressParam) {
     .curFrameNalUnits = NULL,
     .lastPicStruct = -1,
 
     .useVuiUpdate =
-      0x00 != options->fpsChange
-      || isUsedLibbluAspectRatioMod(options->arChange)
-      || 0x00 != options->levelChange
+      0x00 != settings->options.fpsChange
+      || isUsedLibbluAspectRatioMod(settings->options.arChange)
+      || 0x00 != settings->options.levelChange
     ,
   };
 
-  memset(&handle->modNalLst, 0x0, sizeof(H264ModifiedNalUnitsList));
-  handle->modNalLst.sequenceParametersSets = NULL;
-  handle->modNalLst.bufferingPeriodSeiMsg.linkedParam = NULL;
-
-  handle->hrdVerifier = NULL;
-  handle->enoughDataToUseHrdVerifier = false;
-
   handle->warningFlags = INIT_H264_WARNING_FLAGS();
 
+  if (initInputFileH264ParametersHandle(handle, settings) < 0)
+    goto free_return;
+  if (initOutputFileH264ParametersHandle(handle, settings) < 0)
+    goto free_return;
+
   return handle;
+
+free_return:
+  destroyH264ParametersHandler(handle);
+  return NULL;
 }
 
 void resetH264ParametersHandler(
@@ -105,6 +109,23 @@ void resetH264ParametersHandler(
   handle->curProgParam.lastNalUnitType = NAL_UNIT_TYPE_UNSPECIFIED;
 }
 
+int completeH264ParametersHandler(
+  H264ParametersHandlerPtr handle,
+  const LibbluESParsingSettings * settings
+)
+{
+  if (addEsmsFileEnd(handle->esmsFile, handle->esms) < 0)
+    return -1;
+
+  closeBitstreamWriter(handle->esmsFile);
+  handle->esmsFile = NULL;
+
+  if (updateEsmsHeader(settings->scriptFilepath, handle->esms) < 0)
+    return -1;
+
+  return 0;
+}
+
 void destroyH264ParametersHandler(
   H264ParametersHandlerPtr handle
 )
@@ -113,6 +134,10 @@ void destroyH264ParametersHandler(
 
   if (NULL == handle)
     return;
+
+  destroyEsmsFileHandler(handle->esms);
+  closeBitstreamWriter(handle->esmsFile);
+  cleanH264NalDeserializerContext(handle->file);
 
   for (i = 0; i < H264_MAX_PPS; i++)
     free(handle->picParametersSet[i]);

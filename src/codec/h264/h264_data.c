@@ -468,6 +468,22 @@ const char * h264DeblockingFilterIdcStr(
   return "Unknown";
 }
 
+int initH264NalDeserializerContext(
+  H264NalDeserializerContext * dst,
+  const lbc * filepath
+)
+{
+  BitstreamReaderPtr inputFile;
+
+  if (NULL == (inputFile = createBitstreamReaderDefBuf(filepath)))
+    return -1;
+  *dst = (H264NalDeserializerContext) {
+    .inputFile = inputFile
+  };
+
+  return 0;
+}
+
 const char * H264NalUnitTypeStr(
   const uint8_t nal_unit_type
 )
