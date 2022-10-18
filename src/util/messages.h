@@ -12,10 +12,6 @@
 
 #include "macros.h"
 
-#define TOC()     fprintf(stderr, "TOC\n");
-#define PING()     fprintf(stderr, "PING\n");
-#define PONG()     fprintf(stderr, "PONG\n");
-
 #define ENABLE_DEBUG_MESSAGES_STR "--debug"
 #define MAX_VERBOSE_LEVEL                 3
 

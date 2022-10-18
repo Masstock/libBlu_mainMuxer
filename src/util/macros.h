@@ -64,9 +64,19 @@
 #  error "Unknown architecture"
 #endif
 
+/* Debugging macros: */
+#define TOC()  fprintf(stderr, "TOC\n");
+#define PING()  fprintf(stderr, "PING\n");
+#define PONG()  fprintf(stderr, "PONG\n");
 
-/* Fields sizes : */
+#include <signal.h>
 
+static inline void triggerSegfault(
+  void
+)
+{
+  raise(SIGSEGV);
+}
 
 #if defined(ARCH_WIN32)
 #  include <wchar.h>

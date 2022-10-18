@@ -385,7 +385,7 @@ static inline int seekPos(
 static inline int nextBytes(
   BitstreamReaderPtr bitStream,
   uint8_t * data,
-  const size_t dataLen
+  size_t dataLen
 )
 {
   size_t shiftingSteps;
@@ -422,15 +422,18 @@ static inline int nextBytes(
       bitStream->byteArrayLength = shiftingSteps + readedDataLen;
 
       if (ferror(bitStream->file)) {
-        perror("Reading error");
         LIBBLU_ERROR_RETURN(
-          "Input file reading error.\n"
+          "Input file reading error, %s (errno: %d).\n",
+          strerror(errno),
+          errno
         );
       }
-      else if (readedDataLen + shiftingSteps < dataLen) {
-        LIBBLU_ERROR_RETURN(
+
+      if (readedDataLen + shiftingSteps < dataLen) {
+        /* LIBBLU_ERROR_RETURN(
           "Unable to read next bytes, prematurate end of file reached.\n"
-        );
+        ); */
+        return -1;
       }
     }
     bitStream->fileOffset += readedDataLen;

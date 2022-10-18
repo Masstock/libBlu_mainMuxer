@@ -118,6 +118,7 @@ static inline void resetHdmvSegmentsInventoryPool(
 )
 {
   pool->usedElementsSegments = 0;
+  pool->remainingElements = 0;
 }
 
 /* ### HDMV Segments Inventory : ########################################### */
@@ -148,7 +149,7 @@ HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
         _seg_sz = HDMV_SEG_INV_POOL_DEFAULT_SEG_SIZE << _i;                   \
                                                                               \
         for (_j = 0; _j < _seg_sz; _j++)                                      \
-          c(((t *) (p).elements[_i])[_j]);                                    \
+          c(((t *) ((p).elements[_i]))[_j]);                                  \
       }                                                                       \
     }                                                                         \
   } while (0)

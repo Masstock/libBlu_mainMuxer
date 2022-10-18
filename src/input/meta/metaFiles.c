@@ -32,7 +32,7 @@ static int parseHeaderMetaFile(
         LIBBLU_MUX_SETTINGS_SET_OPTION(dst, cbrMuxing, true);
         break;
 
-      case LBMETA_OPT__FORCE_REBUILD_SEI:
+      case LBMETA_OPT__FORCE_ESMS:
         LIBBLU_MUX_SETTINGS_SET_OPTION(dst, forceRebuildScripts, true);
         break;
 

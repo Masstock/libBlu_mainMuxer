@@ -522,15 +522,18 @@ bool nextUint8IsPgsSegmentType(BitstreamReaderPtr pgsInput)
   ;
 }
 
-int parsePgsSegment(BitstreamReaderPtr igsInput, HdmvSegmentsContextPtr ctx)
+int parsePgsSegment(
+  BitstreamReaderPtr input,
+  HdmvSegmentsContextPtr ctx
+)
 {
   HdmvSegmentParameters seg;
 
-  assert(NULL != igsInput);
+  assert(NULL != input);
   assert(NULL != ctx);
 
   /* Segment_descriptor() */
-  if (parseHdmvSegmentDescriptor(igsInput, &seg) < 0)
+  if (parseHdmvSegmentDescriptor(input, &seg) < 0)
     return -1;
 
   if (ctx->totalNbSegments == 0) {
@@ -591,25 +594,25 @@ int parsePgsSegment(BitstreamReaderPtr igsInput, HdmvSegmentsContextPtr ctx)
   switch (seg.type) {
     case HDMV_SEGMENT_TYPE_PCS:
       /* Presentation Composition Segment */
-      if (decodeHdmvPcsSegment(igsInput, ctx, seg) < 0)
+      if (decodeHdmvPcsSegment(input, ctx, seg) < 0)
         return -1;
       break;
 
     case HDMV_SEGMENT_TYPE_WDS:
       /* Window Definition Segment */
-      if (decodeHdmvWdsSegment(igsInput, ctx, seg) < 0)
+      if (decodeHdmvWdsSegment(input, ctx, seg) < 0)
         return -1;
       break;
 
     case HDMV_SEGMENT_TYPE_PDS:
       /* Palette Definition Segment */
-      if (decodeHdmvPdsSegment(igsInput, ctx, seg) < 0)
+      if (decodeHdmvPdsSegment(input, ctx, seg) < 0)
         return -1;
       break;
 
     case HDMV_SEGMENT_TYPE_ODS:
       /* Object Definition Segment */
-      if (decodeHdmvOdsSegment(igsInput, ctx, seg) < 0)
+      if (decodeHdmvOdsSegment(input, ctx, seg) < 0)
         return -1;
       break;
 

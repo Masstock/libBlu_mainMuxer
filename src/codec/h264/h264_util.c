@@ -747,7 +747,7 @@ bool noMoreNal(
 {
   assert(NULL != handle);
 
-  return 0 != isEof(handle->file.inputFile);
+  return isEof(handle->file.inputFile);
 }
 
 bool isInitNal(

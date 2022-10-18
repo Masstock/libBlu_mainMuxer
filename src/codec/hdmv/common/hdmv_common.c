@@ -98,24 +98,6 @@ static int increaseAllocationHdmvSegmentsInventoryPool(
   return 0;
 }
 
-/** \~english
- * \brief
- *
- * \param d Pointer destination variable.
- * \param tp Type pointer.
- * \param p Source pool.
- */
-#define GET_HDMV_SEGMENTS_INVENTORY_POOL(d, tp, p)                            \
-  do {                                                                        \
-    if (!(p)->remainingElements) {                                            \
-      if (increaseAllocationHdmvSegmentsInventoryPool(p) < 0)                 \
-        return NULL;                                                          \
-    }                                                                         \
-    d = &(                                                                    \
-      (tp) (p)->elements[(p)->usedElementsSegments-1]                         \
-    )[--(p)->remainingElements];                                              \
-  } while (0)
-
 /* ### HDMV Segments Inventory : ########################################### */
 
 HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
@@ -147,6 +129,24 @@ HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
 }
 
 /* ###### Inventory content fetching functions : ########################### */
+
+/** \~english
+ * \brief
+ *
+ * \param d Pointer destination variable.
+ * \param tp Type pointer.
+ * \param p Source pool.
+ */
+#define GET_HDMV_SEGMENTS_INVENTORY_POOL(d, tp, p)                            \
+  do {                                                                        \
+    if (!(p)->remainingElements) {                                            \
+      if (increaseAllocationHdmvSegmentsInventoryPool(p) < 0)                 \
+        return NULL;                                                          \
+    }                                                                         \
+    d = &(                                                                    \
+      (tp) (p)->elements[(p)->usedElementsSegments-1]                         \
+    )[--(p)->remainingElements];                                              \
+  } while (0)
 
 HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
@@ -2207,6 +2207,7 @@ int decodeHdmvIcsSegment(
   HdmvSequencePtr seq;
   size_t dataFragmentLength;
   int64_t startOffset;
+  int ret;
 
   assert(NULL != hdmvInput);
   assert(NULL != ctx);
@@ -2244,14 +2245,14 @@ int decodeHdmvIcsSegment(
 
   /* Interactive_composition_data_fragment() */
   dataFragmentLength = seg.length - (tellPos(hdmvInput) - startOffset);
-  if (
-    readHdmvDataFragment(
-      hdmvInput, dataFragmentLength,
-      &seq->fragments,
-      &seq->fragmentsAllocatedLen,
-      &seq->fragmentsUsedLen
-    ) < 0
-  )
+  ret = readHdmvDataFragment(
+    hdmvInput,
+    dataFragmentLength,
+    &seq->fragments,
+    &seq->fragmentsAllocatedLen,
+    &seq->fragmentsUsedLen
+  );
+  if (ret < 0)
     return -1;
 
   if (!ctx->curNbIcsSegments) {
@@ -2650,7 +2651,8 @@ int decodeHdmvEndSegment(
 }
 
 int parseHdmvSegmentDescriptor(
-  BitstreamReaderPtr hdmvInput, HdmvSegmentParameters * param
+  BitstreamReaderPtr hdmvInput,
+  HdmvSegmentParameters * param
 )
 {
   uint32_t value;
@@ -2692,7 +2694,8 @@ int parseHdmvSegmentDescriptor(
 
   LIBBLU_HDMV_COM_DEBUG(
     "  segment_length: %" PRIu16 " bytes (0x%" PRIx16 ").\n",
-    param->length, param->length
+    param->length,
+    param->length
   );
 
   return 0;

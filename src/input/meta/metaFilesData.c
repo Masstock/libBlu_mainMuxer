@@ -22,7 +22,7 @@ static const LibbluMetaOption options[] = {
     (HRD)),
   D_(          LBMETA_OPT__CBR_MUX,               "cbr", LBMETA_OPTARG_NO_ARG,
     (HRD)),
-  D_(LBMETA_OPT__FORCE_REBUILD_SEI,        "force-esms", LBMETA_OPTARG_NO_ARG,
+  D_(        LBMETA_OPT__FORCE_ESMS,        "force-esms", LBMETA_OPTARG_NO_ARG,
     (HRD)),
   D_(    LBMETA_OPT__DISABLE_T_STD,      "disable-tstd", LBMETA_OPTARG_NO_ARG,
     (HRD)),

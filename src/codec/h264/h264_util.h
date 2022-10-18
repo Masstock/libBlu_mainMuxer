@@ -419,13 +419,16 @@ static inline int reachNextNal(
   }
 
   handle->file.packetInitialized = false;
-
+  return 0;
 #else
   register uint32_t value;
   int ret;
 
   ret = 0;
-  while (ret <= 0 && 0 < (value = nextUint32(handle->file.inputFile))) {
+  while (
+    ret <= 0
+    && 0 < (value = nextUint32(handle->file.inputFile))
+  ) {
     if (0x01 == (value & 0xFFFFFF))
       break;
     if (0x00 == (value & 0xFF))
@@ -438,10 +441,8 @@ static inline int reachNextNal(
 
   if (0 < nextUint8(handle->file.inputFile))
     ret = skipBytes(handle->file.inputFile, 1);
-
-#endif
-
   return ret;
+#endif
 }
 
 /* Writing functions : */
