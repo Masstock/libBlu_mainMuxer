@@ -564,7 +564,7 @@ int main(
 #endif
 
   if (NULL == inputInstructionsFilepath)
-    LIBBLU_ERROR_RETURN(
+    LIBBLU_ERROR_FRETURN(
       "Expect a input META filename (see -h/--help).\n"
     );
 
@@ -584,7 +584,7 @@ int main(
 
   if (!esmsGenerationOnlyMode) {
     if (mainMux(param) < 0)
-      return -1;
+      goto free_return;
   }
   else {
     LibbluMuxingContextPtr ctx;
@@ -600,7 +600,7 @@ int main(
 #if defined(ARCH_WIN32)
   /* On windows, release the iconv libary handle */
   if (lb_close_iconv() < 0)
-    return -1;
+    goto free_return;
 #endif
 
   duration = clock() - start;

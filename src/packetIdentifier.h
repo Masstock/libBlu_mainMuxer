@@ -102,9 +102,7 @@ static inline void initLibbluRegisteredPIDValues(
   LibbluRegisteredPIDValues * dst
 )
 {
-  *dst = (LibbluRegisteredPIDValues) {
-    .entries = NULL
-  };
+  *dst = (LibbluRegisteredPIDValues) {0};
 }
 
 static inline void cleanLibbluRegisteredPIDValues(

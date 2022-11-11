@@ -48,10 +48,10 @@ typedef struct {
  *
  */
 typedef union {
-  void * sharedPtr;  /**< Shared pointer for manipulations. */
+  void * sharedPtr;                   /**< Shared pointer for manipulations. */
   LibbluESAc3SpecProperties * ac3;    /**< AC-3 audio and
     derived.                                                                 */
-  LibbluESH264SpecProperties * h264;  /**< H.264 video.        */
+  LibbluESH264SpecProperties * h264;  /**< H.264 video.                      */
 } LibbluESFmtSpecProp;
 
 /** \~english
@@ -67,10 +67,10 @@ typedef enum {
 } LibbluESFmtSpecPropType;
 
 static inline size_t sizeofLibbluESFmtSpecPropType(
-  LibbluESFmtSpecPropType type
+  const LibbluESFmtSpecPropType type
 )
 {
-  static size_t typeAllocationSizes[] = {
+  static const size_t typeAllocationSizes[] = {
     0,
     sizeof(LibbluESAc3SpecProperties),
     sizeof(LibbluESH264SpecProperties)
@@ -86,9 +86,7 @@ static inline int initLibbluESFmtSpecProp(
   LibbluESFmtSpecPropType type
 )
 {
-  LibbluESFmtSpecProp prop = {
-    .sharedPtr = NULL
-  };
+  LibbluESFmtSpecProp prop = {0};
 
   assert(NULL != dst);
 

@@ -27,9 +27,220 @@
 #define ALLOC_MEM_BLK_IDX_INCREMENT    2
 #define ALLOC_PAL_ENTRY_INCREMENT    128
 
+/* ### Segments types indexes : ############################################ */
+
+#define HDMV_NB_SEGMENT_TYPES  6
+
+typedef int hdmv_segtype_idx;
+
+static const HdmvSegmentType hdmv_segtype_indexes[] = {
+  HDMV_SEGMENT_TYPE_PDS,
+  HDMV_SEGMENT_TYPE_ODS,
+  HDMV_SEGMENT_TYPE_PCS,
+  HDMV_SEGMENT_TYPE_WDS,
+  HDMV_SEGMENT_TYPE_ICS,
+  HDMV_SEGMENT_TYPE_END
+};
+
+typedef enum {
+  HDMV_SEGMENT_TYPE_PDS_IDX,
+  HDMV_SEGMENT_TYPE_ODS_IDX,
+  HDMV_SEGMENT_TYPE_PCS_IDX,
+  HDMV_SEGMENT_TYPE_WDS_IDX,
+  HDMV_SEGMENT_TYPE_ICS_IDX,
+  HDMV_SEGMENT_TYPE_END_IDX
+} hdmv_segtype_idx_value;
+
+static inline bool isValidSegmentTypeIndexHdmvContext(
+  hdmv_segtype_idx idx
+)
+{
+  return 0 <= idx && idx < HDMV_NB_SEGMENT_TYPES;
+}
+
+static inline hdmv_segtype_idx segmentTypeIndexHdmvContext(
+  HdmvSegmentType type
+)
+{
+  unsigned i;
+
+  assert(HDMV_NB_SEGMENT_TYPES == ARRAY_SIZE(hdmv_segtype_indexes));
+
+  for (i = 0; i < ARRAY_SIZE(hdmv_segtype_indexes); i++) {
+    if (hdmv_segtype_indexes[i] == type)
+      return (int) i;
+  }
+
+  LIBBLU_HDMV_COM_ERROR_RETURN("Unexpected segment type 0x%02X.\n", type);
+}
+
+#define SEGMENT_TYPE_IDX_STR_SIZE  4
+
+static inline const char * segmentTypeIndexStr(
+  hdmv_segtype_idx idx
+)
+{
+  static const char strings[][SEGMENT_TYPE_IDX_STR_SIZE] = {
+    "PDS",
+    "ODS",
+    "PCS",
+    "WDS",
+    "ICS",
+    "END"
+  }; /**< Sizes are restricted to SEGMENT_TYPE_IDX_STR_SIZE characters
+    (including NUL character) */
+
+  assert(0 <= idx && idx < (int) ARRAY_SIZE(strings));
+
+  return strings[idx];
+}
+
+#if 0
+#define HDMV_SEGMENT_TYPE_PDS_IDX                                             \
+  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_PDS)
+
+#define HDMV_SEGMENT_TYPE_ODS_IDX                                             \
+  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_ODS)
+
+#define HDMV_SEGMENT_TYPE_PCS_IDX                                             \
+  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_PCS)
+
+#define HDMV_SEGMENT_TYPE_WDS_IDX                                             \
+  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_WDS)
+
+#define HDMV_SEGMENT_TYPE_ICS_IDX                                             \
+  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_ICS)
+
+#define HDMV_SEGMENT_TYPE_END_IDX                                             \
+  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_END)
+#endif
+
+/* ###  */
+
+typedef struct {
+  unsigned types[HDMV_NB_SEGMENT_TYPES];
+  unsigned total;
+} HdmvContextSegmentTypesCounter;
+
+static inline void incByIdxHdmvContextSegmentTypesCounter(
+  HdmvContextSegmentTypesCounter * counter,
+  hdmv_segtype_idx idx
+)
+{
+  assert(isValidSegmentTypeIndexHdmvContext(idx));
+
+  counter->types[idx]++;
+  counter->total++;
+}
+
+static inline int incHdmvContextSegmentTypesCounter(
+  HdmvContextSegmentTypesCounter * counter,
+  HdmvSegmentType type
+)
+{
+  hdmv_segtype_idx idx;
+
+  if ((idx = segmentTypeIndexHdmvContext(type)) < 0)
+    return -1;
+
+  incByIdxHdmvContextSegmentTypesCounter(counter, idx);
+  return 0;
+}
+
+static inline int addByIdxHdmvContextSegmentTypesCounter(
+  HdmvContextSegmentTypesCounter * counter,
+  hdmv_segtype_idx idx,
+  unsigned nb
+)
+{
+  if (lb_uadd_overflow(counter->types[idx], nb))
+    LIBBLU_HDMV_COM_ERROR_RETURN(
+      "%u segments number overflow.\n",
+      idx
+    );
+  if (lb_uadd_overflow(counter->total, nb))
+    LIBBLU_HDMV_COM_ERROR_RETURN(
+      "Segments number overflow.\n"
+    );
+
+  counter->types[idx] += nb;
+  counter->total += nb;
+
+  return 0;
+}
+
+static inline int addHdmvContextSegmentTypesCounter(
+  HdmvContextSegmentTypesCounter * counter,
+  HdmvSegmentType type,
+  unsigned nb
+)
+{
+  hdmv_segtype_idx idx;
+
+  if ((idx = segmentTypeIndexHdmvContext(type)) < 0)
+    return -1;
+  return addByIdxHdmvContextSegmentTypesCounter(counter, idx, nb);
+}
+
+static inline unsigned getTotalHdmvContextSegmentTypesCounter(
+  HdmvContextSegmentTypesCounter counter
+)
+{
+  return counter.total;
+}
+
+static inline unsigned getByIdxHdmvContextSegmentTypesCounter(
+  const HdmvContextSegmentTypesCounter counter,
+  hdmv_segtype_idx idx
+)
+{
+  assert(isValidSegmentTypeIndexHdmvContext(idx));
+
+  return counter.types[idx];
+}
+
+static inline void resetHdmvContextSegmentTypesCounter(
+  HdmvContextSegmentTypesCounter * counter
+)
+{
+  *counter = (HdmvContextSegmentTypesCounter) {
+    0
+  };
+}
+
+static inline void printContentHdmvContextSegmentTypesCounter(
+  const HdmvContextSegmentTypesCounter cnt,
+  HdmvStreamType type
+)
+{
+#define _G(_i)  getByIdxHdmvContextSegmentTypesCounter(cnt, _i)
+#define _P(_n)  lbc_printf(" - "#_n": %u.\n", _G(HDMV_SEGMENT_TYPE_##_n##_IDX))
+
+  if (HDMV_STREAM_TYPE_IGS == type) {
+    _P(ICS);
+  }
+  else { /* HDMV_STREAM_TYPE_PGS == type */
+    _P(PCS);
+    _P(WDS);
+  }
+
+  _P(PDS);
+  _P(ODS);
+  _P(END);
+
+#undef _P
+#undef _G
+
+  lbc_printf(
+    " TOTAL: %u.\n",
+    getTotalHdmvContextSegmentTypesCounter(cnt)
+  );
+}
+
+/* ### HDMV Segment : ###################################################### */
+
 typedef struct HdmvSegment {
   struct HdmvSegment * nextSegment;
-  struct HdmvSegment * lastSegment;
   HdmvSegmentParameters param;
 } HdmvSegment, *HdmvSegmentPtr;
 
@@ -42,33 +253,41 @@ static inline void initHdmvSegment(
   };
 }
 
+/* ### HDMV Sequence : ##################################################### */
+
 typedef struct HdmvSequence {
   struct HdmvSequence * nextSequence;
-  struct HdmvSequence * lastSequence;
+  unsigned displaySetIdx;  /**< Associated DS number from which this
+    sequence is from. */
 
   HdmvSegmentType type;
   HdmvSegmentPtr segments;
+  HdmvSegmentPtr lastSegment;
 
   uint8_t * fragments;
   size_t fragmentsAllocatedLen;
   size_t fragmentsUsedLen;
+  size_t fragmentsParsedOff;
 
   union {
-    /* Fragments reconstitution result */
-    HdmvICParameters interactiveComposition;
-    HdmvODataParameters objectData;
+    HdmvPdsSegmentParameters pd;  /**< Palette Definition.                   */
+    HdmvODParameters         od;  /**< Object Definition.                    */
+    HdmvPcsSegmentParameters pc;  /**< Presentation Composition.             */
+    HdmvWdsSegmentParameters wd;  /**< Window Definition.                    */
+    HdmvICParameters         ic;  /**< Interactive Composition.              */
   } data;
 
-  int64_t pts;
-  int64_t dts;
+  uint64_t pts;
+  uint64_t dts;
 } HdmvSequence, *HdmvSequencePtr;
 
-static inline void initHdmvSequence(
-  HdmvSequence * dst
+static inline void resetHdmvSequence(
+  HdmvSequencePtr dst
 )
 {
   *dst = (HdmvSequence) {
-    0
+    .fragments = dst->fragments,
+    .fragmentsAllocatedLen = dst->fragmentsAllocatedLen
   };
 }
 
@@ -77,6 +296,119 @@ static inline void cleanHdmvSequence(
 )
 {
   free(seq.fragments);
+}
+
+static inline bool isFromDisplaySetNbHdmvSequence(
+  const HdmvSequencePtr sequence,
+  unsigned displaySetNumber
+)
+{
+  return sequence->displaySetIdx == displaySetNumber;
+}
+
+static inline bool isDuplicateHdmvSequence(
+  const HdmvSequencePtr first,
+  const HdmvSequencePtr second
+)
+{
+  if (first->type != second->type)
+    return false;
+
+  switch (first->type) {
+    case HDMV_SEGMENT_TYPE_PDS:
+      return constantHdmvPdsSegmentParameters(first->data.pd, second->data.pd);
+
+    case HDMV_SEGMENT_TYPE_ODS:
+    case HDMV_SEGMENT_TYPE_PCS:
+    case HDMV_SEGMENT_TYPE_WDS:
+    case HDMV_SEGMENT_TYPE_ICS:
+
+    case HDMV_SEGMENT_TYPE_END:
+    case HDMV_SEGMENT_TYPE_ERROR:
+      break;
+  }
+
+  return true;
+}
+
+int parseFragmentHdmvSequence(
+  HdmvSequencePtr dst,
+  BitstreamReaderPtr input,
+  size_t size
+);
+
+static inline int readValueFromHdmvSequence(
+  HdmvSequencePtr sequence,
+  size_t size,
+  uint32_t * value
+)
+{
+  assert(NULL != sequence);
+  assert(NULL != sequence->fragments);
+  assert(size <= 4);
+  assert(NULL != value);
+
+  *value = 0;
+  while (size--) {
+    uint32_t byte;
+
+    if (sequence->fragmentsUsedLen <= sequence->fragmentsParsedOff)
+      LIBBLU_HDMV_COM_ERROR_RETURN("Prematurate end of sequence data.\n");
+
+    byte = sequence->fragments[sequence->fragmentsParsedOff++];
+    *value |= byte << (8 * size);
+  }
+
+  return 0;
+}
+
+/* ### HDMV Display Set : ################################################## */
+
+typedef enum {
+  HDMV_DS_NON_INITIALIZED,
+  HDMV_DS_COMPLETED,
+  HDMV_DS_INITIALIZED
+} HdmvDisplaySetUsageState;
+
+typedef struct {
+  HdmvCDParameters composition_descriptor;
+  HdmvDisplaySetUsageState initUsage;
+  // bool duplicatedDS;
+
+  HdmvSequencePtr sequences[HDMV_NB_SEGMENT_TYPES];
+  HdmvSequencePtr pendingSequences[HDMV_NB_SEGMENT_TYPES];
+  HdmvContextSegmentTypesCounter nbSequences;
+} HdmvDisplaySet;
+
+static inline void initHdmvDisplaySet(
+  HdmvDisplaySet * dst
+)
+{
+  *dst = (HdmvDisplaySet) {0};
+  resetHdmvContextSegmentTypesCounter(&dst->nbSequences);
+}
+
+static inline void incNbSequencesHdmvDisplaySet(
+  HdmvDisplaySet * ds,
+  hdmv_segtype_idx idx
+)
+{
+  incByIdxHdmvContextSegmentTypesCounter(&ds->nbSequences, idx);
+}
+
+static inline HdmvSequencePtr getSequenceByIdxHdmvDisplaySet(
+  const HdmvDisplaySet * ds,
+  hdmv_segtype_idx idx
+)
+{
+  return ds->sequences[idx];
+}
+
+static inline unsigned getNbSequencesHdmvDisplaySet(
+  const HdmvDisplaySet ds
+)
+{
+  return getTotalHdmvContextSegmentTypesCounter(ds.nbSequences);
 }
 
 /* ### HDMV Segments Inventory Pool : ###################################### */
@@ -241,22 +573,14 @@ HdmvPaletteEntryParameters * getHdmvPaletteEntryParametersHdmvSegmentsInventory(
 
 /* ######################################################################### */
 
+#if 0
+
 typedef struct {
   HdmvSDParameters sequence_descriptor;
 
   uint8_t * data;
   size_t dataLength;
 } HdmvSegmentFragment;
-
-typedef enum {
-  HDMV_STREAM_TYPE_IGS,
-  HDMV_STREAM_TYPE_PGS
-} HdmvStreamType;
-
-uint64_t computeHdmvOdsDecodeDuration(
-  HdmvODataParameters param,
-  HdmvStreamType type
-);
 
 typedef struct {
   /* Input parameters: */
@@ -492,12 +816,12 @@ int decodeHdmvPdsSegment(
 int decodeHdmvObjectData(
   uint8_t * data,
   size_t remainingDataLen,
-  HdmvODataParameters * param
+  HdmvODParameters * param
 );
 
 int decodeHdmvObjectDescriptor(
   BitstreamReaderPtr hdmvInput,
-  HdmvODParameters * param
+  HdmvODescParameters * param
 );
 
 int decodeHdmvOdsSegment(
@@ -515,5 +839,7 @@ int parseHdmvSegmentDescriptor(
   BitstreamReaderPtr hdmvInput,
   HdmvSegmentParameters * param
 );
+
+#endif
 
 #endif

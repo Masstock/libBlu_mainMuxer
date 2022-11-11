@@ -168,51 +168,15 @@ int writeSegmentHeader(
 #define HDMV_MAX_SIZE_SEGMENT                                                 \
   (HDMV_MAX_SIZE_SEGMENT_PAYLOAD + HDMV_SIZE_SEGMENT_HEADER)
 
-/** \~english
- * \brief Size required by video_descriptor() structure in bytes.
- *
- * Composed of:
- *  - u16 : video_width;
- *  - u16 : video_height;
- *  - u4  : frame_rate_id;
- *  - v4  : reserved.
- *
- * => 5 bytes.
- */
-#define HDMV_SIZE_VIDEO_DESCRIPTOR  5
-
 int writeVideoDescriptorIgsCompiler(
   HdmvSegmentsBuildingContextPtr ctx,
   const HdmvVDParameters param
 );
 
-/** \~english
- * \brief Size required by composition_descriptor() structure in bytes.
- *
- * Composed of:
- *  - u16 : composition_number;
- *  - u8  : composition_state.
- *
- * => 3 bytes.
- */
-#define HDMV_SIZE_COMPOSITION_DESCRIPTOR  3
-
 int writeCompositionDescriptorIgsCompiler(
   HdmvSegmentsBuildingContextPtr ctx,
   const HdmvCDParameters param
 );
-
-/** \~english
- * \brief Size required by sequence_descriptor() structure in bytes.
- *
- * Composed of:
- *  - b1  : first_in_sequence;
- *  - b1  : last_in_sequence;
- *  - v6  : reserved.
- *
- * => 1 byte.
- */
-#define HDMV_SIZE_SEQUENCE_DESCRIPTOR  1
 
 int writeSequenceDescriptorIgsCompiler(
   HdmvSegmentsBuildingContextPtr ctx,
@@ -221,31 +185,6 @@ int writeSequenceDescriptorIgsCompiler(
 );
 
 /* ###### Palette Definition Segment (0x14) : ############################## */
-
-/** \~english
- * \brief Size of Palette Definition Segment header prefix.
- *
- * Composed of:
- *  - u8  : palette_id;
- *  - u8  : palette_version_number.
- *
- * => 2 bytes.
- */
-#define HDMV_SIZE_PALETTE_DEFINITION_HEADER_PREFIX  2
-
-/** \~english
- * \brief Size required by Palette_entry() structure in bytes.
- *
- * Composed of:
- *  - u8  : palette_entry_id;
- *  - u8  : Y_value;
- *  - u8  : Cr_value;
- *  - u8  : Cb_value;
- *  - u8  : T_value.
- *
- * => 5 bytes.
- */
-#define HDMV_SIZE_PALETTE_DEFINITION_ENTRY  5
 
 static inline size_t computeSizeHdmvPaletteEntries(
   const HdmvPaletteDefinitionPtr pal
@@ -271,7 +210,7 @@ static inline size_t computeSizeHdmvPaletteDefinitionSegments(
   for (i = 0; i < nbPalettes; i++) {
     size +=
       HDMV_SIZE_SEGMENT_HEADER
-      + HDMV_SIZE_PALETTE_DEFINITION_HEADER_PREFIX
+      + HDMV_SIZE_PALETTE_DESCRIPTOR
       + computeSizeHdmvPaletteEntries(palettes[i])
     ;
   }
@@ -284,7 +223,7 @@ uint8_t * buildPaletteDefinitionEntriesIgsCompiler(
   size_t * size
 );
 
-int writePaletteDefinitionSegHeaderIgsCompiler(
+int writePaletteDescriptorIgsCompiler(
   HdmvSegmentsBuildingContextPtr ctx,
   uint8_t id,
   uint8_t versionNb
@@ -296,27 +235,6 @@ int writePaletteDefinitionSegmentsIgsCompiler(
 );
 
 /* ###### Object Definition Segment (0x15) : ############################### */
-
-/** \~english
- * \brief Length of Object Definition Segment header prefix.
- *
- * Composed of:
- *  - u16 : object_id;
- *  - u8  : object_version_number;
- *
- * => 3 bytes.
- */
-#define HDMV_SIZE_OBJECT_DEFINITION_HEADER_PREFIX  3
-
-/** \~english
- * \brief Length of Object Definition Segment header.
- *
- * Composed of:
- *  - header prefix #HDMV_SIZE_OBJECT_DEFINITION_HEADER_PREFIX;
- *  - sequence_descriptor() #HDMV_SIZE_SEQUENCE_DESCRIPTOR.
- */
-#define HDMV_SIZE_OBJECT_DEFINITION_SEGMENT_HEADER                            \
-  (HDMV_SIZE_OBJECT_DEFINITION_HEADER_PREFIX + HDMV_SIZE_SEQUENCE_DESCRIPTOR)
 
 /** \~english
  * \brief Maximum object_data_fragment() structure size in bytes.
@@ -332,7 +250,7 @@ int writePaletteDefinitionSegmentsIgsCompiler(
  * segment #HDMV_SIZE_OBJECT_DEFINITION_SEGMENT_HEADER.
  *
  * Object Definition segments header is composed of:
- *  - header prefix #HDMV_SIZE_OBJECT_DEFINITION_HEADER_PREFIX.
+ *  - header prefix #HDMV_SIZE_OBJECT_DESCRIPTOR.
  *  - sequence_descriptor() #HDMV_SIZE_SEQUENCE_DESCRIPTOR.
  */
 #define HDMV_MAX_SIZE_OBJECT_DEFINITION_FRAGMENT                              \
@@ -354,11 +272,11 @@ static inline size_t computeSizeHdmvObjectDefinitionSegments(
   size = 0;
   for (i = 0; i < nbObjects; i++) {
     HdmvPicturePtr obj;
-    HdmvODataParameters objParam;
+    HdmvODParameters objParam;
     size_t objDefSize, nbSegments, extraPayload;
 
     obj = objects[i];
-    objParam = (HdmvODataParameters) {
+    objParam = (HdmvODParameters) {
       .object_data_length = getRleSizeHdmvPicture(obj) + 4
     };
 
@@ -395,21 +313,6 @@ int writeObjectDefinitionSegmentsIgsCompiler(
 );
 
 /* ###### Interactive Composition Segment (0x18) : ######################### */
-
-/** \~english
- * \brief Size of Interactive Composition Segment header in bytes.
- *
- * Interactive Compostion segments header is composed of:
- *  - video_descriptor() #HDMV_SIZE_VIDEO_DESCRIPTOR;
- *  - composition_descriptor() #HDMV_SIZE_VIDEO_DESCRIPTOR;
- *  - sequence_descriptor() #HDMV_SIZE_SEQUENCE_DESCRIPTOR.
- */
-#define HDMV_SIZE_INTERACTIVE_COMPOSITION_SEGMENT_HEADER                      \
-  (                                                                           \
-    HDMV_SIZE_VIDEO_DESCRIPTOR                                                \
-    + HDMV_SIZE_COMPOSITION_DESCRIPTOR                                        \
-    + HDMV_SIZE_SEQUENCE_DESCRIPTOR                                           \
-  )
 
 /** \~english
  * \brief Maximum interactive_composition_fragment() structure

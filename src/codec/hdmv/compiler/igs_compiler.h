@@ -30,6 +30,7 @@
 
 IgsCompilerContextPtr createIgsCompilerContext(
   const lbc * xmlFilename,
+  HdmvTimecodes * timecodes,
   IniFileContextPtr conf
 );
 
@@ -60,6 +61,7 @@ int buildIgsCompilerComposition(
 
 int processIgsCompiler(
   const lbc * xmlPath,
+  HdmvTimecodes * timecodes,
   IniFileContextPtr conf
 );
 

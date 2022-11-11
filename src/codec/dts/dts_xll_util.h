@@ -38,16 +38,7 @@ typedef struct {
  * \brief Default #DtsPbrSmoothingStats values.
  */
 #define INIT_DTS_PBR_SMOOTHING_STATS()                                        \
-  (                                                                           \
-    (DtsPbrSmoothingStats) {                                                  \
-      .targetFrmSize = NULL,                                                  \
-      .nbAllocatedFrames = 0,                                                 \
-      .nbUsedFrames = 0,                                                      \
-      .framesPerSec = 0,                                                      \
-      .averageFrameSizeComputed = false,                                      \
-      .maxPbrBufferSize = 0                                                   \
-    }                                                                         \
-  )
+  ((DtsPbrSmoothingStats) {0})
 
 void cleanDtsPbrSmoothingStats(
   DtsPbrSmoothingStats stats

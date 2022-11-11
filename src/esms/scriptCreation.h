@@ -109,9 +109,32 @@ typedef struct {
  */
 EsmsFileHeaderPtr createEsmsFileHandler(
   LibbluESType type,
-  LibbluESSettingsOptions options,
-  LibbluESFmtSpecPropType fmtSpecPropType
+  const LibbluESSettingsOptions options,
+  const LibbluESFmtSpecPropType fmtSpecPropType
 );
+
+/** \~english
+ * \brief Create a ESMS script #EsmsFileHeader and intialize it according
+ * to supplied parameters. Without format specific informations section.
+ *
+ * \param type
+ * \param options
+ * \return EsmsFileHeaderPtr
+ *
+ * Equivalent to #createEsmsFileHandler() with fmtSpecPropType set to
+ * #FMT_SPEC_INFOS_NONE.
+ */
+static inline EsmsFileHeaderPtr createNfspEsmsFileHandler(
+  LibbluESType type,
+  const LibbluESSettingsOptions options
+)
+{
+  return createEsmsFileHandler(
+    type,
+    options,
+    FMT_SPEC_INFOS_NONE
+  );
+}
 
 /** \~english
  * \brief Destroy memory allocation used by a #EsmsFileHeader object.
@@ -121,9 +144,18 @@ EsmsFileHeaderPtr createEsmsFileHandler(
  * Supplied object must has been created using #createEsmsFileHandler()
  * function.
  */
-void destroyEsmsFileHandler(
+static inline void destroyEsmsFileHandler(
   EsmsFileHeaderPtr handler
-);
+)
+{
+  if (NULL == handler)
+    return;
+
+  cleanEsmsESSourceFiles(handler->sourceFiles);
+  cleanEsmsDataBlocks(handler->dataBlocks);
+  free(handler->fmtSpecProp.sharedPtr);
+  free(handler);
+}
 
 /* Stream parameters configuration : */
 

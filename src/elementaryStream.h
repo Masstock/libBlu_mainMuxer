@@ -71,8 +71,6 @@ static inline LibbluESSettings * initLibbluESSettings(
   assert(NULL != dst);
 
   *dst = (LibbluESSettings) {
-    .filepath = NULL,
-    .scriptFilepath = NULL,
     .codingType = -1
   };
 

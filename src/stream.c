@@ -197,6 +197,8 @@ int requestESPIDLibbluStream(
       selectedTypeStr
     );
 
+  selectedPid = basePid;
+
   if (streamSettings->pid != 0x0000) {
     /* Custom requested PID */
     bool valid;
@@ -235,8 +237,6 @@ int requestESPIDLibbluStream(
         selectedPid
       );
   }
-  else
-    selectedPid = basePid;
 
   validPid = false;
 
@@ -249,9 +249,9 @@ int requestESPIDLibbluStream(
       );
 
     /* Try to insert value */
-    ret = insertLibbluRegisteredPIDValues(&values->registeredValues, basePid);
+    ret = insertLibbluRegisteredPIDValues(&values->registeredValues, selectedPid);
     switch (ret) {
-      case 0: /* Unable to inser value */
+      case 0: /* Unable to insert value */
         selectedPid++;
         break;
 

@@ -24,9 +24,9 @@ SEI for the verification of the HRD conformance.
 #define __LIBBLU_MUXER_CODECS__H264__PARSER_H__
 
 #include "../../util.h"
-#include "../common/esParsingSettings.h"
 #include "../../esms/scriptCreation.h"
 #include "../../pesPackets.h"
+#include "../common/esParsingSettings.h"
 
 #include "h264_util.h"
 #include "h264_patcher.h"

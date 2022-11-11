@@ -185,8 +185,8 @@ int writeCompositionDescriptorIgsCompiler(
   assert(NULL != ctx);
 
   /* [u16 composition_number] */
-  WB_ARRAY(buf, off, param.compositionNumber >> 8);
-  WB_ARRAY(buf, off, param.compositionNumber);
+  WB_ARRAY(buf, off, param.composition_number >> 8);
+  WB_ARRAY(buf, off, param.composition_number);
 
   /* [u2 composition_state] [v6 reserved] */
   WB_ARRAY(buf, off, param.composition_state << 6);
@@ -279,7 +279,7 @@ uint8_t * buildPaletteDefinitionEntriesIgsCompiler(
   /* Checking final length */
   if (off != computedLen)
     LIBBLU_HDMV_SEGBUILD_ERROR_FRETURN(
-      "Bulding error, missing %zu bytes in palette_definition(), "
+      "Bulding error, missing %zu bytes in palette_descriptor(), "
       "broken program.\n",
       computedLen - off
     );
@@ -294,13 +294,13 @@ free_return:
   return NULL;
 }
 
-int writePaletteDefinitionSegHeaderIgsCompiler(
+int writePaletteDescriptorIgsCompiler(
   HdmvSegmentsBuildingContextPtr ctx,
   uint8_t id,
   uint8_t versionNb
 )
 {
-  uint8_t buf[HDMV_SIZE_PALETTE_DEFINITION_HEADER_PREFIX];
+  uint8_t buf[HDMV_SIZE_PALETTE_DESCRIPTOR];
   size_t off = 0;
 
   assert(NULL != ctx);
@@ -356,12 +356,12 @@ int writePaletteDefinitionSegmentsIgsCompiler(
     ret = writeSegmentHeader(
       ctx,
       HDMV_SEGMENT_TYPE_PDS,
-      HDMV_SIZE_PALETTE_DEFINITION_HEADER_PREFIX + palSize
+      HDMV_SIZE_PALETTE_DESCRIPTOR + palSize
     );
     if (ret < 0)
       goto free_return;
 
-    if (writePaletteDefinitionSegHeaderIgsCompiler(ctx, i, pal->version) < 0)
+    if (writePaletteDescriptorIgsCompiler(ctx, i, pal->version) < 0)
       goto free_return;
 
     if (0 < palSize) {
@@ -395,7 +395,7 @@ uint8_t * buildObjectDataIgsCompiler(
   unsigned width, height;
 
   const uint8_t * rleData;
-  HdmvODataParameters param;
+  HdmvODParameters param;
 
   assert(NULL != pic);
 
@@ -419,7 +419,7 @@ uint8_t * buildObjectDataIgsCompiler(
   if (NULL == (rleData = getRleHdmvPicture(pic)))
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN("Missing RLE data.\n");
 
-  setHdmvODataParameters(&param, rleSize + 4U, width, height);
+  setHdmvObjectDataParameters(&param, rleSize + 4U, width, height);
   /* object_data_length = RLE size + width/height header fields */
   expectedSize = computeSizeHdmvObjectData(param);
 
@@ -466,7 +466,7 @@ int writeObjectDefinitionSegHeaderIgsCompiler(
   uint8_t versionNb
 )
 {
-  uint8_t buf[HDMV_SIZE_OBJECT_DEFINITION_HEADER_PREFIX];
+  uint8_t buf[HDMV_SIZE_OBJECT_DESCRIPTOR];
   size_t off = 0;
 
   assert(NULL != ctx);
@@ -634,54 +634,54 @@ size_t appendButtonIgsCompiler(
   /* normal_state_info() */
   {
     /* [u16 normal_start_object_id_ref] */
-    WB_ARRAY(arr, off, param->normal_state_info.start_object_ref >> 8);
-    WB_ARRAY(arr, off, param->normal_state_info.start_object_ref);
+    WB_ARRAY(arr, off, param->normal_state_info.start_object_id_ref >> 8);
+    WB_ARRAY(arr, off, param->normal_state_info.start_object_id_ref);
 
     /* [u16 normal_end_object_id_ref] */
-    WB_ARRAY(arr, off, param->normal_state_info.end_object_ref >> 8);
-    WB_ARRAY(arr, off, param->normal_state_info.end_object_ref);
+    WB_ARRAY(arr, off, param->normal_state_info.end_object_id_ref >> 8);
+    WB_ARRAY(arr, off, param->normal_state_info.end_object_id_ref);
 
     /* [b1 normal_repeat_flag] [b1 normal_complete_flag] [v6 reserved] */
     WB_ARRAY(
       arr, off,
-      ((param->normal_state_info.repeat   & 0x1) << 7) |
-      ((param->normal_state_info.complete & 0x1) << 6)
+      (param->normal_state_info.repeat_flag     << 7)
+      | (param->normal_state_info.complete_flag << 6)
     );
   }
 
   /* selected_state_info() */
   {
     /* [u8 selected_state_sound_id_ref] */
-    WB_ARRAY(arr, off, param->selected_state_info.sound_id_ref);
+    WB_ARRAY(arr, off, param->selected_state_info.state_sound_id_ref);
 
     /* [u16 selected_start_object_id_ref] */
-    WB_ARRAY(arr, off, param->selected_state_info.start_object_ref >> 8);
-    WB_ARRAY(arr, off, param->selected_state_info.start_object_ref);
+    WB_ARRAY(arr, off, param->selected_state_info.start_object_id_ref >> 8);
+    WB_ARRAY(arr, off, param->selected_state_info.start_object_id_ref);
 
     /* [u16 selected_end_object_id_ref] */
-    WB_ARRAY(arr, off, param->selected_state_info.end_object_ref >> 8);
-    WB_ARRAY(arr, off, param->selected_state_info.end_object_ref);
+    WB_ARRAY(arr, off, param->selected_state_info.end_object_id_ref >> 8);
+    WB_ARRAY(arr, off, param->selected_state_info.end_object_id_ref);
 
     /* [b1 selected_repeat_flag] [b1 selected_complete_flag] [v6 reserved] */
     WB_ARRAY(
       arr, off,
-      ((param->selected_state_info.repeat   & 0x1) << 7) |
-      ((param->selected_state_info.complete & 0x1) << 6)
+      (param->selected_state_info.repeat_flag     << 7)
+      | (param->selected_state_info.complete_flag << 6)
     );
   }
 
   /* activated_state_info() */
   {
     /* [u8 activated_state_sound_id_ref] */
-    WB_ARRAY(arr, off, param->activated_state_info.sound_id_ref);
+    WB_ARRAY(arr, off, param->activated_state_info.state_sound_id_ref);
 
     /* [u16 activated_start_object_id_ref] */
-    WB_ARRAY(arr, off, param->activated_state_info.start_object_ref >> 8);
-    WB_ARRAY(arr, off, param->activated_state_info.start_object_ref);
+    WB_ARRAY(arr, off, param->activated_state_info.start_object_id_ref >> 8);
+    WB_ARRAY(arr, off, param->activated_state_info.start_object_id_ref);
 
     /* [u16 activated_end_object_id_ref] */
-    WB_ARRAY(arr, off, param->activated_state_info.end_object_ref >> 8);
-    WB_ARRAY(arr, off, param->activated_state_info.end_object_ref);
+    WB_ARRAY(arr, off, param->activated_state_info.end_object_id_ref >> 8);
+    WB_ARRAY(arr, off, param->activated_state_info.end_object_id_ref);
   }
 
   /* [u16 number_of_navigation_commands] */
@@ -689,7 +689,7 @@ size_t appendButtonIgsCompiler(
   WB_ARRAY(arr, off, param->number_of_navigation_commands);
 
   {
-    HdmvNavigationCommand * com = param->commands;
+    HdmvNavigationCommand * com = param->navigation_commands;
 
     for (i = 0; i < param->number_of_navigation_commands; com = com->next, i++) {
       /* Navigation_command() */
@@ -700,22 +700,22 @@ size_t appendButtonIgsCompiler(
         );
 
       /* [u32 opcode] */
-      WB_ARRAY(arr, off, com->opCode >> 24);
-      WB_ARRAY(arr, off, com->opCode >> 16);
-      WB_ARRAY(arr, off, com->opCode >>  8);
-      WB_ARRAY(arr, off, com->opCode);
+      WB_ARRAY(arr, off, com->opcode >> 24);
+      WB_ARRAY(arr, off, com->opcode >> 16);
+      WB_ARRAY(arr, off, com->opcode >>  8);
+      WB_ARRAY(arr, off, com->opcode);
 
       /* [u32 destination] */
-      WB_ARRAY(arr, off, com->dst >> 24);
-      WB_ARRAY(arr, off, com->dst >> 16);
-      WB_ARRAY(arr, off, com->dst >>  8);
-      WB_ARRAY(arr, off, com->dst);
+      WB_ARRAY(arr, off, com->destination >> 24);
+      WB_ARRAY(arr, off, com->destination >> 16);
+      WB_ARRAY(arr, off, com->destination >>  8);
+      WB_ARRAY(arr, off, com->destination);
 
       /* [u32 source] */
-      WB_ARRAY(arr, off, com->src >> 24);
-      WB_ARRAY(arr, off, com->src >> 16);
-      WB_ARRAY(arr, off, com->src >>  8);
-      WB_ARRAY(arr, off, com->src);
+      WB_ARRAY(arr, off, com->source >> 24);
+      WB_ARRAY(arr, off, com->source >> 16);
+      WB_ARRAY(arr, off, com->source >>  8);
+      WB_ARRAY(arr, off, com->source);
     }
 
     if (NULL != com)
@@ -824,8 +824,7 @@ size_t appendEffectSequenceIgsCompiler(
       WB_ARRAY(arr, off, obj->object_id_ref >> 8);
       WB_ARRAY(arr, off, obj->object_id_ref);
 
-      /* [u16 window_id_ref] */
-      WB_ARRAY(arr, off, obj->window_id_ref >> 8);
+      /* [u8 window_id_ref] */
       WB_ARRAY(arr, off, obj->window_id_ref);
 
       /* [b1 object_cropped_flag] [v7 reserved] */

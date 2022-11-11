@@ -42,6 +42,41 @@
     ##__VA_ARGS__                                                             \
   )
 
+/* ### HDMV Parser : ####################################################### */
+
+#define LIBBLU_HDMV_PARSER_NAME  LIBBLU_HDMV_KEYWORD "/Parser"
+#define LIBBLU_HDMV_PARSER_PREFIX LIBBLU_HDMV_PARSER_NAME ": "
+
+#define LIBBLU_HDMV_PARSER_ERROR(format, ...)                                 \
+  LIBBLU_ERROR(LIBBLU_HDMV_PARSER_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_PARSER_ERROR_RETURN(format, ...)                          \
+  LIBBLU_ERROR_RETURN(LIBBLU_HDMV_PARSER_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_PARSER_ERROR_NRETURN(format, ...)                         \
+  LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_PARSER_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_PARSER_ERROR_FRETURN(format, ...)                         \
+  LIBBLU_ERROR_FRETURN(LIBBLU_HDMV_PARSER_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_PARSER_ERROR_BRETURN(format, ...)                         \
+  LIBBLU_ERROR_BRETURN(LIBBLU_HDMV_PARSER_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_PARSER_DEBUG(format, ...)                                 \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_HDMV_PARSER,                                                 \
+    LIBBLU_HDMV_PARSER_NAME,                                                  \
+    format,                                                                   \
+    ##__VA_ARGS__                                                             \
+  )
+
+#define LIBBLU_HDMV_PARSER_DEBUG_NH(format, ...)                              \
+  LIBBLU_DEBUG_NO_HEADER(                                                     \
+    LIBBLU_DEBUG_HDMV_PARSER,                                                 \
+    format,                                                                   \
+    ##__VA_ARGS__                                                             \
+  )
+
 /* ### IGS Parser : ######################################################## */
 
 #define LIBBLU_HDMV_IGS_NAME  LIBBLU_HDMV_KEYWORD "/IGS Parser"
@@ -310,6 +345,28 @@
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_HDMV_LIBPNG,                                                 \
     LIBBLU_HDMV_LIBPNG_NAME,                                                  \
+    format,                                                                   \
+    ##__VA_ARGS__                                                             \
+  )
+
+/* ### Timecodes ########################################################### */
+
+#define LIBBLU_HDMV_TC_NAME  LIBBLU_HDMV_KEYWORD " libpng"
+#define LIBBLU_HDMV_TC_PREFIX  LIBBLU_HDMV_TC_NAME ": "
+
+#define LIBBLU_HDMV_TC_ERROR(format, ...)                                     \
+  LIBBLU_ERROR(LIBBLU_HDMV_TC_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_TC_ERROR_RETURN(format, ...)                              \
+  LIBBLU_ERROR_RETURN(LIBBLU_HDMV_TC_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_TC_ERROR_NRETURN(format, ...)                             \
+  LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_TC_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_TC_DEBUG(format, ...)                                     \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_HDMV_TC,                                                     \
+    LIBBLU_HDMV_TC_NAME,                                                      \
     format,                                                                   \
     ##__VA_ARGS__                                                             \
   )

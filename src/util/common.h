@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 #if defined(ARCH_WIN32)
 #  include <windef.h>
@@ -214,6 +215,22 @@ static inline int lb_mul_overflow(
   size_t res = left * right;
 
   return left != 0 && res / left != right;
+}
+
+static inline int lb_add_overflow(
+  size_t left,
+  size_t right
+)
+{
+  return SIZE_MAX - left < right;
+}
+
+static inline int lb_uadd_overflow(
+  unsigned left,
+  unsigned right
+)
+{
+  return UINT_MAX - left < right;
 }
 
 static inline bool lb_data_equal(

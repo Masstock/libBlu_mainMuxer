@@ -18,7 +18,8 @@
 #include "../../esms/scriptCreation.h"
 
 #include "common/hdmv_data.h"
-#include "common/hdmv_common.h"
+#include "common/hdmv_context.h"
+#include "common/hdmv_parser.h"
 
 bool nextUint8IsPgsSegmentType(
   BitstreamReaderPtr pgsInput

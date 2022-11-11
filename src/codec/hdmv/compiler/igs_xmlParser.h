@@ -191,7 +191,7 @@ int parseParametersUopIgsXmlFile(
  * \param ctx Used context.
  * \return int A zero value on success, otherwise a negative value.
  */
-int parseParametersIgsXmlFile(
+int parseCommonSettingsIgsXmlFile(
   IgsCompilerContextPtr ctx
 );
 

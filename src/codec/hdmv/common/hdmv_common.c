@@ -8,42 +8,45 @@
 
 #include "hdmv_common.h"
 
-uint64_t computeHdmvOdsDecodeDuration(
-  HdmvODataParameters param,
-  HdmvStreamType type
+/* ### HDMV Sequence : ##################################################### */
+
+int parseFragmentHdmvSequence(
+  HdmvSequencePtr dst,
+  BitstreamReaderPtr input,
+  size_t size
 )
 {
-  /** Compute DECODE_DURATION of ODS.
-   *
-   * Equation performed is (for Interactive Graphics):
-   *
-   *   DECODE_DURATION(n) =
-   *     ceil(90000 * 8 * (object_width * object_height) / 64000000)
-   * <=> ceil(9 * (object_width * object_height) / 800) // Compacted version
-   *
-   * or (for Presentation Graphics)
-   *
-   *   DECODE_DURATION(n) =
-   *     ceil(90000 * 8 * (object_width * object_height) / 128000000)
-   * <=> ceil(9 * (object_width * object_height) / 1600) // Compacted version
-   *
-   * with:
-   *  90000         : PTS/DTS clock frequency (90kHz);
-   *  64000000 or
-   *  128000000     : Pixel Decoding Rate
-   *                  (Rd = 64 Mb/s for IG, Rd = 128 Mb/s for PG).
-   *  object_width  : object_width parameter parsed from n-ODS's Object_data().
-   *  object_height : object_height parameter parsed from n-ODS's Object_data().
-   */
-  uint64_t picturePxSize = param.object_width * param.object_height;
 
-  if (0 == picturePxSize)
-    return 0; /* Empty object, no decoding delay. */
+  LIBBLU_HDMV_PARSER_DEBUG(" Data_fragment():\n");
 
-  return DIV_ROUND_UP(
-    9 * picturePxSize,
-    (type == HDMV_STREAM_TYPE_IGS) ? 800 : 1600
+  if (lb_add_overflow(dst->fragmentsUsedLen, size))
+    LIBBLU_HDMV_COM_ERROR_RETURN(
+      "Reconstructed sequence data from segment fragments is too large.\n"
+    );
+
+  if (dst->fragmentsAllocatedLen < dst->fragmentsUsedLen + size) {
+    /* Need sequence data size increasing */
+    size_t newSize = dst->fragmentsUsedLen + size;
+    uint8_t * newArray;
+
+    if (NULL == (newArray = (uint8_t *) realloc(dst->fragments, newSize)))
+      LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
+
+    dst->fragments = newArray;
+    dst->fragmentsAllocatedLen = newSize;
+  }
+
+  LIBBLU_HDMV_PARSER_DEBUG(
+    "  size: %zu byte(s).\n",
+    size
   );
+
+  if (readBytes(input, dst->fragments + dst->fragmentsUsedLen, size) < 0)
+    return -1;
+
+  dst->fragmentsUsedLen += size;
+
+  return 0;
 }
 
 /* ### HDMV Segments Inventory Pool : ###################################### */
@@ -157,7 +160,7 @@ HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
   GET_HDMV_SEGMENTS_INVENTORY_POOL(seq, HdmvSequence *, &inv->sequences);
   if (NULL == seq)
     return NULL;
-  initHdmvSequence(seq);
+  resetHdmvSequence(seq);
 
   return seq;
 }
@@ -292,6 +295,8 @@ HdmvPaletteEntryParameters * getHdmvPaletteEntryParametersHdmvSegmentsInventory(
 #undef GET_POOL
 
 /* ######################################################################### */
+
+#if 0
 
 HdmvSegmentsContextPtr createHdmvSegmentsContext(
   HdmvStreamType streamType,
@@ -534,7 +539,6 @@ int insertHdmvSegment(
   bool dtsPresent;
 
   assert(NULL != ctx);
-  assert(seg.type != HDMV_SEGMENT_TYPE_ERROR);
 
   dtsPresent = (
     seg.type == HDMV_SEGMENT_TYPE_ODS
@@ -2289,7 +2293,7 @@ int decodeHdmvPaletteDefinition(
   assert(NULL != hdmvInput);
   assert(NULL != param);
 
-  LIBBLU_HDMV_COM_DEBUG(" Palette_definition():\n");
+  LIBBLU_HDMV_COM_DEBUG(" Palette_descriptor():\n");
 
   /* [u8 palette_id] */
   if (readValueBigEndian(hdmvInput, 1, &value) < 0)
@@ -2406,8 +2410,8 @@ int decodeHdmvPdsSegment(
 
   startOffset = tellPos(hdmvInput);
 
-  /* Palette_definition() */
-  if (decodeHdmvPaletteDefinition(hdmvInput, &param->palette_definition) < 0)
+  /* Palette_descriptor() */
+  if (decodeHdmvPaletteDefinition(hdmvInput, &param->palette_descriptor) < 0)
     return -1;
 
   paletteEntriesLength = seg.length - (tellPos(hdmvInput) - startOffset);
@@ -2466,7 +2470,7 @@ int decodeHdmvPdsSegment(
 }
 
 int decodeHdmvObjectData(
-  uint8_t * data, size_t remainingDataLen, HdmvODataParameters * param
+  uint8_t * data, size_t remainingDataLen, HdmvODParameters * param
 )
 {
   uint32_t value;
@@ -2516,7 +2520,7 @@ int decodeHdmvObjectData(
 }
 
 int decodeHdmvObjectDescriptor(
-  BitstreamReaderPtr hdmvInput, HdmvODParameters * param
+  BitstreamReaderPtr hdmvInput, HdmvODescParameters * param
 )
 {
   uint32_t value;
@@ -2607,7 +2611,7 @@ int decodeHdmvOdsSegment(
       decodeHdmvObjectData(
         seq->fragments,
         seq->fragmentsUsedLen,
-        &seq->data.objectData
+        &seq->data.objectDefinition
       ) < 0
     )
       return -1;
@@ -2700,3 +2704,5 @@ int parseHdmvSegmentDescriptor(
 
   return 0;
 }
+
+#endif

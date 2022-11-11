@@ -83,15 +83,16 @@ bool isIgsCompilerFile(
   ;
 }
 
+#if 0
 uint64_t computeIgsOdsDecodeDuration(
-  HdmvODataParameters param
+  HdmvODParameters param
 )
 {
   return computeHdmvOdsDecodeDuration(param, HDMV_STREAM_TYPE_IGS);
 }
 
 uint64_t computeIgsOdsTransferDuration(
-  HdmvODataParameters param,
+  HdmvODParameters param,
   uint64_t decodeDuration
 )
 {
@@ -173,13 +174,13 @@ int computeIgsEpochInitializeDuration(
       );
 
     /* DECODE_DURATION() */
-    decodeDuration = computeIgsOdsDecodeDuration(seq->data.objectData);
+    decodeDuration = computeIgsOdsDecodeDuration(seq->data.objectDefinition);
     epochDecodingDuration += decodeDuration;
 
     /* TRANSFER_DURATION() */
     if (NULL != seq->nextSequence)
       epochDecodingDuration += computeIgsOdsTransferDuration(
-        seq->data.objectData, decodeDuration
+        seq->data.objectDefinition, decodeDuration
       );
   }
 
@@ -293,10 +294,10 @@ int processIgsEpochTimingValues(HdmvSegmentsContextPtr ctx)
 
     if (ctx->forceRetiming) {
       decodeDur = computeIgsOdsDecodeDuration(
-        seq->data.objectData
+        seq->data.objectDefinition
       );
       transfDur = computeIgsOdsTransferDuration(
-        seq->data.objectData, decodeDur
+        seq->data.objectDefinition, decodeDur
       );
 
       seq->dts = clockRef;
@@ -571,8 +572,6 @@ int parseIgsSegment(BitstreamReaderPtr igsInput, HdmvSegmentsContextPtr ctx)
       return processCompleteIgsEpoch(ctx);
 
     default:
-      assert(seg.type != HDMV_SEGMENT_TYPE_ERROR);
-
       LIBBLU_HDMV_IGS_ERROR_RETURN(
         "Unexpected segment type %s (0x%02X).\n",
         HdmvSegmentTypeStr(seg.type),
@@ -585,11 +584,13 @@ int parseIgsSegment(BitstreamReaderPtr igsInput, HdmvSegmentsContextPtr ctx)
 
   return 0;
 }
+#endif
 
 int analyzeIgs(
   LibbluESParsingSettings * settings
 )
 {
+#if 0
   EsmsFileHeaderPtr igsInfos = NULL;
   unsigned igsSourceFileIdx;
 
@@ -597,11 +598,16 @@ int analyzeIgs(
   BitstreamWriterPtr essOutput = NULL;
 
   HdmvSegmentsContextPtr igsContext = NULL;
+#endif
 
-  lbc * inputFilenameDup;
+  HdmvContextPtr ctx;
+
+  lbc * infilepathDup;
   bool igsCompilerFileMode;
+  HdmvTimecodes timecodes;
 
   igsCompilerFileMode = isIgsCompilerFile(settings->esFilepath);
+  initHdmvTimecodes(&timecodes);
 
   if (igsCompilerFileMode) {
 #if !defined(DISABLE_IGS_COMPILER)
@@ -609,11 +615,11 @@ int analyzeIgs(
 
     LIBBLU_HDMV_IGS_DEBUG("Processing input file as Igs Compiler file.\n");
 
-    if (processIgsCompiler(settings->esFilepath, settings->options.confHandle) < 0)
+    if (processIgsCompiler(settings->esFilepath, &timecodes, settings->options.confHandle) < 0)
       return -1;
 
     ret = lbc_asprintf(
-      &inputFilenameDup,
+      &infilepathDup,
       "%" PRI_LBCS "%s",
       settings->esFilepath,
       HDMV_IGS_COMPL_OUTPUT_EXT
@@ -631,10 +637,11 @@ int analyzeIgs(
 #endif
   }
   else {
-    if (NULL == (inputFilenameDup = lbc_strdup(settings->esFilepath)))
+    if (NULL == (infilepathDup = lbc_strdup(settings->esFilepath)))
       LIBBLU_HDMV_IGS_ERROR_RETURN("Memory allocation error.\n");
   }
 
+#if 0
   if (NULL == (igsInfos = createEsmsFileHandler(ES_HDMV, settings->options, FMT_SPEC_INFOS_NONE)))
     goto free_return;
 
@@ -649,26 +656,32 @@ int analyzeIgs(
 
   if (NULL == (igsInput = createBitstreamReader(inputFilenameDup, (size_t) READ_BUFFER_LEN)))
     goto free_return;
+#endif
+
+  if (NULL == (ctx = createHdmvContext(settings, infilepathDup, HDMV_STREAM_TYPE_IGS)))
+    goto free_return;
 
   if (igsCompilerFileMode) {
-    /* Add original script file to script to target changes. */
-    if (appendSourceFileEsms(igsInfos, settings->esFilepath, NULL) < 0)
+    /**
+     * Add original XML file to script to target changes.
+     * It is not used in script but will be check-summed. If the XML file is
+     * updated, the script will be regenerated.
+     */
+    if (addOriginalFileHdmvContext(ctx, settings->esFilepath) < 0)
+      goto free_return;
+    /* Send timecode values to the HDMV context */
+    if (addTimecodesHdmvContext(ctx, timecodes) < 0)
       goto free_return;
   }
 
-  /* Used as Place Holder (empty header) : */
-  if (writeEsmsHeader(essOutput) < 0)
-    goto free_return;
-
-  /* Guess input file is not a MNU file but raw IGS PES bitstream (.ies file). */
-  /* No MNU header, expect direct segment_type field.                          */
-  igsContext->rawStreamInputMode = nextUint8IsIgsSegmentType(igsInput);
-  igsContext->forceRetiming |= igsContext->rawStreamInputMode;
-
-  while (!isEof(igsInput)) {
+  while (!isEofHdmvContext(ctx)) {
     /* Progress bar : */
-    printFileParsingProgressionBar(igsInput);
+    printFileParsingProgressionBar(inputHdmvContext(ctx));
 
+    if (parseHdmvSegment(ctx) < 0)
+      goto free_return;
+
+#if 0
     if (!igsContext->rawStreamInputMode) {
       if (parseIgsMnuHeader(igsInput, igsContext) < 0)
         goto free_return;
@@ -686,38 +699,36 @@ int analyzeIgs(
       "Unknown header type word: 0x%" PRIX8 " at 0x%" PRIx64 ".\n",
       nextUint8(igsInput), tellPos(igsInput)
     );
+#endif
   }
 
   /* Process remaining segments: */
-  if (0 < igsContext->curEpochNbSegments) {
-    LIBBLU_WARNING(
-      "Presence of unclosed epoch at end of bitstream (missing END segment).\n"
-    );
-    LIBBLU_WARNING(
-      " => Composed of %u segments.\n",
-      igsContext->curEpochNbSegments
-    );
-  }
+  if (completeDisplaySetHdmvContext(ctx) < 0)
+    return -1;
 
   lbc_printf(" === Parsing finished with success. ===              \n");
 
+  /* Display infos : */
+  lbc_printf("== Stream Infos =======================================================================\n");
+  lbc_printf("Codec: HDMV/IGS Menu format.             \n");
+  lbc_printf("Total number of segments by type:        \n");
+  printContentHdmvContext(ctx);
+  lbc_printf("=======================================================================================\n");
+
+  if (closeHdmvContext(ctx) < 0)
+    goto free_return;
+  destroyHdmvContext(ctx);
+  cleanHdmvTimecodes(timecodes);
+  free(infilepathDup);
+  return 0;
+
+#if 0
   closeBitstreamReader(igsInput);
   igsInput = NULL;
 
   /* [u8 endMarker] */
   if (writeByte(essOutput, ESMS_SCRIPT_END_MARKER) < 0)
     goto free_return;
-
-  /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
-  lbc_printf("Codec: HDMV/IGS Menu format.             \n");
-  lbc_printf("Total number of segments by type:        \n");
-  lbc_printf(" - IGS: %u.\n", igsContext->nbIcsSegments   );
-  lbc_printf(" - PDS: %u.\n", igsContext->nbPdsSegments   );
-  lbc_printf(" - ODS: %u.\n", igsContext->nbOdsSegments   );
-  lbc_printf(" - END: %u.\n", igsContext->nbEndSegments   );
-  lbc_printf(" TOTAL: %u.\n", igsContext->totalNbSegments );
-  lbc_printf("=======================================================================================\n");
 
   igsInfos->ptsRef = igsContext->referenceStartClock * 300;
   igsInfos->bitrate = HDMV_RX_BITRATE;
@@ -738,13 +749,12 @@ int analyzeIgs(
   free(inputFilenameDup);
   destroyEsmsFileHandler(igsInfos);
   return 0;
+#endif
 
 free_return:
-  free(inputFilenameDup);
-  destroyHdmvContext(igsContext);
-  closeBitstreamReader(igsInput);
-  closeBitstreamWriter(essOutput);
-  destroyEsmsFileHandler(igsInfos);
+  destroyHdmvContext(ctx);
+  cleanHdmvTimecodes(timecodes);
+  free(infilepathDup);
 
   return -1;
 }

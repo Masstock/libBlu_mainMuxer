@@ -43,12 +43,9 @@ static inline void initLibbluSystemStream(
   LibbluSystemStream * stream
 )
 {
-  stream->data = NULL;
-  stream->dataOffset = 0;
-  stream->dataLength = 0;
-
-  stream->firstFullTableSupplied = false;
-  stream->useContinuityCounter = true;
+  *stream = (LibbluSystemStream) {
+    .useContinuityCounter = true
+  };
 }
 
 static inline void cleanLibbluSystemStream(

@@ -226,7 +226,9 @@ int setRootPathFromPathObjectIgsXmlFile(
   return 0;
 }
 
-int restoreLastRootIgsXmlFile(XmlCtxPtr ctx)
+int restoreLastRootIgsXmlFile(
+  XmlCtxPtr ctx
+)
 {
   xmlNodePtr restoredNode;
 

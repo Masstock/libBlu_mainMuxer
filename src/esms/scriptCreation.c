@@ -9,8 +9,8 @@
 
 EsmsFileHeaderPtr createEsmsFileHandler(
   LibbluESType type,
-  LibbluESSettingsOptions options,
-  LibbluESFmtSpecPropType fmtSpecPropType
+  const LibbluESSettingsOptions options,
+  const LibbluESFmtSpecPropType fmtSpecPropType
 )
 {
   EsmsFileHeaderPtr handler;
@@ -43,17 +43,6 @@ EsmsFileHeaderPtr createEsmsFileHandler(
 free_return:
   destroyEsmsFileHandler(handler);
   return NULL;
-}
-
-void destroyEsmsFileHandler(EsmsFileHeaderPtr handler)
-{
-  if (NULL == handler)
-    return;
-
-  cleanEsmsESSourceFiles(handler->sourceFiles);
-  cleanEsmsDataBlocks(handler->dataBlocks);
-  free(handler->fmtSpecProp.sharedPtr);
-  free(handler);
 }
 
 int updateEsmsHeader(const lbc * essFileName, const EsmsFileHeaderPtr script)

@@ -123,11 +123,7 @@ static inline void initEsmsCommandParsingData(
   EsmsCommandParsingData * dst
 )
 {
-  *dst = (EsmsCommandParsingData) {
-    .data = NULL,
-    .dataUsedSize = 0,
-    .dataAllocatedSize = 0
-  };
+  *dst = (EsmsCommandParsingData) {0};
 }
 
 static inline void cleanEsmsCommandParsingData(

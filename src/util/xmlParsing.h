@@ -132,6 +132,10 @@ static inline void destroyXmlContext(
   if (NULL == ctx)
     return;
 
+  while (0 < ctx->savedNodesStackHeight--) {
+    xmlNodePtr node = ctx->savedNodesStack[ctx->savedNodesStackHeight];
+    xmlFreeNode(xmlDocSetRootElement(LIBXML_CONTEXT(ctx), node));
+  }
   free(ctx);
 }
 

@@ -109,16 +109,20 @@ SOURCE_FILES =																\
 	codec/h264/h264_checks.o												\
 	codec/h264/h264_hrdVerifier.o											\
 	codec/h264/h264_data.o													\
-	codec/hdmv/igs_parser.o													\
-	codec/hdmv/pgs_parser.o													\
+	codec/hdmv/common/hdmv_check.o											\
 	codec/hdmv/common/hdmv_common.o											\
+	codec/hdmv/common/hdmv_context.o										\
 	codec/hdmv/common/hdmv_palette_def.o									\
 	codec/hdmv/common/hdmv_palette_gen.o									\
+	codec/hdmv/common/hdmv_parser.o											\
 	codec/hdmv/common/hdmv_pictures_common.o								\
 	codec/hdmv/common/hdmv_pictures_indexer.o								\
 	codec/hdmv/common/hdmv_pictures_list.o									\
 	codec/hdmv/common/hdmv_pictures_pool.o									\
 	codec/hdmv/common/hdmv_pictures_quantizer.o								\
+	codec/hdmv/common/hdmv_timecodes.o										\
+	codec/hdmv/igs_parser.o													\
+	codec/hdmv/pgs_parser.o													\
 	esms/scriptCreation.o													\
 	esms/scriptData.o														\
 	esms/scriptParsing.o													\

@@ -16,8 +16,9 @@
 #include "../../util.h"
 #include "../../esms/scriptCreation.h"
 
-#include "common/hdmv_data.h"
-#include "common/hdmv_common.h"
+#include "common/hdmv_context.h"
+#include "common/hdmv_parser.h"
+
 #if !defined(DISABLE_IGS_COMPILER)
 #  include "compiler/igs_compiler.h"
 #endif
@@ -30,14 +31,15 @@
 
 #define IGS_DEBUG_FORCE_RETIME false
 
+#if 0
 bool isIgsCompilerFile(const lbc * filePath);
 
 uint64_t computeIgsOdsDecodeDuration(
-  HdmvODataParameters param
+  HdmvODParameters param
 );
 
 uint64_t computeIgsOdsTransferDuration(
-  HdmvODataParameters param,
+  HdmvODParameters param,
   uint64_t decodeDuration
 );
 
@@ -68,6 +70,7 @@ int parseIgsSegment(
   BitstreamReaderPtr igsInput,
   HdmvSegmentsContextPtr ctx
 );
+#endif
 
 int analyzeIgs(
   LibbluESParsingSettings * settings

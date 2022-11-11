@@ -272,13 +272,7 @@ static inline void initEsmsESSourceFiles(
   EsmsESSourceFiles * dst
 )
 {
-  *dst = (EsmsESSourceFiles) {
-    .filepaths = NULL,
-    .properties = NULL,
-    .handles = NULL,
-    .nbUsedFiles = 0,
-    .nbAllocatedFiles = 0
-  };
+  *dst = (EsmsESSourceFiles) {0};
 }
 
 static inline void cleanEsmsESSourceFiles(

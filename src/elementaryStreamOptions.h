@@ -49,7 +49,7 @@ typedef struct {
 } LibbluESSettingsOptions;
 
 static inline uint64_t computeFlagsLibbluESSettingsOptions(
-  LibbluESSettingsOptions options
+  const LibbluESSettingsOptions options
 )
 {
   return

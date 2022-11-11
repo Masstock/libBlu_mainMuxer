@@ -1,4 +1,4 @@
-MUXOPT --start-time 378000000
-V_MPEG4/ISO/AVC, "tests/pgs/BEASTARS/video.avc" # --disable-hrd-verifier
-A_LPCM, "tests/pgs/BEASTARS/audio_JA.wav"
-M_HDMV/PGS, "tests/pgs/BEASTARS/test.sup"
+MUXOPT --start-time=378000000
+V_MPEG4/ISO/AVC, "video.avc" # --disable-hrd-verifier
+A_LPCM, "audio_JA.wav"
+M_HDMV/PGS, "test.sup"

@@ -302,7 +302,7 @@ int enableDebugStatusString(
   const char * string
 )
 {
-  bool arrayMode;
+  bool arrayMode = false;
 
   if (*string == '\"') {
     arrayMode = true;

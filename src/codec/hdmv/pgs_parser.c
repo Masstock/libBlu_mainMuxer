@@ -10,8 +10,9 @@
 
 #include "pgs_parser.h"
 
+#if 0
 uint64_t computePgsOdsDecodeDuration(
-  HdmvODataParameters param
+  HdmvODParameters param
 )
 {
   return computeHdmvOdsDecodeDuration(param, HDMV_STREAM_TYPE_PGS);
@@ -36,14 +37,17 @@ uint64_t computePgsCompositionObjectDecodeDuration(
 
   if (NULL == ods)
     return 0;
-  return computePgsOdsDecodeDuration(ods->data.objectData);
+  return computePgsOdsDecodeDuration(ods->data.objectDefinition);
 }
 
 uint64_t computePgsWindowDecodeDuration(
-  uint16_t window_id_ref,
+  uint8_t window_id_ref,
   HdmvWDParameters winDef
 )
 {
+  /**
+   * 90000 * 8 * window_width * window_height / 256000000
+   */
   uint64_t windowSize;
   uint8_t i;
 
@@ -69,26 +73,29 @@ uint64_t computePgsDisplaySetInitializeDuration(
   HdmvSequencePtr odsSequences
 )
 {
-  uint64_t videoSize, windowSize, planeInitDur;
-  bool referenced;
-  uint8_t i, j;
-
-  uint64_t dsDecodeDur, odsDecodeDur;
-
-  videoSize = videoDesc.video_width * videoDesc.video_height;
+  /**
+   *
+   *
+   */
+  uint64_t planeInitDur, dsDecodeDur, odsDecodeDur;
 
   /* PLANE_INITIALIZATION_TIME */
-  if (compoState == HDMV_COMPOSITION_STATE_EPOCH_START)
+  if (compoState == HDMV_COMPO_STATE_EPOCH_START) {
+    uint64_t videoSize = videoDesc.video_width * videoDesc.video_height;
+
     planeInitDur = 9 * videoSize / 3200; /* 90000 * 8 * videoSize / 256000000 */
+  }
   else {
+    unsigned i, j;
+
     planeInitDur = 0;
     for (i = 0; i < winDef.number_of_windows; i++) {
-      referenced = false;
+      bool referenced = false;
+
       for (j = 0; j < compo.number_of_composition_objects; j++) {
-        if (
-          compo.composition_objects[j]->window_id_ref
-          == winDef.windows[i]->window_id
-        ) {
+        uint8_t window_id_ref = compo.composition_objects[j]->window_id_ref;
+
+        if (winDef.windows[i]->window_id == window_id_ref) {
           referenced = true;
           break;
         }
@@ -96,7 +103,7 @@ uint64_t computePgsDisplaySetInitializeDuration(
 
       if (!referenced) {
         /* Window is empty (to be cleared) */
-        windowSize =
+        uint64_t windowSize =
           winDef.windows[i]->window_width
           * winDef.windows[i]->window_height
         ;
@@ -110,60 +117,69 @@ uint64_t computePgsDisplaySetInitializeDuration(
   dsDecodeDur = planeInitDur;
   odsDecodeDur = 0;
   if (compo.number_of_composition_objects == 2) {
+    uint8_t compoObj0WinIdRef = compo.composition_objects[0]->window_id_ref;
+    uint16_t compoObj0ObjIdRef = compo.composition_objects[0]->object_id_ref;
+    uint8_t compoObj1WinIdRef = compo.composition_objects[1]->window_id_ref;
+    uint16_t compoObj1ObjIdRef = compo.composition_objects[1]->object_id_ref;
+
     /* WAIT OBJ[0] decoding */
     odsDecodeDur += computePgsCompositionObjectDecodeDuration(
-      compo.composition_objects[0]->object_id_ref,
+      compoObj0ObjIdRef,
       odsSequences
     );
     dsDecodeDur = MAX(dsDecodeDur, odsDecodeDur); /* WAIT */
 
-    if (
-      compo.composition_objects[0]->window_id_ref
-      == compo.composition_objects[1]->window_id_ref
-    ) {
+    if (compoObj0WinIdRef == compoObj1WinIdRef) {
       /* WAIT OBJ[1] decoding */
       odsDecodeDur += computePgsCompositionObjectDecodeDuration(
-        compo.composition_objects[1]->object_id_ref,
+        compoObj1ObjIdRef,
         odsSequences
       );
       dsDecodeDur = MAX(dsDecodeDur, odsDecodeDur); /* WAIT */
 
       /* DECODE_DURATION(WIN_0) */
       dsDecodeDur += computePgsWindowDecodeDuration(
-        compo.composition_objects[0]->window_id_ref, winDef
+        compoObj0WinIdRef,
+        winDef
       );
     }
     else {
       /* DECODE_DURATION(WIN_0) */
       dsDecodeDur += computePgsWindowDecodeDuration(
-        compo.composition_objects[0]->window_id_ref, winDef
+        compoObj0WinIdRef,
+        winDef
       );
 
       /* WAIT OBJ[1] decoding */
       odsDecodeDur += computePgsCompositionObjectDecodeDuration(
-        compo.composition_objects[1]->object_id_ref,
+        compoObj1ObjIdRef,
         odsSequences
       );
       dsDecodeDur = MAX(dsDecodeDur, odsDecodeDur); /* WAIT */
 
       /* DECODE_DURATION(WIN_1) */
       dsDecodeDur += computePgsWindowDecodeDuration(
-        compo.composition_objects[1]->window_id_ref, winDef
+        compoObj1WinIdRef,
+        winDef
       );
     }
 
   }
   else if (compo.number_of_composition_objects == 1) {
+    uint8_t compoObj0WinIdRef = compo.composition_objects[0]->window_id_ref;
+    uint16_t compoObj0ObjIdRef = compo.composition_objects[0]->object_id_ref;
+
     /* WAIT OBJ[0] decoding */
     odsDecodeDur += computePgsCompositionObjectDecodeDuration(
-      compo.composition_objects[0]->object_id_ref,
+      compoObj0ObjIdRef,
       odsSequences
     );
     dsDecodeDur = MAX(dsDecodeDur, odsDecodeDur); /* WAIT */
 
     /* DECODE_DURATION(WIN_0) */
     dsDecodeDur += computePgsWindowDecodeDuration(
-      compo.composition_objects[0]->window_id_ref, winDef
+      compoObj0WinIdRef,
+      winDef
     );
   }
 
@@ -341,7 +357,7 @@ int processPgsDisplaySetTimingValues(HdmvSegmentsContextPtr ctx)
 
     if (ctx->forceRetiming) {
       decodeDuration = computePgsOdsDecodeDuration(
-        seq->data.objectData
+        seq->data.objectDefinition
       );
 
       seq->dts = clockRef - initializationDuration;
@@ -522,6 +538,7 @@ bool nextUint8IsPgsSegmentType(BitstreamReaderPtr pgsInput)
   ;
 }
 
+#if 0
 int parsePgsSegment(
   BitstreamReaderPtr input,
   HdmvSegmentsContextPtr ctx
@@ -629,8 +646,6 @@ int parsePgsSegment(
       return processCompletePgsDisplaySet(ctx);
 
     default:
-      assert(seg.type != HDMV_SEGMENT_TYPE_ERROR);
-
       LIBBLU_HDMV_PGS_ERROR_RETURN(
         "Unexpected segment type: 0x%" PRIx8 ".\n",
         seg.type
@@ -642,11 +657,14 @@ int parsePgsSegment(
 
   return 0;
 }
+#endif
+#endif
 
 int analyzePgs(
   LibbluESParsingSettings * settings
 )
 {
+#if 0
   EsmsFileHeaderPtr pgsInfos = NULL;
   unsigned pgsSourceFileIdx;
 
@@ -674,11 +692,18 @@ int analyzePgs(
   /* Used as Place Holder (empty header) : */
   if (writeEsmsHeader(essOutput) < 0)
     goto free_return;
+#endif
 
-  while (!isEof(pgsInput)) {
+  HdmvContextPtr ctx;
+
+  if (NULL == (ctx = createHdmvContext(settings, NULL, HDMV_STREAM_TYPE_PGS)))
+    return -1;
+
+  while (!isEofHdmvContext(ctx)) {
     /* Progress bar : */
-    printFileParsingProgressionBar(pgsInput);
+    printFileParsingProgressionBar(inputHdmvContext(ctx));
 
+#if 0
     if (!pgsContext->rawStreamInputMode) {
       if (parsePgsSupHeader(pgsInput, pgsContext) < 0)
         goto free_return;
@@ -695,21 +720,31 @@ int analyzePgs(
       "Unknown header type word: 0x%" PRIX8 " at 0x%" PRIx64 ".\n",
       nextUint8(pgsInput), tellPos(pgsInput)
     );
+#endif
+
+    if (parseHdmvSegment(ctx) < 0)
+      goto free_return;
   }
 
   /* Process remaining segments: */
-  if (0 < pgsContext->curEpochNbSegments) {
-    LIBBLU_WARNING(
-      "Presence of unclosed epoch at end of bitstream (missing END segment).\n"
-    );
-    LIBBLU_WARNING(
-      " => Composed of %u segments.\n",
-      pgsContext->curEpochNbSegments
-    );
-  }
+  if (completeDisplaySetHdmvContext(ctx) < 0)
+    return -1;
 
   lbc_printf(" === Parsing finished with success. ===              \n");
 
+  /* Display infos : */
+  lbc_printf("== Stream Infos =======================================================================\n");
+  lbc_printf("Codec: HDMV/PGS Subtitles format.        \n");
+  lbc_printf("Total number of segments by type:        \n");
+  printContentHdmvContext(ctx);
+  lbc_printf("=======================================================================================\n");
+
+  if (closeHdmvContext(ctx) < 0)
+    goto free_return;
+  destroyHdmvContext(ctx);
+  return 0;
+
+#if 0
   closeBitstreamReader(pgsInput);
   pgsInput = NULL;
 
@@ -746,13 +781,13 @@ int analyzePgs(
     goto free_return;
 
   destroyEsmsFileHandler(pgsInfos);
+#endif
+
+  destroyHdmvContext(ctx);
   return 0;
 
 free_return:
-  destroyHdmvContext(pgsContext);
-  closeBitstreamReader(pgsInput);
-  closeBitstreamWriter(essOutput);
-  destroyEsmsFileHandler(pgsInfos);
+  destroyHdmvContext(ctx);
 
   return -1;
 }

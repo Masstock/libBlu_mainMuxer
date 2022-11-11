@@ -14,6 +14,7 @@
 
 IgsCompilerContextPtr createIgsCompilerContext(
   const lbc * xmlFilename,
+  HdmvTimecodes * timecodes,
   IniFileContextPtr conf
 )
 {
@@ -26,7 +27,8 @@ IgsCompilerContextPtr createIgsCompilerContext(
     LIBBLU_HDMV_IGS_COMPL_ERROR_NRETURN("Memory allocation error.\n");
 
   *ctx = (IgsCompilerContext) {
-    .conf = conf
+    .conf = conf,
+    .timecodes = timecodes
   };
 
   ECHO_DEBUG(" Initialization of libraries and ressources.\n");
@@ -274,12 +276,12 @@ int buildIgsCompilerComposition(
         HdmvButtonParam * btn = bog->buttons[button_id];
 
 #define COLLECT_STATE(name)                                                   \
-        if (0xFFFF != btn->name.start_object_ref) {                           \
+        if (0xFFFF != btn->name.start_object_id_ref) {                        \
           uint16_t objId;                                                     \
                                                                               \
           for (                                                               \
-            objId = btn->name.start_object_ref;                               \
-            objId != btn->name.end_object_ref + 1;                            \
+            objId = btn->name.start_object_id_ref;                            \
+            objId != btn->name.end_object_id_ref + 1;                         \
             objId++                                                           \
           ) {                                                                 \
             assert(objId < compo->nbUsedObjPics);                             \
@@ -375,6 +377,7 @@ static HdmvPaletteColorMatrix getColorMatrixFromIniIgsCompiler(
 
 int processIgsCompiler(
   const lbc * xmlPath,
+  HdmvTimecodes * timecodes,
   IniFileContextPtr conf
 )
 {
@@ -389,7 +392,7 @@ int processIgsCompiler(
 
   LIBBLU_HDMV_IGS_COMPL_INFO("Compiling IGS...\n");
 
-  if (NULL == (ctx = createIgsCompilerContext(xmlPath, conf)))
+  if (NULL == (ctx = createIgsCompilerContext(xmlPath, timecodes, conf)))
     return -1;
 
   if (parseIgsXmlFile(ctx) < 0)

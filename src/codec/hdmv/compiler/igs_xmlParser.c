@@ -305,7 +305,7 @@ free_return:
   return -1;
 }
 
-int parseParametersIgsXmlFile(
+int parseCommonSettingsIgsXmlFile(
   IgsCompilerContextPtr ctx
 )
 {
@@ -507,7 +507,7 @@ int parseCompositionDescriptorIgsXmlFile(
 
   LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "  number: %u.\n",
-      param->compositionNumber
+      param->composition_number
     );
 
   freeXmlCharPtr(&string);
@@ -992,7 +992,7 @@ int parsePageBogIgsXmlFile(
     if (NULL == btn)
       return -1;
 
-    btn->commands = NULL;
+    assert(NULL == btn->navigation_commands);
 
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "      button[%d]:\n",
@@ -1185,11 +1185,8 @@ int parsePageBogIgsXmlFile(
       );
       nbStatesImgs = XML_PATH_NODE_NB(imgPathObj);
 
-      if (!nbStatesImgs) {
+      if (!nbStatesImgs)
         LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG("        None.\n");
-        btn->normal_state_info.start_object_ref = 0xFFFF;
-        btn->normal_state_info.end_object_ref   = 0xFFFF;
-      }
 
       for (j = 0; j < nbStatesImgs; j++) {
         HdmvPicturePtr pic;
@@ -1228,9 +1225,9 @@ int parsePageBogIgsXmlFile(
           LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN("Too many objects.\n");
 
         if (j == 0)
-          btn->normal_state_info.start_object_ref = id;
+          btn->normal_state_info.start_object_id_ref = id;
         if (j == nbStatesImgs-1)
-          btn->normal_state_info.end_object_ref = id;
+          btn->normal_state_info.end_object_id_ref = id;
 
         LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
           "          object_id: 0x%04X.\n",
@@ -1245,7 +1242,7 @@ int parsePageBogIgsXmlFile(
       xmlXPathFreeObject(imgPathObj);
 
       GET_BOOL(
-        &btn->normal_state_info.repeat,
+        &btn->normal_state_info.repeat_flag,
         false,
         return -1,
         "//bog[%d]/button[%d]/normal_state_info/repeat_flag",
@@ -1253,37 +1250,31 @@ int parsePageBogIgsXmlFile(
       );
 
       GET_BOOL(
-        &btn->normal_state_info.complete,
+        &btn->normal_state_info.complete_flag,
         false,
         return -1,
         "//bog[%d]/button[%d]/normal_state_info/complete_flag",
         index+1, i+1
       );
     }
-    else
-      btn->normal_state_info.start_object_ref = 0xFFFF,
-      btn->normal_state_info.end_object_ref   = 0xFFFF,
-      btn->normal_state_info.repeat           = false,
-      btn->normal_state_info.complete         = false
-    ;
 
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        start_object_id_ref: 0x%04" PRIX16 ".\n",
-      btn->normal_state_info.start_object_ref
+      btn->normal_state_info.start_object_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        end_object_id_ref:   0x%04" PRIX16 ".\n",
-      btn->normal_state_info.end_object_ref
+      btn->normal_state_info.end_object_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        repeat_flag:         %s (0b%x).\n",
-      BOOL_STR(btn->normal_state_info.repeat),
-      btn->normal_state_info.repeat
+      BOOL_STR(btn->normal_state_info.repeat_flag),
+      btn->normal_state_info.repeat_flag
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        complete_flag:       %s (0b%x).\n",
-      BOOL_STR(btn->normal_state_info.complete),
-      btn->normal_state_info.complete
+      BOOL_STR(btn->normal_state_info.complete_flag),
+      btn->normal_state_info.complete_flag
     );
 
     /* Selected state */
@@ -1294,7 +1285,7 @@ int parsePageBogIgsXmlFile(
       int nbStatesImgs;
 
       GET_UINT8(
-        &btn->selected_state_info.sound_id_ref, 0xFF,
+        &btn->selected_state_info.state_sound_id_ref, 0xFF,
         "Invalid button's selected state 'sound_id' parameter, "
         "must be between 0x00 and 0xFF inclusive",
         return -1,
@@ -1310,11 +1301,8 @@ int parsePageBogIgsXmlFile(
       );
       nbStatesImgs = XML_PATH_NODE_NB(imgPathObj);
 
-      if (!nbStatesImgs) {
+      if (!nbStatesImgs)
         LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG("        None.\n");
-        btn->selected_state_info.start_object_ref = 0xFFFF;
-        btn->selected_state_info.end_object_ref   = 0xFFFF;
-      }
 
       for (j = 0; j < nbStatesImgs; j++) {
         HdmvPicturePtr pic;
@@ -1353,9 +1341,9 @@ int parsePageBogIgsXmlFile(
           LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN("Too many objects.\n");
 
         if (j == 0)
-          btn->selected_state_info.start_object_ref = id;
+          btn->selected_state_info.start_object_id_ref = id;
         if (j == nbStatesImgs-1)
-          btn->selected_state_info.end_object_ref = id;
+          btn->selected_state_info.end_object_id_ref = id;
 
         LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
           "          object_id: 0x%04X.\n",
@@ -1370,7 +1358,7 @@ int parsePageBogIgsXmlFile(
       xmlXPathFreeObject(imgPathObj);
 
       GET_BOOL(
-        &btn->selected_state_info.repeat,
+        &btn->selected_state_info.repeat_flag,
         false,
         return -1,
         "//bog[%d]/button[%d]/selected_state_info/repeat_flag",
@@ -1378,42 +1366,35 @@ int parsePageBogIgsXmlFile(
       );
 
       GET_BOOL(
-        &btn->selected_state_info.complete,
+        &btn->selected_state_info.complete_flag,
         false,
         return -1,
         "//bog[%d]/button[%d]/selected_state_info/complete_flag",
         index+1, i+1
       );
     }
-    else
-      btn->selected_state_info.sound_id_ref       = 0xFF,
-      btn->selected_state_info.start_object_ref = 0xFFFF,
-      btn->selected_state_info.end_object_ref   = 0xFFFF,
-      btn->selected_state_info.repeat           = false,
-      btn->selected_state_info.complete         = false
-    ;
 
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        start_object_id_ref: 0x%02" PRIX8 ".\n",
-      btn->selected_state_info.sound_id_ref
+      btn->selected_state_info.state_sound_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        start_object_id_ref: 0x%04" PRIX16 ".\n",
-      btn->selected_state_info.start_object_ref
+      btn->selected_state_info.start_object_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        end_object_id_ref:   0x%04" PRIX16 ".\n",
-      btn->selected_state_info.end_object_ref
+      btn->selected_state_info.end_object_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        repeat_flag:         %s (0b%x).\n",
-      BOOL_STR(btn->selected_state_info.repeat),
-      btn->selected_state_info.repeat
+      BOOL_STR(btn->selected_state_info.repeat_flag),
+      btn->selected_state_info.repeat_flag
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        complete_flag:       %s (0b%x).\n",
-      BOOL_STR(btn->selected_state_info.complete),
-      btn->selected_state_info.complete
+      BOOL_STR(btn->selected_state_info.complete_flag),
+      btn->selected_state_info.complete_flag
     );
 
     /* Activated state */
@@ -1424,7 +1405,7 @@ int parsePageBogIgsXmlFile(
       int nbStatesImgs;
 
       GET_UINT8(
-        &btn->activated_state_info.sound_id_ref, 0xFF,
+        &btn->activated_state_info.state_sound_id_ref, 0xFF,
         "Invalid button's activated state 'sound_id' parameter, "
         "must be between 0x00 and 0xFF inclusive",
         return -1,
@@ -1440,11 +1421,8 @@ int parsePageBogIgsXmlFile(
       );
       nbStatesImgs = XML_PATH_NODE_NB(imgPathObj);
 
-      if (!nbStatesImgs) {
+      if (!nbStatesImgs)
         LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG("        None.\n");
-        btn->activated_state_info.start_object_ref = 0xFFFF;
-        btn->activated_state_info.end_object_ref   = 0xFFFF;
-      }
 
       for (j = 0; j < nbStatesImgs; j++) {
         HdmvPicturePtr pic;
@@ -1483,9 +1461,9 @@ int parsePageBogIgsXmlFile(
           LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN("Too many objects.\n");
 
         if (j == 0)
-          btn->activated_state_info.start_object_ref = id;
+          btn->activated_state_info.start_object_id_ref = id;
         if (j == nbStatesImgs-1)
-          btn->activated_state_info.end_object_ref = id;
+          btn->activated_state_info.end_object_id_ref = id;
 
         LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
           "          object_id: 0x%04X.\n",
@@ -1499,23 +1477,18 @@ int parsePageBogIgsXmlFile(
 
       xmlXPathFreeObject(imgPathObj);
     }
-    else
-      btn->activated_state_info.sound_id_ref       = 0xFF,
-      btn->activated_state_info.start_object_ref = 0xFFFF,
-      btn->activated_state_info.end_object_ref   = 0xFFFF
-    ;
 
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        start_object_id_ref: 0x%02" PRIX8 ".\n",
-      btn->activated_state_info.sound_id_ref
+      btn->activated_state_info.state_sound_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        start_object_id_ref: 0x%04" PRIX16 ".\n",
-      btn->activated_state_info.start_object_ref
+      btn->activated_state_info.start_object_id_ref
     );
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "        end_object_id_ref:   0x%04" PRIX16 ".\n",
-      btn->activated_state_info.end_object_ref
+      btn->activated_state_info.end_object_id_ref
     );
 
     /* Commands */
@@ -1549,11 +1522,11 @@ int parsePageBogIgsXmlFile(
         if (NULL != last)
           setNextHdmvNavigationCommand(last, com);
         else
-          btn->commands = com;
+          btn->navigation_commands = com;
 
         /* command/@code */
         GET_UINT32(
-          &com->opCode, -1,
+          &com->opcode, -1,
           "Missing or invalid navigation command 'code' field, "
           "must be between 0x00000000 and 0xFFFFFFFF inclusive",
           return -1,
@@ -1563,7 +1536,7 @@ int parsePageBogIgsXmlFile(
 
         /* command/@destination */
         GET_UINT32(
-          &com->dst, -1,
+          &com->destination, -1,
           "Missing or invalid navigation command 'destination' field, "
           "must be between 0x00000000 and 0xFFFFFFFF inclusive",
           return -1,
@@ -1573,7 +1546,7 @@ int parsePageBogIgsXmlFile(
 
         /* command/@source */
         GET_UINT32(
-          &com->src, -1,
+          &com->source, -1,
           "Missing or invalid navigation command 'source' field, "
           "must be between 0x00000000 and 0xFFFFFFFF inclusive",
           return -1,
@@ -1773,25 +1746,20 @@ int parsePageIgsXmlFile(
     LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
       "    None.\n"
     );
-    LIBBLU_HDMV_IGS_COMPL_XML_WARNING(
-      "Page %d is empty (no BOG).\n",
+    LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN(
+      "Page %d is empty, expect at least one BOG.\n",
       index
     );
   }
 
   /* Set path for relative path accessing: */
-  if (0 < nbBogs) {
-    if (NULL == (bogPathObj = GET_OBJ("//page[%d]", index+1)))
-      LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
-        "Broken XML tree, missing 'page' section in 'composition'.\n"
-      );
+  if (NULL == (bogPathObj = GET_OBJ("//page[%d]", index+1)))
+    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
+      "Broken XML tree, missing 'page' section in 'composition'.\n"
+    );
 
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), bogPathObj, 0) < 0)
-      return -1;
-  }
-  else
-    bogPathObj = NULL;
-
+  if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), bogPathObj, 0) < 0)
+    goto free_return;
 
   button_id = 0x0000;
   page->number_of_BOGs = 0;
@@ -1805,13 +1773,12 @@ int parsePageIgsXmlFile(
       i
     );
 
-    bog = getHdmvButtonOverlapGroupParametersHdmvSegmentsInventory(ctx->inv);
-    if (NULL == bog)
-      return -1;
+    if (NULL == (bog = getHdmvButtonOverlapGroupParametersHdmvSegmentsInventory(ctx->inv)))
+      goto free_return;
 
     /* page/bog[i] */
     if (parsePageBogIgsXmlFile(ctx, bog, i, &button_id) < 0)
-      return -1;
+      goto free_return;
 
     if (bog->default_valid_button_id_ref == page->default_selected_button_id_ref)
       defaultSelectedButtonIdPresent = true;
@@ -1824,7 +1791,7 @@ int parsePageIgsXmlFile(
   }
 
   if (!defaultSelectedButtonIdPresent)
-    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
+    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(
       "Page %d (id: %u) default selected button id does not match any "
       "page's BOG's default valid button id.\n",
       index,
@@ -1832,19 +1799,17 @@ int parsePageIgsXmlFile(
     );
 
   if (!defaultActivatedButtonIdPresent)
-    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
+    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(
       "Page %d (id: %u) default activated button id does not match any "
       "page's button id.\n",
       index,
       page->page_id
     );
 
-  if (NULL != bogPathObj) {
-    /* Restore original path */
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
-      return -1;
-    xmlXPathFreeObject(bogPathObj);
-  }
+  /* Restore original path */
+  if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    goto free_return;
+  xmlXPathFreeObject(bogPathObj);
 
   if (automaticDefaultSelectedButtonId && 0 < page->number_of_BOGs)
     page->default_selected_button_id_ref = page->bogs[0]->buttons[0]->button_id;
@@ -1852,6 +1817,10 @@ int parsePageIgsXmlFile(
   page->palette_id_ref = 0x00; /* Apply default palette ID */
 
   return 0;
+
+free_return:
+  xmlXPathFreeObject(bogPathObj);
+  return -1;
 }
 
 int parsePagesIgsXmlFile(
@@ -1901,6 +1870,11 @@ int parseCompositionIgsXmlFile(
   IgsCompilerCompositionPtr compo
 )
 {
+  /* Presentation timecode */
+  if (addTimecodeIgsCompilerContext(ctx, 0) < 0)
+    return -1;
+  /* TODO: Enable custom */
+
   /* Video descriptor from common */
   if (parseVideoDescriptorIgsXmlFile(ctx, &compo->video_descriptor) < 0)
     return -1;
@@ -1953,23 +1927,25 @@ int parseCompositionsIgsXmlFile(
     );
 
     if (NULL == (compo = createIgsCompilerComposition()))
-      return -1;
-    ctx->data.compositions[ctx->data.nbCompo] = compo;
+      goto free_return;
+    ctx->data.compositions[ctx->data.nbCompo++] = compo;
 
     if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), compPathObj, i) < 0)
-      return -1;
+      goto free_return;
 
     if (parseCompositionIgsXmlFile(ctx, compo) < 0)
-      return -1;
+      goto free_return;
 
     if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
-      return -1;
-
-    ctx->data.nbCompo++;
+      goto free_return;
   }
 
   xmlXPathFreeObject(compPathObj);
   return 0;
+
+free_return:
+  xmlXPathFreeObject(compPathObj);
+  return -1;
 }
 
 int parseIgsXmlFile(
@@ -1989,7 +1965,7 @@ int parseIgsXmlFile(
     );
   }
 
-  if (parseParametersIgsXmlFile(ctx) < 0)
+  if (parseCommonSettingsIgsXmlFile(ctx) < 0)
     goto free_return;
 
   if (parseCompositionsIgsXmlFile(ctx) < 0)
