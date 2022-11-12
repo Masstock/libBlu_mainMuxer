@@ -508,7 +508,6 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   unsigned i;
 
   bool tStdBufModelEnabled;
-  bool forcedScriptBuilding;
 
   LibbluStreamPtr stream;
 
@@ -540,7 +539,6 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   setDefaultSitParameters(&ctx->sitParam);
 
   tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableTStdBufVerifier);
-  forcedScriptBuilding = LIBBLU_MUX_SETTINGS_OPTION(&settings, forceRebuildScripts);
 
   /* Interpret PCR carrying options */
   ctx->pcrParam.carriedByES = LIBBLU_MUX_SETTINGS_OPTION(
@@ -574,6 +572,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   LIBBLU_DEBUG_COM("Initialization of Elementary Streams.\n");
   for (i = 0; i < ctx->settings.nbInputStreams; i++) {
     LibbluESSettings * esSettings;
+    bool forceRebuildScript;
     uint16_t pid;
 
     LibbluESFormatUtilities utilities;
@@ -591,9 +590,12 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
       goto free_return;
     ctx->elementaryStreams[i] = stream;
 
+    /* Get the forced script rebuilding option */
+    forceRebuildScript = esSettings->options.forcedScriptBuilding;
+
     /* Prepare the ES */
     LIBBLU_DEBUG_COM(" Preparation of the Elementary Stream handle.\n");
-    if (prepareLibbluES(&stream->es, &utilities, forcedScriptBuilding) < 0)
+    if (prepareLibbluES(&stream->es, &utilities, forceRebuildScript) < 0)
       goto free_return;
 
     /* Choose and set stream PID value */

@@ -18,7 +18,7 @@
 #define LIBBLU_MAX_NB_STREAMS  32
 
 typedef struct {
-  bool forceRebuildScripts;
+  bool forcedScriptBuilding;
   bool cbrMuxing;
   bool writeTPExtraHeaders;
   bool pcrOnESPackets;
@@ -34,14 +34,12 @@ static inline void defaultLibbluMuxingOptions(
   IniFileContextPtr confHandle
 )
 {
-  dst->forceRebuildScripts = false;
-  dst->cbrMuxing = false;
-  dst->writeTPExtraHeaders = true;
-  dst->pcrOnESPackets = false;
-  dst->disableTStdBufVerifier = DISABLE_T_STD_BUFFER_VER;
-
-  dst->globalSharedOptions = (LibbluESSettingsOptions) {
-    .confHandle = confHandle
+  *dst = (LibbluMuxingOptions) {
+    .writeTPExtraHeaders = true,
+    .disableTStdBufVerifier = DISABLE_T_STD_BUFFER_VER,
+    .globalSharedOptions = {
+      .confHandle = confHandle
+    }
   };
 }
 

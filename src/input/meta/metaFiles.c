@@ -33,7 +33,7 @@ static int parseHeaderMetaFile(
         break;
 
       case LBMETA_OPT__FORCE_ESMS:
-        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, forceRebuildScripts, true);
+        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, forcedScriptBuilding, true);
         break;
 
       case LBMETA_OPT__DISABLE_T_STD:
@@ -197,6 +197,7 @@ static void applyTrackGlobalOptions(
 
   LIBBLU_ES_SETTINGS_RESET_OPTIONS(dst);
   SET_FROM_GLB(dst, muxSettings, confHandle);
+  SET_FROM_GLB(dst, muxSettings, forcedScriptBuilding);
   SET_FROM_GLB(dst, muxSettings, dvdMedia);
 
   if (
@@ -266,6 +267,10 @@ static int parseTrackMetaFile(
     switch (parseLibbluMetaOption(optNode, &option, &argument, trackCodingType)) {
       case -1:
         return -1;
+
+      case LBMETA_OPT__FORCE_ESMS:
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, forcedScriptBuilding, true);
+        break;
 
       case LBMETA_OPT__SECONDARY:
         LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, secondaryStream, true);

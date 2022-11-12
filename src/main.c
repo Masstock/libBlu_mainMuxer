@@ -40,9 +40,9 @@ static void printHelp(
   P(" WITHOUT ANY WARRANTY OF ANY KIND.                                     ");
   P("                                                                       ");
   P(" PLEASE NOTE:                                                          ");
-  P(" This program is currently in an early stage of development and may not");
-  P(" be safe to use for purposes other than testing. Please rather use a   ");
-  P(" more advanced project such as tsMuxeR.                                ");
+  P("  This program is currently in an early stage of development and may   ");
+  P("  not be safe to use for purposes other than testing. Please rather use");
+  P("  a more advanced project such as tsMuxeR.                             ");
   P("                                                                       ");
   P(" Usage:                                                                ");
   P("     mainMuxer [options] -i <infile> [-o <outfile>]                    ");
@@ -159,16 +159,18 @@ static void printHelp(
   P(" = META input file : ================================================= ");
   P("                                                                       ");
   P(" libBlu originally use a similar META file syntax as tsMuxeR, but some ");
-  P(" parameters may differ (and libBlu supports less options).             ");
+  P(" options may differ (and libBlu supports less options).                ");
   P(" META files must be encoded in UTF-8.                                  ");
   P("                                                                       ");
-  P(" First line need 'MUXOPT' word and may contain global parameters,      ");
-  P(" which will be applied on each files. List of options given further.   ");
-  P("  MUXOPT [global optionnal parameters]                                 ");
+  P(" First line need 'MUXOPT' word and may contain global options, which   ");
+  P(" defines output stream structure and options applied on every track.   ");
+  P(" List of options given further.                                        ");
   P("                                                                       ");
-  P(" Following lines discribes input files to mux, with the following      ");
-  P(" syntax:                                                               ");
-  P("  <codec identifier>, <stream filename> [optionnal parameters*]        ");
+  P("  MUXOPT [global options]                                              ");
+  P("                                                                       ");
+  P(" Following lines describes each track with the following syntax:       ");
+  P("                                                                       ");
+  P("  <codec identifier>, <stream filename> [track options...]             ");
   P("                                                                       ");
   P(" with:                                                                 ");
   P("  'codec identifier'  Elementary stream codec name in supported codecs ");
@@ -181,12 +183,11 @@ static void printHelp(
   P("                      All filenames must be written using quotation    ");
   P("                      marks (\"'\"/'\"') if filename contains blank    ");
   P("                      spaces.                                          ");
-  P("  'optionnal parameters'                                               ");
-  P("                      A codec specific optionnal parameter             ");
-  P("                      (list and description given further).            ");
+  P("  'track options'     Track specific options (list given further).     ");
   P("                                                                       ");
-  P("  NOTE: Every optionnal parameter starts with double dashes and use    ");
-  P("  equal separator if some extra options are needed.                    ");
+  P(" NOTE:                                                                 ");
+  P("  Options starts with double dashes and use equal symbol separator with");
+  P("  the option value (if required/supplied).                             ");
   P("  Inline comments can be written using # symbol (e.g. '# Blablabla').  ");
   P("                                                                       ");
   P(" Example of META file:                                                 ");
@@ -199,15 +200,16 @@ static void printHelp(
   P(" level) with DTS audio.dts file (only with DCA core) at 60000000 clock ");
   P(" start time. Scripts generation is forced.                             ");
   P("                                                                       ");
-  P(" = Optionnal parameters : ============================================ ");
+  P(" = META Options : ==================================================== ");
   P("                                                                       ");
-  P(" This section is splitted in sub-parts according to parameter scope.   ");
-  P(" Globals parameters can be placed on the first line (following MUXOPT),");
-  P(" or as input file option if specified.                                 ");
-  P(" Codec specific parameters (as their name suggest) can only be used on ");
-  P(" input streams lines.                                                  ");
+  P(" This section is splitted in sub-parts according to option scope.      ");
+  P(" Globals options can be placed on the first line (following MUXOPT).   ");
+  P(" Track specific options (as their name suggest) can only be used on    ");
+  P(" tracks lines.                                                         ");
   P("                                                                       ");
-  P(" Global parameters :                                                   ");
+  P(" Global options :                                                      ");
+  P("  NOTE: Options with (*) symbol can also be used as track specific     ");
+  P("   options.                                                            ");
   P("                                                                       ");
   P("  --cbr               Produce Constant Bit-Rate transport stream rather");
   P("                      than Variable Bit-Rate (VBR) using NULL padding  ");
@@ -227,15 +229,14 @@ static void printHelp(
   P("                                                                       ");
   P("  --force-esms        Force regeneration of an input stream script file");
   P("                      regardless of a compatible existent one (which   ");
-  P("                      will be erased if present).                      ");
-  P("                       NOTE: This parameter can be used on a specific  ");
-  P("                        stream as codec specific parameter.            ");
+  P("                      will be erased if present) (*).                  ");
   P("                                                                       ");
   P("  --dvd-media         Indicate to compatible input elementary parsers  ");
   P("                      that output .m2ts file is planned to be burned   ");
   P("                      supplied on DVD media (and so may apply higher   ");
   P("                      constraints and may warn if for exemple bitrate  ");
   P("                      could be too high for those good-old red lasers).");
+  P("                       (*)                                             ");
   P("                                                                       ");
 #if !DISABLE_T_STD_BUFFER_VER
   P("  --disable-tstd      Disable use of MPEG T-STD buffer verifier during ");
@@ -245,11 +246,11 @@ static void printHelp(
   P("                      cost.                                            ");
   P("                                                                       ");
 #endif
-  P(" Tracks specific parameters:                                           ");
+  P(" Track specific options :                                              ");
   P("                                                                       ");
-  P("  --esms=<filename>   Allow to specify a specific script file to use.  ");
+  P("  --esms=<filename>   Allows to specify a specific script file to use. ");
   P("                      (Compatibility is always checked, if script is   ");
-  P("                      not, a new one will be generated).               ");
+  P("                      invalid, a new one will be generated).           ");
   P("                                                                       ");
   P("  --secondary         Indicate that stream must be muxed as a secondary");
   P("                      track. This enable secondary tracks specific     ");
@@ -575,7 +576,7 @@ int main(
 
   LIBBLU_MUX_SETTINGS_SET_OPTION(
     &param,
-    forceRebuildScripts,
+    forcedScriptBuilding,
     forceRemakeScripts
   );
 

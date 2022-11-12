@@ -10,7 +10,7 @@
 #include "metaFilesData.h"
 
 static const LibbluMetaOption options[] = {
-#define A_(...)  (LibbluStreamCodingType[]) { __VA_ARGS__ , STREAM_CODING_TYPE_NULL}
+#define A_(...)  (LibbluStreamCodingType[]) { __VA_ARGS__ , -1}
 #define D_(i, n, a, c)                                                      \
   (LibbluMetaOption) {i, lbc_str(n), sizeof(n)-1, a, A_ c}
 #define HRD  STREAM_CODING_TYPE_NULL  /* Only in header */
@@ -23,7 +23,7 @@ static const LibbluMetaOption options[] = {
   D_(          LBMETA_OPT__CBR_MUX,               "cbr", LBMETA_OPTARG_NO_ARG,
     (HRD)),
   D_(        LBMETA_OPT__FORCE_ESMS,        "force-esms", LBMETA_OPTARG_NO_ARG,
-    (HRD)),
+    (ANY, HRD)),
   D_(    LBMETA_OPT__DISABLE_T_STD,      "disable-tstd", LBMETA_OPTARG_NO_ARG,
     (HRD)),
 
@@ -36,7 +36,7 @@ static const LibbluMetaOption options[] = {
     (STREAM_CODING_TYPE_AVC)),
 
   D_(        LBMETA_OPT__DVD_MEDIA,         "dvd-media", LBMETA_OPTARG_NO_ARG,
-    (HRD, ANY)),
+    (ANY, HRD)),
 
   D_(        LBMETA_OPT__SECONDARY,         "secondary", LBMETA_OPTARG_NO_ARG,
     (STREAM_CODING_TYPE_H262, STREAM_CODING_TYPE_AVC, STREAM_CODING_TYPE_VC1,
@@ -110,11 +110,15 @@ LibbluMetaOptionId parseLibbluMetaOption(
   const lbc * name;
   const lbc * arg;
 
+  char * prefix = ""; /* For clear error messages */
+
   name = node->name;
   arg = node->arg;
 
-  if (lbc_equaln(name, lbc_str("--"), 2))
+  if (lbc_equaln(name, lbc_str("--"), 2)) {
+    prefix = "--";
     name += 2;
+  }
 
   for (i = 0; i < ARRAY_SIZE(options); i++) {
     if (lbc_equal(name, options[i].name)) {
@@ -122,29 +126,29 @@ LibbluMetaOptionId parseLibbluMetaOption(
       unsigned i;
 
       /* Check option location allowance */
-      for (i = 0; STREAM_CODING_TYPE_NULL != selectedOpt.compatibleCodingTypes[i]; i++) {
-        LibbluStreamCodingType allowedCodingType =
-          selectedOpt.compatibleCodingTypes[i]
-        ;
+      for (i = 0; 0 < selectedOpt.compatibleCodingTypes[i]; i++) {
+        LibbluStreamCodingType opCodingType = selectedOpt.compatibleCodingTypes[i];
 
         if (
-          allowedCodingType == STREAM_CODING_TYPE_ANY
-          || allowedCodingType == trackCodingType
-        )
+          opCodingType == STREAM_CODING_TYPE_ANY
+          || opCodingType == trackCodingType
+        ) {
           break;
+        }
       }
-      if (
-        STREAM_CODING_TYPE_NULL == selectedOpt.compatibleCodingTypes[i]
-        && STREAM_CODING_TYPE_NULL != trackCodingType
-      ) {
-        if (i == 0)
+
+      if (selectedOpt.compatibleCodingTypes[i] < 0 && 0 <= trackCodingType) {
+        if (selectedOpt.compatibleCodingTypes[0] < 0)
           LIBBLU_ERROR_RETURN(
-            "Option '%" PRI_LBCS "' can only be used in header.\n",
+            "Option '%s%" PRI_LBCS "' can only be used in header.\n",
+            prefix,
             selectedOpt.name,
             streamCodingTypeStr(trackCodingType)
           );
+
         LIBBLU_ERROR_RETURN(
-          "Option '%" PRI_LBCS "' cannot be used on a %" PRI_LBCS " track.\n",
+          "Option '%s%" PRI_LBCS "' cannot be used on a %" PRI_LBCS " track.\n",
+          prefix,
           selectedOpt.name,
           streamCodingTypeStr(trackCodingType)
         );
@@ -155,15 +159,17 @@ LibbluMetaOptionId parseLibbluMetaOption(
         /* Expect presence of argument. */
         if (NULL == arg)
           LIBBLU_ERROR_RETURN(
-            "The option '%" PRI_LBCS "' expect an argument.\n",
+            "The option '%s%" PRI_LBCS "' expect an argument.\n",
+            prefix,
             selectedOpt.name
           );
 
         if (parseLibbluMetaOptionArg(arg, selectedOpt.arg, argument) < 0)
           LIBBLU_ERROR_RETURN(
             "'%" PRI_LBCS "' is not a valid argument for option "
-            "'%" PRI_LBCS "'.\n",
+            "'%s%" PRI_LBCS "'.\n",
             argument,
+            prefix,
             selectedOpt.name
           );
       }
@@ -171,7 +177,8 @@ LibbluMetaOptionId parseLibbluMetaOption(
         /* Unexpect presence of argument. */
         if (NULL != arg)
           LIBBLU_ERROR_RETURN(
-            "The option '%" PRI_LBCS "' does not expect an argument.\n",
+            "The option '%s%" PRI_LBCS "' does not expect an argument.\n",
+            prefix,
             selectedOpt.name
           );
       }
@@ -184,7 +191,8 @@ LibbluMetaOptionId parseLibbluMetaOption(
   }
 
   LIBBLU_ERROR_RETURN(
-    "Unknown option '%" PRI_LBCS "'.\n",
+    "Unknown option '%s%" PRI_LBCS "'.\n",
+    prefix,
     name
   );
 }

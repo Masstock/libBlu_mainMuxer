@@ -24,6 +24,7 @@ static inline bool isUsedLibbluAspectRatioMod(
 
 typedef struct {
   IniFileContextPtr confHandle;
+  bool forcedScriptBuilding;  /**< Forced script building. */
   bool dvdMedia;
   bool secondaryStream;         /**< Set to true if ES must be muxed as a
     secondary stream.                                                        */

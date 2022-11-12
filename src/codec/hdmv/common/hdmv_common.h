@@ -34,20 +34,20 @@
 typedef int hdmv_segtype_idx;
 
 static const HdmvSegmentType hdmv_segtype_indexes[] = {
-  HDMV_SEGMENT_TYPE_PDS,
-  HDMV_SEGMENT_TYPE_ODS,
+  HDMV_SEGMENT_TYPE_ICS,
   HDMV_SEGMENT_TYPE_PCS,
   HDMV_SEGMENT_TYPE_WDS,
-  HDMV_SEGMENT_TYPE_ICS,
+  HDMV_SEGMENT_TYPE_PDS,
+  HDMV_SEGMENT_TYPE_ODS,
   HDMV_SEGMENT_TYPE_END
 };
 
 typedef enum {
-  HDMV_SEGMENT_TYPE_PDS_IDX,
-  HDMV_SEGMENT_TYPE_ODS_IDX,
+  HDMV_SEGMENT_TYPE_ICS_IDX,
   HDMV_SEGMENT_TYPE_PCS_IDX,
   HDMV_SEGMENT_TYPE_WDS_IDX,
-  HDMV_SEGMENT_TYPE_ICS_IDX,
+  HDMV_SEGMENT_TYPE_PDS_IDX,
+  HDMV_SEGMENT_TYPE_ODS_IDX,
   HDMV_SEGMENT_TYPE_END_IDX
 } hdmv_segtype_idx_value;
 
@@ -81,11 +81,11 @@ static inline const char * segmentTypeIndexStr(
 )
 {
   static const char strings[][SEGMENT_TYPE_IDX_STR_SIZE] = {
-    "PDS",
-    "ODS",
+    "ICS",
     "PCS",
     "WDS",
-    "ICS",
+    "PDS",
+    "ODS",
     "END"
   }; /**< Sizes are restricted to SEGMENT_TYPE_IDX_STR_SIZE characters
     (including NUL character) */
@@ -94,26 +94,6 @@ static inline const char * segmentTypeIndexStr(
 
   return strings[idx];
 }
-
-#if 0
-#define HDMV_SEGMENT_TYPE_PDS_IDX                                             \
-  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_PDS)
-
-#define HDMV_SEGMENT_TYPE_ODS_IDX                                             \
-  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_ODS)
-
-#define HDMV_SEGMENT_TYPE_PCS_IDX                                             \
-  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_PCS)
-
-#define HDMV_SEGMENT_TYPE_WDS_IDX                                             \
-  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_WDS)
-
-#define HDMV_SEGMENT_TYPE_ICS_IDX                                             \
-  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_ICS)
-
-#define HDMV_SEGMENT_TYPE_END_IDX                                             \
-  segmentTypeIndexHdmvContext(HDMV_SEGMENT_TYPE_END)
-#endif
 
 /* ###  */
 

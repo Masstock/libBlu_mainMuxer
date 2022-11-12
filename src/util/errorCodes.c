@@ -22,6 +22,12 @@ static const struct {
   ),
 
   DECLARE_OPTION(
+    LIBBLU_DEBUG_SCRIPTS,
+    "esms_scripts",
+    "Muxer scripts management"
+  ),
+
+  DECLARE_OPTION(
     LIBBLU_DEBUG_MUXER_DECISION,
     "muxer_decisions",
     "Muxer packets decision"
@@ -100,6 +106,13 @@ static const struct {
     "DTS audio parser operations"
   ),
 
+  /* H.262 Video : */
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_H262_PARSING,
+    "h262_parsing",
+    "H.262 video content"
+  ),
+
   /* H.264 Video : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_NAL,
@@ -147,6 +160,22 @@ static const struct {
     "H.264 video Access Units detection and stitching"
   ),
 
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_H264_HRD_CPB,
+    "h264_hrd_cpb",
+    "H.264 HRD Coded Picture Buffer status"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_H264_HRD_DPB,
+    "h264_hrd_dpb",
+    "H.264 HRD Decoded Picture Buffer status"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_H264_HRD_OPERATIONS,
+    "h264_hrd_operations",
+    "H.264 HRD verification operations"
+  ),
+
   /* HDMV Common : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_COMMON,
@@ -178,6 +207,18 @@ static const struct {
     "hdmv_libpng",
     "HDMV pictures LibPng IO operations"
   ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_HDMV_TC,
+    "hdmv_timecode",
+    "HDMV streams generation timecodes management"
+  ),
+
+  /* HDMV IGS Parser : */
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_IGS_PARSER,
+    "pgs_parser",
+    "HDMV PGS (subtitles) content"
+  ),
 
   /* HDMV IGS Parser : */
   DECLARE_OPTION(
@@ -204,95 +245,6 @@ static const struct {
   )
 #undef DECLARE_OPTION
 };
-
-#if 0
-static const char * debuggingLevelsNames[] = {
-  "all",
-
-  "muxer_decisions",
-  "pes_building",
-
-  "t_std_test",
-  "t_std_decl",
-  "t_std_operations",
-
-  "dts_parsing_dtshd",
-  "dts_parsing_pbrfile",
-  "dts_parsing_core",
-  "dts_parsing_extSS",
-  "dts_parsing_xll",
-  "dts_pbr",
-  "dts_operations",
-
-  "h264_parsing_nalu",
-  "h264_parsing_aud",
-  "h264_parsing_sps",
-  "h264_parsing_vui",
-  "h264_parsing_pps",
-  "h264_parsing_sei",
-  "h264_parsing_slice",
-  "h264_operations",
-  "h264_access_units_processing"
-};
-
-static const char * debuggingLevelsDescs[] = {
-  "Enable all available categories, as '-d' option",
-
-  "Muxer packets decision",
-  "PES packets building information",
-
-  "T-STD Buffer Verifier tests",
-  "T-STD Buffer Verifier packets data declaration",
-  "T-STD Buffer Verifier operations",
-
-  "DTS audio DTSHD file headers content",
-  "DTS audio dtspbr statistics file content",
-  "DTS audio Core Substream content",
-  "DTS audio Extension Substream content",
-  "DTS audio XLL extension content",
-  "DTS audio PBR smoothing process informations",
-  "DTS audio parser operations",
-
-  "H.264 video NAL Units headers content",
-  "H.264 video Access Unit Delimiter and other structural NALUs content",
-  "H.264 video Sequence Parameter Set NALUs content",
-  "H.264 video SPS Video Usability Information content",
-  "H.264 video Picture Parameter Set NALUs content",
-  "H.264 video Supplemental Enhancement Information messages NALUs content",
-  "H.264 video Slice headers NALUs content",
-  "H.264 video parser operations",
-  "H.264 video Access Units detection and stitching"
-};
-
-static const LibbluStatus debuggingLevels[] = {
-  LIBBLU_DEBUG_GLB,
-
-  LIBBLU_DEBUG_MUXER_DECISION,
-  LIBBLU_DEBUG_PES_BUILDING,
-
-  LIBBLU_DEBUG_T_STD_VERIF_TEST,
-  LIBBLU_DEBUG_T_STD_VERIF_DECLARATIONS,
-  LIBBLU_DEBUG_T_STD_VERIF_OPERATIONS,
-
-  LIBBLU_DEBUG_DTS_PARSING_DTSHD,
-  LIBBLU_DEBUG_DTS_PARSING_PBRFILE,
-  LIBBLU_DEBUG_DTS_PARSING_CORE,
-  LIBBLU_DEBUG_DTS_PARSING_EXTSS,
-  LIBBLU_DEBUG_DTS_PARSING_XLL,
-  LIBBLU_DEBUG_DTS_PBR,
-  LIBBLU_DEBUG_DTS_OPERATIONS,
-
-  LIBBLU_DEBUG_H264_PARSING_NAL,
-  LIBBLU_DEBUG_H264_PARSING_AUD,
-  LIBBLU_DEBUG_H264_PARSING_SPS,
-  LIBBLU_DEBUG_H264_PARSING_VUI,
-  LIBBLU_DEBUG_H264_PARSING_PPS,
-  LIBBLU_DEBUG_H264_PARSING_SEI,
-  LIBBLU_DEBUG_H264_PARSING_SLICE,
-  LIBBLU_DEBUG_H264_OPERATIONS,
-  LIBBLU_DEBUG_H264_AU_PROCESSING
-};
-#endif
 
 static char enabledStatus[LIBBLU_NB_STATUS] = {
   0

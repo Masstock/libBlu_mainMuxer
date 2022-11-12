@@ -88,12 +88,12 @@ static void _initSequencesLimit(
   );
 
   static const unsigned segNbLimitsEpoch[][HDMV_NB_SEGMENT_TYPES] = {
-    {256, 4096, 0, 0, 1, 1}, /* IGS */
-    {  8,   64, 8, 1, 0, 1}  /* PGS */
+    {1, 0, 0, 256, 4096, 1}, /* IGS */
+    {0, 1, 8,   8,   64, 1}, /* PGS */
   };
   static const unsigned segNbLimitsDS[][HDMV_NB_SEGMENT_TYPES] = {
-    {256, 4096, 0, 0, 1, 1}, /* IGS */
-    {  8,   64, 1, 1, 0, 1}  /* PGS */
+    {1, 0, 0, 256, 4096, 1}, /* IGS */
+    {0, 1, 1,   8,   64, 1}  /* PGS */
   };
 
   assert(ctx->type < ARRAY_SIZE(segNbLimitsEpoch));
@@ -676,17 +676,12 @@ int _copySegmentsTimestampsDisplaySet(
   LIBBLU_HDMV_COM_DEBUG("  NOTE: Using input file headers time values:\n");
 
   for (idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
-    HdmvSequencePtr seq;
+    HdmvSequencePtr seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
 
-    LIBBLU_HDMV_COM_DEBUG("   - %s:\n", segmentTypeIndexStr(idx));
+    if (NULL != seq)
+      LIBBLU_HDMV_COM_DEBUG("   - %s:\n", segmentTypeIndexStr(idx));
 
-    for (
-      seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
-      NULL != seq;
-      seq = seq->nextSequence
-    ) {
-      HdmvSegmentPtr seg;
-
+    for (; NULL != seq; seq = seq->nextSequence) {
       seq->pts = seq->segments->param.header.pts + ctx->param.referenceClock;
       seq->dts = seq->segments->param.header.dts + ctx->param.referenceClock;
 
@@ -760,22 +755,13 @@ int _registeringSegmentsDisplaySet(
   HdmvDisplaySet * ds
 )
 {
-  unsigned i;
+  hdmv_segtype_idx idx;
 
-  static const hdmv_segtype_idx typesOrder[] = {
-    HDMV_SEGMENT_TYPE_ICS_IDX,
-    HDMV_SEGMENT_TYPE_PCS_IDX,
-    HDMV_SEGMENT_TYPE_WDS_IDX,
-    HDMV_SEGMENT_TYPE_PDS_IDX,
-    HDMV_SEGMENT_TYPE_ODS_IDX,
-    HDMV_SEGMENT_TYPE_END_IDX
-  };
-
-  for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
+  for (idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
     HdmvSequencePtr seq;
 
     for (
-      seq = getSequenceByIdxHdmvDisplaySet(ds, typesOrder[i]);
+      seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
       NULL != seq;
       seq = seq->nextSequence
     ) {
