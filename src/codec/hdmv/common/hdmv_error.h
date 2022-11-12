@@ -215,7 +215,7 @@
     ##__VA_ARGS__                                                             \
   )
 
-/* ### HDMV Segments Building : ###################################################### */
+/* ### HDMV Segments Building : ############################################ */
 
 #define LIBBLU_HDMV_SEGBUILD_NAME  LIBBLU_HDMV_KEYWORD "/Builder"
 #define LIBBLU_HDMV_SEGBUILD_PREFIX LIBBLU_HDMV_SEGBUILD_NAME ": "
@@ -327,7 +327,7 @@
     ##__VA_ARGS__                                                             \
   )
 
-/* ### libpng ############################################################## */
+/* ### libpng : ############################################################ */
 
 #define LIBBLU_HDMV_LIBPNG_NAME  LIBBLU_HDMV_KEYWORD " libpng"
 #define LIBBLU_HDMV_LIBPNG_PREFIX  LIBBLU_HDMV_LIBPNG_NAME ": "
@@ -349,9 +349,9 @@
     ##__VA_ARGS__                                                             \
   )
 
-/* ### Timecodes ########################################################### */
+/* ### Timecodes : ######################################################### */
 
-#define LIBBLU_HDMV_TC_NAME  LIBBLU_HDMV_KEYWORD " libpng"
+#define LIBBLU_HDMV_TC_NAME  LIBBLU_HDMV_KEYWORD "/Timecodes"
 #define LIBBLU_HDMV_TC_PREFIX  LIBBLU_HDMV_TC_NAME ": "
 
 #define LIBBLU_HDMV_TC_ERROR(format, ...)                                     \
@@ -367,6 +367,28 @@
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_HDMV_TC,                                                     \
     LIBBLU_HDMV_TC_NAME,                                                      \
+    format,                                                                   \
+    ##__VA_ARGS__                                                             \
+  )
+
+/* ### Checks : ############################################################ */
+
+#define LIBBLU_HDMV_CK_NAME  LIBBLU_HDMV_KEYWORD "/Checks"
+#define LIBBLU_HDMV_CK_PREFIX  LIBBLU_HDMV_CK_NAME ": "
+
+#define LIBBLU_HDMV_CK_ERROR(format, ...)                                     \
+  LIBBLU_ERROR(LIBBLU_HDMV_CK_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_CK_ERROR_RETURN(format, ...)                              \
+  LIBBLU_ERROR_RETURN(LIBBLU_HDMV_CK_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_CK_ERROR_NRETURN(format, ...)                             \
+  LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_CK_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_CK_DEBUG(format, ...)                                     \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_HDMV_CHECKS,                                                 \
+    LIBBLU_HDMV_CK_NAME,                                                      \
     format,                                                                   \
     ##__VA_ARGS__                                                             \
   )

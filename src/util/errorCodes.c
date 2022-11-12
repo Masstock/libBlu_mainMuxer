@@ -183,6 +183,16 @@ static const struct {
     "HDMV bitstreams common operations"
   ),
   DECLARE_OPTION(
+    LIBBLU_DEBUG_HDMV_PARSER,
+    "hdmv_parser",
+    "HDMV bitstreams common parsing informations"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_HDMV_CHECKS,
+    "hdmv_checks",
+    "HDMV bitstreams compliance checks"
+  ),
+  DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_SEG_BUILDER,
     "hdmv_seg_builder",
     "HDMV bitstreams segments builder"

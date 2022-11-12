@@ -508,6 +508,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   unsigned i;
 
   bool tStdBufModelEnabled;
+  bool forceRebuildAllScripts;
 
   LibbluStreamPtr stream;
 
@@ -539,6 +540,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   setDefaultSitParameters(&ctx->sitParam);
 
   tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableTStdBufVerifier);
+  forceRebuildAllScripts = LIBBLU_MUX_SETTINGS_OPTION(&settings, forcedScriptBuilding);
 
   /* Interpret PCR carrying options */
   ctx->pcrParam.carriedByES = LIBBLU_MUX_SETTINGS_OPTION(
@@ -591,7 +593,9 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
     ctx->elementaryStreams[i] = stream;
 
     /* Get the forced script rebuilding option */
-    forceRebuildScript = esSettings->options.forcedScriptBuilding;
+    forceRebuildScript =
+      (forceRebuildAllScripts || esSettings->options.forcedScriptBuilding)
+    ;
 
     /* Prepare the ES */
     LIBBLU_DEBUG_COM(" Preparation of the Elementary Stream handle.\n");

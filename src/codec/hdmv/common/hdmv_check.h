@@ -11,6 +11,12 @@ int checkHdmvSequence(
 
 int checkHdmvDisplaySet(
   HdmvDisplaySet * ds,
+  HdmvStreamType type,
+  unsigned displaySetNb
+);
+
+int checkObjectsBufferingHdmvDisplaySet(
+  HdmvDisplaySet * ds,
   HdmvStreamType type
 );
 

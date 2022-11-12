@@ -678,13 +678,19 @@ int _copySegmentsTimestampsDisplaySet(
 
   for (idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
     HdmvSequencePtr seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
-
-    if (NULL != seq)
-      LIBBLU_HDMV_COM_DEBUG("   - %s:\n", segmentTypeIndexStr(idx));
+    bool displayedListName = false;
 
     for (; NULL != seq; seq = seq->nextSequence) {
       seq->pts = seq->segments->param.header.pts + ctx->param.referenceClock;
       seq->dts = seq->segments->param.header.dts + ctx->param.referenceClock;
+
+      if (!isFromDisplaySetNbHdmvSequence(seq, ctx->nbDisplaySets))
+        continue;
+
+      if (!displayedListName) {
+        LIBBLU_HDMV_COM_DEBUG("   - %s:\n", segmentTypeIndexStr(idx));
+        displayedListName = true;
+      }
 
       LIBBLU_HDMV_COM_DEBUG(
         "    - PTS: %" PRIu64 " DTS: %" PRIu64 "\n",
@@ -831,10 +837,14 @@ int completeDisplaySetHdmvContext(
       return -1;
   }
   else {
+    LIBBLU_HDMV_CK_DEBUG(" Checking Display Set:\n");
 #if 0
-  if (checkHdmvDisplaySet(&ctx->displaySet, ctx->type) < 0)
-    return -1;
+
+    if (checkHdmvDisplaySet(&ctx->displaySet, ctx->type, ctx->nbDisplaySets) < 0)
+      return -1;
 #endif
+    if (checkObjectsBufferingHdmvDisplaySet(&ctx->displaySet, ctx->type) < 0)
+      return -1;
   }
 
   /* Set decoding duration/timestamps: */

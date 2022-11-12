@@ -57,26 +57,123 @@ static int _checkMandatorySequences(
 
 int checkHdmvDisplaySet(
   HdmvDisplaySet * ds,
-  HdmvStreamType type
+  HdmvStreamType type,
+  unsigned curDSIdx
 )
 {
   hdmv_segtype_idx idx;
 
+  LIBBLU_HDMV_CK_DEBUG("  Checking mandatory segments/sequences presence:\n");
   if (_checkMandatorySequences(ds, type) < 0)
     return -1;
 
+  LIBBLU_HDMV_CK_DEBUG("  Checking segments/sequences:\n");
   for (idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
-    HdmvSequencePtr sequence;
+    HdmvSequencePtr seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
 
-    for (
-      sequence = getSequenceByIdxHdmvDisplaySet(ds, idx);
-      NULL != sequence;
-      sequence = sequence->nextSequence
-    ) {
-      if (checkHdmvSequence(sequence) < 0)
+    for (; NULL != seq; seq = seq->nextSequence) {
+      if (!isFromDisplaySetNbHdmvSequence(seq, curDSIdx))
+        continue;
+
+      if (checkHdmvSequence(seq) < 0)
         return -1;
     }
   }
+
+  return 0;
+}
+
+/** \~english
+ * \brief Coded Object Buffer (EB) size.
+ *
+ * \return size_t
+ */
+static size_t _getCodedObjectBufferSize(
+  void
+)
+{
+  return 1 << 20;
+}
+
+/** \~english
+ * \brief Decoded Object Buffer (DB) size.
+ *
+ * \param type
+ * \return size_t
+ */
+static size_t _getDecodedObjectBufferSize(
+  HdmvStreamType type
+)
+{
+  static const size_t sizes[] = {
+    16 << 20, /**< Interactive Graphics  - 16MiB  */
+    4  << 20, /**< Presentation Graphics -  4MiB  */
+  };
+
+  return sizes[type];
+}
+
+int checkObjectsBufferingHdmvDisplaySet(
+  HdmvDisplaySet * ds,
+  HdmvStreamType type
+)
+{
+  HdmvSequencePtr seq = getSequenceByIdxHdmvDisplaySet(ds, HDMV_SEGMENT_TYPE_ODS_IDX);
+
+  size_t codedObjBufferUsage = 0;
+  size_t decodedObjBufferUsage = 0;
+  size_t codedObjBufferSize;
+  size_t decodedObjBufferSize;
+
+  LIBBLU_HDMV_CK_DEBUG("  Checking objects buffer usage:\n");
+  LIBBLU_HDMV_CK_DEBUG("     Compressed size => Uncompressed size.\n");
+  for (; NULL != seq; seq = seq->nextSequence) {
+    HdmvODParameters object_data = seq->data.od;
+    size_t objCodedSize = object_data.object_data_length;
+    size_t objDecodedSize = object_data.object_width * object_data.object_height;
+
+    LIBBLU_HDMV_CK_DEBUG(
+      "   - Object %u: %ux%u, %zu byte(s) => %zu byte(s).\n",
+      object_data.object_descriptor.object_id,
+      object_data.object_width,
+      object_data.object_height,
+      objCodedSize,
+      objDecodedSize
+    );
+
+    codedObjBufferUsage += objCodedSize;
+    decodedObjBufferUsage += objDecodedSize;
+  }
+
+  codedObjBufferSize = _getCodedObjectBufferSize();
+  LIBBLU_HDMV_CK_DEBUG(
+    "    => Coded Object Buffer (EB) usage: %zu bytes / %zu bytes.\n",
+    codedObjBufferUsage,
+    codedObjBufferSize
+  );
+
+  if (codedObjBufferSize < codedObjBufferUsage)
+    LIBBLU_HDMV_CK_ERROR_RETURN(
+      "Coded Object Buffer (EB) overflows, "
+      "%zu bytes used out of buffer size of %zu bytes.\n",
+      codedObjBufferUsage,
+      codedObjBufferSize
+    );
+
+  decodedObjBufferSize = _getDecodedObjectBufferSize(type);
+  LIBBLU_HDMV_CK_DEBUG(
+    "    => Decoded Object Buffer (DB) usage: %zu bytes / %zu bytes.\n",
+    decodedObjBufferUsage,
+    decodedObjBufferSize
+  );
+
+  if (decodedObjBufferSize < decodedObjBufferUsage)
+    LIBBLU_HDMV_CK_ERROR_RETURN(
+      "Decoded Object Buffer (DB) overflows, "
+      "%zu bytes used out of buffer size of %zu bytes.\n",
+      decodedObjBufferUsage,
+      decodedObjBufferSize
+    );
 
   return 0;
 }
@@ -89,14 +186,14 @@ int checkDuplicatedHdmvDisplaySet(
   hdmv_segtype_idx idx;
 
   for (idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
-    HdmvSequencePtr sequence;
+    HdmvSequencePtr seq;
 
     for (
-      sequence = getSequenceByIdxHdmvDisplaySet(ds, idx);
-      NULL != sequence;
-      sequence = sequence->nextSequence
+      seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
+      NULL != seq;
+      seq = seq->nextSequence
     ) {
-      if (isFromDisplaySetNbHdmvSequence(sequence, lastDSIdx)) {
+      if (isFromDisplaySetNbHdmvSequence(seq, lastDSIdx)) {
         /* Presence of a non-refreshed sequence from previous DS. */
         LIBBLU_HDMV_COM_ERROR_RETURN(
           "Missing segments from previous duplicated DS.\n"
