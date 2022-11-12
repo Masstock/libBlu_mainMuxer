@@ -10,8 +10,7 @@
 
 static int _initOutputHdmvContext(
   HdmvContextOutput * output,
-  const LibbluESParsingSettings * settings,
-  const lbc * infilepath
+  const LibbluESParsingSettings * settings
 )
 {
   LIBBLU_HDMV_COM_DEBUG(
@@ -146,7 +145,7 @@ HdmvContextPtr createHdmvContext(
     LIBBLU_HDMV_COM_ERROR_NRETURN("Memory allocation error.\n");
   ctx->type = type;
 
-  if (_initOutputHdmvContext(&ctx->output, settings, infilepath) < 0)
+  if (_initOutputHdmvContext(&ctx->output, settings) < 0)
     goto free_return;
   if (_initInputHdmvContext(&ctx->input, ctx->output, infilepath) < 0)
     goto free_return;
@@ -615,7 +614,9 @@ static uint64_t _computePgsDisplaySetDecodeDuration(
   const HdmvDisplaySet * ds
 )
 {
-  return 0;
+  (void) ds;
+
+  LIBBLU_TODO();
 }
 
 int _computeTimestampsDisplaySet(
@@ -660,7 +661,7 @@ int _computeTimestampsDisplaySet(
       "Invalid timecode, decoding period of current DS overlaps previous DS.\n"
     );
 
-  /* TODO */
+  LIBBLU_TODO();
 
   ctx->param.lastClock = timecode + ctx->param.referenceClock;
   return 0;
