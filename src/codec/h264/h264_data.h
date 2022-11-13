@@ -21,7 +21,6 @@
 #define ALLOW_BUFFERING_PERIOD_CHANGE                         1
 
 #define H264_MAX_CHROMA_CHANNELS_NB                           2
-#define H264_MAX_CPB_CONFIGURATIONS                          32
 
 
 /** \~english
@@ -327,6 +326,8 @@ typedef struct {
   uint32_t bit_rate_value_minus1;
   uint32_t cpb_size_value_minus1;
 } H264SchedSel;
+
+#define H264_MAX_CPB_CONFIGURATIONS  32
 
 typedef struct {
   unsigned cpb_cnt_minus1;
