@@ -77,7 +77,9 @@ typedef enum {
 
 typedef struct {
   int64_t frameDisplayNum;
-  unsigned frameNum;
+  unsigned frame_num;
+  bool field_pic_flag;
+  bool bottom_field_flag;
   bool idrPic;
 
   uint64_t dpbOutputDelay;
@@ -105,7 +107,9 @@ typedef struct {
   unsigned AUIdx; /* For debug output. */
 
   int64_t frameDisplayNum; /* Derivated from picOrderCnt */
-  unsigned frameNum; /* SliceHeader() frame_num */
+  unsigned frame_num; /* SliceHeader() frame_num */
+  bool field_pic_flag;
+  bool bottom_field_flag;
 
   uint64_t outputTime; /* t_o,dpb in c ticks. */
   H264DpbHrdRefUsage usage;
@@ -175,7 +179,7 @@ typedef struct {
   int maxLongTermFrameIdx;
 
   struct {
-    unsigned frameNum;
+    unsigned frame_num;
 
     unsigned picSizeInMbs;
     uint8_t levelIdc;
@@ -298,10 +302,13 @@ int updateDPBH264HrdContext(H264HrdVerifierContextPtr ctx, uint64_t currentTime)
 void clearDPBH264HrdContext(H264HrdVerifierContextPtr ctx);
 
 int markAllDecodedPicturesAsUnusedH264HrdContext(H264HrdVerifierContextPtr ctx);
+
 int markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
   H264HrdVerifierContextPtr ctx,
-  unsigned frameNum
+  unsigned difference_of_pic_nums_minus1,
+  H264DpbHrdPicInfos * picInfos
 );
+
 int markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
   H264HrdVerifierContextPtr ctx,
   unsigned frameNum

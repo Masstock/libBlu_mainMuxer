@@ -3233,9 +3233,7 @@ int analyzeAc3(
     ac3Infos->prop.bitDepth = 16; /* 16, 20 or 24 bits (Does not matter, not contained in header) */
   }
   else {
-    LIBBLU_DEBUG_COM("%d\n", detectedStream);
-    /* TODO */
-    assert(0);
+    LIBBLU_TODO();
   }
 
   switch (detectedStream) {

@@ -923,24 +923,34 @@ typedef enum {
   H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM             = 6
 } H264MemoryManagementControlOperationValue;
 
-const char * h264MemoryManagementControlOperationValueStr(
-  const H264MemoryManagementControlOperationValue val
-);
+static inline const char * H264MemoryManagementControlOperationValueStr(
+  H264MemoryManagementControlOperationValue val
+)
+{
+  static const char * instr[] = {
+    "End of instructions marker",
+    "Mark a short-term reference picture as 'unused for reference'",
+    "Mark a long-term reference picture as 'unused for reference'",
+    "Mark a short-term reference picture as 'used for long-term reference'",
+    "Set max long-term frame index",
+    "Mark all reference pictures as 'unused for reference'",
+    "Mark current picture as 'used for long-term reference'"
+  };
 
-typedef struct H264MemMngmntCtrlOpBlk {
-  struct H264MemMngmntCtrlOpBlk * nextOperation;
+  if (val < ARRAY_SIZE(instr))
+    return instr[val];
+  return "Unknown";
+}
+
+typedef struct H264MemoryManagementControlOperationsBlock {
+  struct H264MemoryManagementControlOperationsBlock * nextOperation;
 
   H264MemoryManagementControlOperationValue operation;
-
-  unsigned diffOfPicNumsMinus1;
-  unsigned longTermPicNum;
-  unsigned longTermFrameIdx;
-  unsigned maxLongTermFrameIdxPlus1;
-}
-  H264MemMngmntCtrlOpBlk,
-  *H264MemoryManagementControlOperationsBlockPtr,
-  *H264MemMngmntCtrlOpBlkPtr
-;
+  unsigned difference_of_pic_nums_minus1;
+  unsigned long_term_pic_num;
+  unsigned long_term_frame_idx;
+  unsigned max_long_term_frame_idx_plus1;
+} H264MemMngmntCtrlOpBlk, *H264MemMngmntCtrlOpBlkPtr;
 
 H264MemMngmntCtrlOpBlkPtr createH264MemoryManagementControlOperations(
   void
@@ -992,8 +1002,8 @@ typedef struct {
   H264ColourPlaneIdValue colourPlaneId;
   uint16_t frameNum;
 
-  bool fieldPic;
-  bool bottomField;
+  bool field_pic_flag;
+  bool bottom_field_flag;
 
   uint16_t idrPicId;
   uint16_t picOrderCntLsb;

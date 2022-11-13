@@ -320,8 +320,7 @@ static int _parseHdmvPdsSegment(
     return -1;
 
   /* Increment counters of PDS segments/sequences */
-  incrementSegmentsNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_PDS_IDX);
-  incrementSequencesNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_PDS_IDX);
+  incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_PDS_IDX);
 
   return 0;
 }
@@ -520,13 +519,10 @@ static int _parseHdmvOdsSegment(
     /* Mark sequence as decoded/completed. */
     if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_ODS_IDX) < 0)
       return -1;
-
-    /* Increment counters of ODS sequences */
-    incrementSequencesNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_ODS_IDX);
   }
 
   /* Increment counters of ODS segments */
-  incrementSegmentsNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_ODS_IDX);
+  incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_ODS_IDX);
 
   return 0;
 }
@@ -870,9 +866,8 @@ static int _parseHdmvPcsSegment(
   if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_PCS_IDX) < 0)
     return -1;
 
-  /* Increment counters of PCS segments/sequences */
-  incrementSegmentsNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_PCS_IDX);
-  incrementSequencesNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_PCS_IDX);
+  /* Increment counters of PCS segments */
+  incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_PCS_IDX);
 
   return 0;
 }
@@ -1020,9 +1015,8 @@ static int _parseHdmvWdsSegment(
   if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_WDS_IDX) < 0)
     return -1;
 
-  /* Increment counters of WDS segments/sequences */
-  incrementSegmentsNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_WDS_IDX);
-  incrementSequencesNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_WDS_IDX);
+  /* Increment counters of WDS segments */
+  incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_WDS_IDX);
 
   return 0;
 }
@@ -1061,7 +1055,6 @@ static int _parseHdmvInteractiveCompositionDataFragment(
 }
 
 static int _decodeHdmvWindowInfo(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvWindowInfoParameters * param
 )
@@ -1127,13 +1120,11 @@ static int _decodeHdmvWindowInfo(
 }
 
 static int _decodeHdmvCompositionObject(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvCompositionObjectParameters * param
 )
 {
   uint32_t value;
-  unsigned i;
 
   /* [u16 object_id_ref] */
   if (readValueFromHdmvSequence(sequence, 2, &value) < 0)
@@ -1314,7 +1305,7 @@ static int _decodeHdmvEffectInfo(
     if (NULL == (obj = getHdmvCompositionObjectParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
       return -1;
 
-    if (_decodeHdmvCompositionObject(ctx, sequence, obj) < 0)
+    if (_decodeHdmvCompositionObject(sequence, obj) < 0)
       return -1;
 
     param->composition_objects[i] = obj;
@@ -1368,7 +1359,7 @@ static int _decodeHdmvEffectSequence(
       return -1;
 
     /* Window_info() */
-    if (_decodeHdmvWindowInfo(ctx, sequence, win) < 0)
+    if (_decodeHdmvWindowInfo(sequence, win) < 0)
       return -1;
 
     param->windows[i] = win;
@@ -1414,7 +1405,6 @@ static int _decodeHdmvEffectSequence(
 }
 
 static int _decodeHdmvButtonNeighborInfo(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvButtonNeighborInfoParam * param
 )
@@ -1473,7 +1463,6 @@ static int _decodeHdmvButtonNeighborInfo(
 }
 
 static int _decodeHdmvButtonNormalStateInfo(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvButtonNormalStateInfoParam * param
 )
@@ -1531,7 +1520,6 @@ static int _decodeHdmvButtonNormalStateInfo(
 }
 
 static int _decodeHdmvButtonSelectedStateInfo(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvButtonSelectedStateInfoParam * param
 )
@@ -1600,7 +1588,6 @@ static int _decodeHdmvButtonSelectedStateInfo(
 }
 
 static int _decodeHdmvButtonActivatedStateInfo(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvButtonActivatedStateInfoParam * param
 )
@@ -1709,7 +1696,6 @@ static int _decodeHdmvButton(
 )
 {
   uint32_t value;
-  unsigned i;
 
   /* [u16 button_id] */
   if (readValueFromHdmvSequence(sequence, 2, &value) < 0)
@@ -1776,19 +1762,19 @@ static int _decodeHdmvButton(
   );
 
   /* neighbor_info() */
-  if (_decodeHdmvButtonNeighborInfo(ctx, sequence, &param->neighbor_info) < 0)
+  if (_decodeHdmvButtonNeighborInfo(sequence, &param->neighbor_info) < 0)
     return -1;
 
   /* normal_state_info() */
-  if (_decodeHdmvButtonNormalStateInfo(ctx, sequence, &param->normal_state_info) < 0)
+  if (_decodeHdmvButtonNormalStateInfo(sequence, &param->normal_state_info) < 0)
     return -1;
 
   /* selected_state_info() */
-  if (_decodeHdmvButtonSelectedStateInfo(ctx, sequence, &param->selected_state_info) < 0)
+  if (_decodeHdmvButtonSelectedStateInfo(sequence, &param->selected_state_info) < 0)
     return -1;
 
   /* activated_state_info() */
-  if (_decodeHdmvButtonActivatedStateInfo(ctx, sequence, &param->activated_state_info) < 0)
+  if (_decodeHdmvButtonActivatedStateInfo(sequence, &param->activated_state_info) < 0)
     return -1;
 
   /* [u16 number_of_navigation_commands] */
@@ -2201,13 +2187,10 @@ static int _parseHdmvIcsSegment(
     /* Mark sequence as completed/decoded. */
     if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_ICS_IDX) < 0)
       return -1;
-
-    /* Increment counters of ICS sequences */
-    incrementSequencesNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_ICS_IDX);
   }
 
   /* Increment counter of ICS segments */
-  incrementSegmentsNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_ICS_IDX);
+  incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_ICS_IDX);
 
   return 0;
 }
@@ -2219,7 +2202,6 @@ static int _parseHdmvEndSegment(
   HdmvSegmentParameters segment
 )
 {
-  HdmvSequencePtr seq;
   HdmvSequencePtr sequence;
 
   /* Add parsed segment as a sequence in END sequences list. */
@@ -2235,9 +2217,8 @@ static int _parseHdmvEndSegment(
   if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_END_IDX) < 0)
     return -1;
 
-  /* Increment counters of END segments/sequences */
-  incrementSegmentsNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_END_IDX);
-  incrementSequencesNbCounterOfCurrentEpoch(ctx, HDMV_SEGMENT_TYPE_END_IDX);
+  /* Increment counters of END segments */
+  incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_END_IDX);
 
   return 0;
 }
@@ -2249,7 +2230,6 @@ int parseHdmvSegment(
 )
 {
   HdmvSegmentParameters segment;
-  int ret;
 
   if (!ctx->param.rawStreamInputMode) {
     /* SUP/MNU header */

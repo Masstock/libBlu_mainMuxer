@@ -415,7 +415,7 @@ int checkH264VuiParametersCompliance(
   if (!valid) {
     if (expectedSar.a != expectedSar.b) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-        "Invalid SAR %s in SPS VUI parameters for %ux%u, "
+        "Invalid SAR '%s' in SPS VUI parameters for %ux%u, "
         "BD-specs require %s or %s for this "
         "resolution ('aspect_ratio_idc' == %d).\n",
         h264AspectRatioIdcValueStr(param.aspectRatioIdc),
@@ -428,7 +428,7 @@ int checkH264VuiParametersCompliance(
     }
 
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-      "Invalid SAR %s for %ux%u, BD-specs require %s for this "
+      "Invalid SAR '%s' for %ux%u, BD-specs require %s for this "
       "resolution ('aspect_ratio_idc' == %d).\n",
       h264AspectRatioIdcValueStr(param.aspectRatioIdc),
       spsParam.FrameWidth,
@@ -503,8 +503,8 @@ int checkH264VuiParametersCompliance(
       && expectedVideoFormat != param.videoSignalType.videoFormat
     ) {
       LIBBLU_WARNING(
-        "Unexpected Video Format %s in SPS VUI parameters "
-        "for %ux%u, should be %s for this "
+        "Unexpected Video Format '%s' in SPS VUI parameters "
+        "for %ux%u, should be '%s' for this "
         "resolution ('video_format' == %d).\n",
         h264VideoFormatValueStr(param.videoSignalType.videoFormat),
         spsParam.FrameWidth,
@@ -562,8 +562,8 @@ int checkH264VuiParametersCompliance(
         && expectedColourPrimaries != colourParam->colourPrimaries
       ) {
         LIBBLU_WARNING(
-          "Color Primaries in SPS VUI parameters should be defined to %s, "
-          "not %s ('colour_primaries' == 0x%x).\n",
+          "Color Primaries in SPS VUI parameters should be defined to '%s', "
+          "not '%s' ('colour_primaries' == 0x%x).\n",
           h264ColorPrimariesValueStr(expectedColourPrimaries),
           h264ColorPrimariesValueStr(colourParam->colourPrimaries),
           colourParam->colourPrimaries
@@ -589,7 +589,8 @@ int checkH264VuiParametersCompliance(
       ) {
         LIBBLU_WARNING(
           "Transfer Characteristics in SPS VUI parameters should "
-          "be defined to %s, not %s ('transfer_characteristics' == 0x%x).\n",
+          "be defined to '%s', not '%s' "
+          "('transfer_characteristics' == 0x%x).\n",
           h264TransferCharacteristicsValueStr(expectedTransferCharact),
           h264TransferCharacteristicsValueStr(colourParam->transferCharact),
           colourParam->transferCharact
@@ -615,7 +616,7 @@ int checkH264VuiParametersCompliance(
       ) {
         LIBBLU_WARNING(
           "Matrix coefficients in SPS VUI parameters should "
-          "be defined to %s, not %s ('matrix_coefficients' == 0x%x).\n",
+          "be defined to '%s', not '%s' ('matrix_coefficients' == 0x%x).\n",
           h264MatrixCoefficientsValueStr(expectedMatrixCoeff),
           h264MatrixCoefficientsValueStr(colourParam->matrixCoeff),
           colourParam->matrixCoeff
@@ -3396,7 +3397,6 @@ int checkH264DecRefPicMarkingCompliance(
   const H264DecRefPicMarking param
 )
 {
-  H264MemoryManagementControlOperationsBlockPtr opBlk;
 
   LIBBLU_H264_DEBUG_SEI(
     "  dec_ref_pic_marking() - Decoded reference picture marking:\n"
@@ -3431,18 +3431,26 @@ int checkH264DecRefPicMarkingCompliance(
       );
 
     if (param.adaptativeRefPicMarkingMode) {
-      for (
-        opBlk = param.MemMngmntCtrlOp;
-        NULL != opBlk;
-        opBlk = opBlk->nextOperation
-      ) {
+      H264MemMngmntCtrlOpBlkPtr opBlk = param.MemMngmntCtrlOp;
+
+      for (; NULL != opBlk; opBlk = opBlk->nextOperation) {
         LIBBLU_H264_DEBUG_SEI("    - Instruction %u:\n");
 
         LIBBLU_H264_DEBUG_SEI(
           "     Operation (memory_management_control_operation): %s (0x%x).\n",
-          h264MemoryManagementControlOperationValueStr(opBlk->operation),
+          H264MemoryManagementControlOperationValueStr(opBlk->operation),
           opBlk->operation
         );
+
+        if (opBlk->operation == H264_MEM_MGMNT_CTRL_OP_END) {
+          if (NULL != opBlk->nextOperation) {
+            /* This shall not happen */
+            LIBBLU_H264_ERROR_RETURN(
+              "Invalid 'end' memory management control operation, "
+              "not the last in list.\n"
+            );
+          }
+        }
 
         if (
           opBlk->operation
@@ -3453,8 +3461,8 @@ int checkH264DecRefPicMarkingCompliance(
           LIBBLU_H264_DEBUG_SEI(
             "      -> Difference of pictures "
             "(difference_of_pic_nums_minus1): %u (0x%x).\n",
-            opBlk->diffOfPicNumsMinus1 + 1,
-            opBlk->diffOfPicNumsMinus1
+            opBlk->difference_of_pic_nums_minus1 + 1,
+            opBlk->difference_of_pic_nums_minus1
           );
         }
 
@@ -3464,8 +3472,8 @@ int checkH264DecRefPicMarkingCompliance(
           LIBBLU_H264_DEBUG_SEI(
             "      -> Long-term picture number "
             "(long_term_pic_num): %u (0x%x).\n",
-            opBlk->longTermPicNum,
-            opBlk->longTermPicNum
+            opBlk->long_term_pic_num,
+            opBlk->long_term_pic_num
           );
         }
 
@@ -3478,8 +3486,8 @@ int checkH264DecRefPicMarkingCompliance(
           LIBBLU_H264_DEBUG_SEI(
             "      -> Long-term frame index "
             "(long_term_frame_idx): %u (0x%x).\n",
-            opBlk->longTermFrameIdx,
-            opBlk->longTermFrameIdx
+            opBlk->long_term_frame_idx,
+            opBlk->long_term_frame_idx
           );
         }
 
@@ -3489,8 +3497,8 @@ int checkH264DecRefPicMarkingCompliance(
           LIBBLU_H264_DEBUG_SEI(
             "      -> Maximum long-term frame index "
             "(max_long_term_frame_idx_plus1): %u (0x%x).\n",
-            opBlk->maxLongTermFrameIdxPlus1 - 1,
-            opBlk->maxLongTermFrameIdxPlus1
+            opBlk->max_long_term_frame_idx_plus1 - 1,
+            opBlk->max_long_term_frame_idx_plus1
           );
         }
       }
@@ -3565,8 +3573,8 @@ int checkH264SliceHeaderCompliance(
     handle->curProgParam.curNbSlices = 1;
 
     /* Check presence of both fields (or a complete frame) before completing AU. */
-    if (param.fieldPic) {
-      if (param.bottomField)
+    if (param.field_pic_flag) {
+      if (param.bottom_field_flag)
         handle->curProgParam.bottomFieldPresent = true;
       else
         handle->curProgParam.topFieldPresent = true;
@@ -3758,15 +3766,15 @@ int checkH264SliceHeaderCompliance(
 
     LIBBLU_H264_DEBUG_SLICE(
       "   -> Field picture (field_pic_flag): %s (0b%x).\n",
-      BOOL_INFO(param.fieldPic),
-      param.fieldPic
+      BOOL_INFO(param.field_pic_flag),
+      param.field_pic_flag
     );
 
-    if (param.fieldPic) {
+    if (param.field_pic_flag) {
       LIBBLU_H264_DEBUG_SLICE(
         "   -> Field type (bottom_field_flag): %s (0b%x).\n",
-        (param.bottomField) ? "Bottom field" : "Top field",
-        param.bottomField
+        (param.bottom_field_flag) ? "Bottom field" : "Top field",
+        param.bottom_field_flag
       );
     }
   }
@@ -3825,7 +3833,7 @@ int checkH264SliceHeaderCompliance(
       param.picOrderCntLsb
     );
 
-    if (ppsParam->bottomFieldPicOrderInFramePresent && !param.fieldPic) {
+    if (ppsParam->bottomFieldPicOrderInFramePresent && !param.field_pic_flag) {
       LIBBLU_H264_DEBUG_SLICE(
         "   -> Value difference between bottom and top fields "
         "(delta_pic_order_cnt_bottom): %" PRIu16 " (0x%" PRIx16 ").\n",
@@ -3857,7 +3865,7 @@ int checkH264SliceHeaderCompliance(
 
     if (
       ppsParam->bottomFieldPicOrderInFramePresent
-      && !param.fieldPic
+      && !param.field_pic_flag
     ) {
       LIBBLU_H264_DEBUG_SLICE(
         "   -> Bottom field order count difference from expected order count "
@@ -3908,7 +3916,7 @@ int checkH264SliceHeaderCompliance(
 
     /* Check mandatory cases where num_ref_idx_active_override_flag shall be equal to 0b1: */
     if (
-      !param.fieldPic
+      !param.field_pic_flag
       && 15 < ppsParam->numRefIdxl0DefaultActiveMinus1
       && !param.numRefIdxActiveOverride
     )
@@ -3918,7 +3926,7 @@ int checkH264SliceHeaderCompliance(
 
     if (
       H264_SLICE_IS_TYPE_B(param.sliceType)
-      && !param.fieldPic
+      && !param.field_pic_flag
       && 15 < ppsParam->numRefIdxl1DefaultActiveMinus1
       && !param.numRefIdxActiveOverride
     )
@@ -3930,7 +3938,7 @@ int checkH264SliceHeaderCompliance(
       unsigned maxRefIdx;
 
       maxRefIdx =
-        (param.fieldPic) ?
+        (param.field_pic_flag) ?
           H264_REF_PICT_LIST_MAX_NB_FIELD
         :
           H264_REF_PICT_LIST_MAX_NB
@@ -4133,12 +4141,12 @@ int checkH264SliceHeaderChangeCompliance(
         "Unallowed different 'frame_num' in the same picture.\n"
       );
 
-    if (first.fieldPic != second.fieldPic)
+    if (first.field_pic_flag != second.field_pic_flag)
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Unallowed different 'field_pic_flag' in the same picture.\n"
       );
 
-    if (first.bottomField != second.bottomField)
+    if (first.bottom_field_flag != second.bottom_field_flag)
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Unallowed different 'bottom_field_flag' in the same picture.\n"
       );

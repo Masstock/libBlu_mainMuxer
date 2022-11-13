@@ -195,7 +195,7 @@ int completeSeqDisplaySetHdmvContext(
   hdmv_segtype_idx sequenceTypeIndex
 );
 
-static inline void incrementSegmentsNbCounterOfCurrentEpoch(
+static inline void incrementSegmentsNbHdmvContext(
   HdmvContextPtr ctx,
   hdmv_segtype_idx idx
 )
@@ -203,7 +203,16 @@ static inline void incrementSegmentsNbCounterOfCurrentEpoch(
   incByIdxHdmvContextSegmentTypesCounter(&ctx->globalCounters.nbSegments, idx);
 }
 
-static inline void incrementSequencesNbCounterOfCurrentEpoch(
+static inline void incrementSequencesNbDSHdmvContext(
+  HdmvContextPtr ctx,
+  hdmv_segtype_idx idx
+)
+{
+  incByIdxHdmvContextSegmentTypesCounter(&ctx->displaySet.nbSequences, idx);
+  incByIdxHdmvContextSegmentTypesCounter(&ctx->globalCounters.nbSequences, idx);
+}
+
+static inline void incrementSequencesNbEpochHdmvContext(
   HdmvContextPtr ctx,
   hdmv_segtype_idx idx
 )

@@ -182,6 +182,8 @@ uint64_t computePgsDisplaySetInitializeDuration(
       winDef
     );
   }
+  else
+    dsDecodeDur++; /* Add at least one tick for WDS PTS-DTS difference */
 
   return dsDecodeDur;
 }

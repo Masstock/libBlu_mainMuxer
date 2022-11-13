@@ -357,7 +357,7 @@ typedef struct {
 
   HdmvSequencePtr sequences[HDMV_NB_SEGMENT_TYPES];
   HdmvSequencePtr pendingSequences[HDMV_NB_SEGMENT_TYPES];
-  HdmvContextSegmentTypesCounter nbSequences;
+  HdmvContextSegmentTypesCounter nbSequences;  /**< Number of sequences in DS. */
 } HdmvDisplaySet;
 
 static inline void initHdmvDisplaySet(

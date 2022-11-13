@@ -255,9 +255,9 @@ static int64_t calcCurPicOrderCnt(
       else
         PicOrderCountMsb = prevPicOrderCntMsb;
 
-      bottomFieldPicture = header->fieldPic && header->bottomField;
+      bottomFieldPicture = header->field_pic_flag && header->bottom_field_flag;
 
-      if (!header->fieldPic) {
+      if (!header->field_pic_flag) {
         TopFieldOrderCnt =
           PicOrderCountMsb
           + header->picOrderCntLsb
@@ -576,8 +576,8 @@ int processCompleteAccessUnit(
 
   if (H264_SLICE_IS_TYPE_B(handle->slice.header.sliceType)) {
     if (
-      !handle->slice.header.fieldPic
-      || handle->slice.header.bottomField
+      !handle->slice.header.field_pic_flag
+      || handle->slice.header.bottom_field_flag
     )
       handle->curProgParam.curNbConsecutiveBPics++;
 
@@ -3130,14 +3130,14 @@ int parseH264DecRefPicMarking(
           /* [ue difference_of_pic_nums_minus1] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->diffOfPicNumsMinus1 = value;
+          newOp->difference_of_pic_nums_minus1 = value;
         }
 
         if (newOp->operation == H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED) {
           /* [ue long_term_pic_num] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->longTermPicNum = value;
+          newOp->long_term_pic_num = value;
         }
 
         if (
@@ -3147,14 +3147,14 @@ int parseH264DecRefPicMarking(
           /* [ue long_term_frame_idx] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->longTermFrameIdx = value;
+          newOp->long_term_frame_idx = value;
         }
 
         if (newOp->operation == H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM) {
           /* [ue max_long_term_frame_idx_plus1] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->maxLongTermFrameIdxPlus1 = value;
+          newOp->max_long_term_frame_idx_plus1 = value;
         }
 
         /* Add op to loop : */
@@ -3328,31 +3328,31 @@ int parseH264SliceHeader(
     /* [b1 field_pic_flag] */
     if (readBitsNal(handle, &value, 1) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
-    param->fieldPic = value;
+    param->field_pic_flag = value;
 
-    if (param->fieldPic) {
+    if (param->field_pic_flag) {
       /* [b1 bottom_field_flag] */
       if (readBitsNal(handle, &value, 1) < 0)
         LIBBLU_H264_READING_FAIL_RETURN();
-      param->bottomField = value;
+      param->bottom_field_flag = value;
     }
     else
-      param->bottomField = false;
+      param->bottom_field_flag = false;
   }
   else {
-    param->fieldPic = false;
-    param->bottomField = false;
+    param->field_pic_flag = false;
+    param->bottom_field_flag = false;
   }
 
   /* Compute parameters: */
   param->refPic = getNalRefIdc(handle) != 0;
   param->mbaffFrameFlag =
     spsData->mbAdaptativeFrameField
-    && !param->fieldPic
+    && !param->field_pic_flag
   ;
   param->picHeightInMbs =
     spsData->FrameHeightInMbs
-    / (1 + param->fieldPic)
+    / (1 + param->field_pic_flag)
   ;
   param->picHeightInSamplesL =
     param->picHeightInMbs * 16
@@ -3388,7 +3388,7 @@ int parseH264SliceHeader(
 
     if (
       ppsData->bottomFieldPicOrderInFramePresent
-      && !param->fieldPic
+      && !param->field_pic_flag
     ) {
       /* [se delta_pic_order_cnt_bottom] */
       if (readSignedExpGolombCodeNal(handle, &value, 16) < 0)
@@ -3414,7 +3414,7 @@ int parseH264SliceHeader(
 
     if (
       ppsData->bottomFieldPicOrderInFramePresent
-      && !param->fieldPic
+      && !param->field_pic_flag
     ) {
       /* [se delta_pic_order_cnt[1]] */
       if (readSignedExpGolombCodeNal(handle, &value, 32) < 0)
@@ -3462,7 +3462,7 @@ int parseH264SliceHeader(
       param->numRefIdxl0ActiveMinus1 = value;
 
       maxRefIdx =
-        (param->fieldPic) ?
+        (param->field_pic_flag) ?
           H264_REF_PICT_LIST_MAX_NB_FIELD
         :
           H264_REF_PICT_LIST_MAX_NB
@@ -3668,18 +3668,18 @@ H264FirstVclNaluPCPRet detectFirstVclNalUnitOfPrimCodedPicture(
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'field_pic_flag' differs in value ? : %u => %u.\n",
-    last.fieldPic, cur.fieldPic
+    last.field_pic_flag, cur.field_pic_flag
   );
 
-  if (last.fieldPic != cur.fieldPic)
+  if (last.field_pic_flag != cur.field_pic_flag)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'bottom_field_flag' differs in value ? : %u => %u.\n",
-    last.bottomField, cur.bottomField
+    last.bottom_field_flag, cur.bottom_field_flag
   );
 
-  if (last.fieldPic && last.bottomField != cur.bottomField)
+  if (last.field_pic_flag && last.bottom_field_flag != cur.bottom_field_flag)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(

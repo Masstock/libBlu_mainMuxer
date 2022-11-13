@@ -1089,13 +1089,13 @@ static inline int checkUpdateHdmvPDParameters(
       nw.palette_id
     );
 
-  if (old.palette_version_number != (nw.palette_version_number + 1) % 0xFF)
+  if (((old.palette_version_number + 1) & 0xFF) != nw.palette_version_number)
     LIBBLU_HDMV_COM_ERROR_RETURN(
       "Invalid updated PDS, "
       "'palette_version_number' is not incremented correctly "
-      "(0x%02X / 0x%02X).\n",
+      "(old: 0x%02X / new: 0x%02X).\n",
       old.palette_version_number,
-      (nw.palette_version_number + 1) % 0xFF
+      nw.palette_version_number
     );
 
   return 0;
@@ -1215,6 +1215,7 @@ static inline int updateHdmvPdsSegmentParameters(
     if (src.palette_entries[i].updated)
       dst->palette_entries[i] = src.palette_entries[i];
   }
+  dst->palette_descriptor = src.palette_descriptor;
 
   return 0;
 }
@@ -1239,12 +1240,14 @@ static inline int checkUpdateHdmvODescParameters(
       nw.object_id
     );
 
-  if (((old.object_version_number + 1) & 0xFF) != nw.object_version_number)
+  if (old.object_version_number == nw.object_version_number)
+    return 1; /* The new object shall be identical to the previous one. */
+  else if (((old.object_version_number + 1) & 0xFF) != nw.object_version_number)
     LIBBLU_HDMV_COM_ERROR_RETURN(
       "Invalid updated ODS, "
       "'object_version_number' is not incremented correctly "
-      "(0x%02X / 0x%02X).\n",
-      (old.object_version_number + 1) & 0xFF,
+      "(old: 0x%02X / new: 0x%02X).\n",
+      old.object_version_number,
       nw.object_version_number
     );
 
@@ -1291,8 +1294,25 @@ static inline int updateHdmvObjectDataParameters(
   HdmvODParameters src
 )
 {
-  if (checkUpdateHdmvODescParameters(dst->object_descriptor, src.object_descriptor) < 0)
+  int ret;
+
+  ret = checkUpdateHdmvODescParameters(
+    dst->object_descriptor,
+    src.object_descriptor
+  );
+  if (ret < 0)
     return -1;
+
+  if (0 < ret) {
+    /* The object coded data size shall be identical */
+    if (dst->object_data_length != src.object_data_length)
+      LIBBLU_HDMV_COM_ERROR_RETURN(
+        "Invalid updated ODS, object_data_length of ODS sharing same "
+        "version shall remain identical (old: %zu / new :%zu).\n",
+        dst->object_data_length,
+        src.object_data_length
+      );
+  }
 
   if (dst->object_width != src.object_width || dst->object_height != src.object_height)
     LIBBLU_HDMV_COM_ERROR_RETURN(

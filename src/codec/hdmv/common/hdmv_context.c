@@ -300,19 +300,21 @@ static int _checkNewDisplaySetTransition(
   return 0;
 }
 
-static int _clearDisplaySet(
-  HdmvDisplaySet * ds,
+static int _clearCurDisplaySet(
+  HdmvContextPtr ctx,
   HdmvCompositionState composition_state
 )
 {
   unsigned i;
 
   if (HDMV_COMPO_STATE_EPOCH_START == composition_state) {
+    /* Epoch start, clear DS */
     for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++)
-      ds->sequences[i] = NULL;
+      ctx->displaySet.sequences[i] = NULL;
+    resetHdmvContextSegmentTypesCounter(&ctx->nbSequences);
   }
 
-  resetHdmvContextSegmentTypesCounter(&ds->nbSequences);
+  resetHdmvContextSegmentTypesCounter(&ctx->displaySet.nbSequences);
   return 0;
 }
 
@@ -355,7 +357,7 @@ int initDisplaySetHdmvContext(
       return -1;
 
     /* Clear for new DS */
-    if (_clearDisplaySet(ds, composition_descriptor.composition_state) < 0)
+    if (_clearCurDisplaySet(ctx, composition_descriptor.composition_state) < 0)
       return -1;
   }
   else {
@@ -375,8 +377,28 @@ static void _printDisplaySetContent(
 )
 {
   LIBBLU_HDMV_COM_DEBUG(" Current number of segments per type:\n");
-  if (isEnabledLibbbluStatus(LIBBLU_DEBUG_GLB))
-    printContentHdmvContextSegmentTypesCounter(ds.nbSequences, type);
+#define _G(_i)  getByIdxHdmvContextSegmentTypesCounter(ds.nbSequences, _i)
+#define _P(_n)  LIBBLU_HDMV_COM_DEBUG("  - "#_n": %u.\n", _G(HDMV_SEGMENT_TYPE_##_n##_IDX))
+
+  if (HDMV_STREAM_TYPE_IGS == type) {
+    _P(ICS);
+  }
+  else { /* HDMV_STREAM_TYPE_PGS == type */
+    _P(PCS);
+    _P(WDS);
+  }
+
+  _P(PDS);
+  _P(ODS);
+  _P(END);
+
+#undef _P
+#undef _G
+
+  LIBBLU_HDMV_COM_DEBUG(
+    "  TOTAL: %u.\n",
+    getTotalHdmvContextSegmentTypesCounter(ds.nbSequences)
+  );
 }
 
 static int _checkCompletionOfEachSequence(
@@ -987,6 +1009,7 @@ static uint32_t _getIdSequence(
  *
  * In case of success (the sequence is effectively a duplicate), the duplicated
  * sequence present in the list had its #displaySetIdx field is replaced.
+ *
  */
 static int _insertDuplicatedSequence(
   HdmvSequencePtr list,
@@ -1014,6 +1037,8 @@ static int _insertDuplicatedSequence(
         );
 
       node->displaySetIdx = seq->displaySetIdx;
+      node->segments = seq->segments;
+
       return 0;
     }
   }
@@ -1033,6 +1058,7 @@ static int _updateSequence(
 
   switch (dst->type) {
     case HDMV_SEGMENT_TYPE_PDS:
+      // fprintf(stderr, "%u %u\n", dst->data.pd.palette_descriptor.palette_version_number, src->data.pd.palette_descriptor.palette_version_number);
       return updateHdmvPdsSegmentParameters(&dst->data.pd, src->data.pd);
     case HDMV_SEGMENT_TYPE_ODS:
       return updateHdmvObjectDataParameters(&dst->data.od, src->data.od);
@@ -1066,9 +1092,7 @@ static int _applySequenceUpdate(
 
   /* Apply update on the segment sharing the same ID */
   for (; NULL != dst; dst = dst->nextSequence) {
-    uint32_t seqId = _getIdSequence(dst);
-
-    if (seqId == lstSeqId) {
+    if (_getIdSequence(dst) == lstSeqId) {
       /* Current sequence shares same ID as the last one */
       if (_updateSequence(dst, seq) < 0)
         return -1;
@@ -1129,12 +1153,14 @@ int completeSeqDisplaySetHdmvContext(
     /* Special case, this DS is supposed to be a duplicate of the previous one. */
     if (_insertDuplicatedSequence(sequenceListHdr, sequence) < 0)
       return -1;
+    incrementSequencesNbDSHdmvContext(ctx, idx);
     goto success;
   }
 
   if (NULL == sequenceListHdr) {
     /* If the list is empty, the pending is the new header */
     ctx->displaySet.sequences[idx] = sequence;
+    incrementSequencesNbEpochHdmvContext(ctx, idx);
     goto success;
   }
 
@@ -1152,9 +1178,12 @@ int completeSeqDisplaySetHdmvContext(
 
     sequence->nextSequence = sequenceListHdr;
     ctx->displaySet.sequences[idx] = sequence;
+
+    incrementSequencesNbEpochHdmvContext(ctx, idx);
   }
 
 success:
+  incrementSequencesNbDSHdmvContext(ctx, idx);
   /* Reset pending sequence */
   _setPendingSequence(ctx, idx, NULL);
   return 0;

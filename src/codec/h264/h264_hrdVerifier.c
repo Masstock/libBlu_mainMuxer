@@ -406,11 +406,13 @@ int addDecodedPictureToH264HrdContext(
     ((ctx->picInDpbHeap - ctx->picInDpb) + ctx->nbPicInDpb)
     & H264_DPB_MOD_MASK
   ];
-  newCell->AUIdx = pic->AUIdx;
-  newCell->frameDisplayNum = picInfos->frameDisplayNum;
-  newCell->frameNum = picInfos->frameNum;
-  newCell->outputTime = outputTime;
-  newCell->usage = picInfos->usage;
+  newCell->AUIdx             = pic->AUIdx;
+  newCell->frameDisplayNum   = picInfos->frameDisplayNum;
+  newCell->frame_num         = picInfos->frame_num;
+  newCell->field_pic_flag    = picInfos->field_pic_flag;
+  newCell->bottom_field_flag = picInfos->bottom_field_flag;
+  newCell->outputTime        = outputTime;
+  newCell->usage             = picInfos->usage;
 
   switch (picInfos->usage) {
     case H264_USED_AS_LONG_TERM_REFERENCE:
@@ -642,10 +644,10 @@ int manageSlidingWindowProcessDPBH264Context(
         return -1; /* Unable to get i-index picture, broken FIFO. */
 
       if (picture->usage == H264_USED_AS_SHORT_TERM_REFERENCE) {
-        if (frameNum < picture->frameNum)
-          FrameNumWrap = picture->frameNum - ctx->MaxFrameNum;
+        if (frameNum < picture->frame_num)
+          FrameNumWrap = picture->frame_num - ctx->MaxFrameNum;
         else
-          FrameNumWrap = picture->frameNum;
+          FrameNumWrap = picture->frame_num;
 
         if (!oldestFrameInit)
           oldestFrame = i, minFrameNumWrap = FrameNumWrap, oldestFrameInit = true;
@@ -692,9 +694,31 @@ int applyDecodedReferencePictureMarkingProcessDPBH264Context(
   else {
     if (NULL != infos->memMngmntCtrlOperations) {
       /* Invoke 8.2.5.4 */
-      /* TODO */
+      H264MemMngmntCtrlOpBlkPtr opBlk = infos->memMngmntCtrlOperations;
 
-      assert(0);
+      for (; NULL != opBlk; opBlk = opBlk->nextOperation) {
+        int ret = 0;
+
+        switch (opBlk->operation) {
+          case H264_MEM_MGMNT_CTRL_OP_END:
+            assert(NULL == opBlk->nextOperation); /* This shall be checked in h264_checks */
+            break;  /* Last block */
+
+          case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED:
+            ret = markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
+              ctx,
+              opBlk->difference_of_pic_nums_minus1,
+              infos
+            );
+            break;
+
+          default:
+            LIBBLU_TODO();
+        }
+
+        if (ret < 0)
+          return -1;
+      }
     }
     else {
       /* Check if adaptive_ref_pic_marking_mode_flag can be set to 0b0. */
@@ -713,7 +737,7 @@ int applyDecodedReferencePictureMarkingProcessDPBH264Context(
       }
 
       /* Invoke 8.2.5.3 */
-      if (manageSlidingWindowProcessDPBH264Context(ctx, infos->frameNum) < 0)
+      if (manageSlidingWindowProcessDPBH264Context(ctx, infos->frame_num) < 0)
         return -1;
     }
   }
@@ -794,42 +818,67 @@ int markAllDecodedPicturesAsUnusedH264HrdContext(
   return 0;
 }
 
-int markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  unsigned frameNum
+static unsigned computePicNum(
+  H264DpbHrdPicInfos * picInfos
 )
 {
-  /* memory_management_control_operation == 0x1 usage. */
-  H264DpbHrdPic * picture;
+  if (picInfos->field_pic_flag)
+    return 2 * picInfos->frame_num + 1;
+  return picInfos->frame_num;
+}
+
+/** \~english
+ * \brief Mark
+ *
+ * \param ctx
+ * \param difference_of_pic_nums_minus1
+ * \param picInfos
+ * \return int
+ *
+ * \bug Computed picNumX does not seem accurate.
+ */
+int markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
+  H264HrdVerifierContextPtr ctx,
+  unsigned difference_of_pic_nums_minus1,
+  H264DpbHrdPicInfos * picInfos
+)
+{
+  /**
+   * 8.2.5.4.1
+   * Marking process of a short-term reference picture as
+   * "unused for reference"
+   *
+   * memory_management_control_operation == 0x1 usage.
+   */
+  unsigned picNumX;
   unsigned i;
 
   assert(NULL != ctx);
 
+  picNumX = computePicNum(picInfos) - (difference_of_pic_nums_minus1 + 1);
+
   for (i = 0; i < ctx->nbPicInDpb; i++) {
+    H264DpbHrdPic * picture;
+
     if (NULL == (picture = getDecodedPictureFromH264HrdContext(ctx, i)))
       return -1; /* Unable to get i-index picture, broken FIFO. */
 
-    if (picture->frameNum == frameNum) {
+    if (picture->frame_num == picNumX) {
       if (H264_USED_AS_SHORT_TERM_REFERENCE != picture->usage)
         LIBBLU_H264_HRDV_ERROR_RETURN(
-          "frame_num %u index does not correspond to a "
+          "picNumX %u index does not correspond to a "
           "'short-term reference' picture.\n",
-          frameNum
+          picNumX
         );
 
       assert(0 < ctx->numShortTerm);
 
       picture->usage = H264_NOT_USED_AS_REFERENCE;
       ctx->numShortTerm--;
-      return 0;
     }
   }
 
-  LIBBLU_H264_HRDV_ERROR_RETURN(
-    "Unable to mark short term reference picture num %u, "
-    "unknown frame number.\n",
-    frameNum
-  );
+  return 0;
 }
 
 int markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
@@ -847,7 +896,7 @@ int markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
     if (NULL == (picture = getDecodedPictureFromH264HrdContext(ctx, i)))
       return -1; /* Unable to get i-index picture, broken FIFO. */
 
-    if (picture->frameNum == frameNum) {
+    if (picture->frame_num == frameNum) {
       if (H264_USED_AS_LONG_TERM_REFERENCE != picture->usage)
         LIBBLU_H264_HRDV_ERROR_RETURN(
           H264_DPB_HRD_MSG_PREFIX
@@ -898,7 +947,7 @@ int markShortTermRefPictureAsUsedForLongTermReferenceH264HrdContext(
     if (NULL == (picture = getDecodedPictureFromH264HrdContext(ctx, i)))
       return -1; /* Unable to get i-index picture, broken FIFO. */
 
-    if (picture->frameNum == frameNum) {
+    if (picture->frame_num == frameNum) {
       if (H264_USED_AS_SHORT_TERM_REFERENCE != picture->usage)
         LIBBLU_H264_HRDV_ERROR_RETURN(
           "frame_num %u index does not correspond to a "
@@ -1035,7 +1084,7 @@ int checkH264CpbHrdConformanceTests(
   if (60 <= AUSpsData->levelIdc && AUSpsData->levelIdc <= 62)
     fR = 1.0 / 300.0;
   else
-    fR = (AUSliceHeader->fieldPic) ? 1.0 / 344.0 : 1.0 / 172.0;
+    fR = (AUSliceHeader->field_pic_flag) ? 1.0 / 344.0 : 1.0 / 172.0;
 
   if (0 < ctx->nbProcessedAU) {
 
@@ -1474,6 +1523,7 @@ int processAUH264HrdContext(
 
     if (applyDecodedReferencePictureMarkingProcessDPBH264Context(ctx, &picInfos) < 0)
       return -1;
+
     closeH264MemoryManagementControlOperations(picInfos.memMngmntCtrlOperations); /* TODO */
     picInfos.memMngmntCtrlOperations = NULL;
 
@@ -1528,12 +1578,12 @@ int processAUH264HrdContext(
   }
 
   /* Adding current AU : */
-  picInfos.frameDisplayNum =
-    curState->picOrderCntAU / ((doubleFrameTiming) ? 1 : 2)
-  ;
-  picInfos.frameNum = sliceHeader->frameNum;
-  picInfos.idrPic = sliceHeader->IdrPicFlag && !decRefPicMarking->noOutputOfPriorPics;
-  picInfos.dpbOutputDelay = dpbOutputDelay;
+  picInfos.frameDisplayNum   = curState->picOrderCntAU / (1 << doubleFrameTiming);
+  picInfos.frame_num         = sliceHeader->frameNum;
+  picInfos.field_pic_flag    = sliceHeader->field_pic_flag;
+  picInfos.bottom_field_flag = sliceHeader->bottom_field_flag;
+  picInfos.idrPic            = sliceHeader->IdrPicFlag && !decRefPicMarking->noOutputOfPriorPics;
+  picInfos.dpbOutputDelay    = dpbOutputDelay;
 
   if (sliceHeader->IdrPicFlag) {
     if (decRefPicMarking->longTermReference)
@@ -1607,13 +1657,14 @@ int processAUH264HrdContext(
   }
 
   /* Save constraints checks related parameters: */
-  ctx->nMinusOneAUParameters.frameNum = sliceHeader->frameNum;
   assert(0 != sliceHeader->picSizeInMbs);
-  ctx->nMinusOneAUParameters.picSizeInMbs = sliceHeader->picSizeInMbs;
   assert(0 != spsData->levelIdc);
-  ctx->nMinusOneAUParameters.levelIdc = spsData->levelIdc;
-  ctx->nMinusOneAUParameters.removalTime = Tr_n;
-  ctx->nMinusOneAUParameters.initialCpbRemovalDelay = initialCpbRemovalDelay;
+
+  ctx->nMinusOneAUParameters.frame_num    = sliceHeader->frameNum;
+  ctx->nMinusOneAUParameters.picSizeInMbs = sliceHeader->picSizeInMbs;
+  ctx->nMinusOneAUParameters.levelIdc     = spsData->levelIdc;
+  ctx->nMinusOneAUParameters.removalTime  = Tr_n;
+  ctx->nMinusOneAUParameters.initialCpbRemovalDelay    = initialCpbRemovalDelay;
   ctx->nMinusOneAUParameters.initialCpbRemovalDelayOff = initialCpbRemovalDelayOff;
 
 #if 0

@@ -376,25 +376,6 @@ const char * h264ModificationOfPicNumsIdcValueStr(
   return "Unknown";
 }
 
-const char * h264MemoryManagementControlOperationValueStr(
-  const H264MemoryManagementControlOperationValue val
-)
-{
-  static const char * instr[] = {
-    "End of instructions marker",
-    "Mark a short-term reference picture as 'unused for reference'",
-    "Mark a long-term reference picture as 'unused for reference'",
-    "Mark a short-term reference picture as 'used for long-term reference'",
-    "Set max long-term frame index",
-    "Mark all reference pictures as 'unused for reference'",
-    "Mark current picture as 'used for long-term reference'"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(instr))
-    return instr[val];
-  return "Unknown";
-}
-
 H264MemMngmntCtrlOpBlkPtr createH264MemoryManagementControlOperations(
   void
 )
