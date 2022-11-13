@@ -7,8 +7,8 @@
  * \brief H.264 video (AVC) bitstreams conformance and compliance checking module.
  */
 
-#ifndef __LIBBLU_MUXER_CODECS_H264_CHECKS_H__
-#define __LIBBLU_MUXER_CODECS_H264_CHECKS_H__
+#ifndef __LIBBLU_MUXER__CODECS__H264__CHECKS_H__
+#define __LIBBLU_MUXER__CODECS__H264__CHECKS_H__
 
 #include "../../esms/scriptData.h"
 #include "h264_util.h"
@@ -24,11 +24,11 @@ bool constantH264AccessUnitDelimiterCheck(
 
 /* seq_parameter_set_rbsp() NAL */
 int checkH264ProfileIdcCompliance(
-  const H264ProfileIdcValue profileIdc,
+  const H264ProfileIdcValue profile_idc,
   const H264ContraintFlags constraints
 );
 int checkH264LevelIdcCompliance(
-  const uint8_t levelIdc
+  const uint8_t level_idc
 );
 int checkH264HrdParametersCompliance(
   const H264HrdParameters param

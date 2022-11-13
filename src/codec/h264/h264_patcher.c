@@ -99,47 +99,47 @@ int buildH264HrdParameters(
   assert(NULL != param);
 
   /* [ue cpb_cnt_minus1] */
-  if (writeH264NalByteArrayExpGolombCode(nal, param->cpbCntMinus1) < 0)
+  if (writeH264NalByteArrayExpGolombCode(nal, param->cpb_cnt_minus1) < 0)
     return -1;
 
   /* [u4 bit_rate_scale] */
-  if (writeH264NalByteArrayBits(nal, param->bitRateScale, 4) < 0)
+  if (writeH264NalByteArrayBits(nal, param->bit_rate_scale, 4) < 0)
     return -1;
 
   /* [u4 cpb_size_scale] */
-  if (writeH264NalByteArrayBits(nal, param->cpbSizeScale, 4) < 0)
+  if (writeH264NalByteArrayBits(nal, param->cpb_size_scale, 4) < 0)
     return -1;
 
-  for (SchedSelIdx = 0; SchedSelIdx <= param->cpbCntMinus1; SchedSelIdx++) {
+  for (SchedSelIdx = 0; SchedSelIdx <= param->cpb_cnt_minus1; SchedSelIdx++) {
     schedSel = &param->schedSel[SchedSelIdx];
 
     /* [ue bit_rate_value_minus1[SchedSelIdx]] */
-    if (writeH264NalByteArrayExpGolombCode(nal, schedSel->bitRateValueMinus1) < 0)
+    if (writeH264NalByteArrayExpGolombCode(nal, schedSel->bit_rate_value_minus1) < 0)
       return -1;
 
     /* [ue cpb_size_value_minus1[SchedSelIdx]] */
-    if (writeH264NalByteArrayExpGolombCode(nal, schedSel->cpbSizeValueMinus1) < 0)
+    if (writeH264NalByteArrayExpGolombCode(nal, schedSel->cpb_size_value_minus1) < 0)
       return -1;
 
     /* [b1 cbr_flag[SchedSelIdx]] */
-    if (writeH264NalByteArrayBits(nal, schedSel->cbrFlag, 1) < 0)
+    if (writeH264NalByteArrayBits(nal, schedSel->cbr_flag, 1) < 0)
       return -1;
   }
 
   /* [u5 initial_cpb_removal_delay_length_minus1] */
-  if (writeH264NalByteArrayBits(nal, param->initialCpbRemovalDelayLengthMinus1, 5) < 0)
+  if (writeH264NalByteArrayBits(nal, param->initial_cpb_removal_delay_length_minus1, 5) < 0)
     return -1;
 
   /* [u5 cpb_removal_delay_length_minus1] */
-  if (writeH264NalByteArrayBits(nal, param->cpbRemovalDelayLengthMinus1, 5) < 0)
+  if (writeH264NalByteArrayBits(nal, param->cpb_removal_delay_length_minus1, 5) < 0)
     return -1;
 
   /* [u5 dpb_output_delay_length_minus1] */
-  if (writeH264NalByteArrayBits(nal, param->dpbOutputDelayLengthMinus1, 5) < 0)
+  if (writeH264NalByteArrayBits(nal, param->dpb_output_delay_length_minus1, 5) < 0)
     return -1;
 
   /* [u5 time_offset_length] */
-  if (writeH264NalByteArrayBits(nal, param->timeOffsetLength, 5) < 0)
+  if (writeH264NalByteArrayBits(nal, param->time_offset_length, 5) < 0)
     return -1;
 
   return 0;
@@ -193,8 +193,8 @@ size_t appendH264SequenceParametersSet(
   }
 
   /* Build new SPS NAL : */
-  spsNalParam.nalRefIdc = NAL_SEQUENCE_PARAMETERS_SET_REF_IDC;
-  spsNalParam.nalUnitType = NAL_UNIT_TYPE_SEQUENCE_PARAMETERS_SET;
+  spsNalParam.nal_ref_idc = NAL_SPS_REF_IDC;
+  spsNalParam.nal_unit_type = NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET;
 
   if (NULL == (spsNal = createH264NalByteArrayHandler(spsNalParam)))
     return 0; /* Error */
@@ -202,85 +202,85 @@ size_t appendH264SequenceParametersSet(
   /* seq_parameter_set_rbsp() */ {
     /* seq_parameter_set_data() */ {
       /* [u8 profile_idc] */
-      if (writeH264NalByteArrayBits(spsNal, param->profileIdc, 8) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->profile_idc, 8) < 0)
         return 0;
 
       /* [b1 constraint_set0_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.set0, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.set0, 1) < 0)
         return 0;
       /* [b1 constraint_set1_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.set1, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.set1, 1) < 0)
         return 0;
       /* [b1 constraint_set2_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.set2, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.set2, 1) < 0)
         return 0;
       /* [b1 constraint_set3_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.set3, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.set3, 1) < 0)
         return 0;
       /* [b1 constraint_set4_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.set4, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.set4, 1) < 0)
         return 0;
       /* [b1 constraint_set5_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.set5, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.set5, 1) < 0)
         return 0;
       /* [v2 reserved_zero_2bits] */
-      if (writeH264NalByteArrayBits(spsNal, param->constraintFlags.reservedFlags, 2) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->constraint_set_flags.reservedFlags, 2) < 0)
         return 0;
 
       /* [u8 level_idc] */
-      if (writeH264NalByteArrayBits(spsNal, param->levelIdc, 8) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->level_idc, 8) < 0)
         return 0;
 
       /* [ue seq_parameter_set_id] */
-      if (writeH264NalByteArrayExpGolombCode(spsNal, param->seqParametersSetId) < 0)
+      if (writeH264NalByteArrayExpGolombCode(spsNal, param->seq_parameter_set_id) < 0)
         return 0;
 
-      if (H264_PROFILE_IS_HIGH(param->profileIdc)) {
+      if (H264_PROFILE_IS_HIGH(param->profile_idc)) {
         /* [ue chroma_format_idc] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->chromaFormat) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->chroma_format_idc) < 0)
           return 0;
 
-        if (param->chromaFormat == H264_CHROMA_FORMAT_444) {
+        if (param->chroma_format_idc == H264_CHROMA_FORMAT_444) {
           /* [b1 separate_colour_plane_flag] */
-          if (writeH264NalByteArrayBits(spsNal, param->separateColourPlaneFlag444, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, param->separate_colour_plane_flag, 1) < 0)
             return 0;
         }
 
         /* [ue bit_depth_luma_minus8] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->bitDepthLumaMinus8) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->bit_depth_luma_minus8) < 0)
           return 0;
 
         /* [ue bit_depth_chroma_minus8] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->bitDepthChromaMinus8) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->bit_depth_chroma_minus8) < 0)
           return 0;
 
         /* [b1 qpprime_y_zero_transform_bypass_flag] */
-        if (writeH264NalByteArrayBits(spsNal, param->qpprimeYZeroTransformBypass, 1) < 0)
+        if (writeH264NalByteArrayBits(spsNal, param->qpprime_y_zero_transform_bypass_flag, 1) < 0)
           return 0;
 
         /* [b1 seq_scaling_matrix_present_flag] */
-        if (writeH264NalByteArrayBits(spsNal, param->seqScalingMatrixPresent, 1) < 0)
+        if (writeH264NalByteArrayBits(spsNal, param->seq_scaling_matrix_present_flag, 1) < 0)
           return 0;
 
-        if (param->seqScalingMatrixPresent) {
-          for (i = 0; i < ((param->chromaFormat != H264_CHROMA_FORMAT_444) ? 8 : 12); i++) {
+        if (param->seq_scaling_matrix_present_flag) {
+          for (i = 0; i < ((param->chroma_format_idc != H264_CHROMA_FORMAT_444) ? 8 : 12); i++) {
             /* [b1 seq_scaling_list_present_flag[i]] */
-            if (writeH264NalByteArrayBits(spsNal, param->seqScalingMatrix.seqScalingListPresent[i], 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, param->seq_scaling_matrix.seq_scaling_list_present_flag[i], 1) < 0)
               return 0;
 
-            if (param->seqScalingMatrix.seqScalingListPresent[i]) {
+            if (param->seq_scaling_matrix.seq_scaling_list_present_flag[i]) {
               /* [vn scaling_list()] */
               if (i < 6) {
                 ret = buildH264ScalingList(
                   spsNal,
-                  param->seqScalingMatrix.scalingList4x4[i],
+                  param->seq_scaling_matrix.ScalingList4x4[i],
                   16
                 );
               }
               else {
                 ret = buildH264ScalingList(
                   spsNal,
-                  param->seqScalingMatrix.scalingList8x8[i-6],
+                  param->seq_scaling_matrix.ScalingList8x8[i-6],
                   64
                 );
               }
@@ -293,258 +293,258 @@ size_t appendH264SequenceParametersSet(
       }
 
       /* [ue log2_max_frame_num_minus4] */
-      if (writeH264NalByteArrayExpGolombCode(spsNal, param->log2MaxFrameNumMinus4) < 0)
+      if (writeH264NalByteArrayExpGolombCode(spsNal, param->log2_max_frame_num_minus4) < 0)
         return 0;
 
       /* [ue pic_order_cnt_type] */
-      if (writeH264NalByteArrayExpGolombCode(spsNal, param->picOrderCntType) < 0)
+      if (writeH264NalByteArrayExpGolombCode(spsNal, param->pic_order_cnt_type) < 0)
         return 0;
 
-      if (param->picOrderCntType == 0) {
+      if (param->pic_order_cnt_type == 0) {
         /* [ue log2_max_pic_order_cnt_lsb_minus4] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->log2MaxPicOrderCntLsbMinus4) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->log2_max_pic_order_cnt_lsb_minus4) < 0)
           return 0;
       }
-      else if (param->picOrderCntType == 1) {
+      else if (param->pic_order_cnt_type == 1) {
         /* [b1 delta_pic_order_always_zero_flag] */
-        if (writeH264NalByteArrayBits(spsNal, param->deltaPicOrderAlwaysZero, 1) < 0)
+        if (writeH264NalByteArrayBits(spsNal, param->delta_pic_order_always_zero_flag, 1) < 0)
           return 0;
 
         /* [se offset_for_non_ref_pic] */
-        if (writeH264NalByteArraySignedExpGolombCode(spsNal, param->offsetForNonRefPic) < 0)
+        if (writeH264NalByteArraySignedExpGolombCode(spsNal, param->offset_for_non_ref_pic) < 0)
           return 0;
 
         /* [se offset_for_top_to_bottom_field] */
-        if (writeH264NalByteArraySignedExpGolombCode(spsNal, param->offsetForTopToBottomField) < 0)
+        if (writeH264NalByteArraySignedExpGolombCode(spsNal, param->offset_for_top_to_bottom_field) < 0)
           return 0;
 
         /* [ue num_ref_frames_in_pic_order_cnt_cycle] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->numRefFramesInPicOrderCntCycle) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->num_ref_frames_in_pic_order_cnt_cycle) < 0)
           return 0;
 
-        for (i = 0; i < param->numRefFramesInPicOrderCntCycle; i++) {
+        for (i = 0; i < param->num_ref_frames_in_pic_order_cnt_cycle; i++) {
           /* [se offset_for_ref_frame] */
-          if (writeH264NalByteArraySignedExpGolombCode(spsNal, param->offsetForRefFrame[i]) < 0)
+          if (writeH264NalByteArraySignedExpGolombCode(spsNal, param->offset_for_ref_frame[i]) < 0)
             return 0;
         }
       }
 
       /* [ue max_num_ref_frames] */
-      if (writeH264NalByteArrayExpGolombCode(spsNal, param->maxNumRefFrames) < 0)
+      if (writeH264NalByteArrayExpGolombCode(spsNal, param->max_num_ref_frames) < 0)
         return 0;
 
       /* [b1 gaps_in_frame_num_value_allowed_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->gapsInFrameNumValueAllowed, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->gaps_in_frame_num_value_allowed_flag, 1) < 0)
         return 0;
 
       /* [ue pic_width_in_mbs_minus1] */
-      if (writeH264NalByteArrayExpGolombCode(spsNal, param->picWidthInMbsMinus1) < 0)
+      if (writeH264NalByteArrayExpGolombCode(spsNal, param->pic_width_in_mbs_minus1) < 0)
         return 0;
 
       /* [ue pic_height_in_map_units_minus1] */
-      if (writeH264NalByteArrayExpGolombCode(spsNal, param->picHeightInMapUnitsMinus1) < 0)
+      if (writeH264NalByteArrayExpGolombCode(spsNal, param->pic_height_in_map_units_minus1) < 0)
         return 0;
 
       /* [b1 frame_mbs_only_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->frameMbsOnly, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->frame_mbs_only_flag, 1) < 0)
         return 0;
 
-      if (!param->frameMbsOnly) {
+      if (!param->frame_mbs_only_flag) {
         /* [b1 mb_adaptive_frame_field_flag] */
-        if (writeH264NalByteArrayBits(spsNal, param->mbAdaptativeFrameField, 1) < 0)
+        if (writeH264NalByteArrayBits(spsNal, param->mb_adaptive_frame_field_flag, 1) < 0)
           return 0;
       }
 
       /* [b1 direct_8x8_inference_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->direct8x8Interference, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->direct_8x8_inference_flag, 1) < 0)
         return 0;
 
       /* [b1 frame_cropping_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->frameCropping, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->frame_cropping_flag, 1) < 0)
         return 0;
 
-      if (param->frameCropping) {
+      if (param->frame_cropping_flag) {
         /* [ue frame_crop_left_offset] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frameCropOffset.left) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frame_crop_offset.left) < 0)
           return 0;
 
         /* [ue frame_crop_right_offset] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frameCropOffset.right) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frame_crop_offset.right) < 0)
           return 0;
 
         /* [ue frame_crop_top_offset] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frameCropOffset.top) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frame_crop_offset.top) < 0)
           return 0;
 
         /* [ue frame_crop_bottom_offset] */
-        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frameCropOffset.bottom) < 0)
+        if (writeH264NalByteArrayExpGolombCode(spsNal, param->frame_crop_offset.bottom) < 0)
           return 0;
       }
 
       /* [b1 vui_parameters_present_flag] */
-      if (writeH264NalByteArrayBits(spsNal, param->vuiParametersPresent, 1) < 0)
+      if (writeH264NalByteArrayBits(spsNal, param->vui_parameters_present_flag, 1) < 0)
         return 0;
 
-      if (param->vuiParametersPresent) {
+      if (param->vui_parameters_present_flag) {
         /* vui_parameters() */ {
-          vuiParam = &param->vuiParameters;
-          colourDesc = &vuiParam->videoSignalType.colourDescription;
+          vuiParam = &param->vui_parameters;
+          colourDesc = &vuiParam->colour_description;
 
           /* [b1 vui_parameters_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->aspectRatioInfoPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->aspect_ratio_info_present_flag, 1) < 0)
             return 0;
 
-          if (param->vuiParameters.aspectRatioInfoPresent) {
+          if (param->vui_parameters.aspect_ratio_info_present_flag) {
             /* [u8 aspect_ratio_idc] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->aspectRatioIdc, 8) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->aspect_ratio_idc, 8) < 0)
               return 0;
 
-            if (vuiParam->aspectRatioIdc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
+            if (vuiParam->aspect_ratio_idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
               /* [u16 sar_width] */
-              if (writeH264NalByteArrayBits(spsNal, vuiParam->extendedSAR.width, 16) < 0)
+              if (writeH264NalByteArrayBits(spsNal, vuiParam->sar_width, 16) < 0)
                 return 0;
 
               /* [u16 sar_height] */
-              if (writeH264NalByteArrayBits(spsNal, vuiParam->extendedSAR.height, 16) < 0)
+              if (writeH264NalByteArrayBits(spsNal, vuiParam->sar_height, 16) < 0)
                 return 0;
             }
           }
 
           /* [b1 overscan_info_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->overscanInfoPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->overscan_info_present_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->overscanInfoPresent) {
+          if (vuiParam->overscan_info_present_flag) {
             /* [b1 overscan_appropriate_flag] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->overscanAppropriate, 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->overscan_appropriate_flag, 1) < 0)
               return 0;
           }
 
           /* [b1 video_signal_type_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->videoSignalTypePresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->video_signal_type_present_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->videoSignalTypePresent) {
+          if (vuiParam->video_signal_type_present_flag) {
             /* [u3 video_format] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->videoSignalType.videoFormat, 3) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->video_format, 3) < 0)
               return 0;
 
             /* [b1 video_full_range_flag] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->videoSignalType.videoFullRange, 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->video_full_range_flag, 1) < 0)
               return 0;
 
             /* [b1 colour_description_present_flag] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->videoSignalType.colourDescPresent, 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->colour_description_present_flag, 1) < 0)
               return 0;
 
-            if (vuiParam->videoSignalType.colourDescPresent) {
+            if (vuiParam->colour_description_present_flag) {
               /* [u8 colour_primaries] */
-              if (writeH264NalByteArrayBits(spsNal, colourDesc->colourPrimaries, 8) < 0)
+              if (writeH264NalByteArrayBits(spsNal, colourDesc->colour_primaries, 8) < 0)
                 return 0;
 
               /* [u8 transfer_characteristics] */
-              if (writeH264NalByteArrayBits(spsNal, colourDesc->transferCharact, 8) < 0)
+              if (writeH264NalByteArrayBits(spsNal, colourDesc->transfer_characteristics, 8) < 0)
                 return 0;
 
               /* [u8 matrix_coefficients] */
-              if (writeH264NalByteArrayBits(spsNal, colourDesc->matrixCoeff, 8) < 0)
+              if (writeH264NalByteArrayBits(spsNal, colourDesc->matrix_coefficients, 8) < 0)
                 return 0;
             }
           }
 
           /* [b1 chroma_loc_info_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->chromaLocInfoPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->chroma_loc_info_present_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->chromaLocInfoPresent) {
+          if (vuiParam->chroma_loc_info_present_flag) {
             /* [ue chroma_sample_loc_type_top_field] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->ChromaLocInfo.sampleLocTypeTopField) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->chroma_sample_loc_type_top_field) < 0)
               return 0;
 
             /* [ue chroma_sample_loc_type_bottom_field] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->ChromaLocInfo.sampleLocTypeBottomField) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->chroma_sample_loc_type_bottom_field) < 0)
               return 0;
           }
 
           /* [b1 timing_info_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->timingInfoPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->timing_info_present_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->timingInfoPresent) {
+          if (vuiParam->timing_info_present_flag) {
             /* [u32 num_units_in_tick] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->timingInfo.numUnitsInTick, 32) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->num_units_in_tick, 32) < 0)
               return 0;
 
             /* [u32 time_scale] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->timingInfo.timeScale, 32) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->time_scale, 32) < 0)
               return 0;
 
             /* [b1 fixed_frame_rate_flag] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->timingInfo.fixedFrameRateFlag, 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->fixed_frame_rate_flag, 1) < 0)
               return 0;
           }
 
           /* [b1 nal_hrd_parameters_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->nalHrdParamPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->nal_hrd_parameters_present_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->nalHrdParamPresent) {
+          if (vuiParam->nal_hrd_parameters_present_flag) {
             /* hrd_parameters() */
-            if (buildH264HrdParameters(spsNal, &vuiParam->nalHrdParam) < 0)
+            if (buildH264HrdParameters(spsNal, &vuiParam->nal_hrd_parameters) < 0)
               return 0;
           }
 
           /* [b1 vcl_hrd_parameters_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->vclHrdParamPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->vcl_hrd_parameters_present_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->vclHrdParamPresent) {
+          if (vuiParam->vcl_hrd_parameters_present_flag) {
             /* hrd_parameters() */
-            if (buildH264HrdParameters(spsNal, &vuiParam->vclHrdParam) < 0)
+            if (buildH264HrdParameters(spsNal, &vuiParam->vcl_hrd_parameters) < 0)
               return 0;
           }
 
-          if (vuiParam->nalHrdParamPresent || vuiParam->vclHrdParamPresent) {
+          if (vuiParam->nal_hrd_parameters_present_flag || vuiParam->vcl_hrd_parameters_present_flag) {
             /* [b1 low_delay_hrd_flag] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->lowDelayHrd, 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->low_delay_hrd_flag, 1) < 0)
               return 0;
           }
 
           /* [b1 pic_struct_present_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->picStructPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->pic_struct_present_flag, 1) < 0)
             return 0;
 
           /* [b1 bitstream_restriction_flag] */
-          if (writeH264NalByteArrayBits(spsNal, vuiParam->bitstreamRestrictionsPresent, 1) < 0)
+          if (writeH264NalByteArrayBits(spsNal, vuiParam->bitstream_restriction_flag, 1) < 0)
             return 0;
 
-          if (vuiParam->bitstreamRestrictionsPresent) {
+          if (vuiParam->bitstream_restriction_flag) {
             /* [b1 motion_vectors_over_pic_boundaries_flag] */
-            if (writeH264NalByteArrayBits(spsNal, vuiParam->bistreamRestrictions.motionVectorsOverPicBoundaries, 1) < 0)
+            if (writeH264NalByteArrayBits(spsNal, vuiParam->bistream_restrictions.motion_vectors_over_pic_boundaries_flag, 1) < 0)
               return 0;
 
             /* [ue max_bytes_per_pic_denom] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistreamRestrictions.maxBytesPerPicDenom) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistream_restrictions.max_bytes_per_pic_denom) < 0)
               return 0;
 
             /* [ue max_bits_per_mb_denom] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistreamRestrictions.maxBitsPerPicDenom) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistream_restrictions.max_bits_per_mb_denom) < 0)
               return 0;
 
             /* [ue log2_max_mv_length_horizontal] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistreamRestrictions.log2MaxMvLengthHorizontal) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistream_restrictions.log2_max_mv_length_horizontal) < 0)
               return 0;
 
             /* [ue log2_max_mv_length_vertical] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistreamRestrictions.log2MaxMvLengthVertical) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistream_restrictions.log2_max_mv_length_vertical) < 0)
               return 0;
 
             /* [ue max_num_reorder_frames] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistreamRestrictions.maxNumReorderFrames) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistream_restrictions.max_num_reorder_frames) < 0)
               return 0;
 
             /* [ue max_dec_frame_buffering] */
-            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistreamRestrictions.maxDecFrameBuffering) < 0)
+            if (writeH264NalByteArrayExpGolombCode(spsNal, vuiParam->bistream_restrictions.max_dec_frame_buffering) < 0)
               return 0;
           }
         }
@@ -648,38 +648,38 @@ int rebuildH264SPSNalVuiParameters(
   assert(NULL != spsParam);
   assert(NULL != handle);
 
-  assert(spsParam->vuiParametersPresent);
+  assert(spsParam->vui_parameters_present_flag);
   assert(handle->sequenceParametersSetPresent);
 
-  vuiParam = &spsParam->vuiParameters;
-  colourDesc = &vuiParam->videoSignalType.colourDescription;
+  vuiParam = &spsParam->vui_parameters;
+  colourDesc = &vuiParam->colour_description;
 
   LIBBLU_DEBUG_COM("Applying SPS Nal VUI parameters updating.\n");
 
   if (handle->curProgParam.useVuiRebuilding) {
-    vuiParam->videoSignalTypePresent = true;
-    vuiParam->videoSignalType.videoFormat = H264_VIDEO_FORMAT_NTSC;
-    vuiParam->videoSignalType.videoFullRange = false;
-    vuiParam->videoSignalType.colourDescPresent = true;
+    vuiParam->video_signal_type_present_flag = true;
+    vuiParam->video_format = H264_VIDEO_FORMAT_NTSC;
+    vuiParam->video_full_range_flag = false;
+    vuiParam->colour_description_present_flag = true;
 
     /* Set VUI Color Description parameters : */
     switch (handle->sequenceParametersSet.data.FrameHeight) {
       case 576: /* SD PAL */
-        colourDesc->colourPrimaries = H264_COLOR_PRIM_BT470BG;
-        colourDesc->transferCharact = H264_TRANS_CHAR_BT470BG;
-        colourDesc->matrixCoeff = H264_MATRX_COEF_BT470BG;
+        colourDesc->colour_primaries = H264_COLOR_PRIM_BT470BG;
+        colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT470BG;
+        colourDesc->matrix_coefficients = H264_MATRX_COEF_BT470BG;
         break;
 
       case 480: /* SD NTSC */
-        colourDesc->colourPrimaries = H264_COLOR_PRIM_SMPTE170M;
-        colourDesc->transferCharact = H264_TRANS_CHAR_SMPTE170M;
-        colourDesc->matrixCoeff = H264_MATRX_COEF_SMPTE170M;
+        colourDesc->colour_primaries = H264_COLOR_PRIM_SMPTE170M;
+        colourDesc->transfer_characteristics = H264_TRANS_CHAR_SMPTE170M;
+        colourDesc->matrix_coefficients = H264_MATRX_COEF_SMPTE170M;
         break;
 
       default: /* HD */
-        colourDesc->colourPrimaries = H264_COLOR_PRIM_BT709;
-        colourDesc->transferCharact = H264_TRANS_CHAR_BT709;
-        colourDesc->matrixCoeff = H264_MATRX_COEF_BT709;
+        colourDesc->colour_primaries = H264_COLOR_PRIM_BT709;
+        colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT709;
+        colourDesc->matrix_coefficients = H264_MATRX_COEF_BT709;
     }
   }
 
@@ -689,33 +689,33 @@ int rebuildH264SPSNalVuiParameters(
         break;
 
       case FRAME_RATE_CODE_23976: /* 23.976 */
-        vuiParam->timingInfo.numUnitsInTick = 1001;
-        vuiParam->timingInfo.timeScale = 48000;
+        vuiParam->num_units_in_tick = 1001;
+        vuiParam->time_scale = 48000;
         break;
 
       case FRAME_RATE_CODE_24: /* 24 */
-        vuiParam->timingInfo.numUnitsInTick = 1000;
-        vuiParam->timingInfo.timeScale = 48000;
+        vuiParam->num_units_in_tick = 1000;
+        vuiParam->time_scale = 48000;
         break;
 
       case FRAME_RATE_CODE_25: /* 25 */
-        vuiParam->timingInfo.numUnitsInTick = 1000;
-        vuiParam->timingInfo.timeScale = 50000;
+        vuiParam->num_units_in_tick = 1000;
+        vuiParam->time_scale = 50000;
         break;
 
       case FRAME_RATE_CODE_29970: /* 29.970 */
-        vuiParam->timingInfo.numUnitsInTick = 1001;
-        vuiParam->timingInfo.timeScale = 60000;
+        vuiParam->num_units_in_tick = 1001;
+        vuiParam->time_scale = 60000;
         break;
 
       case FRAME_RATE_CODE_50: /* 50 */
-        vuiParam->timingInfo.numUnitsInTick = 1000;
-        vuiParam->timingInfo.timeScale = 100000;
+        vuiParam->num_units_in_tick = 1000;
+        vuiParam->time_scale = 100000;
         break;
 
       case FRAME_RATE_CODE_59940: /* 59.940 */
-        vuiParam->timingInfo.numUnitsInTick = 1001;
-        vuiParam->timingInfo.timeScale = 120000;
+        vuiParam->num_units_in_tick = 1001;
+        vuiParam->time_scale = 120000;
         break;
 
       default:
@@ -725,17 +725,17 @@ int rebuildH264SPSNalVuiParameters(
     }
 
     if (isUsedLibbluAspectRatioMod(options.arChange)) {
-      /* vuiParam->aspectRatioInfoPresent = true; */
-      vuiParam->aspectRatioIdc = options.arChange.idc;
+      /* vuiParam->aspect_ratio_info_present_flag = true; */
+      vuiParam->aspect_ratio_idc = options.arChange.idc;
       if (options.arChange.idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
-        vuiParam->extendedSAR.width = options.arChange.x;
-        vuiParam->extendedSAR.height = options.arChange.y;
+        vuiParam->sar_width = options.arChange.x;
+        vuiParam->sar_height = options.arChange.y;
       }
     }
 
     if (0x00 != options.levelChange) {
       if (
-        options.levelChange < spsParam->levelIdc
+        options.levelChange < spsParam->level_idc
         && !handle->curProgParam.usageOfLowerLevel
       ) {
         LIBBLU_WARNING(
@@ -743,11 +743,11 @@ int rebuildH264SPSNalVuiParameters(
           "new level-related constraints.\n"
         );
 
-        /* updateH264LevelLimits(handle, spsParam->levelIdc); */
+        /* updateH264LevelLimits(handle, spsParam->level_idc); */
         handle->curProgParam.usageOfLowerLevel = true;
       }
 
-      spsParam->levelIdc = options.levelChange;
+      spsParam->level_idc = options.levelChange;
     }
 
   } /* if (handle->curProgParam.useVuiUpdate) */
@@ -774,7 +774,7 @@ int patchH264HRDParameters_cpbRemovalDelayLength(
       "'cpb_removal_delay_length' parameter.\n"
     );
 
-  param->cpbRemovalDelayLengthMinus1 = newCpbRemovalDelayLength - 1;
+  param->cpb_removal_delay_length_minus1 = newCpbRemovalDelayLength - 1;
 
   return 0;
 }
@@ -786,22 +786,22 @@ int rebuildH264SPSNalVuiHRDParameters(
   int ret;
 
   assert(NULL != spsParam);
-  assert(spsParam->vuiParametersPresent);
+  assert(spsParam->vui_parameters_present_flag);
 
   LIBBLU_DEBUG_COM("Applying SPS Nal VUI HRD parameters updating.\n");
 
-  if (spsParam->vuiParameters.nalHrdParamPresent) {
+  if (spsParam->vui_parameters.nal_hrd_parameters_present_flag) {
     ret = patchH264HRDParameters_cpbRemovalDelayLength(
-      &spsParam->vuiParameters.nalHrdParam,
+      &spsParam->vui_parameters.nal_hrd_parameters,
       H264_TARGET_INIT_CPB_REM_DELAY_LENGTH
     );
     if (ret < 0)
       return -1;
   }
 
-  if (spsParam->vuiParameters.vclHrdParamPresent) {
+  if (spsParam->vui_parameters.vcl_hrd_parameters_present_flag) {
     ret = patchH264HRDParameters_cpbRemovalDelayLength(
-      &spsParam->vuiParameters.vclHrdParam,
+      &spsParam->vui_parameters.vcl_hrd_parameters,
       H264_TARGET_INIT_CPB_REM_DELAY_LENGTH
     );
     if (ret < 0)
@@ -833,7 +833,7 @@ int patchH264SequenceParametersSet(
     /* SPS VUI parameters fix/updating */
     updatedSpsDataParam = handle->sequenceParametersSet.data;
 
-    if (!updatedSpsDataParam.vuiParametersPresent)
+    if (!updatedSpsDataParam.vui_parameters_present_flag)
       LIBBLU_ERROR_RETURN(
         "Unable to patch SPS, missing VUI parameters.\n"
       );
@@ -895,59 +895,59 @@ int buildH264SeiBufferingPeriodMessage(
       "Unable to patch SEI Buffering Period message, missing SPS.\n"
     );
 
-  if (!handle->sequenceParametersSet.data.vuiParametersPresent)
+  if (!handle->sequenceParametersSet.data.vui_parameters_present_flag)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, "
       "missing VUI parameters in SPS.\n"
     );
 
-  vuiParam = &handle->sequenceParametersSet.data.vuiParameters;
+  vuiParam = &handle->sequenceParametersSet.data.vui_parameters;
 
   /**
    * Check for NalHrdBpPresentFlag and VclHrdBpPresentFlag equal to 0b0,
    * if so, Buffering Period SEI message shouldn't be present.
    */
 
-  if (!vuiParam->nalHrdParamPresent && !vuiParam->vclHrdParamPresent)
+  if (!vuiParam->nal_hrd_parameters_present_flag && !vuiParam->vcl_hrd_parameters_present_flag)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, "
       "missing HRD settings in VUI parameters.\n"
     );
 
   /* [ue seq_parameter_set_id] */
-  if (writeH264NalByteArrayExpGolombCode(seiNal, param->seqParametersSetId) < 0)
+  if (writeH264NalByteArrayExpGolombCode(seiNal, param->seq_parameter_set_id) < 0)
     return -1;
 
-  if (vuiParam->nalHrdParamPresent) {
-    maxSchedSelIdx = vuiParam->nalHrdParam.cpbCntMinus1 + 1;
-    fieldLength = vuiParam->nalHrdParam.initialCpbRemovalDelayLengthMinus1 + 1;
+  if (vuiParam->nal_hrd_parameters_present_flag) {
+    maxSchedSelIdx = vuiParam->nal_hrd_parameters.cpb_cnt_minus1 + 1;
+    fieldLength = vuiParam->nal_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1;
 
     for (SchedSelIdx = 0; SchedSelIdx < maxSchedSelIdx; SchedSelIdx++) {
-      hrdParam = param->nalHrdParam + SchedSelIdx;
+      hrdParam = param->nal_hrd_parameters + SchedSelIdx;
 
       /* [u<initial_cpb_removal_delay_length_minus1 + 1> initial_cpb_removal_delay[SchedSelIdx]] */
-      if (writeH264NalByteArrayBits(seiNal, hrdParam->initialCpbRemovalDelay, fieldLength) < 0)
+      if (writeH264NalByteArrayBits(seiNal, hrdParam->initial_cpb_removal_delay, fieldLength) < 0)
         return -1;
 
       /* [u<initial_cpb_removal_delay_length_minus1 + 1> initial_cpb_removal_delay_offset[SchedSelIdx]] */
-      if (writeH264NalByteArrayBits(seiNal, hrdParam->initialCpbRemovalDelayOff, fieldLength) < 0)
+      if (writeH264NalByteArrayBits(seiNal, hrdParam->initial_cpb_removal_delay_offset, fieldLength) < 0)
         return -1;
     }
   }
 
-  if (vuiParam->vclHrdParamPresent) {
-    maxSchedSelIdx = vuiParam->vclHrdParam.cpbCntMinus1 + 1;
-    fieldLength = vuiParam->vclHrdParam.initialCpbRemovalDelayLengthMinus1 + 1;
+  if (vuiParam->vcl_hrd_parameters_present_flag) {
+    maxSchedSelIdx = vuiParam->vcl_hrd_parameters.cpb_cnt_minus1 + 1;
+    fieldLength = vuiParam->vcl_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1;
 
     for (SchedSelIdx = 0; SchedSelIdx < maxSchedSelIdx; SchedSelIdx++) {
-      hrdParam = param->vclHrdParam + SchedSelIdx;
+      hrdParam = param->vcl_hrd_parameters + SchedSelIdx;
 
       /* [u<initial_cpb_removal_delay_length_minus1 + 1> initial_cpb_removal_delay[SchedSelIdx]] */
-      if (writeH264NalByteArrayBits(seiNal, hrdParam->initialCpbRemovalDelay, fieldLength) < 0)
+      if (writeH264NalByteArrayBits(seiNal, hrdParam->initial_cpb_removal_delay, fieldLength) < 0)
         return -1;
 
       /* [u<initial_cpb_removal_delay_length_minus1 + 1> initial_cpb_removal_delay_offset[SchedSelIdx]] */
-      if (writeH264NalByteArrayBits(seiNal, hrdParam->initialCpbRemovalDelayOff, fieldLength) < 0)
+      if (writeH264NalByteArrayBits(seiNal, hrdParam->initial_cpb_removal_delay_offset, fieldLength) < 0)
         return -1;
     }
   }
@@ -1066,8 +1066,8 @@ size_t appendH264Sei(
 
   /* Build SEI NAL : */
   seiNalParam = (H264NalHeaderParameters) {
-    .nalRefIdc = NAL_SEI_REF_IDC,
-    .nalUnitType = NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION
+    .nal_ref_idc = NAL_SEI_REF_IDC,
+    .nal_unit_type = NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION
   };
 
   if (NULL == (seiNal = createH264NalByteArrayHandler(seiNalParam)))
@@ -1132,8 +1132,8 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 
     /* Build SEI NAL : */
     seiNalParam = (H264NalHeaderParameters) {
-      .nalRefIdc = NAL_SEI_REF_IDC,
-      .nalUnitType = NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION
+      .nal_ref_idc = NAL_SEI_REF_IDC,
+      .nal_unit_type = NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION
     };
 
     if (NULL == (seiNal = createH264NalByteArrayHandler(seiNalParam)))
@@ -1187,7 +1187,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 int patchH264SeiBufferingPeriodMessageParameters(
   H264ParametersHandlerPtr handle,
   H264SeiMessageParameters * seiMessage,
-  const unsigned seqParametersSetId,
+  const unsigned seq_parameter_set_id,
   const H264HrdBufferingPeriodParameters * hrdParam,
   const H264HrdBufferingPeriodParameters * vclParam
 )
@@ -1217,20 +1217,20 @@ int patchH264SeiBufferingPeriodMessageParameters(
       "Unable to patch SEI Buffering Period message, missing SPS.\n"
     );
 
-  if (!handle->sequenceParametersSet.data.vuiParametersPresent)
+  if (!handle->sequenceParametersSet.data.vui_parameters_present_flag)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, "
       "missing VUI parameters in SPS.\n"
     );
 
-  vuiParam = &handle->sequenceParametersSet.data.vuiParameters;
+  vuiParam = &handle->sequenceParametersSet.data.vui_parameters;
 
   /**
    * Check for NalHrdBpPresentFlag and VclHrdBpPresentFlag equal to 0b0,
    * if so, Buffering Period SEI message shouldn't be present.
    */
 
-  if (!vuiParam->nalHrdParamPresent && !vuiParam->vclHrdParamPresent)
+  if (!vuiParam->nal_hrd_parameters_present_flag && !vuiParam->vcl_hrd_parameters_present_flag)
     LIBBLU_H264_ERROR_RETURN(
       "Unable to patch SEI Buffering Period message, "
       "missing HRD settings in VUI parameters.\n"
@@ -1241,19 +1241,19 @@ int patchH264SeiBufferingPeriodMessageParameters(
 
   messageLen = 0;
 
-  param->seqParametersSetId = seqParametersSetId;
-  messageLen += calcH264ExpGolombCodeLength(seqParametersSetId, false);
+  param->seq_parameter_set_id = seq_parameter_set_id;
+  messageLen += calcH264ExpGolombCodeLength(seq_parameter_set_id, false);
 
-  nbCpbConfigs = vuiParam->nalHrdParam.cpbCntMinus1 + 1;
+  nbCpbConfigs = vuiParam->nal_hrd_parameters.cpb_cnt_minus1 + 1;
   for (cpbConfig = 0; cpbConfig < nbCpbConfigs; cpbConfig++) {
-    param->nalHrdParam[cpbConfig] = hrdParam[cpbConfig];
-    messageLen += (vuiParam->nalHrdParam.initialCpbRemovalDelayLengthMinus1 + 1) * 2;
+    param->nal_hrd_parameters[cpbConfig] = hrdParam[cpbConfig];
+    messageLen += (vuiParam->nal_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1) * 2;
   }
 
-  nbCpbConfigs = vuiParam->vclHrdParam.cpbCntMinus1 + 1;
+  nbCpbConfigs = vuiParam->vcl_hrd_parameters.cpb_cnt_minus1 + 1;
   for (cpbConfig = 0; cpbConfig < nbCpbConfigs; cpbConfig++) {
-    param->vclHrdParam[cpbConfig] = vclParam[cpbConfig];
-    messageLen += (vuiParam->nalHrdParam.initialCpbRemovalDelayLengthMinus1 + 1) * 2;
+    param->vcl_hrd_parameters[cpbConfig] = vclParam[cpbConfig];
+    messageLen += (vuiParam->nal_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1) * 2;
   }
 
   paddingRequired = (messageLen & 0x7);
@@ -1286,12 +1286,12 @@ int insertH264SeiBufferingPeriodPlaceHolder(
   /* Setting default empty SEI parameters : */
 
   nalHrd[0] = (H264HrdBufferingPeriodParameters) {
-    .initialCpbRemovalDelay = 0,
-    .initialCpbRemovalDelayOff = 0,
+    .initial_cpb_removal_delay = 0,
+    .initial_cpb_removal_delay_offset = 0,
   };
   vclHrd[0] = (H264HrdBufferingPeriodParameters) {
-    .initialCpbRemovalDelay = 0,
-    .initialCpbRemovalDelayOff = 0,
+    .initial_cpb_removal_delay = 0,
+    .initial_cpb_removal_delay_offset = 0,
   };
   newSeiNalParam.messagesNb = 1;
 
@@ -1368,20 +1368,20 @@ int completeH264SeiBufferingPeriodComputation(
 
   /* Usually, required parameters presence has been checked before. */
   assert(handle->sequenceParametersSetPresent);
-  assert(handle->sequenceParametersSet.data.vuiParametersPresent);
+  assert(handle->sequenceParametersSet.data.vui_parameters_present_flag);
 
-  vuiParam = &handle->sequenceParametersSet.data.vuiParameters;
-  nalHrdPresent = vuiParam->nalHrdParamPresent;
-  vclHrdPresent = vuiParam->vclHrdParamPresent;
+  vuiParam = &handle->sequenceParametersSet.data.vui_parameters;
+  nalHrdPresent = vuiParam->nal_hrd_parameters_present_flag;
+  vclHrdPresent = vuiParam->vcl_hrd_parameters_present_flag;
 
   assert(nalHrdPresent || vclHrdPresent);
 
   /* NAL-HRD computation : */
   if (nalHrdPresent) {
-    cpbRemovalDelayFieldLength = vuiParam->nalHrdParam.initialCpbRemovalDelayLengthMinus1 + 1;
+    cpbRemovalDelayFieldLength = vuiParam->nal_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1;
     maxAllowedCpbRemovalDelayValue = (2 << (cpbRemovalDelayFieldLength - 1)) - 1; /* Quick pow(2, cpbRemovalDelayFieldLength) - 1 */
 
-    nalBitRate = vuiParam->nalHrdParam.schedSel[0].bitRate;
+    nalBitRate = vuiParam->nal_hrd_parameters.schedSel[0].BitRate;
 
     nalMaxCpbBufferingDelay = handle->curProgParam.largestFrameSize * 8l / nalBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", nalMaxCpbBufferingDelay);
@@ -1389,7 +1389,7 @@ int completeH264SeiBufferingPeriodComputation(
     nalResultInitCpbRemovalDelay = ceil(nalMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
     lbc_printf("Result computed initial CPB removal delay: %f.\n", nalResultInitCpbRemovalDelay);
 
-    nalCpbSize = vuiParam->nalHrdParam.schedSel[0].cpbSize;
+    nalCpbSize = vuiParam->nal_hrd_parameters.schedSel[0].CpbSize;
 
     if (nalCpbSize < nalResultInitCpbRemovalDelay * nalBitRate / H264_90KHZ_CLOCK)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
@@ -1410,13 +1410,13 @@ int completeH264SeiBufferingPeriodComputation(
 
   if (vclHrdPresent) {
     if (!nalHrdPresent) {
-      cpbRemovalDelayFieldLength = vuiParam->vclHrdParam.initialCpbRemovalDelayLengthMinus1 + 1;
+      cpbRemovalDelayFieldLength = vuiParam->vcl_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1;
       maxAllowedCpbRemovalDelayValue = (2 << (cpbRemovalDelayFieldLength - 1)) - 1; /* Quick pow(2, cpbRemovalDelayFieldLength) - 1 */
     }
     else
-      assert(cpbRemovalDelayFieldLength == vuiParam->vclHrdParam.initialCpbRemovalDelayLengthMinus1 + 1);
+      assert(cpbRemovalDelayFieldLength == vuiParam->vcl_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1);
 
-    vclBitRate = vuiParam->vclHrdParam.schedSel[0].bitRate;
+    vclBitRate = vuiParam->vcl_hrd_parameters.schedSel[0].BitRate;
 
     vclMaxCpbBufferingDelay = handle->curProgParam.largestFrameSize * 8l / vclBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", vclMaxCpbBufferingDelay);
@@ -1424,7 +1424,7 @@ int completeH264SeiBufferingPeriodComputation(
     vclResultInitCpbRemovalDelay = ceil(vclMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
     lbc_printf("Result computed initial CPB removal delay: %f.\n", vclResultInitCpbRemovalDelay);
 
-    vclCpbSize = vuiParam->vclHrdParam.schedSel[0].cpbSize;
+    vclCpbSize = vuiParam->vcl_hrd_parameters.schedSel[0].CpbSize;
 
     if (vclCpbSize < vclResultInitCpbRemovalDelay * vclBitRate / H264_90KHZ_CLOCK)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
@@ -1451,10 +1451,10 @@ int completeH264SeiBufferingPeriodComputation(
     vclResultInitCpbRemovalDelay = 0;
 
   /* Pack computed replacement parameters : */
-  nalHrd[0].initialCpbRemovalDelay = nalResultInitCpbRemovalDelay;
-  nalHrd[0].initialCpbRemovalDelayOff = 0;
-  vclHrd[0].initialCpbRemovalDelay = vclResultInitCpbRemovalDelay;
-  vclHrd[0].initialCpbRemovalDelayOff = 0;
+  nalHrd[0].initial_cpb_removal_delay = nalResultInitCpbRemovalDelay;
+  nalHrd[0].initial_cpb_removal_delay_offset = 0;
+  vclHrd[0].initial_cpb_removal_delay = vclResultInitCpbRemovalDelay;
+  vclHrd[0].initial_cpb_removal_delay_offset = 0;
   newSeiNalParam.messagesNb = 1;
 
   if (
@@ -1468,8 +1468,8 @@ int completeH264SeiBufferingPeriodComputation(
     return -1;
 
   /* Build updated SEI NAL : */
-  seiNalParam.nalRefIdc = NAL_SEI_REF_IDC;
-  seiNalParam.nalUnitType = NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION;
+  seiNalParam.nal_ref_idc = NAL_SEI_REF_IDC;
+  seiNalParam.nal_unit_type = NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION;
 
   if (NULL == (seiNal = createH264NalByteArrayHandler(seiNalParam)))
     return -1; /* Error */

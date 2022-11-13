@@ -20,8 +20,8 @@ SEI for the verification of the HRD conformance.
  *  [1] ITU-T Rec. H.264 (06/2019).
  */
 
-#ifndef __LIBBLU_MUXER_CODECS__H264__PARSER_H__
-#define __LIBBLU_MUXER_CODECS__H264__PARSER_H__
+#ifndef __LIBBLU_MUXER__CODECS__H264__PARSER_H__
+#define __LIBBLU_MUXER__CODECS__H264__PARSER_H__
 
 #include "../../util.h"
 #include "../../esms/scriptCreation.h"
@@ -34,28 +34,8 @@ SEI for the verification of the HRD conformance.
 #include "h264_hrdVerifier.h"
 #include "h264_data.h"
 
-int initNal(
-  H264ParametersHandlerPtr param
-);
-
 int parseH264RbspTrailingBits(
   H264ParametersHandlerPtr handle
-);
-
-/** \~english
- * \brief Detect if NALU type specifies the start of a new H.264 access unit.
- *
- * \param curState
- * \param naluType
- * \return true
- * \return false
- *
- * Process is described by 7.4.1.2.3 'Order of NAL units and coded pictures and
- * association to access units' of ITU-T Rec. H.264.
- */
-bool isStartOfANewH264AU(
-  H264CurrentProgressParam * curState,
-  uint8_t naluType
 );
 
 int processAccessUnit(
@@ -146,7 +126,7 @@ int decodeH264SupplementalEnhancementInformation(
 int parseH264RefPicListModification(
   H264ParametersHandlerPtr handle,
   H264RefPicListModification * param,
-  H264SliceTypeValue sliceType
+  H264SliceTypeValue slice_type
 );
 
 int parseH264PredWeightTable(

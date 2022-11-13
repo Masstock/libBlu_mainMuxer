@@ -172,6 +172,19 @@ static inline int8_t lb_conv_signed8(
   return (value >> (size-1)) ? mask - ~digits : digits;
 }
 
+static inline unsigned lb_ceil_log2(
+  unsigned value
+)
+{
+  unsigned mask, ret;
+
+  ret = 0;
+  for (mask = value - 1; 0 < mask; mask >>= 1)
+    ret++;
+
+  return ret;
+}
+
 /** \~english
  * \brief Fast 32-bits log 2.
  *

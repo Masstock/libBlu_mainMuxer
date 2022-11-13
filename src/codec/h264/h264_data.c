@@ -170,7 +170,7 @@ const char * h264ColorPrimariesValueStr(
   const H264ColourPrimariesValue val
 )
 {
-  static const char * colourPrimaries[] = {
+  static const char * colour_primaries[] = {
     "Unknown",
     "BT.709",
     "Unspecified",
@@ -186,8 +186,8 @@ const char * h264ColorPrimariesValueStr(
     "Display P3"
   };
 
-  if (val < ARRAY_SIZE(colourPrimaries))
-    return colourPrimaries[val];
+  if (val < ARRAY_SIZE(colour_primaries))
+    return colour_primaries[val];
   if (val == H264_COLOR_PRIM_EBU3213)
     return "EBU 3213-E";
   return "Unknown";
@@ -197,7 +197,7 @@ const char * h264TransferCharacteristicsValueStr(
   const H264TransferCharacteristicsValue val
 )
 {
-  static const char * transferCharact[] = {
+  static const char * transfer_characteristics[] = {
     "Unknown",
     "BT.709",
     "Unspecified",
@@ -219,8 +219,8 @@ const char * h264TransferCharacteristicsValueStr(
     "BT.2100-2 HLG"
   };
 
-  if (val < ARRAY_SIZE(transferCharact))
-    return transferCharact[val];
+  if (val < ARRAY_SIZE(transfer_characteristics))
+    return transfer_characteristics[val];
   return "Unknown";
 }
 
@@ -228,7 +228,7 @@ const char * h264MatrixCoefficientsValueStr(
   const H264MatrixCoefficientsValue val
 )
 {
-  static const char * matrixCoeff[] = {
+  static const char * matrix_coefficients[] = {
     "sRGB/XYZ",
     "BT.709",
     "Unspecified",
@@ -246,8 +246,8 @@ const char * h264MatrixCoefficientsValueStr(
     "BT.2100-2 ICtCp"
   };
 
-  if (val < ARRAY_SIZE(matrixCoeff))
-    return matrixCoeff[val];
+  if (val < ARRAY_SIZE(matrix_coefficients))
+    return matrix_coefficients[val];
   return "Unknown";
 }
 
@@ -465,59 +465,14 @@ int initH264NalDeserializerContext(
   return 0;
 }
 
-const char * H264NalUnitTypeStr(
-  const uint8_t nal_unit_type
-)
-{
-  switch (nal_unit_type) {
-    case NAL_UNIT_TYPE_UNSPECIFIED:
-      return "Unspecified";
-
-    case NAL_UNIT_TYPE_NON_IDR_SLICE:
-      return "Coded Slice (non-IDR picture)";
-
-    case NAL_UNIT_TYPE_IDR_SLICE:
-      return "Coded Slice (IDR picture)";
-
-    case NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION:
-      return "Supplemental Enhancement Information (SEI)";
-
-    case NAL_UNIT_TYPE_SEQUENCE_PARAMETERS_SET:
-      return "Sequence Parameters Set (SPS)";
-
-    case NAL_UNIT_TYPE_PIC_PARAMETERS_SET:
-      return "Picture Parameters Set (PPS)";
-
-    case NAL_UNIT_TYPE_ACCESS_UNIT_DELIMITER:
-      return "Access unit delimiter";
-
-    case NAL_UNIT_TYPE_END_OF_STREAM:
-      return "End of Stream";
-
-    case NAL_UNIT_TYPE_FILLER_DATA:
-      return "Filler data";
-
-    case NAL_UNIT_TYPE_PREFIX_NAL_UNIT:
-      return "Prefix NAL Unit";
-
-    case NAL_UNIT_TYPE_CODED_SLICE_EXT:
-      return "Coded Slice Extension";
-
-    case NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT:
-      return "Coded Slice Depth Extension";
-  }
-
-  return "unknown";
-}
-
 unsigned getH264MaxMBPS(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Max macroblock processing rate - MaxMBPS (MB/s) */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  switch (levelIdc) {
+  switch (level_idc) {
     case 10:
     case H264_LEVEL_1B:
       return 1485;
@@ -567,13 +522,13 @@ unsigned getH264MaxMBPS(
 }
 
 unsigned getH264MaxFS(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Max frame size - MaxFS (MBs) */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  switch (levelIdc) {
+  switch (level_idc) {
     case 10:
     case H264_LEVEL_1B:
       return 99;
@@ -611,13 +566,13 @@ unsigned getH264MaxFS(
 }
 
 unsigned getH264MaxDpbMbs(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Max decoded picture buffer size - MaxDpbMbs (MBs) */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  switch (levelIdc) {
+  switch (level_idc) {
     case 10:
     case H264_LEVEL_1B:
       return 396;
@@ -656,13 +611,13 @@ unsigned getH264MaxDpbMbs(
 }
 
 unsigned getH264MaxBR(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Max video bit rate - MaxBR (factor bits/s) */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  switch (levelIdc) {
+  switch (level_idc) {
     case 10:
       return 64;
     case H264_LEVEL_1B:
@@ -704,13 +659,13 @@ unsigned getH264MaxBR(
 }
 
 unsigned getH264MaxCPB(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Max CPB size - MaxCPB (factor bits) */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  switch (levelIdc) {
+  switch (level_idc) {
     case 10:
       return 175;
     case H264_LEVEL_1B:
@@ -752,13 +707,13 @@ unsigned getH264MaxCPB(
 }
 
 unsigned getH264MaxVmvR(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Vertical MV component limit - MaxVmvR (luma frame samples) */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  switch (levelIdc) {
+  switch (level_idc) {
     case 10:
     case H264_LEVEL_1B:
       return 64;
@@ -790,7 +745,7 @@ unsigned getH264MaxVmvR(
 }
 
 unsigned getH264MinCR(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Min compression ratio - MinCR */
@@ -800,90 +755,90 @@ unsigned getH264MinCR(
     (https://forum.doom9.org/showthread.php?p=1369280#post1369280)
   */
 
-  if (31 <= levelIdc && levelIdc <= 40)
+  if (31 <= level_idc && level_idc <= 40)
     return 4;
   return 2;
 }
 
 unsigned getH264MaxMvsPer2Mb(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* Max number of motion vectors per two consecutive MBs - MaxMvsPer2Mb */
   /* Rec. ITU-T H.264 - Table A-1 */
 
-  if (levelIdc == 30)
+  if (level_idc == 30)
     return 32;
-  if (31 <= levelIdc && levelIdc <= 62)
+  if (31 <= level_idc && level_idc <= 62)
     return 16;
 
   return 0; /* Unknown/Unrestricted level. */
 }
 
 unsigned getH264SliceRate(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* SliceRate */
   /* Rec. ITU-T H.264 - Table A-4 */
 
-  if (levelIdc == 30)
+  if (level_idc == 30)
     return 22;
-  if (31 <= levelIdc && levelIdc <= 40)
+  if (31 <= level_idc && level_idc <= 40)
     return 60;
-  if (41 <= levelIdc)
+  if (41 <= level_idc)
     return 24;
 
   return 0; /* Unknown/Unsupported level. */
 }
 
 unsigned getH264MinLumaBiPredSize(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* MinLumaBiPredSize */
   /* Rec. ITU-T H.264 - Table A-4 */
 
-  if (31 <= levelIdc)
+  if (31 <= level_idc)
     return 8*8;
 
   return 0; /* Unknown/Unrestricted level. */
 }
 
 bool getH264direct_8x8_inference_flag(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* direct_8x8_inference_flag */
   /* Rec. ITU-T H.264 - Table A-4 */
 
-  if (30 <= levelIdc)
+  if (30 <= level_idc)
     return true;
 
   return false; /* Unknown/Unrestricted level. */
 }
 
 bool getH264frame_mbs_only_flag(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* frame_mbs_only_flag */
   /* Rec. ITU-T H.264 - Table A-4 */
 
-  if (levelIdc <= 20 || 42 <= levelIdc)
+  if (level_idc <= 20 || 42 <= level_idc)
     return true;
 
   return false; /* Unknown/Unrestricted level. */
 }
 
 unsigned getH264MaxSubMbRectSize(
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   /* MaxSubMbRectSize */
   /* Rec. ITU-T H.264 - Table A-4 */
 
-  if (levelIdc <= 30)
+  if (level_idc <= 30)
     return 576;
 
   return 0; /* Unknown/Unrestricted level. */
@@ -891,36 +846,36 @@ unsigned getH264MaxSubMbRectSize(
 
 void updateH264LevelLimits(
   H264ParametersHandlerPtr param,
-  uint8_t levelIdc
+  uint8_t level_idc
 )
 {
   assert(NULL != param);
 
-  param->constraints.MaxMBPS = getH264MaxMBPS(levelIdc);
-  param->constraints.MaxFS = getH264MaxFS(levelIdc);
-  param->constraints.MaxDpbMbs = getH264MaxDpbMbs(levelIdc);
-  param->constraints.MaxBR = getH264MaxBR(levelIdc);
-  param->constraints.MaxCPB = getH264MaxCPB(levelIdc);
-  param->constraints.MaxVmvR = getH264MaxVmvR(levelIdc);
-  param->constraints.MinCR = getH264MinCR(levelIdc);
-  param->constraints.MaxMvsPer2Mb = getH264MaxMvsPer2Mb(levelIdc);
+  param->constraints.MaxMBPS = getH264MaxMBPS(level_idc);
+  param->constraints.MaxFS = getH264MaxFS(level_idc);
+  param->constraints.MaxDpbMbs = getH264MaxDpbMbs(level_idc);
+  param->constraints.MaxBR = getH264MaxBR(level_idc);
+  param->constraints.MaxCPB = getH264MaxCPB(level_idc);
+  param->constraints.MaxVmvR = getH264MaxVmvR(level_idc);
+  param->constraints.MinCR = getH264MinCR(level_idc);
+  param->constraints.MaxMvsPer2Mb = getH264MaxMvsPer2Mb(level_idc);
 
-  param->constraints.SliceRate = getH264SliceRate(levelIdc);
-  param->constraints.MinLumaBiPredSize = getH264MinLumaBiPredSize(levelIdc);
-  param->constraints.direct_8x8_inference_flag = getH264direct_8x8_inference_flag(levelIdc);
-  param->constraints.frame_mbs_only_flag = getH264frame_mbs_only_flag(levelIdc);
-  param->constraints.MaxSubMbRectSize = getH264MaxSubMbRectSize(levelIdc);
+  param->constraints.SliceRate = getH264SliceRate(level_idc);
+  param->constraints.MinLumaBiPredSize = getH264MinLumaBiPredSize(level_idc);
+  param->constraints.direct_8x8_inference_flag = getH264direct_8x8_inference_flag(level_idc);
+  param->constraints.frame_mbs_only_flag = getH264frame_mbs_only_flag(level_idc);
+  param->constraints.MaxSubMbRectSize = getH264MaxSubMbRectSize(level_idc);
 }
 
 unsigned getH264cpbBrVclFactor(
-  H264ProfileIdcValue profileIdc
+  H264ProfileIdcValue profile_idc
 )
 {
   /* cpbBrVclFactor */
   /* Rec. ITU-T H.264 - Table A-2 */
   /* And A.3.1 */
 
-  switch (profileIdc) {
+  switch (profile_idc) {
     case H264_PROFILE_BASELINE:
     case H264_PROFILE_MAIN:
     case H264_PROFILE_EXTENDED:
@@ -945,14 +900,14 @@ unsigned getH264cpbBrVclFactor(
 }
 
 unsigned getH264cpbBrNalFactor(
-  H264ProfileIdcValue profileIdc
+  H264ProfileIdcValue profile_idc
 )
 {
   /* cpbBrNalFactor */
   /* Rec. ITU-T H.264 - Table A-2 */
   /* And A.3.1 */
 
-  switch (profileIdc) {
+  switch (profile_idc) {
     case H264_PROFILE_BASELINE:
     case H264_PROFILE_MAIN:
     case H264_PROFILE_EXTENDED:
@@ -978,7 +933,7 @@ unsigned getH264cpbBrNalFactor(
 
 void updateH264ProfileLimits(
   H264ParametersHandlerPtr param,
-  H264ProfileIdcValue profileIdc,
+  H264ProfileIdcValue profile_idc,
   H264ContraintFlags constraintsFlags,
   bool applyBdavConstraints
 )
@@ -989,10 +944,10 @@ void updateH264ProfileLimits(
 
   constraintsParam = &param->constraints;
 
-  constraintsParam->cpbBrVclFactor = getH264cpbBrVclFactor(profileIdc);
-  constraintsParam->cpbBrNalFactor = getH264cpbBrNalFactor(profileIdc);
+  constraintsParam->cpbBrVclFactor = getH264cpbBrVclFactor(profile_idc);
+  constraintsParam->cpbBrNalFactor = getH264cpbBrNalFactor(profile_idc);
 
-  switch (profileIdc) {
+  switch (profile_idc) {
     case H264_PROFILE_BASELINE:
       /* A.2.1 Baseline profile constraints */
       constraintsParam->allowedSliceTypes = H264_RESTRICTED_IP_SLICE_TYPES;
@@ -1009,7 +964,7 @@ void updateH264ProfileLimits(
       if (constraintsFlags.set1) {
         /* A.2.1.1 Constrained Baseline profile constraints */
         constraintsParam->forbiddenArbitrarySliceOrder = true;
-       constraintsParam->maxAllowedNumSliceGroups = 0;
+       constraintsParam->maxAllowedNumSliceGroups = 1;
         constraintsParam->forbiddenRedundantPictures = true;
       }
       break;
@@ -1019,7 +974,7 @@ void updateH264ProfileLimits(
       constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 0;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
       constraintsParam->forbiddenPPSExtensionParameters = true;
       constraintsParam->forbiddenRedundantPictures = true;
       constraintsParam->maxAllowedLevelPrefix = 15;
@@ -1042,7 +997,7 @@ void updateH264ProfileLimits(
       constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 0;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
       constraintsParam->forbiddenRedundantPictures = true;
       constraintsParam->restrictedChromaFormatIdc =
         (applyBdavConstraints) ?
@@ -1068,7 +1023,7 @@ void updateH264ProfileLimits(
       constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 0;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
       constraintsParam->forbiddenRedundantPictures = true;
       constraintsParam->restrictedChromaFormatIdc =
         H264_MONO_420_CHROMA_FORMAT_IDC;
@@ -1090,7 +1045,7 @@ void updateH264ProfileLimits(
       constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 0;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
       constraintsParam->forbiddenRedundantPictures = true;
       constraintsParam->restrictedChromaFormatIdc =
         H264_MONO_TO_422_CHROMA_FORMAT_IDC;
@@ -1109,18 +1064,18 @@ void updateH264ProfileLimits(
       constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 0;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
       constraintsParam->forbiddenRedundantPictures = true;
       constraintsParam->maxAllowedBitDepthMinus8 = 6;
 
       if (
         constraintsFlags.set3
-        || profileIdc == H264_PROFILE_CAVLC_444_INTRA
+        || profile_idc == H264_PROFILE_CAVLC_444_INTRA
       ) {
         /* A.2.10 High 4:4:4 Intra profile constraints */
         constraintsParam->idrPicturesOnly = true;
 
-        if (profileIdc == H264_PROFILE_CAVLC_444_INTRA) {
+        if (profile_idc == H264_PROFILE_CAVLC_444_INTRA) {
           /* A.2.11 CAVLC 4:4:4 Intra profile constraints */
           constraintsParam->restrictedEntropyCodingMode =
             H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
@@ -1140,10 +1095,10 @@ void updateH264ProfileLimits(
 
 unsigned getH264BrNal(
   H264ConstraintsParam constraints,
-  H264ProfileIdcValue profileIdc
+  H264ProfileIdcValue profile_idc
 )
 {
-  switch (profileIdc) {
+  switch (profile_idc) {
     case H264_PROFILE_BASELINE:
     case H264_PROFILE_MAIN:
     case H264_PROFILE_EXTENDED:
@@ -1153,7 +1108,7 @@ unsigned getH264BrNal(
       if (!constraints.cpbBrNalFactor)
         LIBBLU_ERROR(
           "Warning, no defined cpbBrNalFactor for profile_idc %u.\n",
-          profileIdc
+          profile_idc
         );
   }
 

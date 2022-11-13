@@ -7,8 +7,8 @@
  * \brief H.264 video (AVC) bitstreams patching module.
  */
 
-#ifndef __LIBBLU_MUXER_CODECS__H264__PATCHER_H__
-#define __LIBBLU_MUXER_CODECS__H264__PATCHER_H__
+#ifndef __LIBBLU_MUXER__CODECS__H264__PATCHER_H__
+#define __LIBBLU_MUXER__CODECS__H264__PATCHER_H__
 
 #include "h264_util.h"
 #include "h264_data.h"
@@ -100,7 +100,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 int patchH264SeiBufferingPeriodMessageParameters(
   H264ParametersHandlerPtr handle,
   H264SeiMessageParameters * seiMessage,
-  const unsigned seqParametersSetId,
+  const unsigned seq_parameter_set_id,
   const H264HrdBufferingPeriodParameters * hrdParam,
   const H264HrdBufferingPeriodParameters * vclParam
 );

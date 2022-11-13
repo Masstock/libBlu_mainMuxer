@@ -7,8 +7,8 @@
  * \brief H.264 video (AVC) bitstreams specific utilities module.
  */
 
-#ifndef __LIBBLU_MUXER_CODECS_H264_UTIL_H__
-#define __LIBBLU_MUXER_CODECS_H264_UTIL_H__
+#ifndef __LIBBLU_MUXER__CODECS__H264__UTIL_H__
+#define __LIBBLU_MUXER__CODECS__H264__UTIL_H__
 
 #include "../../util.h"
 #include "../../elementaryStreamOptions.h"
@@ -87,19 +87,19 @@ typedef struct {
 
 void updateH264LevelLimits(
   H264ParametersHandlerPtr handle,
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 
 void updateH264ProfileLimits(
   H264ParametersHandlerPtr handle,
-  H264ProfileIdcValue profileIdc,
+  H264ProfileIdcValue profile_idc,
   H264ContraintFlags constraintsFlags,
   bool applyBdavConstraints
 );
 
 unsigned getH264BrNal(
   H264ConstraintsParam constraints,
-  H264ProfileIdcValue profileIdc
+  H264ProfileIdcValue profile_idc
 );
 
 /* Handling functions : */
@@ -169,7 +169,7 @@ void destroyH264NalByteArrayHandler(
 
 H264AUNalUnitPtr createNewNalCell(
   H264ParametersHandlerPtr handle,
-  uint8_t nalUnitType
+  H264NalUnitTypeValue nal_unit_type
 );
 
 H264AUNalUnitPtr recoverCurNalCell(
@@ -197,17 +197,23 @@ static inline uint8_t getNalRefIdc(
   assert(NULL != handle);
   assert(handle->file.packetInitialized);
 
-  return handle->file.refIdc;
+  return handle->file.nal_ref_idc;
 }
 
-static inline uint8_t getNalUnitType(
+/** \~english
+ * \brief Return the nal_unit_type field value of the currently parsed NALU.
+ *
+ * \param handle H.264 parsing handle.
+ * \return H264NalUnitTypeValue nal_unit_type value.
+ */
+static inline H264NalUnitTypeValue getCurrentNALUnitType(
   const H264ParametersHandlerPtr handle
 )
 {
   /* Returns current nal type (or last parsed nal type, 0x0 if none) */
   assert(NULL != handle);
 
-  return handle->file.type;
+  return handle->file.nal_unit_type;
 }
 
 /* Reading functions : */

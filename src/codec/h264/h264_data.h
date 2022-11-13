@@ -7,8 +7,8 @@
  * \brief H.264 video (AVC) bitstreams data structures module.
  */
 
-#ifndef __LIBBLU_MUXER_CODECS_H264_DATA_H__
-#define __LIBBLU_MUXER_CODECS_H264_DATA_H__
+#ifndef __LIBBLU_MUXER__CODECS__H264__DATA_H__
+#define __LIBBLU_MUXER__CODECS__H264__DATA_H__
 
 #include "../../elementaryStreamProperties.h"
 
@@ -19,35 +19,6 @@
 /* Switches : */
 #define DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION             0
 #define ALLOW_BUFFERING_PERIOD_CHANGE                         1
-
-/* nal_ref_idc codes : */
-#define NAL_REF_IDC_NONE                                    0x0
-#define NAL_REF_IDC_LOW                                     0x1
-#define NAL_REF_IDC_MEDIUM                                  0x2
-#define NAL_REF_IDC_HIGH                                    0x3
-
-#define NAL_SEQUENCE_PARAMETERS_SET_REF_IDC    NAL_REF_IDC_HIGH
-#define NAL_SEI_REF_IDC                         NAL_REF_IDC_LOW
-
-/* nal_unit_type codes : */
-typedef enum {
-  NAL_UNIT_TYPE_UNSPECIFIED                           =  0,
-  NAL_UNIT_TYPE_NON_IDR_SLICE                         =  1,
-  NAL_UNIT_TYPE_SLICE_PART_A_LAYER                    =  2,
-  NAL_UNIT_TYPE_SLICE_PART_B_LAYER                    =  3,
-  NAL_UNIT_TYPE_SLICE_PART_C_LAYER                    =  4,
-  NAL_UNIT_TYPE_IDR_SLICE                             =  5,
-  NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION  =  6,
-  NAL_UNIT_TYPE_SEQUENCE_PARAMETERS_SET               =  7,
-  NAL_UNIT_TYPE_PIC_PARAMETERS_SET                    =  8,
-  NAL_UNIT_TYPE_ACCESS_UNIT_DELIMITER                 =  9,
-  NAL_UNIT_TYPE_END_OF_SEQUENCE                       = 10,
-  NAL_UNIT_TYPE_END_OF_STREAM                         = 11,
-  NAL_UNIT_TYPE_FILLER_DATA                           = 12,
-  NAL_UNIT_TYPE_PREFIX_NAL_UNIT                       = 14,
-  NAL_UNIT_TYPE_CODED_SLICE_EXT                       = 20,
-  NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT                 = 21
-} H264NalUnitType;
 
 #define H264_MAX_CHROMA_CHANNELS_NB                           2
 #define H264_MAX_CPB_CONFIGURATIONS                          32
@@ -101,9 +72,99 @@ typedef enum {
  */
 #define H264_BDAV_MAX_CPB_SIZE  30000000
 
+#if 0
+#define NAL_REF_IDC_NONE                                    0x0
+#define NAL_REF_IDC_LOW                                     0x1
+#define NAL_REF_IDC_MEDIUM                                  0x2
+#define NAL_REF_IDC_HIGH                                    0x3
+#endif
+
+typedef enum {
+  NAL_REF_IDC_NONE   = 0,
+  NAL_REF_IDC_LOW    = 1,
+  NAL_REF_IDC_MEDIUM = 2,
+  NAL_REF_IDC_HIGH   = 3
+} H264NalRefIdcValue;
+
+#define NAL_SPS_REF_IDC  NAL_REF_IDC_HIGH
+#define NAL_SEI_REF_IDC  NAL_REF_IDC_LOW
+
+/** \~english
+ * \brief NAL unit nal_unit_type value.
+ *
+ */
+typedef enum {
+  NAL_UNIT_TYPE_UNSPECIFIED                           =  0,
+  NAL_UNIT_TYPE_NON_IDR_SLICE                         =  1,
+  NAL_UNIT_TYPE_SLICE_PART_A_LAYER                    =  2,
+  NAL_UNIT_TYPE_SLICE_PART_B_LAYER                    =  3,
+  NAL_UNIT_TYPE_SLICE_PART_C_LAYER                    =  4,
+  NAL_UNIT_TYPE_IDR_SLICE                             =  5,
+  NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION  =  6,
+  NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET                =  7,
+  NAL_UNIT_TYPE_PIC_PARAMETER_SET                     =  8,
+  NAL_UNIT_TYPE_ACCESS_UNIT_DELIMITER                 =  9,
+  NAL_UNIT_TYPE_END_OF_SEQUENCE                       = 10,
+  NAL_UNIT_TYPE_END_OF_STREAM                         = 11,
+  NAL_UNIT_TYPE_FILLER_DATA                           = 12,
+  NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET_EXTENSION      = 13,
+  NAL_UNIT_TYPE_PREFIX_NAL_UNIT                       = 14,
+  NAL_UNIT_TYPE_SUBSET_SEQUENCE_PARAMETER_SET         = 15,
+  NAL_UNIT_TYPE_DEPTH_PARAMETER_SET                   = 16,
+  NAL_UNIT_TYPE_RESERVED_17                           = 17,
+  NAL_UNIT_TYPE_RESERVED_18                           = 18,
+  NAL_UNIT_TYPE_CODED_SLICE_AUX_CODED_PIC_WO_PART     = 19,
+  NAL_UNIT_TYPE_CODED_SLICE_EXT                       = 20,
+  NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT                 = 21,
+  NAL_UNIT_TYPE_RESERVED_22                           = 22,
+  NAL_UNIT_TYPE_RESERVED_23                           = 23
+} H264NalUnitTypeValue;
+
+/** \~english
+ * \brief Return a constant string representation of a nal_unit_type value.
+ *
+ * \param nal_unit_type Value to represent.
+ * \return const char* Constant string representation.
+ */
+static inline const char * H264NalUnitTypeStr(
+  H264NalUnitTypeValue nal_unit_type
+)
+{
+  static const char * strings[] = {
+    "Unspecified",
+    "Coded Slice (non-IDR picture)",
+    "Coded Slice data partition A",
+    "Coded Slice data partition B",
+    "Coded Slice data partition C",
+    "Coded Slice (IDR picture)",
+    "Supplemental Enhancement Information (SEI)",
+    "Sequence Parameters Set (SPS)",
+    "Picture Parameters Set (PPS)",
+    "Access Unit Delimiter (AUD)",
+    "End of sequence",
+    "End of stream",
+    "Filler data",
+    "Sequence Parameter Set Extension",
+    "Prefix NAL Unit",
+    "Subset Sequence Parameter Set",
+    "Depth Parameter Set",
+    "Reserved",
+    "Reserved",
+    "Coded Slice (Auxiliary coded picture w/o partitioning)",
+    "Coded Slice Extension",
+    "Coded Slice Extension (Depth View/3D-AVC Texture view component)",
+    "Reserved",
+    "Reserved"
+  };
+
+  if (nal_unit_type < ARRAY_SIZE(strings))
+    return strings[nal_unit_type];
+  return "Unspecified";
+}
+
 typedef struct {
-  uint8_t nalRefIdc;
-  uint8_t nalUnitType;
+  H264NalRefIdcValue nal_ref_idc;
+  H264NalUnitTypeValue nal_unit_type;
 
   /* bool firstNalInAU; */
 
@@ -154,7 +215,7 @@ const char * h264PrimaryPictureTypeStr(
   }
 
 typedef struct {
-  H264PrimaryPictureType primaryPictType;
+  H264PrimaryPictureType primary_pic_type;
 } H264AccessUnitDelimiterParameters;
 
 /* Profile codes                                             */
@@ -182,27 +243,27 @@ typedef enum {
   H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH = 139,
 } H264ProfileIdcValue;
 
-#define H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(profileIdc)                    \
+#define H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(profile_idc)                    \
   (                                                                           \
-    (profileIdc) == H264_PROFILE_BASELINE                                     \
-    || (profileIdc) == H264_PROFILE_MAIN                                      \
-    || (profileIdc) == H264_PROFILE_EXTENDED                                  \
+    (profile_idc) == H264_PROFILE_BASELINE                                     \
+    || (profile_idc) == H264_PROFILE_MAIN                                      \
+    || (profile_idc) == H264_PROFILE_EXTENDED                                  \
   )
 
-#define H264_PROFILE_IS_HIGH(profileIdc)                                      \
+#define H264_PROFILE_IS_HIGH(profile_idc)                                      \
   (                                                                           \
-    (profileIdc) == H264_PROFILE_CAVLC_444_INTRA                              \
-    || (profileIdc) == H264_PROFILE_SCALABLE_HIGH                             \
-    || (profileIdc) == H264_PROFILE_HIGH                                      \
-    || (profileIdc) == H264_PROFILE_MULTIVIEW_HIGH                            \
-    || (profileIdc) == H264_PROFILE_HIGH_10                                   \
-    || (profileIdc) == H264_PROFILE_HIGH_422                                  \
-    || (profileIdc) == H264_PROFILE_STEREO_HIGH                               \
-    || (profileIdc) == H264_PROFILE_MFC_HIGH                                  \
-    || (profileIdc) == H264_PROFILE_DEPTH_MFC_HIGH                            \
-    || (profileIdc) == H264_PROFILE_MULTIVIEW_DEPTH_HIGH                      \
-    || (profileIdc) == H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH             \
-    || (profileIdc) == H264_PROFILE_HIGH_444_PREDICTIVE                       \
+    (profile_idc) == H264_PROFILE_CAVLC_444_INTRA                              \
+    || (profile_idc) == H264_PROFILE_SCALABLE_HIGH                             \
+    || (profile_idc) == H264_PROFILE_HIGH                                      \
+    || (profile_idc) == H264_PROFILE_MULTIVIEW_HIGH                            \
+    || (profile_idc) == H264_PROFILE_HIGH_10                                   \
+    || (profile_idc) == H264_PROFILE_HIGH_422                                  \
+    || (profile_idc) == H264_PROFILE_STEREO_HIGH                               \
+    || (profile_idc) == H264_PROFILE_MFC_HIGH                                  \
+    || (profile_idc) == H264_PROFILE_DEPTH_MFC_HIGH                            \
+    || (profile_idc) == H264_PROFILE_MULTIVIEW_DEPTH_HIGH                      \
+    || (profile_idc) == H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH             \
+    || (profile_idc) == H264_PROFILE_HIGH_444_PREDICTIVE                       \
   )
 
 #define H264_LEVEL_1B 9 /* BUG: This value is not fixed. */
@@ -232,7 +293,7 @@ static inline uint8_t valueH264ContraintFlags(
   ;
 }
 
-const char * h264ProfileIdcValueStr (
+const char * h264ProfileIdcValueStr(
   const H264ProfileIdcValue val,
   const H264ContraintFlags constraints
 );
@@ -251,35 +312,35 @@ const char * h264ChromaFormatIdcValueStr(
 );
 
 typedef struct {
-  bool seqScalingListPresent[12];
-  uint8_t scalingList4x4[6][16];
-  uint8_t scalingList8x8[6][64];
-  bool useDefaultScalingMatrix4x4[6];
-  bool useDefaultScalingMatrix8x8[6];
+  bool seq_scaling_list_present_flag[12];
+  uint8_t ScalingList4x4[6][16];
+  uint8_t ScalingList8x8[6][64];
+  bool UseDefaultScalingMatrix4x4Flag[6];
+  bool UseDefaultScalingMatrix8x8Flag[6];
 } H264SeqScalingMatrix;
 
 typedef struct {
-  uint64_t bitRate;
-  uint64_t cpbSize;
-  bool cbrFlag;
+  uint64_t BitRate;
+  uint64_t CpbSize;
+  bool cbr_flag;
 
-  uint32_t bitRateValueMinus1;
-  uint32_t cpbSizeValueMinus1;
+  uint32_t bit_rate_value_minus1;
+  uint32_t cpb_size_value_minus1;
 } H264SchedSel;
 
 typedef struct {
-  unsigned cpbCntMinus1;
-  uint8_t bitRateScale;
-  uint8_t cpbSizeScale;
+  unsigned cpb_cnt_minus1;
+  uint8_t bit_rate_scale;
+  uint8_t cpb_size_scale;
 
   H264SchedSel schedSel[
     H264_MAX_CPB_CONFIGURATIONS
   ];
 
-  uint8_t initialCpbRemovalDelayLengthMinus1;
-  uint8_t cpbRemovalDelayLengthMinus1;
-  uint8_t dpbOutputDelayLengthMinus1;
-  uint8_t timeOffsetLength;
+  uint8_t initial_cpb_removal_delay_length_minus1;
+  uint8_t cpb_removal_delay_length_minus1;
+  uint8_t dpb_output_delay_length_minus1;
+  uint8_t time_offset_length;
 } H264HrdParameters;
 
 typedef enum {
@@ -387,131 +448,133 @@ const char * h264MatrixCoefficientsValueStr(
 );
 
 typedef struct {
-  H264ColourPrimariesValue colourPrimaries;
-  H264TransferCharacteristicsValue transferCharact;
-  H264MatrixCoefficientsValue matrixCoeff;
+  H264ColourPrimariesValue colour_primaries;
+  H264TransferCharacteristicsValue transfer_characteristics;
+  H264MatrixCoefficientsValue matrix_coefficients;
 } H264VuiColourDescriptionParameters;
 
 typedef struct {
-  bool motionVectorsOverPicBoundaries;
-  uint8_t maxBytesPerPicDenom;
-  uint8_t maxBitsPerPicDenom;
-  uint8_t log2MaxMvLengthHorizontal;
-  uint8_t log2MaxMvLengthVertical;
-  uint16_t maxNumReorderFrames;
-  uint8_t maxDecFrameBuffering;
-
-  unsigned long maxBytesPerPic;
-  unsigned long maxBitsPerMb;
+  bool motion_vectors_over_pic_boundaries_flag;
+  uint8_t max_bytes_per_pic_denom;
+  uint8_t max_bits_per_mb_denom;
+  uint8_t log2_max_mv_length_horizontal;
+  uint8_t log2_max_mv_length_vertical;
+  uint16_t max_num_reorder_frames;
+  uint8_t max_dec_frame_buffering;
 } H264VuiVideoSeqBitstreamRestrictionsParameters;
 
 typedef struct {
-  bool aspectRatioInfoPresent;
-  H264AspectRatioIdcValue aspectRatioIdc;
+  bool aspect_ratio_info_present_flag;
+  H264AspectRatioIdcValue aspect_ratio_idc;
   struct {
-    unsigned width;
-    unsigned height;
-  } extendedSAR;
+    unsigned sar_width;
+    unsigned sar_height;
+  };  /**< aspect_ratio_idc == #H264_ASPECT_RATIO_IDC_EXTENDED_SAR related
+    parameters.                                                              */
 
-  bool overscanInfoPresent;
-  bool overscanAppropriate;
+  bool overscan_info_present_flag;
+  bool overscan_appropriate_flag;
 
-  bool videoSignalTypePresent;
+  bool video_signal_type_present_flag;
   struct {
-    H264VideoFormatValue videoFormat;
-    bool videoFullRange;
-    bool colourDescPresent;
-    H264VuiColourDescriptionParameters colourDescription;
-  } videoSignalType;
+    H264VideoFormatValue video_format;
+    bool video_full_range_flag;
+    bool colour_description_present_flag;
+    H264VuiColourDescriptionParameters colour_description;
+  };
 
-  bool chromaLocInfoPresent;
+  bool chroma_loc_info_present_flag;
   struct {
-    unsigned sampleLocTypeTopField;
-    unsigned sampleLocTypeBottomField;
-  } ChromaLocInfo;
+    unsigned chroma_sample_loc_type_top_field;
+    unsigned chroma_sample_loc_type_bottom_field;
+  };
 
-  bool timingInfoPresent;
+  bool timing_info_present_flag;
   struct {
-    uint32_t numUnitsInTick;
-    uint32_t timeScale;
-    uint32_t clockTick;
+    uint32_t num_units_in_tick;
+    uint32_t time_scale;
 
-    bool fixedFrameRateFlag;
+    bool fixed_frame_rate_flag;
 
-    double frameRate;
-    HdmvFrameRateCode frameRateCode;
-    unsigned maxFPS;
-  } timingInfo;
+    double FrameRate;  /**< Computed frame rate value, this variable is not
+      described in the H.264 specs. Equal to (time_scale /
+      (num_units_in_tick * 2)).                                              */
+    unsigned MaxFPS;
+  };
 
-  bool nalHrdParamPresent;
-  H264HrdParameters nalHrdParam;
-  bool vclHrdParamPresent;
-  H264HrdParameters vclHrdParam;
-  bool cpbDpbDelaysPresent;
+  bool nal_hrd_parameters_present_flag;
+  H264HrdParameters nal_hrd_parameters;
+  bool vcl_hrd_parameters_present_flag;
+  H264HrdParameters vcl_hrd_parameters;
+  bool CpbDpbDelaysPresentFlag;
 
-  bool lowDelayHrd;
+  bool low_delay_hrd_flag;
 
-  bool picStructPresent;
-  bool bitstreamRestrictionsPresent;
-  H264VuiVideoSeqBitstreamRestrictionsParameters bistreamRestrictions;
+  bool pic_struct_present_flag;
+  bool bitstream_restriction_flag;
+  H264VuiVideoSeqBitstreamRestrictionsParameters bistream_restrictions;
 } H264VuiParameters;
 
 typedef struct {
-  H264ProfileIdcValue profileIdc;
-  H264ContraintFlags constraintFlags;
-  uint8_t levelIdc;
+  H264ProfileIdcValue profile_idc;
+  H264ContraintFlags constraint_set_flags;
+  uint8_t level_idc;
 
-  unsigned seqParametersSetId;
+  unsigned seq_parameter_set_id;
 
-  H264ChromaFormatIdcValue chromaFormat;
-  bool separateColourPlaneFlag444;
+  struct {
+    H264ChromaFormatIdcValue chroma_format_idc;
+    bool separate_colour_plane_flag;
 
-  uint8_t bitDepthLumaMinus8;
-  uint8_t bitDepthChromaMinus8;
-  bool qpprimeYZeroTransformBypass;
+    uint8_t bit_depth_luma_minus8;
+    uint8_t bit_depth_chroma_minus8;
+    bool qpprime_y_zero_transform_bypass_flag;
 
-  bool seqScalingMatrixPresent;
-  H264SeqScalingMatrix seqScalingMatrix;
+    bool seq_scaling_matrix_present_flag;
+    H264SeqScalingMatrix seq_scaling_matrix;
+  };  /**< 'High' profile_idc related parameters. */
 
-  uint8_t log2MaxFrameNumMinus4;
-  unsigned MaxFrameNum;
+  uint8_t log2_max_frame_num_minus4;
 
-  uint8_t picOrderCntType;
+  uint8_t pic_order_cnt_type;
 
-  uint8_t log2MaxPicOrderCntLsbMinus4;
+  uint8_t log2_max_pic_order_cnt_lsb_minus4;
 
-  bool deltaPicOrderAlwaysZero;
-  int offsetForNonRefPic;
-  int offsetForTopToBottomField;
-  unsigned numRefFramesInPicOrderCntCycle;
-  int offsetForRefFrame[255];
+  bool delta_pic_order_always_zero_flag;
+  int offset_for_non_ref_pic;
+  int offset_for_top_to_bottom_field;
+  unsigned num_ref_frames_in_pic_order_cnt_cycle;
+  int offset_for_ref_frame[255];
 
-  unsigned maxNumRefFrames;
-  bool gapsInFrameNumValueAllowed;
+  unsigned max_num_ref_frames;
+  bool gaps_in_frame_num_value_allowed_flag;
 
-  unsigned picWidthInMbsMinus1;
-  unsigned picHeightInMapUnitsMinus1;
-  bool frameMbsOnly;
+  unsigned pic_width_in_mbs_minus1;
+  unsigned pic_height_in_map_units_minus1;
+  bool frame_mbs_only_flag;
 
-  bool mbAdaptativeFrameField;
-  bool direct8x8Interference;
+  bool mb_adaptive_frame_field_flag;
+  bool direct_8x8_inference_flag;
 
-  bool frameCropping;
+  bool frame_cropping_flag;
   struct {
     unsigned left;
     unsigned right;
     unsigned top;
     unsigned bottom;
-  } frameCropOffset;
+  } frame_crop_offset;
 
-  bool vuiParametersPresent;
-  H264VuiParameters vuiParameters;
+  bool vui_parameters_present_flag;
+  H264VuiParameters vui_parameters;
 
   /* Computed parameters: */
   unsigned BitDepthLuma;
   unsigned QpBdOffsetLuma;
   unsigned BitDepthChroma;
   unsigned QpBdOffsetChroma;
+  unsigned ChromaArrayType;
+
+  unsigned MaxFrameNum;
 
   uint64_t RawMbBits;
 
@@ -528,9 +591,9 @@ typedef struct {
   unsigned SubHeightC;
   unsigned MbHeightC;
   unsigned PicHeightInMapUnits;
+  unsigned PicSizeInMapUnits;
   unsigned FrameHeightInMbs;
 
-  unsigned ChromaArrayType;
   unsigned CropUnitX;
   unsigned CropUnitY;
 
@@ -563,79 +626,81 @@ const char * h264WeightedBipredIdcStr(
   const H264WeightedBipredIdc val
 );
 
+#define H264_MAX_SLICE_GROUPS  8
+
 typedef struct {
-  H264SliceGroupMapTypeValue mapType;
+  H264SliceGroupMapTypeValue slice_group_map_type;
 
   union {
     /* H264_SLICE_GROUP_TYPE_INTERLEAVED : */
-    unsigned runLengthMinus1[H264_MAX_ALLOWED_SLICE_GROUPS];
+    unsigned run_length_minus1[H264_MAX_ALLOWED_SLICE_GROUPS];
 
     /* H264_SLICE_GROUP_TYPE_FOREGROUND_LEFTOVER : */
     struct {
-      unsigned topLeft[H264_MAX_ALLOWED_SLICE_GROUPS];
-      unsigned bottomRight[H264_MAX_ALLOWED_SLICE_GROUPS];
+      unsigned top_left[H264_MAX_ALLOWED_SLICE_GROUPS];
+      unsigned bottom_right[H264_MAX_ALLOWED_SLICE_GROUPS];
     };
 
     /* H264_SLICE_GROUP_TYPE_CHANGING_123 : */
     struct {
-      bool changeDirection;
-      unsigned changeRateMinus1;
+      bool slice_group_change_direction_flag;
+      unsigned slice_group_change_rate_minus1;
     };
 
     /* H264_SLICE_GROUP_TYPE_EXPLICIT : */
-    unsigned picSizeInMapUnitsMinus1;
+    unsigned pic_size_in_map_units_minus1;
     /* slice_group_id not parsed. */
   } data;
 } H264PicParametersSetSliceGroupsParameters;
 
 typedef struct {
-  unsigned picParametersSetId;
-  unsigned seqParametersSetId;
+  unsigned pic_parameter_set_id;
+  unsigned seq_parameter_set_id;
 
-  bool entropyCodingMode;
-  bool bottomFieldPicOrderInFramePresent;
+  bool entropy_coding_mode_flag;
+  bool bottom_field_pic_order_in_frame_present_flag;
 
-  unsigned nbSliceGroups;
-  H264PicParametersSetSliceGroupsParameters sliceGroups;
+  unsigned num_slice_groups_minus1;
+  H264PicParametersSetSliceGroupsParameters slice_groups;
 
-  unsigned numRefIdxl0DefaultActiveMinus1;
-  unsigned numRefIdxl1DefaultActiveMinus1;
+  unsigned num_ref_idx_l0_default_active_minus1;
+  unsigned num_ref_idx_l1_default_active_minus1;
 
-  bool weightedPred;
-  H264WeightedBipredIdc weightedBipredIdc;
+  bool weighted_pred_flag;
+  H264WeightedBipredIdc weighted_bipred_idc;
 
-  int picInitQpMinus26;
-  int picInitQsMinus26;
-  int chromaQpIndexOff;
+  int pic_init_qp_minus26;
+  int pic_init_qs_minus26;
+  int chroma_qp_index_offset;
 
-  bool deblockingFilterControlPresent;
-  bool contraintIntraPred;
-  bool redundantPicCntPresent;
+  bool deblocking_filter_control_present_flag;
+  bool constrained_intra_pred_flag;
+  bool redundant_pic_cnt_present_flag;
 
   bool picParamExtensionPresent;
-  bool transform8x8Mode;
+  bool transform_8x8_mode_flag;
 
-  bool picScalingMatrixPresent;
+  bool pic_scaling_matrix_present_flag;
   unsigned nbScalingMatrix;
-  bool picScalingListPresent[12];
-  uint8_t scalingList4x4[6][16];
-  uint8_t scalingList8x8[6][64];
-  bool useDefaultScalingMatrix4x4[6];
-  bool useDefaultScalingMatrix8x8[6];
+  bool pic_scaling_list_present_flag[12];
+  uint8_t ScalingList4x4[6][16];
+  uint8_t ScalingList8x8[6][64];
+  bool UseDefaultScalingMatrix4x4Flag[6];
+  bool UseDefaultScalingMatrix8x8Flag[6];
 
-  int secondChromaQpIndexOff;
+  int second_chroma_qp_index_offset;
 } H264PicParametersSetParameters;
 
 typedef struct {
-  uint32_t initialCpbRemovalDelay;
-  uint32_t initialCpbRemovalDelayOff;
+  uint32_t initial_cpb_removal_delay;
+  uint32_t initial_cpb_removal_delay_offset;
 } H264HrdBufferingPeriodParameters;
 
 typedef struct {
-  unsigned seqParametersSetId;
+  unsigned seq_parameter_set_id;
 
-  H264HrdBufferingPeriodParameters nalHrdParam[H264_MAX_CPB_CONFIGURATIONS];
-  H264HrdBufferingPeriodParameters vclHrdParam[H264_MAX_CPB_CONFIGURATIONS];
+  H264HrdBufferingPeriodParameters nal_hrd_parameters[H264_MAX_CPB_CONFIGURATIONS];
+  H264HrdBufferingPeriodParameters vcl_hrd_parameters[H264_MAX_CPB_CONFIGURATIONS];
 } H264SeiBufferingPeriod;
 
 typedef enum {
@@ -682,46 +747,46 @@ const char * h264CountingTypeValueStr(
 );
 
 typedef struct {
-  H264CtTypeValue ctType;
-  bool nuitFieldBased;
-  H264CountingTypeValue countingType;
+  H264CtTypeValue ct_type;
+  bool nuit_field_based_flag;
+  H264CountingTypeValue counting_type;
 } H264ClockTimestampParam;
 
 typedef struct {
-  /* if CpbDpbDelaysPresentFlag */
-  uint32_t cpbRemovalDelay;
-  uint32_t dpbOutputDelay;
+  /* if CpbDpbDelaysPresentFlag*/
+  uint32_t cpb_removal_delay;
+  uint32_t dpb_output_delay;
 
   /* if pic_struct_present_flag */
-  H264PicStructValue picStruct;
-  unsigned numClockTS;
+  H264PicStructValue pic_struct;
+  unsigned NumClockTS;
 
-  bool clockTimestampPresent[H264_PIC_STRUCT_MAX_NUM_CLOCK_TS];
-  H264ClockTimestampParam clockTimestampParam[
+  bool clock_timestamp_flag[H264_PIC_STRUCT_MAX_NUM_CLOCK_TS];
+  H264ClockTimestampParam clock_timestamp[
     H264_PIC_STRUCT_MAX_NUM_CLOCK_TS
   ];
   struct {
-    bool fullTimestamp;
-    bool discontinuity;
-    bool cntDropped;
-    unsigned nFrames;
+    bool full_timestamp_flag;
+    bool discontinuity_flag;
+    bool cnt_dropped_flag;
+    unsigned n_frames;
 
-    bool secondsValuePresent;
-    bool minutesValuePresent;
-    bool hoursValuePresent;
+    bool seconds_flag;
+    bool minutes_flag;
+    bool hours_flag;
 
-    unsigned secondsValue;
-    unsigned minutesValue;
-    unsigned hoursValue;
+    unsigned seconds_value;
+    unsigned minutes_value;
+    unsigned hours_value;
 
-    uint32_t timeOffset;
+    uint32_t time_offset;
   } ClockTimestamp[H264_PIC_STRUCT_MAX_NUM_CLOCK_TS];
 } H264SeiPicTiming;
 
 #define H264_MAX_USER_DATA_PAYLOAD_SIZE 1024
 
 typedef struct {
-  uint8_t uuidIsoIec11578[16];
+  uint8_t uuid_iso_iec_11578[16];
 
   bool userDataPayloadOverflow;
   size_t userDataPayloadLength;
@@ -729,10 +794,10 @@ typedef struct {
 } H264SeiUserDataUnregistered;
 
 typedef struct {
-  unsigned recoveryFrameCnt;
-  bool exactMatch;
-  bool brokenLink;
-  uint8_t changingSliceGroupIdc;
+  unsigned recovery_frame_cnt;
+  bool exact_match_flag;
+  bool broken_link_flag;
+  uint8_t changing_slice_group_idc;
 } H264SeiRecoveryPoint;
 
 typedef enum {
@@ -866,13 +931,13 @@ const char * h264ModificationOfPicNumsIdcValueStr(
 );
 
 typedef struct {
-  H264ModificationOfPicNumsIdcValue modOfPicNumsIdc;
-  uint32_t absDiffPicNumMinus1;
-  uint32_t longTermPicNum;
+  H264ModificationOfPicNumsIdcValue modification_of_pic_nums_idc;
+  uint32_t abs_diff_pic_num_minus1;
+  uint32_t long_term_pic_num;
 } H264RefPicListModificationPictureIndex;
 
 typedef struct {
-  bool refPicListModificationFlagl0;
+  bool ref_pic_list_modification_flag_l0;
   H264RefPicListModificationPictureIndex refPicListModificationl0[
     H264_MAX_ALLOWED_MOD_OF_PIC_NUMS_IDC
   ];
@@ -889,27 +954,27 @@ typedef struct {
 #define H264_REF_PICT_LIST_MAX_NB_FIELD 16
 
 typedef struct {
-  unsigned lumaLog2WeightDenom;
-  unsigned chromaLog2WeightDenom;
+  unsigned luma_log2_weight_denom;
+  unsigned chroma_log2_weight_denom;
 
   struct {
-    bool lumaWeightFlag;
-    int lumaWeight;
-    int lumaOffset;
+    bool luma_weight_l0_flag;
+    int luma_weight_l0;
+    int luma_offset_l0;
 
-    bool chromaWeightFlag;
-    int chromaWeight[H264_MAX_CHROMA_CHANNELS_NB];
-    int chromaOffset[H264_MAX_CHROMA_CHANNELS_NB];
+    bool chroma_weight_l0_flag;
+    int chroma_weight_l0[H264_MAX_CHROMA_CHANNELS_NB];
+    int chroma_offset_l0[H264_MAX_CHROMA_CHANNELS_NB];
   } weightL0[H264_REF_PICT_LIST_MAX_NB];
 
   struct {
-    bool lumaWeightFlag;
-    int lumaWeight;
-    int lumaOffset;
+    bool luma_weight_l1_flag;
+    int luma_weight_l1;
+    int luma_offset_l1;
 
-    bool chromaWeightFlag;
-    int chromaWeight[H264_MAX_CHROMA_CHANNELS_NB];
-    int chromaOffset[H264_MAX_CHROMA_CHANNELS_NB];
+    bool chroma_weight_l1_flag;
+    int chroma_weight_l1[H264_MAX_CHROMA_CHANNELS_NB];
+    int chroma_offset_l1[H264_MAX_CHROMA_CHANNELS_NB];
   } weightL1[H264_REF_PICT_LIST_MAX_NB];
 } H264PredWeightTable;
 
@@ -968,14 +1033,14 @@ typedef struct {
   union {
     /* if IdrPicFlag */
     struct {
-      bool noOutputOfPriorPics;
-      bool longTermReference;
+      bool no_output_of_prior_pics_flag;
+      bool long_term_reference_flag;
     };
 
     /* else */
     struct {
       H264MemMngmntCtrlOpBlkPtr MemMngmntCtrlOp;
-      bool adaptativeRefPicMarkingMode;
+      bool adaptive_ref_pic_marking_mode_flag;
     };
   };
 
@@ -995,64 +1060,64 @@ const char * h264DeblockingFilterIdcStr(
 );
 
 typedef struct {
-  uint32_t firstMbInSlice;
+  uint32_t first_mb_in_slice;
 
-  H264SliceTypeValue sliceType;
-  uint8_t picParametersSetId;
-  H264ColourPlaneIdValue colourPlaneId;
+  H264SliceTypeValue slice_type;
+  uint8_t pic_parameter_set_id;
+  H264ColourPlaneIdValue colour_plane_id;
   uint16_t frameNum;
 
   bool field_pic_flag;
   bool bottom_field_flag;
 
-  uint16_t idrPicId;
-  uint16_t picOrderCntLsb;
-  int deltaPicOrderCntBottom;
+  uint16_t idr_pic_id;
+  uint16_t pic_order_cnt_lsb;
+  int delta_pic_order_cnt_bottom;
 
-  long deltaPicOrderCnt[2];
+  int delta_pic_order_cnt[2];
 
-  uint8_t redundantPicCnt;
+  uint8_t redundant_pic_cnt;
 
   /* if (slice_type == B) */
-  bool directSpatialMvPred;
+  bool direct_spatial_mv_pred_flag;
 
   /* if (slice_type == P || SP || B) */
-  bool numRefIdxActiveOverride;
-  unsigned numRefIdxl0ActiveMinus1;
-  unsigned numRefIdxl1ActiveMinus1;
+  bool num_ref_idx_active_override_flag;
+  unsigned num_ref_idx_l0_active_minus1;
+  unsigned num_ref_idx_l1_active_minus1;
 
   H264RefPicListModification refPicListMod;
 
-  H264PredWeightTable predWeightTable;
+  H264PredWeightTable pred_weight_table;
 
   bool decRefPicMarkingPresent;
-  H264DecRefPicMarking decRefPicMarking;
+  H264DecRefPicMarking dec_ref_pic_marking;
 
-  uint8_t cabacInitIdc;
-  int sliceQpDelta;
+  uint8_t cabac_init_idc;
+  int slice_qp_delta;
 
-  bool spForSwitch;
-  int sliceQsDelta;
+  bool sp_for_switch_flag;
+  int slice_qs_delta;
 
-  H264DeblockingFilterIdc disableDeblockingFilterIdc;
-  int sliceAlphaC0OffsetDiv2;
-  int sliceBetaOffsetDiv2;
+  H264DeblockingFilterIdc disable_deblocking_filter_idc;
+  int slice_alpha_c0_offset_div2;
+  int slice_beta_offset_div2;
 
-  uint32_t sliceGroupChangeCycle;
+  uint32_t slice_group_change_cycle;
 
   /* Computed parameters: */
   bool refPic;
   bool IdrPicFlag;
   bool isSliceExt;
 
-  unsigned picOrderCntType; /* Copy from active SPS */
+  unsigned pic_order_cnt_type; /* Copy from active SPS */
 
-  bool mbaffFrameFlag;
-  unsigned picHeightInMbs;
-  unsigned picHeightInSamplesL;
-  unsigned picHeightInSamplesC;
+  bool MbaffFrameFlag;
+  unsigned PicHeightInMbs;
+  unsigned PicHeightInSamplesL;
+  unsigned PicHeightInSamplesC;
 
-  unsigned picSizeInMbs;
+  unsigned PicSizeInMbs;
 } H264SliceHeaderParameters;
 
 typedef struct {
@@ -1061,7 +1126,7 @@ typedef struct {
 } H264SliceLayerWithoutPartitioningParameters;
 
 typedef struct {
-  uint8_t nalUnitType;
+  H264NalUnitTypeValue nal_unit_type;
 
   int64_t startOffset;
   int64_t length;
@@ -1077,8 +1142,8 @@ typedef struct {
   uint16_t currentRbspCellBits;
   size_t remainingRbspCellBits;
 
-  uint8_t refIdc;
-  uint8_t type;
+  H264NalRefIdcValue nal_ref_idc;
+  H264NalUnitTypeValue nal_unit_type;
 } H264NalDeserializerContext;
 
 int initH264NalDeserializerContext(
@@ -1330,57 +1395,53 @@ typedef struct {
   bool notFirstSyntaxElement;
 } H264CabacParsingContext;
 
-const char * H264NalUnitTypeStr(
-  const uint8_t nal_unit_type
-);
-
 /* Spec data functions : */
 unsigned getH264MaxMBPS(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxFS(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxDpbMbs(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxBR(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxCPB(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxVmvR(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MinCR(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxMvsPer2Mb(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 
 unsigned getH264SliceRate(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MinLumaBiPredSize(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 bool getH264direct_8x8_inference_flag(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 bool getH264frame_mbs_only_flag(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 unsigned getH264MaxSubMbRectSize(
-  uint8_t levelIdc
+  uint8_t level_idc
 );
 
 unsigned getH264cpbBrVclFactor(
-  H264ProfileIdcValue profileIdc
+  H264ProfileIdcValue profile_idc
 );
 unsigned getH264cpbBrNalFactor(
-  H264ProfileIdcValue profileIdc
+  H264ProfileIdcValue profile_idc
 );
 
 /* ### Blu-ray specifications : ############################################ */

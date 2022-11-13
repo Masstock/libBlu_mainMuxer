@@ -148,11 +148,11 @@ void destroyH264ParametersHandler(
   ) {
     /* Free memory_management_control_operation storage structures : */
     if (
-      !handle->slice.header.decRefPicMarking.IdrPicFlag
-      && handle->slice.header.decRefPicMarking.adaptativeRefPicMarkingMode
+      !handle->slice.header.dec_ref_pic_marking.IdrPicFlag
+      && handle->slice.header.dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag
     )
       closeH264MemoryManagementControlOperations(
-        handle->slice.header.decRefPicMarking.MemMngmntCtrlOp
+        handle->slice.header.dec_ref_pic_marking.MemMngmntCtrlOp
       );
   }
 
@@ -326,7 +326,7 @@ void destroyH264NalByteArrayHandler(
 
 H264AUNalUnitPtr createNewNalCell(
   H264ParametersHandlerPtr handle,
-  uint8_t nalUnitType
+  H264NalUnitTypeValue nal_unit_type
 )
 {
   H264AUNalUnit * newList;
@@ -360,14 +360,10 @@ H264AUNalUnitPtr createNewNalCell(
     handle->curProgParam.curFrameNalUnits = newList; /* Update new list */
   }
 
-  cell = handle->curProgParam.curFrameNalUnits + usedNalNb;
-
-  cell->nalUnitType = nalUnitType;
-  cell->startOffset = 0;
-
-  cell->length = 0;
-  cell->replace = false;
-  cell->replacementParam = NULL;
+  cell = &handle->curProgParam.curFrameNalUnits[usedNalNb];
+  *cell = (H264AUNalUnit) {
+    .nal_unit_type = nal_unit_type
+  };
 
   handle->curProgParam.inProcessNalUnitCell = true;
 
@@ -458,7 +454,7 @@ int addNalCellToAccessUnit(
       "No NAL unit cell in process for current Access Unit.\n"
     );
 
-  handle->curProgParam.lastNalUnitType = getNalUnitType(handle);
+  handle->curProgParam.lastNalUnitType = getCurrentNALUnitType(handle);
 
   nalUnit =
     handle->curProgParam.curFrameNalUnits
@@ -637,8 +633,8 @@ int writeH264NalHeader(
   assert(NULL != baHandler);
 
   if (
-    handle.nalUnitType == NAL_UNIT_TYPE_SEQUENCE_PARAMETERS_SET
-    || handle.nalUnitType == NAL_UNIT_TYPE_PIC_PARAMETERS_SET
+    handle.nal_unit_type == NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET
+    || handle.nal_unit_type == NAL_UNIT_TYPE_PIC_PARAMETER_SET
     /* || handle.firstNalInAU */
   ) {
     /* [v8 zero_byte] */
@@ -656,24 +652,24 @@ int writeH264NalHeader(
     return -1;
 
   /* [u2 nal_ref_idc] */
-  if (writeH264NalByteArrayBits(baHandler, handle.nalRefIdc, 2) < 0)
+  if (writeH264NalByteArrayBits(baHandler, handle.nal_ref_idc, 2) < 0)
     return -1;
   /* [u5 nal_unit_type] */
-  if (writeH264NalByteArrayBits(baHandler, handle.nalUnitType, 5) < 0)
+  if (writeH264NalByteArrayBits(baHandler, handle.nal_unit_type, 5) < 0)
     return -1;
 
   if (
-    handle.nalUnitType == NAL_UNIT_TYPE_PREFIX_NAL_UNIT
-    || handle.nalUnitType == NAL_UNIT_TYPE_CODED_SLICE_EXT
-    || handle.nalUnitType == NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT
+    handle.nal_unit_type == NAL_UNIT_TYPE_PREFIX_NAL_UNIT
+    || handle.nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_EXT
+    || handle.nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT
   ) {
     LIBBLU_H264_ERROR_RETURN(
       "Unsupported NALU type '%s', missing functionnality.\n",
-      H264NalUnitTypeStr(handle.nalUnitType)
+      H264NalUnitTypeStr(handle.nal_unit_type)
     );
 
     /* TODO */
-    if (handle.nalUnitType != NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT) {
+    if (handle.nal_unit_type != NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT) {
       /* [b1 svc_extension_flag] */
     }
     else {

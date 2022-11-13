@@ -8,8 +8,8 @@
  * verification module.
  */
 
-#ifndef __LIBBLU_MUXER_CODECS__H264__HRD_VERIFIER_H__
-#define __LIBBLU_MUXER_CODECS__H264__HRD_VERIFIER_H__
+#ifndef __LIBBLU_MUXER__CODECS__H264__HRD_VERIFIER_H__
+#define __LIBBLU_MUXER__CODECS__H264__HRD_VERIFIER_H__
 
 #include "../../util.h"
 #include "../../elementaryStreamOptions.h"
@@ -80,9 +80,9 @@ typedef struct {
   unsigned frame_num;
   bool field_pic_flag;
   bool bottom_field_flag;
-  bool idrPic;
+  bool IdrPicFlag;
 
-  uint64_t dpbOutputDelay;
+  uint64_t dpb_output_delay;
   H264DpbHrdRefUsage usage;
   H264MemMngmntCtrlOpBlkPtr memMngmntCtrlOperations; /* NULL: No op. */
 
@@ -140,18 +140,18 @@ static inline void setFromOptionsH264HrdVerifierDebugFlags(
 
 typedef struct {
   double second; /* c = time_scale * 90000. */
-  uint64_t tick90; /* c90 = time_scale */
-  uint64_t numUnitsInTick;
-  uint64_t clockTick; /* t_c = num_units_in_tick * 90000. */
+  uint64_t c90; /* c90 = time_scale */
+  uint64_t num_units_in_tick;
+  uint64_t t_c; /* t_c = num_units_in_tick * 90000. */
 
   double bitrate; /* In bits per c tick. */
   bool cbr; /* true: CRB stream, false: VBR stream. */
-  size_t cpbSize; /* In bits. */
+  uint64_t cpbSize; /* In bits. */
   unsigned dpbSize; /* In frames. */
 
   uint64_t clockTime; /* Current time on t_c Hz clock */
 
-  size_t cpbBitsOccupancy; /* Current CPB state in bits. */
+  uint64_t cpbBitsOccupancy; /* Current CPB state in bits. */
 
   /* Access Units currently in CPB: */
   H264CpbHrdAU AUInCpb[H264_MAX_AU_IN_CPB]; /* Circular buffer list (FIFO). */
@@ -166,7 +166,7 @@ typedef struct {
   unsigned numShortTerm;
   unsigned numLongTerm;
 
-  unsigned maxNumRefFrames;
+  unsigned max_num_ref_frames;
   unsigned MaxFrameNum;
 
   /* Evolution saved parameters: */
@@ -181,16 +181,16 @@ typedef struct {
   struct {
     unsigned frame_num;
 
-    unsigned picSizeInMbs;
-    uint8_t levelIdc;
+    unsigned PicSizeInMbs;
+    uint8_t level_idc;
 
     uint64_t removalTime;
 
     uint64_t pts;
     uint64_t dts;
 
-    uint64_t initialCpbRemovalDelay;
-    uint64_t initialCpbRemovalDelayOff;
+    uint64_t initial_cpb_removal_delay;
+    uint64_t initial_cpb_removal_delay_offset;
   } nMinusOneAUParameters;
 
   H264HrdVerifierDebugFlags hrdDebugFlags;
