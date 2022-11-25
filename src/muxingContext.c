@@ -539,7 +539,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   setDefaultPmtParameters(&ctx->pmtParam, 0x0001, PMT_PID);
   setDefaultSitParameters(&ctx->sitParam);
 
-  tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableTStdBufVerifier);
+  tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableBufModel);
   forceRebuildAllScripts = LIBBLU_MUX_SETTINGS_OPTION(&settings, forcedScriptBuilding);
 
   /* Interpret PCR carrying options */
@@ -782,6 +782,7 @@ static bool checkBufferingModelAvailability(
 )
 {
   return checkBufModel(
+    ctx->settings.options.bufModelOptions,
     ctx->tStdModel,
     ctx->currentStcTs,
     size * 8,
@@ -804,6 +805,7 @@ int putDataToBufferingModel(
   );
 
   ret = updateBufModel(
+    ctx->settings.options.bufModelOptions,
     ctx->tStdModel,
     ctx->currentStcTs,
     size * 8,

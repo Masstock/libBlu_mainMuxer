@@ -1058,7 +1058,6 @@ static int _updateSequence(
 
   switch (dst->type) {
     case HDMV_SEGMENT_TYPE_PDS:
-      // fprintf(stderr, "%u %u\n", dst->data.pd.palette_descriptor.palette_version_number, src->data.pd.palette_descriptor.palette_version_number);
       return updateHdmvPdsSegmentParameters(&dst->data.pd, src->data.pd);
     case HDMV_SEGMENT_TYPE_ODS:
       return updateHdmvObjectDataParameters(&dst->data.od, src->data.od);
@@ -1075,8 +1074,9 @@ static int _updateSequence(
       return -1; /* Not updatable */
   }
 
-  dst->segments = src->segments;
   dst->displaySetIdx = src->displaySetIdx;
+  dst->segments = src->segments;
+  dst->lastSegment = src->lastSegment;
 
   return 0;
 }

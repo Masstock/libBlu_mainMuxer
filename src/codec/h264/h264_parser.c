@@ -35,10 +35,16 @@ int _initNALU(
 
   nalStartOffset = tellPos(param->file.inputFile);
 
+  LIBBLU_H264_DEBUG_NAL(
+    "0x%08" PRIX64 " === NAL Unit - %s ===\n",
+    nalStartOffset,
+    H264NalUnitTypeStr(param->file.nal_unit_type)
+  );
+
   while (
     !isEof(param->file.inputFile)
-    && nextUint24(param->file.inputFile) != 0x000001
-    && nextUint32(param->file.inputFile) != 0x00000001
+    && 0x000001 != nextUint24(param->file.inputFile)
+    && 0x00000001 != nextUint32(param->file.inputFile)
   ) {
     /* [v8 leading_zero_8bits] // 0x00 */
     if (readBits(param->file.inputFile, &value, 8) < 0)
@@ -54,7 +60,7 @@ int _initNALU(
 
   if (
     !isEof(param->file.inputFile)
-    && nextUint24(param->file.inputFile) != 0x000001
+    && 0x000001 != nextUint24(param->file.inputFile)
   ) {
     /* [v8 zero_byte] // 0x00 */
     if (readBits(param->file.inputFile, &value, 8) < 0)
@@ -89,15 +95,25 @@ int _initNALU(
     return -1;
   param->file.nal_ref_idc = value;
 
+  LIBBLU_H264_DEBUG_NAL(
+    " -> nal_ref_idc: %" PRIu8 ".\n",
+    getNalRefIdc(param)
+  );
+
   /* [u5 nal_unit_type] */
   if (readBits(param->file.inputFile, &value, 5) < 0)
     return -1;
   param->file.nal_unit_type = value;
 
+  LIBBLU_H264_DEBUG_NAL(
+    " -> nal_unit_type: %" PRIu8 ".\n",
+    getNalUnitType(param)
+  );
+
   if (
-    param->file.nal_unit_type == NAL_UNIT_TYPE_PREFIX_NAL_UNIT
-    || param->file.nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_EXT
-    || param->file.nal_unit_type == NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT
+    NAL_UNIT_TYPE_PREFIX_NAL_UNIT == getNalUnitType(param)
+    || NAL_UNIT_TYPE_CODED_SLICE_EXT == getNalUnitType(param)
+    || NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT == getNalUnitType(param)
   ) {
     /* TODO: Add 3D MVC support. */
     LIBBLU_H264_ERROR_RETURN(
@@ -109,20 +125,6 @@ int _initNALU(
   param->file.packetInitialized = true;
   if (deserializeRbspCell(param) < 0)
     return -1;
-
-  LIBBLU_H264_DEBUG_NAL(
-    "0x%08" PRIX64 " === NAL Unit - %s ===\n",
-    nalStartOffset,
-    H264NalUnitTypeStr(param->file.nal_unit_type)
-  );
-  LIBBLU_H264_DEBUG_NAL(
-    " -> nal_ref_idc: %" PRIu8 ".\n",
-    param->file.nal_ref_idc
-  );
-  LIBBLU_H264_DEBUG_NAL(
-    " -> nal_unit_type: %" PRIu8 ".\n",
-    param->file.nal_unit_type
-  );
 
   /* Initializing Access Unit NALs collector new cell: */
   if (NULL == (auNalUnitCell = createNewNalCell(param, param->file.nal_unit_type)))
@@ -170,28 +172,149 @@ int parseH264RbspTrailingBits(
   return 0;
 }
 
-static int64_t calcCurPicOrderCnt(
-  H264ParametersHandlerPtr handle,
-  const LibbluESSettingsOptions options
+static inline bool _completePicturePresent(
+  const H264ParametersHandlerPtr handle
 )
 {
-  int PicOrderCountMsb, TopFieldOrderCnt, BottomFieldOrderCnt, PicOrderCnt;
-  int64_t streamPicOrderCnt;
-  bool bottomFieldPicture;
+  const H264CurrentProgressParam * param = &handle->curProgParam;
 
-  H264SPSDataParameters * sps;
-  H264SliceHeaderParameters * header;
-  H264CurrentProgressParam * cur;
+  return
+    (param->auContent.bottomFieldPresent && param->auContent.topFieldPresent)
+    || param->auContent.framePresent
+  ;
+}
 
-  unsigned prevPicOrderCntMsb, prevPicOrderCntLsb, prevTopFieldOrderCnt;
-  bool prevPresenceOfMemManCtrlOp5, prevBottomFieldPicture;
+static inline bool _complementaryFieldPairPresent(
+  const H264ParametersHandlerPtr handle
+)
+{
+  const H264CurrentProgressParam * param = &handle->curProgParam;
 
-  assert(NULL != handle);
+  return
+    param->auContent.bottomFieldPresent
+    && param->auContent.topFieldPresent
+  ;
+}
+
+static int32_t _computePicOrderCntType0(
+  H264ParametersHandlerPtr handle
+)
+{
+  /* Mode 0 - 8.2.1.1 Decoding process for picture order count type 0 */
+  /* Input: PicOrderCntMsb of previous picture */
+  int32_t MaxPicOrderCntLsb;
+  int32_t prevPicOrderCntMsb, prevPicOrderCntLsb;
+  int32_t PicOrderCntMsb;
+  int32_t TopFieldOrderCnt, BottomFieldOrderCnt;
+  int32_t PicOrderCnt;
+
+  const H264SPSDataParameters * sps       = &handle->sequenceParametersSet.data;
+  const H264SliceHeaderParameters * slice = &handle->slice.header;
+  H264LastPictureProperties * lstPic      = &handle->curProgParam.lstPic;
+
+  MaxPicOrderCntLsb = (int32_t) sps->MaxPicOrderCntLsb;
+
+  /* Derivation of variables prevPicOrderCntMsb and prevPicOrderCntLsb : */
+  if (slice->isIdrPic) {
+    prevPicOrderCntMsb = prevPicOrderCntLsb = 0;
+  }
+  else {
+    if (lstPic->presenceOfMemManCtrlOp5) {
+      if (!lstPic->isBottomField) {
+        prevPicOrderCntMsb = 0;
+        prevPicOrderCntLsb = lstPic->TopFieldOrderCnt;
+      }
+      else {
+        prevPicOrderCntMsb = prevPicOrderCntLsb = 0;
+      }
+    }
+    else {
+      prevPicOrderCntMsb = lstPic->PicOrderCntMsb;
+      prevPicOrderCntLsb = lstPic->pic_order_cnt_lsb;
+    }
+  }
+
+  /* Derivation of PicOrderCntMsb of the current picture ([1] 8-3) : */
+  if (
+    (slice->pic_order_cnt_lsb < prevPicOrderCntLsb)
+    && (
+      (prevPicOrderCntLsb - slice->pic_order_cnt_lsb)
+      >= (MaxPicOrderCntLsb / 2)
+    )
+  ) {
+    PicOrderCntMsb = prevPicOrderCntMsb + MaxPicOrderCntLsb;
+  }
+  else if (
+    (slice->pic_order_cnt_lsb > prevPicOrderCntLsb)
+    && (
+      (slice->pic_order_cnt_lsb - prevPicOrderCntLsb)
+      > (MaxPicOrderCntLsb / 2)
+    )
+  ) {
+    PicOrderCntMsb = prevPicOrderCntMsb - MaxPicOrderCntLsb;
+  }
+  else {
+    PicOrderCntMsb = prevPicOrderCntMsb;
+  }
+
+  /* Derivation of TopFieldOrderCnt/BottomFieldOrderCnt ([1] 8-4, 8-5): */
+  TopFieldOrderCnt = lstPic->TopFieldOrderCnt;
+  BottomFieldOrderCnt = 0;
+
+  if (!slice->bottom_field_flag)
+    TopFieldOrderCnt = PicOrderCntMsb + slice->pic_order_cnt_lsb;
+
+  if (!slice->field_pic_flag)
+    BottomFieldOrderCnt = TopFieldOrderCnt + slice->delta_pic_order_cnt_bottom;
+  else
+    BottomFieldOrderCnt = PicOrderCntMsb + slice->pic_order_cnt_lsb;
+
+  /* Derivation of PicOrderCnt for the current picture ([1] 8.2.1, 8-1) */
+  /* TODO: Check in case of complementary field pictures */
+  if (!slice->field_pic_flag || _complementaryFieldPairPresent(handle))
+    PicOrderCnt = MIN(TopFieldOrderCnt, BottomFieldOrderCnt);
+  else if (!slice->bottom_field_flag)
+    PicOrderCnt = TopFieldOrderCnt;
+  else
+    PicOrderCnt = BottomFieldOrderCnt;
+
+  /* Update last picture properties */
+  lstPic->TopFieldOrderCnt  = TopFieldOrderCnt;
+  lstPic->PicOrderCntMsb    = PicOrderCntMsb;
+  lstPic->pic_order_cnt_lsb = slice->pic_order_cnt_lsb;
+
+  /* fprintf(
+    stderr, "PicOrderCnt: %d, BottomFieldOrderCnt: %d, TopFieldOrderCnt: %d, PicOrderCntMsb: %d, pic_order_cnt_lsb: %d\n",
+    PicOrderCnt,
+    BottomFieldOrderCnt,
+    TopFieldOrderCnt,
+    PicOrderCntMsb,
+    slice->pic_order_cnt_lsb
+  ); */
+
+  return PicOrderCnt;
+}
+
+static void _updateLastPicProperties(
+  H264LastPictureProperties * dst,
+  const H264SliceHeaderParameters slice_header,
+  uint32_t PicOrderCnt
+)
+{
+  dst->presenceOfMemManCtrlOp5 = slice_header.presenceOfMemManCtrlOp5;
+  dst->isBottomField = slice_header.bottom_field_flag;
+  dst->PicOrderCnt = PicOrderCnt;
+}
+
+static int32_t calcCurPicOrderCnt(
+  H264ParametersHandlerPtr handle
+)
+{
+  int32_t PicOrderCnt;
+
+  const H264SPSDataParameters * sps = &handle->sequenceParametersSet.data;
+
   assert(handle->sequenceParametersSetPresent);
-
-  sps =    &handle->sequenceParametersSet.data;
-  header = &handle->slice.header;
-  cur =    &handle->curProgParam;
 
   if (
     !handle->accessUnitDelimiterValid
@@ -207,104 +330,7 @@ static int64_t calcCurPicOrderCnt(
   switch (sps->pic_order_cnt_type) {
     case 0x0:
       /* Mode 0 - 8.2.1.1 Decoding process for picture order count type 0 */
-      TopFieldOrderCnt = 0, BottomFieldOrderCnt = 0;
-
-      prevPresenceOfMemManCtrlOp5 = cur->presenceOfMemManCtrlOp5;
-      prevBottomFieldPicture = cur->bottomFieldPicture;
-
-      prevTopFieldOrderCnt = cur->TopFieldOrderCnt;
-
-      if (header->IdrPicFlag) {
-        if (cur->curNbSlices == 1 && 1 < cur->nbPics) {
-          cur->cumulPicOrderCnt += cur->maxPicOrderCnt + (
-            options.doubleFrameTiming ? 1 : 2
-          ); /* Saving new GOP PTS (last GOP final PTS + one frame) */
-
-          /**
-           * Reset max counter to get new GOP fina PTS
-           * (biggest PTS value of a GOP).
-           */
-          cur->maxPicOrderCnt = 0;
-        }
-
-        prevPicOrderCntMsb = 0, prevPicOrderCntLsb = 0;
-      }
-      else {
-        /* Check presence of 'memory_management_control_operation' equal to 5 */
-        if (prevPresenceOfMemManCtrlOp5) {
-          prevPicOrderCntMsb = 0;
-          prevPicOrderCntLsb =
-            (prevBottomFieldPicture) ? 0 : prevTopFieldOrderCnt
-          ;
-        }
-        else {
-          prevPicOrderCntMsb = cur->PicOrderCntMsb;
-          prevPicOrderCntLsb = cur->PicOrderCntLsb;
-        }
-      }
-
-      if (
-        (header->pic_order_cnt_lsb < prevPicOrderCntLsb)
-        && (
-          (prevPicOrderCntLsb - header->pic_order_cnt_lsb)
-          >= (sps->MaxPicOrderCntLsb >> 1)
-        )
-      )
-        PicOrderCountMsb = prevPicOrderCntMsb + sps->MaxPicOrderCntLsb;
-      else if (
-        (header->pic_order_cnt_lsb > prevPicOrderCntLsb)
-        && (
-          (header->pic_order_cnt_lsb - prevPicOrderCntLsb)
-          > (sps->MaxPicOrderCntLsb >> 1)
-        )
-      )
-        PicOrderCountMsb = prevPicOrderCntMsb - sps->MaxPicOrderCntLsb;
-      else
-        PicOrderCountMsb = prevPicOrderCntMsb;
-
-      bottomFieldPicture = header->field_pic_flag && header->bottom_field_flag;
-
-      if (!header->field_pic_flag) {
-        TopFieldOrderCnt =
-          PicOrderCountMsb
-          + header->pic_order_cnt_lsb
-        ;
-        BottomFieldOrderCnt =
-          TopFieldOrderCnt
-          + header->delta_pic_order_cnt_bottom
-        ;
-        PicOrderCnt = MIN(
-          BottomFieldOrderCnt,
-          TopFieldOrderCnt
-        );
-      }
-      else {
-        PicOrderCnt = PicOrderCountMsb + header->pic_order_cnt_lsb;
-
-        if (bottomFieldPicture)
-          BottomFieldOrderCnt = PicOrderCnt;
-        else
-          TopFieldOrderCnt = PicOrderCnt;
-      }
-
-      if (cur->maxPicOrderCnt < PicOrderCnt)
-        cur->maxPicOrderCnt = PicOrderCnt;
-
-      /* Saving frame informations: */
-      if (header->refPic) {
-        cur->PicOrderCntMsb = PicOrderCountMsb;
-        cur->PicOrderCntLsb = header->pic_order_cnt_lsb;
-
-        cur->presenceOfMemManCtrlOp5 =
-          !header->IdrPicFlag
-          && header->dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag
-          && header->dec_ref_pic_marking.presenceOfMemManCtrlOp5
-        ;
-        cur->bottomFieldPicture = bottomFieldPicture;
-        cur->TopFieldOrderCnt = TopFieldOrderCnt;
-      }
-
-      streamPicOrderCnt = PicOrderCnt + cur->cumulPicOrderCnt;
+      PicOrderCnt = _computePicOrderCntType0(handle);
       break;
 
     case 0x1:
@@ -324,53 +350,56 @@ static int64_t calcCurPicOrderCnt(
       );
   }
 
-  return streamPicOrderCnt;
+  if (PicOrderCnt < 0) {
+    LIBBLU_H264_ERROR_RETURN(
+      "Broken Picture Order Count on picture %" PRId64 ", "
+      "computation result is negative (PicOrderCnt = %" PRId32 ").\n",
+      handle->curProgParam.nbPics,
+      PicOrderCnt
+    );
+  }
+
+  return PicOrderCnt;
 }
 
-static int computeAuPicOrderCnt(
+static int _computeAuPicOrderCnt(
   H264ParametersHandlerPtr handle,
-  LibbluESParsingSettings * settings
+  LibbluESSettingsOptions options
 )
 {
-  int64_t streamPicOrderCnt;
+  int64_t PicOrderCnt;
 
   assert(NULL != handle);
 
-  if ((streamPicOrderCnt = calcCurPicOrderCnt(handle, settings->options)) < 0)
+  if ((PicOrderCnt = calcCurPicOrderCnt(handle)) < 0)
     return -1;
 
-  if (handle->curProgParam.initPicOrderCntAU) {
-    handle->curProgParam.picOrderCntAU = MIN(
-      handle->curProgParam.picOrderCntAU, streamPicOrderCnt
-    );
-
-    /* lbc_printf(
-      "picOrderCntAU: %" PRId64 "\n",
-      handle->curProgParam.picOrderCntAU
-    ); */
-  }
-  else {
-    handle->curProgParam.picOrderCntAU = streamPicOrderCnt;
-    handle->curProgParam.initPicOrderCntAU = true;
-  }
-
   if (
-    handle->curProgParam.picOrderCntAU & 0x1
-    && !handle->curProgParam.cumulPicOrderCnt
-    && streamPicOrderCnt & 0x1
-    && H264_COMPLETE_PICTURE(handle->curProgParam)
-    && !settings->options.doubleFrameTiming
+    handle->curProgParam.halfPicOrderCnt
+    && (PicOrderCnt & 0x1)
+    && _completePicturePresent(handle)
   ) {
-    /* Odd picOrderCnt found, need doubling timing values. */
-    LIBBLU_WARNING(
-      "Unexpected Odd picOrderCnt values found, "
-      "timing values need to be doubled ('picOrderCntAU' == %" PRId64 ").\n",
-      handle->curProgParam.picOrderCntAU
-    );
+    /* Unexpected Odd PicOrderCnt, value shall not be divided. */
+    if (options.secondPass)
+      LIBBLU_H264_ERROR_RETURN(
+        "Unexpected odd picture order count value, "
+        "values are broken.\n"
+      );
 
-    settings->options.doubleFrameTiming = true;
-    settings->askForRestart = true;
+    handle->curProgParam.halfPicOrderCnt = false;
+    handle->curProgParam.restartRequired = true;
+    fprintf(stderr, "DISABLE HALF\n");
   }
+
+  _updateLastPicProperties(
+    &handle->curProgParam.lstPic,
+    handle->slice.header,
+    PicOrderCnt
+  );
+
+  handle->curProgParam.PicOrderCnt =
+    PicOrderCnt >> handle->curProgParam.halfPicOrderCnt
+  ;
 
   return 0;
 }
@@ -405,8 +434,10 @@ int setBufferingInformationsAccessUnit(
     cpbRemovalTime = handle->curProgParam.auCpbRemovalTime;
     dpbOutputTime = handle->curProgParam.auDpbOutputTime;
   }
-  else
-    cpbRemovalTime = (uint64_t) dts, dpbOutputTime = (uint64_t) pts;
+  else {
+    cpbRemovalTime = (uint64_t) dts;
+    dpbOutputTime = (uint64_t) pts;
+  }
 
   param = (EsmsPesPacketExtData) {
     .h264.cpbRemovalTime = cpbRemovalTime,
@@ -521,8 +552,7 @@ int processAccessUnit(
       &handle->curProgParam,
       &handle->constraints,
       handle->sei.bufferingPeriodValid,
-      hrdAuLength * 8,
-      settings->options.doubleFrameTiming
+      hrdAuLength * 8
     );
     if (ret < 0)
       return -1;
@@ -530,13 +560,24 @@ int processAccessUnit(
     handle->hrdVerifier->nbProcessedBytes += hrdAuLength;
   }
 
+  if (handle->slice.header.isIdrPic)
+    handle->curProgParam.decPicNbCnt = 0;
+
   /* Processing PES frame cutting */
-  if (H264_COMPLETE_PICTURE(handle->curProgParam)) {
+  if (_completePicturePresent(handle)) {
     if (processCompleteAccessUnit(handle, settings->options) < 0)
       return -1;
 
     if (IN_USE_H264_CPB_HRD_VERIFIER(handle))
       handle->hrdVerifier->nbProcessedBytes = 0;
+
+    if (
+      handle->curProgParam.restartRequired
+      && H264_PICTURES_BEFORE_RESTART <= handle->curProgParam.nbPics
+    ) {
+      /* Restart required */
+      settings->askForRestart = true;
+    }
   }
   else {
     handle->sei.bufferingPeriodValid = false;
@@ -546,6 +587,52 @@ int processAccessUnit(
   return 0;
 }
 
+/** \~english
+ * \brief Compute the duration of the pictures to determine the DTS value
+ * incrementation.
+ *
+ * \param handle
+ * \return int64_t
+ *
+ * Based on tsMuxer.
+ */
+static int64_t _computeDtsIncrement(
+  const H264ParametersHandlerPtr handle
+)
+{
+  int64_t frameDuration = handle->curProgParam.frameDuration;
+  int64_t fieldDuration = handle->curProgParam.fieldDuration;
+
+  if (handle->sei.picTimingValid) {
+    /* Presence of picture timing SEI message */
+
+    switch (handle->sei.picTiming.pic_struct) {
+      case H264_PIC_STRUCT_TOP_FLWD_BOT_TOP:
+      case H264_PIC_STRUCT_BOT_FLWD_TOP_BOT:
+        return frameDuration + fieldDuration;
+      case H264_PIC_STRUCT_DOUBLED_FRAME:
+        return 2 * frameDuration;
+      case H264_PIC_STRUCT_TRIPLED_FRAME:
+        return 3 * frameDuration;
+      default:
+        break;
+    }
+  }
+
+  /* Otherwise, every picture is considered as during one frame. */
+  return frameDuration;
+}
+
+static void setEsmsPtsRef(
+  EsmsFileHeaderPtr script,
+  const H264CurrentProgressParam * curProgParam
+)
+{
+  script->ptsRef = (uint64_t) (
+    curProgParam->initDecPicNbCntShift
+    * curProgParam->frameDuration
+  );
+}
 
 int processCompleteAccessUnit(
   H264ParametersHandlerPtr handle,
@@ -562,6 +649,7 @@ int processCompleteAccessUnit(
   H264AUNalUnitPtr auNalUnitCell;
   unsigned auNalUnitCellIdx;
 
+  int32_t ptsDiffShift;
   int64_t pts, dts;
 
   LibbluESH264SpecProperties * param;
@@ -587,35 +675,32 @@ int processCompleteAccessUnit(
       "Missing VUI from AU SPS, unable to complete access unit.\n"
     );
 
-  if (handle->curProgParam.curNbSlices < handle->constraints.sliceNb) {
+  if (handle->curProgParam.nbSlicesInPic < handle->constraints.sliceNb) {
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "Pending access unit contains %u slices (at least %u expected).\n",
-      handle->curProgParam.curNbSlices,
+      handle->curProgParam.nbSlicesInPic,
       handle->constraints.sliceNb
     );
   }
 
   if (H264_SLICE_IS_TYPE_B(handle->slice.header.slice_type)) {
-    if (
-      !handle->slice.header.field_pic_flag
-      || handle->slice.header.bottom_field_flag
-    )
-      handle->curProgParam.curNbConsecutiveBPics++;
+    if (handle->slice.header.bottom_field_flag)
+      handle->curProgParam.nbConsecutiveBPics++;
 
     if (
       handle->constraints.consecutiveBPicNb
-      < handle->curProgParam.curNbConsecutiveBPics
+      < handle->curProgParam.nbConsecutiveBPics
     ) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Too many consecutive B pictures "
         "(found %u pictures, expected no more than %u).\n",
-        handle->curProgParam.curNbConsecutiveBPics,
+        handle->curProgParam.nbConsecutiveBPics,
         handle->constraints.consecutiveBPicNb
       );
     }
   }
   else
-    handle->curProgParam.curNbConsecutiveBPics = 0;
+    handle->curProgParam.nbConsecutiveBPics = 0;
 
   if (!handle->curProgParam.initializedParam) {
     /* Setting H.264 Output parameters : */
@@ -685,69 +770,60 @@ int processCompleteAccessUnit(
       handle->curProgParam.frameDuration / 2
     ;
 
-    handle->curProgParam.lastDts = 0;
-    handle->curProgParam.dtsIncrement = 0;
+    if (!options.secondPass) {
+      handle->curProgParam.halfPicOrderCnt = true;
+        /* By default, expect to divide by two the PicOrderCnt. */
+    }
+    else {
+      handle->curProgParam.halfPicOrderCnt = options.halfPicOrderCnt;
+      handle->curProgParam.initDecPicNbCntShift = options.initDecPicNbCntShift;
+    }
 
-    handle->esms->ptsRef = (uint64_t) handle->curProgParam.frameDuration; /* BUG: Fix for still frames */
+    setEsmsPtsRef(handle->esms, &handle->curProgParam);
     handle->curProgParam.initializedParam = true;
   }
 
-  if (handle->curProgParam.picOrderCntAU < 0) {
-    LIBBLU_H264_ERROR_RETURN(
-      "Broken picture order count, "
-      "negative result (%" PRId64 ") on picture %ld.\n",
-      handle->curProgParam.picOrderCntAU,
-      handle->curProgParam.nbPics
-    );
+  ptsDiffShift =
+    handle->curProgParam.decPicNbCnt
+    - handle->curProgParam.PicOrderCnt
+    - handle->curProgParam.initDecPicNbCntShift
+  ;
+
+  if ((int32_t) sps->MaxPicOrderCntLsb / 4 < ptsDiffShift)
+    ptsDiffShift -= sps->MaxPicOrderCntLsb / 2;
+
+  if (0 < ptsDiffShift) {
+    if (options.secondPass)
+      LIBBLU_H264_ERROR_RETURN(
+        "Broken picture order count, negative decoding delay.\n"
+      );
+
+    handle->curProgParam.initDecPicNbCntShift += ptsDiffShift;
+    handle->curProgParam.restartRequired = true;
+
+    fprintf(stderr, "ADJUST %d\n", handle->curProgParam.initDecPicNbCntShift);
   }
 
-  /* Based on tsMuxer */
-  handle->curProgParam.picOrderCntAU++;
+  dts = handle->curProgParam.lstPic.dts + handle->curProgParam.lstPic.duration;
+  pts = dts - ptsDiffShift * handle->curProgParam.frameDuration;
 
-  dts =
-    handle->curProgParam.lastDts
-    + handle->curProgParam.dtsIncrement
-  ;
-  pts =
-    dts
-    + (
-      (
-        handle->curProgParam.picOrderCntAU
-        / ((options.doubleFrameTiming) ? 1 : 2)
-      )
-      - handle->curProgParam.nbPics + 1
-    )
-    * handle->curProgParam.frameDuration
-  ;
+  /* fprintf(
+    stderr, "%d %d %d\n",
+    handle->curProgParam.decPicNbCnt,
+    handle->curProgParam.PicOrderCnt,
+    ptsDiffShift
+  ); */
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(" -> PTS: %" PRId64 "\n", pts);
   LIBBLU_H264_DEBUG_AU_PROCESSING(" -> DTS: %" PRId64 "\n", dts);
+  LIBBLU_H264_DEBUG_AU_PROCESSING("%" PRId32 "\n", handle->curProgParam.PicOrderCnt);
 
-  switch (handle->curProgParam.lastPicStruct) {
-    case H264_PIC_STRUCT_TOP_FLWD_BOT_TOP:
-    case H264_PIC_STRUCT_BOT_FLWD_TOP_BOT:
-      handle->curProgParam.dtsIncrement =
-        handle->curProgParam.frameDuration
-        + handle->curProgParam.fieldDuration;
-      break;
+  handle->curProgParam.lstPic.duration = _computeDtsIncrement(handle);
+  handle->curProgParam.lstPic.dts  = dts;
 
-    case H264_PIC_STRUCT_DOUBLED_FRAME:
-      handle->curProgParam.dtsIncrement =
-        2 * handle->curProgParam.frameDuration;
-      break;
-
-    case H264_PIC_STRUCT_TRIPLED_FRAME:
-      handle->curProgParam.dtsIncrement =
-        3 * handle->curProgParam.frameDuration;
-      break;
-
-    default:
-      /* normal (or if pic_struct absent) */
-      handle->curProgParam.dtsIncrement =
-        handle->curProgParam.frameDuration;
-  }
-
-  handle->curProgParam.lastDts = dts;
+  handle->curProgParam.decPicNbCnt = (handle->curProgParam.decPicNbCnt + 1) % handle->sequenceParametersSet.data.MaxPicOrderCntLsb;
+  if (!handle->curProgParam.decPicNbCnt)
+    handle->curProgParam.decPicNbCnt = handle->sequenceParametersSet.data.MaxPicOrderCntLsb / 2;
 
   ret = initEsmsVideoPesFrame(
     handle->esms,
@@ -853,16 +929,16 @@ int processCompleteAccessUnit(
   }
 
   /* Saving biggest picture AU size (for CPB computations): */
-  if (handle->curProgParam.largestFrameSize < curInsertingOffset) {
+  if (handle->curProgParam.largestAUSize < curInsertingOffset) {
     /* Biggest I picture AU. */
     if (H264_SLICE_IS_TYPE_I(handle->slice.header.slice_type))
-      handle->curProgParam.largestIFrameSize = MAX(
-        handle->curProgParam.largestIFrameSize,
+      handle->curProgParam.largestIPicAUSize = MAX(
+        handle->curProgParam.largestIPicAUSize,
         curInsertingOffset
       );
 
     /* Biggest picture AU. */
-    handle->curProgParam.largestFrameSize = curInsertingOffset;
+    handle->curProgParam.largestAUSize = curInsertingOffset;
   }
 
   if (writeEsmsPesPacket(handle->esmsFile, handle->esms) < 0)
@@ -902,10 +978,10 @@ int decodeH264AccessUnitDelimiter(
 
   assert(NULL != handle);
 
-  if (getCurrentNALUnitType(handle) != NAL_UNIT_TYPE_ACCESS_UNIT_DELIMITER)
+  if (getNalUnitType(handle) != NAL_UNIT_TYPE_ACCESS_UNIT_DELIMITER)
     LIBBLU_H264_ERROR_RETURN(
       "Expected a Access Unit Delimiter NAL unit type (receive: %s).\n",
-      H264NalUnitTypeStr(getCurrentNALUnitType(handle))
+      H264NalUnitTypeStr(getNalUnitType(handle))
     );
 
   /* [u3 primary_pic_type] */
@@ -928,7 +1004,7 @@ int decodeH264AccessUnitDelimiter(
       return -1;
   }
   else {
-    if (5 < handle->curProgParam.lastNalUnitType) {
+    if (5 < handle->curProgParam.lstNaluType) {
       isConstant = constantH264AccessUnitDelimiterCheck(
         handle->accessUnitDelimiter, accessUnitDelimiterParam
       );
@@ -1718,10 +1794,10 @@ int decodeH264SequenceParametersSet(
 
   assert(NULL != handle);
 
-  if (getCurrentNALUnitType(handle) != NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET)
+  if (getNalUnitType(handle) != NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET)
     LIBBLU_H264_ERROR_RETURN(
       "Expected a Sequence Parameters Set NAL unit type (receive: %s).\n",
-      H264NalUnitTypeStr(getCurrentNALUnitType(handle))
+      H264NalUnitTypeStr(getNalUnitType(handle))
     );
 
   /* seq_parameter_set_data() */
@@ -1791,10 +1867,10 @@ int decodeH264PicParametersSet(
 
   assert(NULL != handle);
 
-  if (getCurrentNALUnitType(handle) != NAL_UNIT_TYPE_PIC_PARAMETER_SET)
+  if (getNalUnitType(handle) != NAL_UNIT_TYPE_PIC_PARAMETER_SET)
     LIBBLU_H264_ERROR_RETURN(
       "Expected a Picture Parameters Set NAL unit type (receive: '%s').\n",
-      H264NalUnitTypeStr(getCurrentNALUnitType(handle))
+      H264NalUnitTypeStr(getNalUnitType(handle))
     );
 
   if (!handle->accessUnitDelimiterPresent)
@@ -2295,7 +2371,7 @@ int parseH264SeiPicTiming(
       LIBBLU_H264_READING_FAIL_RETURN();
     param->pic_struct = value;
 
-    handle->curProgParam.lastPicStruct = param->pic_struct;
+    // handle->curProgParam.lastPicStruct = param->pic_struct;
 
     switch (param->pic_struct) {
       case H264_PIC_STRUCT_FRAME:
@@ -2652,13 +2728,13 @@ int decodeH264SupplementalEnhancementInformation(
   assert(NULL != handle);
 
   if (
-    getCurrentNALUnitType(handle)
+    getNalUnitType(handle)
     != NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION
   )
     LIBBLU_H264_ERROR_RETURN(
       "Expected a Supplemental Enhancement Information NAL unit type "
       "(receive: %s).\n",
-      H264NalUnitTypeStr(getCurrentNALUnitType(handle))
+      H264NalUnitTypeStr(getNalUnitType(handle))
     );
 
   do {
@@ -3185,12 +3261,13 @@ int parseH264SliceHeader(
 {
   /* slice_header() - 7.3.3 Slice header syntax */
   uint32_t value;
-  unsigned linkedPPSId;
 
-  H264SequenceParametersSetDataParameters * spsData;
-  H264PicParametersSetParameters * ppsData;
+  H264SequenceParametersSetDataParameters * sps;
+  H264PicParametersSetParameters * pps;
 
-  H264SliceGroupMapTypeValue sliceGroupMapType;
+  bool isRefPic = isReferencePictureH264NalRefIdcValue(getNalRefIdc(handle));
+  bool IdrPicFlag = isIdrPictureH264NalUnitTypeValue(getNalUnitType(handle));
+  bool isExt = isCodedSliceExtensionH264NalUnitTypeValue(getNalUnitType(handle));
 
   /* bool frameNumEqualPrevRefFrameNum; */  /* TODO */
 
@@ -3201,8 +3278,7 @@ int parseH264SliceHeader(
     LIBBLU_H264_ERROR_RETURN(
       "Missing mandatory SPS parameters, Unable to decode slice_header().\n"
     );
-
-  spsData = &handle->sequenceParametersSet.data;
+  sps = &handle->sequenceParametersSet.data;
 
   if (0 == handle->picParametersSetIdsPresentNb)
     LIBBLU_H264_ERROR_RETURN(
@@ -3212,14 +3288,6 @@ int parseH264SliceHeader(
   /* ppsData will be set when know active ID */
 
   /* Get informations from context (current AU) */
-  param->IdrPicFlag =
-    getCurrentNALUnitType(handle) == NAL_UNIT_TYPE_IDR_SLICE
-  ;
-  param->isSliceExt =
-    getCurrentNALUnitType(handle) == NAL_UNIT_TYPE_CODED_SLICE_EXT
-    || getCurrentNALUnitType(handle) == NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT
-  ;
-  param->pic_order_cnt_type = spsData->pic_order_cnt_type;
 
   /* [ue first_mb_in_slice] */
   if (readExpGolombCodeNal(handle, &value, 32) < 0)
@@ -3240,22 +3308,23 @@ int parseH264SliceHeader(
   /* [ue pic_parameter_set_id] */
   if (readExpGolombCodeNal(handle, &value, 8) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
-  param->pic_parameter_set_id = linkedPPSId = value;
+  param->pic_parameter_set_id = value;
 
   /* Checking PPS id */
-  if (H264_MAX_PPS <= linkedPPSId)
+#if 0
+  if (H264_MAX_PPS <= param->pic_parameter_set_id)
     LIBBLU_H264_ERROR_RETURN(
       "Slice header pic_parameter_set_id value overflow.\n"
     );
-  if (!handle->picParametersSetIdsPresent[linkedPPSId])
+#endif
+  if (!handle->picParametersSetIdsPresent[param->pic_parameter_set_id])
     LIBBLU_H264_ERROR_RETURN(
       "Slice header referring unknown PPS id %u.\n",
-      linkedPPSId
+      param->pic_parameter_set_id
     );
+  pps = handle->picParametersSet[param->pic_parameter_set_id];
 
-  ppsData = handle->picParametersSet[linkedPPSId];
-
-  if (spsData->separate_colour_plane_flag) {
+  if (sps->separate_colour_plane_flag) {
     /* [u2 colour_plane_id] */
     if (readBitsNal(handle, &value, 2) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
@@ -3265,12 +3334,12 @@ int parseH264SliceHeader(
     param->colour_plane_id = H264_COLOUR_PLANE_ID_Y; /* Default, not used, only for checking purposes */
 
   /* [u<log2_max_frame_num_minus4 + 4> frame_num] */
-  if (readBitsNal(handle, &value, spsData->log2_max_frame_num_minus4 + 4) < 0)
+  if (readBitsNal(handle, &value, sps->log2_max_frame_num_minus4 + 4) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
   param->frameNum = value;
 
 #if 0
-  if (param->IdrPicFlag) {
+  if (IdrPicFlag) {
     if (0 != param->frameNum) {
       LIBBLU_H264_ERROR_RETURN(
         "Broken picture identifier, unexpected value 'frame_num' == %u for "
@@ -3326,8 +3395,9 @@ int parseH264SliceHeader(
 #endif
   }
 #endif
+  handle->curProgParam.gapsInFrameNum = false;
 
-  if (!spsData->frame_mbs_only_flag) {
+  if (!sps->frame_mbs_only_flag) {
     /* [b1 field_pic_flag] */
     if (readBitsNal(handle, &value, 1) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
@@ -3347,29 +3417,7 @@ int parseH264SliceHeader(
     param->bottom_field_flag = false;
   }
 
-  /* Compute parameters: */
-  param->refPic = getNalRefIdc(handle) != 0;
-  param->MbaffFrameFlag =
-    spsData->mb_adaptive_frame_field_flag
-    && !param->field_pic_flag
-  ;
-  param->PicHeightInMbs =
-    spsData->FrameHeightInMbs
-    / (1 + param->field_pic_flag)
-  ;
-  param->PicHeightInSamplesL =
-    param->PicHeightInMbs * 16
-  ;
-  param->PicHeightInSamplesC =
-    param->PicHeightInMbs
-    * spsData->MbHeightC
-  ;
-  param->PicSizeInMbs =
-    param->PicHeightInMbs
-    * spsData->PicWidthInMbs
-  ;
-
-  if (param->IdrPicFlag) {
+  if (IdrPicFlag) {
     /* [ue idr_pic_id] */
     if (readExpGolombCodeNal(handle, &value, 16) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
@@ -3378,8 +3426,8 @@ int parseH264SliceHeader(
   else
     param->idr_pic_id = 0; /* For test purpose */
 
-  if (spsData->pic_order_cnt_type == 0) {
-    unsigned fieldSize = spsData->log2_max_pic_order_cnt_lsb_minus4 + 4;
+  if (sps->pic_order_cnt_type == 0) {
+    unsigned fieldSize = sps->log2_max_pic_order_cnt_lsb_minus4 + 4;
 
     /* [u<log2_max_pic_order_cnt_lsb_minus4 + 4> pic_order_cnt_lsb] */
     if (readBitsNal(handle, &value, fieldSize) < 0)
@@ -3387,7 +3435,7 @@ int parseH264SliceHeader(
     param->pic_order_cnt_lsb = value;
 
     if (
-      ppsData->bottom_field_pic_order_in_frame_present_flag
+      pps->bottom_field_pic_order_in_frame_present_flag
       && !param->field_pic_flag
     ) {
       /* [se delta_pic_order_cnt_bottom] */
@@ -3404,8 +3452,8 @@ int parseH264SliceHeader(
   }
 
   if (
-    spsData->pic_order_cnt_type == 1
-    && !spsData->delta_pic_order_always_zero_flag
+    sps->pic_order_cnt_type == 1
+    && !sps->delta_pic_order_always_zero_flag
   ) {
     /* [se delta_pic_order_cnt[0]] */
     if (readSignedExpGolombCodeNal(handle, &value, 32) < 0)
@@ -3413,7 +3461,7 @@ int parseH264SliceHeader(
     param->delta_pic_order_cnt[0] = (int) value;
 
     if (
-      ppsData->bottom_field_pic_order_in_frame_present_flag
+      pps->bottom_field_pic_order_in_frame_present_flag
       && !param->field_pic_flag
     ) {
       /* [se delta_pic_order_cnt[1]] */
@@ -3427,7 +3475,7 @@ int parseH264SliceHeader(
   else
     param->delta_pic_order_cnt[0] = param->delta_pic_order_cnt[1] = 0;
 
-  if (ppsData->redundant_pic_cnt_present_flag) {
+  if (pps->redundant_pic_cnt_present_flag) {
     /* [ue redundant_pic_cnt] */
     if (readExpGolombCodeNal(handle, &value, 8) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
@@ -3491,15 +3539,16 @@ int parseH264SliceHeader(
     }
     else {
       param->num_ref_idx_l0_active_minus1 =
-        ppsData->num_ref_idx_l0_default_active_minus1
+        pps->num_ref_idx_l0_default_active_minus1
       ;
       param->num_ref_idx_l1_active_minus1 =
-        ppsData->num_ref_idx_l1_default_active_minus1
+        pps->num_ref_idx_l1_default_active_minus1
       ;
     }
   }
 
-  if (param->isSliceExt) {
+  if (isExt) {
+    /* Present if nal_unit_type is equal to 20 or 21. */
     /* ref_pic_list_mvc_modification() */
     /* Annex H */
 
@@ -3510,17 +3559,18 @@ int parseH264SliceHeader(
   }
   else {
     /* ref_pic_list_modification() */
-    if (
-      parseH264RefPicListModification(
-        handle, &param->refPicListMod, param->slice_type
-      ) < 0
-    )
+    int ret = parseH264RefPicListModification(
+      handle,
+      &param->refPicListMod,
+      param->slice_type
+    );
+    if (ret < 0)
       return -1;
   }
 
   if (
     (
-      ppsData->weighted_pred_flag
+      pps->weighted_pred_flag
       && (
         H264_SLICE_IS_TYPE_P(param->slice_type)
         || H264_SLICE_IS_TYPE_SP(param->slice_type)
@@ -3528,7 +3578,7 @@ int parseH264SliceHeader(
     )
     || (
       (
-        ppsData->weighted_bipred_idc
+        pps->weighted_bipred_idc
         == H264_WEIGHTED_PRED_B_SLICES_EXPLICIT
       )
       && H264_SLICE_IS_TYPE_B(param->slice_type)
@@ -3542,23 +3592,20 @@ int parseH264SliceHeader(
   param->decRefPicMarkingPresent = getNalRefIdc(handle) != 0;
   if (param->decRefPicMarkingPresent) {
     /* dec_ref_pic_marking() */
-    if (
-      parseH264DecRefPicMarking(
-        handle, &param->dec_ref_pic_marking, param->IdrPicFlag
-      ) < 0
-    )
+    if (parseH264DecRefPicMarking(handle, &param->dec_ref_pic_marking, IdrPicFlag) < 0)
       return -1;
   }
   else {
+    param->dec_ref_pic_marking.MemMngmntCtrlOp = NULL;
     param->dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag = false;
     param->dec_ref_pic_marking.presenceOfMemManCtrlOp4 = false;
     param->dec_ref_pic_marking.presenceOfMemManCtrlOp5 = false;
     param->dec_ref_pic_marking.presenceOfMemManCtrlOp6 = false;
-    param->dec_ref_pic_marking.IdrPicFlag = param->IdrPicFlag;
+    param->dec_ref_pic_marking.IdrPicFlag = IdrPicFlag;
   }
 
   if (
-    ppsData->entropy_coding_mode_flag
+    pps->entropy_coding_mode_flag
     && !H264_SLICE_IS_TYPE_I(param->slice_type)
     && !H264_SLICE_IS_TYPE_SI(param->slice_type)
   ) {
@@ -3592,7 +3639,7 @@ int parseH264SliceHeader(
     param->slice_qs_delta = (int) value;
   }
 
-  if (ppsData->deblocking_filter_control_present_flag) {
+  if (pps->deblocking_filter_control_present_flag) {
     /* [ue disable_deblocking_filter_idc] */
     if (readExpGolombCodeNal(handle, &value, 8) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
@@ -3625,8 +3672,10 @@ int parseH264SliceHeader(
     param->slice_beta_offset_div2 = 0;
   }
 
-  if (1 <= ppsData->num_slice_groups_minus1) {
-    sliceGroupMapType = ppsData->slice_groups.slice_group_map_type;
+  if (1 <= pps->num_slice_groups_minus1) {
+    H264SliceGroupMapTypeValue sliceGroupMapType =
+      pps->slice_groups.slice_group_map_type
+    ;
 
     if (
       sliceGroupMapType == H264_SLICE_GROUP_TYPE_CHANGING_1
@@ -3639,6 +3688,32 @@ int parseH264SliceHeader(
       param->slice_group_change_cycle = value;
     }
   }
+
+  /* Computed parameters: */
+  param->isRefPic = isRefPic;
+  param->isIdrPic = IdrPicFlag;
+  param->isCodedSliceExtension = isExt;
+  param->sps_pic_order_cnt_type = sps->pic_order_cnt_type;
+
+  param->MbaffFrameFlag =
+    sps->mb_adaptive_frame_field_flag
+    && !param->field_pic_flag
+  ;
+  param->PicHeightInMbs =
+    sps->FrameHeightInMbs
+    / (1 + param->field_pic_flag)
+  ;
+  param->PicHeightInSamplesL =
+    param->PicHeightInMbs * 16
+  ;
+  param->PicHeightInSamplesC =
+    param->PicHeightInMbs
+    * sps->MbHeightC
+  ;
+  param->PicSizeInMbs =
+    param->PicHeightInMbs
+    * sps->PicWidthInMbs
+  ;
 
   return 0;
 }
@@ -3682,18 +3757,20 @@ H264FirstVclNaluPCPRet detectFirstVclNalUnitOfPrimCodedPicture(
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'nal_ref_idc' == 0 (IDR-pic) differs in value ? : %s => %s.\n",
-    BOOL_STR(last.refPic), BOOL_STR(cur.refPic)
+    BOOL_STR(last.isRefPic),
+    BOOL_STR(cur.isRefPic)
   );
 
-  if (last.refPic ^ cur.refPic)
+  if (last.isRefPic ^ cur.isRefPic)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'pic_order_cnt_type' == 0 for both ? : %s => %s.\n",
-    BOOL_STR(last.pic_order_cnt_type == 0), BOOL_STR(cur.pic_order_cnt_type == 0)
+    BOOL_STR(last.sps_pic_order_cnt_type == 0),
+    BOOL_STR(cur.sps_pic_order_cnt_type == 0)
   );
 
-  if ((last.pic_order_cnt_type == 0) && (cur.pic_order_cnt_type == 0)) {
+  if ((last.sps_pic_order_cnt_type == 0) && (cur.sps_pic_order_cnt_type == 0)) {
     LIBBLU_H264_DEBUG_AU_PROCESSING(
       "  -> Does 'pic_order_cnt_lsb' differs in value ? : %u => %u.\n",
       last.pic_order_cnt_lsb, cur.pic_order_cnt_lsb
@@ -3714,10 +3791,11 @@ H264FirstVclNaluPCPRet detectFirstVclNalUnitOfPrimCodedPicture(
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'pic_order_cnt_type' == 1 for both ? : %s => %s.\n",
-    BOOL_STR(last.pic_order_cnt_type == 1), BOOL_STR(cur.pic_order_cnt_type == 1)
+    BOOL_STR(last.sps_pic_order_cnt_type == 1),
+    BOOL_STR(cur.sps_pic_order_cnt_type == 1)
   );
 
-  if ((last.pic_order_cnt_type == 1) && (cur.pic_order_cnt_type == 1)) {
+  if ((last.sps_pic_order_cnt_type == 1) && (cur.sps_pic_order_cnt_type == 1)) {
     LIBBLU_H264_DEBUG_AU_PROCESSING(
       "  -> Does 'delta_pic_order_cnt[0]' differs in value ? : %ld => %ld.\n",
       last.delta_pic_order_cnt[0], cur.delta_pic_order_cnt[0]
@@ -3737,13 +3815,14 @@ H264FirstVclNaluPCPRet detectFirstVclNalUnitOfPrimCodedPicture(
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'IdrPicFlag' differs in value ? : %u => %u.\n",
-    last.IdrPicFlag, cur.IdrPicFlag
+    last.isIdrPic,
+    cur.isIdrPic
   );
 
-  if (last.IdrPicFlag != cur.IdrPicFlag)
+  if (last.isIdrPic != cur.isIdrPic)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
-  if (cur.IdrPicFlag) {
+  if (cur.isIdrPic) {
     LIBBLU_H264_DEBUG_AU_PROCESSING(
       "  -> Does 'idr_pic_id' differs in value ? : %u => %u.\n",
       last.idr_pic_id, cur.idr_pic_id
@@ -3794,6 +3873,9 @@ int decodeH264SliceLayerWithoutPartitioning(
 
   switch (ret) {
     case H264_FRST_VCL_NALU_PCP_RET_FALSE:
+      LIBBLU_H264_DEBUG_AU_PROCESSING(
+        " => This VCL NALU is part of the pending primary picture.\n"
+      );
       break;
 
     case H264_FRST_VCL_NALU_PCP_RET_TRUE:
@@ -3838,10 +3920,11 @@ int decodeH264SliceLayerWithoutPartitioning(
     if (
       !handle->slice.header.dec_ref_pic_marking.IdrPicFlag
       && handle->slice.header.dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag
-    )
+    ) {
       closeH264MemoryManagementControlOperations(
         handle->slice.header.dec_ref_pic_marking.MemMngmntCtrlOp
       );
+    }
   }
 
   handle->slice.header = sliceParam.header;
@@ -3971,7 +4054,7 @@ int analyzeH264(
     if (_initNALU(handle) < 0)
       goto free_return;
 
-    nal_unit_type = getCurrentNALUnitType(handle);
+    nal_unit_type = getNalUnitType(handle);
 
     if (_isStartOfANewAU(&handle->curProgParam, nal_unit_type)) {
       LIBBLU_H264_DEBUG_AU_PROCESSING(
@@ -3988,7 +4071,7 @@ int analyzeH264(
           goto free_return;
 
         /* Compute PicOrderCnt: */
-        if (computeAuPicOrderCnt(handle, settings) < 0)
+        if (_computeAuPicOrderCnt(handle, settings->options) < 0)
           goto free_return;
         break;
 
@@ -4169,25 +4252,29 @@ int analyzeH264(
     }
   }
 
-  if (settings->askForRestart) {
+  if (settings->askForRestart || handle->curProgParam.restartRequired) {
     LIBBLU_INFO(
       "Parsing guessing error found, "
       "restart parsing with corrected parameters.\n"
     );
+
+    settings->options.secondPass = true;
+    settings->options.halfPicOrderCnt = handle->curProgParam.halfPicOrderCnt;
+    settings->options.initDecPicNbCntShift = handle->curProgParam.initDecPicNbCntShift;
 
     /* Quick exit. */
     destroyH264ParametersHandler(handle);
     return 0;
   }
 
-  if (0 < handle->curProgParam.curNbSlices) {
+  if (0 < handle->curProgParam.nbSlicesInPic) {
     /* Process remaining pending slices. */
     if (processCompleteAccessUnit(handle, settings->options) < 0)
       goto free_return;
   }
 
   if (!handle->curProgParam.nbPics)
-    goto free_return; /* Number of complete pictures read equals zero. */
+    LIBBLU_ERROR_FRETURN("No picture in bitstream.\n");
 
   if (handle->curProgParam.nbPics == 1) {
     /* Only one picture = Still picture. */

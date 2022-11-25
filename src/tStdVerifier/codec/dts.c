@@ -37,7 +37,7 @@ int createDtsBufferingChainBdavStd(
 
     default:
       /* Unmanaged DTS stream coding type */
-      *root = BUF_MODEL_NEW_NODE();
+      *root = newVoidBufModelNode();
       return 0;
   }
 

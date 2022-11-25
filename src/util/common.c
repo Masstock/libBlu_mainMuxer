@@ -247,7 +247,83 @@ int lb_asprintf(
 
 #endif
 
+int lb_atob(
+  bool * dst,
+  const char * str
+)
+{
+  unsigned i;
+
+  static const char * trueStrings[] = {
+    "1",
+    "true",
+    "True",
+    "TRUE"
+  };
+
+  static const char * falseStrings[] = {
+    "0",
+    "false",
+    "False",
+    "FALSE"
+  };
+
+  for (i = 0; i < ARRAY_SIZE(trueStrings); i++) {
+    if (lb_str_equal(str, trueStrings[i])) {
+      *dst = true;
+      return 0;
+    }
+  }
+
+  for (i = 0; i < ARRAY_SIZE(falseStrings); i++) {
+    if (lb_str_equal(str, falseStrings[i])) {
+      *dst = true;
+      return 0;
+    }
+  }
+
+  return -1;
+}
+
 #if defined(ARCH_WIN32)
+
+int lb_watob(
+  bool * dst,
+  const wchar_t * str
+)
+{
+  unsigned i;
+
+  static const wchar_t * trueStrings[] = {
+    L"1",
+    L"true",
+    L"True",
+    L"TRUE"
+  };
+
+  static const wchar_t * falseStrings[] = {
+    L"0",
+    L"false",
+    L"False",
+    L"FALSE"
+  };
+
+  for (i = 0; i < ARRAY_SIZE(trueStrings); i++) {
+    if (lb_wstr_equal(str, trueStrings[i])) {
+      *dst = true;
+      return 0;
+    }
+  }
+
+  for (i = 0; i < ARRAY_SIZE(falseStrings); i++) {
+    if (lb_wstr_equal(str, falseStrings[i])) {
+      *dst = true;
+      return 0;
+    }
+  }
+
+  return -1;
+}
 
 int lb_wasprintf(
   wchar_t ** string,

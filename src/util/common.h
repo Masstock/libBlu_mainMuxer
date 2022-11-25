@@ -369,7 +369,17 @@ static inline void lb_strncat(
   *s1 = '\0';
 }
 
+int lb_atob(
+  bool * dst,
+  const char * str
+);
+
 #if defined(ARCH_WIN32)
+
+int lb_watob(
+  bool * dst,
+  const wchar_t * str
+);
 
 static inline bool lb_wstr_equal(
   const wchar_t * str1,

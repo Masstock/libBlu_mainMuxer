@@ -22,9 +22,10 @@ typedef struct {
   bool cbrMuxing;
   bool writeTPExtraHeaders;
   bool pcrOnESPackets;
-  bool disableTStdBufVerifier;
+  bool disableBufModel;  /**< Disable T-STD Buffer model use. */
 
   LibbluESSettingsOptions globalSharedOptions;
+  BufModelOptions bufModelOptions;
 
   uint16_t pcrPID;          /**< PCR carriage ES PID value.                  */
 } LibbluMuxingOptions;
@@ -36,9 +37,13 @@ static inline void defaultLibbluMuxingOptions(
 {
   *dst = (LibbluMuxingOptions) {
     .writeTPExtraHeaders = true,
-    .disableTStdBufVerifier = DISABLE_T_STD_BUFFER_VER,
+    .disableBufModel = false,
     .globalSharedOptions = {
       .confHandle = confHandle
+    },
+    .bufModelOptions = {
+      .abortOnUnderflow = false,
+      .underflowWarnTimeout = 0
     }
   };
 }

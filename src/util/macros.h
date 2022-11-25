@@ -117,6 +117,8 @@ static inline void triggerSegfault(
 #  define lbc_strndup  lb_wstrn_dup
 #  define lbc_strcspn  wcscspn
 
+#  define lbc_atob  lb_watob
+
 #  define lbc_equal  lb_wstr_equal
 #  define lbc_equaln  lb_wstrn_equal
 #  define lbc_strcmp  wcscmp
@@ -184,6 +186,8 @@ static inline void triggerSegfault(
 #  define lbc_strcpy  strcpy
 #  define lbc_strncpy  strncpy
 #  define lbc_strncat  lb_strncat
+
+#  define lbc_atob  lb_atob
 
 #  define lbc_chdir  chdir
 #  define lbc_getwd  lb_get_wd
@@ -512,7 +516,5 @@ static inline void triggerSegfault(
  * \todo This is not currently implemented.
  */
 #define USE_LOW_LEVEL_FILE_HANDLING                                           0
-
-#define DISABLE_T_STD_BUFFER_VER  false
 
 #endif

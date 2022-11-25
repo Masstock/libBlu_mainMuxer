@@ -13,6 +13,13 @@
 #include "tStdVerifierError.h"
 #include "../util.h"
 
+typedef struct {
+  bool abortOnUnderflow;          /**< Cancel mux on buffer underflow error. */
+  uint64_t underflowWarnTimeout;  /**< Duration in #MAIN_CLOCK_27MHZ ticks
+    during which no additional underflow warning message is printed since
+    the last printed one.                                                    */
+} BufModelOptions;
+
 /** \~english
  * \brief Buffering model node types.
  */
@@ -35,7 +42,7 @@ struct BufModelFilter;
  * Data entering the model from a root and is spread on the model according
  * to nodes configuration.
  */
-typedef struct BufModelNode {
+typedef struct {
   BufModelNodeType type;  /**< Type of the node.                             */
   union {
     struct BufModelBuffer * buffer;  /**< Node attached buffer object if
@@ -45,35 +52,40 @@ typedef struct BufModelNode {
   } linkedElement;        /**< Node linked element.                          */
 } BufModelNode;
 
-void destroyBufModelBuffer(struct BufModelBuffer * buf);
-void destroyBufModelFilter(struct BufModelFilter * buf);
+/** \~english
+ * \brief Define a #NODE_VOID #BufModelNode value.
+ */
+static inline BufModelNode newVoidBufModelNode(
+  void
+)
+{
+  return (BufModelNode) {
+    .type = NODE_VOID
+  };
+}
 
 /** \~english
  * \brief Destroy memory allocation used by node attached object.
  *
  * \param node Node whose content is to be freed.
  */
-static inline void cleanBufModelNode(
+void cleanBufModelNode(
   BufModelNode node
-)
-{
-  switch (node.type) {
-    case NODE_VOID:
-      break;
-
-    case NODE_BUFFER:
-      return destroyBufModelBuffer(node.linkedElement.buffer);
-
-    case NODE_FILTER:
-      return destroyBufModelFilter(node.linkedElement.filter);
-  }
-}
+);
 
 /** \~english
- * \brief Define a #NODE_VOID #BufModelNode value.
+ * \brief Destroy whole buffering model from given root node.
+ *
+ * \param rootNode Root node of buffering model to free.
+ *
+ * Every element present in buffering model tree is destroyed.
  */
-#define BUF_MODEL_NEW_NODE()                                                  \
-  ((BufModelNode) {.type = NODE_VOID})
+static inline void destroyBufModel(
+  BufModelNode rootNode
+)
+{
+  return cleanBufModelNode(rootNode);
+}
 
 /** \~english
  * \brief Return true if supplied node is a #NODE_VOID node.
@@ -82,8 +94,12 @@ static inline void cleanBufModelNode(
  * \return bool true Given node is a NODE_VOID node.
  * \return bool false Given node is not a NODE_VOID node.
  */
-#define BUF_MODEL_NODE_IS_VOID(bufModelNode)                                  \
-  ((bufModelNode).type == NODE_VOID)
+static inline bool isVoidBufModelNode(
+  BufModelNode node
+)
+{
+  return (NODE_VOID == node.type);
+}
 
 /** \~english
  * \brief Return true if supplied node is a #NODE_BUFFER node.
@@ -92,8 +108,12 @@ static inline void cleanBufModelNode(
  * \return bool true Given node is a NODE_BUFFER node.
  * \return bool false Given node is not a NODE_BUFFER node.
  */
-#define BUF_MODEL_NODE_IS_BUFFER(bufModelNode)                                \
-  ((bufModelNode).type == NODE_BUFFER)
+static inline bool isBufferBufModelNode(
+  BufModelNode node
+)
+{
+  return (NODE_BUFFER == node.type);
+}
 
 /** \~english
  * \brief Return true if supplied node is a #NODE_FILTER node.
@@ -102,56 +122,12 @@ static inline void cleanBufModelNode(
  * \return bool true Given node is a NODE_FILTER node.
  * \return bool false Given node is not a NODE_FILTER node.
  */
-#define BUF_MODEL_NODE_IS_FILTER(bufModelNode)                                \
-  ((bufModelNode).type == NODE_FILTER)
-
-bool isLinkedBufModelNode(
-  const BufModelNode node
-);
-
-void setLinkedBufModelNode(
+static inline bool isFilterBufModelNode(
   BufModelNode node
-);
-
-/** \~english
- * \brief Check if input data can fill given buffering model from given node
- * without error.
- *
- * \param rootNode Buffering model node.
- * \param timestamp Current updating timestamp.
- * \param inputData Input data amount in bits.
- * \param fillingBitrate Input data filling bitrate in bits per second.
- * \param streamContext Input data source stream context.
- * \return true Input data can fill given buffering model without error.
- * \return false Input data cannot fill given buffering model, leading buffer
- * overflow or other error.
- */
-bool checkBufModelNode(
-  BufModelNode node,
-  uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
-);
-
-/** \~english
- * \brief Update buffering model from given node.
- *
- * \param rootNode Buffering model node.
- * \param timestamp Current update timestamp.
- * \param inputData Optionnal input data in bits.
- * \param fillingBitrate Input data filling bitrate.
- * \param streamContext Input data stream context.
- * \return int On success, a zero value is returned. Otherwise, a negative
- * value is returned.
- */
-int updateBufModelNode(
-  BufModelNode node,
-  uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
-);
+)
+{
+  return (NODE_FILTER == node.type);
+}
 
 /** \~english
  * \brief Buffer output method types.
@@ -182,9 +158,19 @@ typedef enum {
  * \param name Pre-defined name value.
  * \return const char* String representation.
  */
-const char * predefinedBufferTypesName(
+static inline const char * predefinedBufferTypesName(
   BufModelBufferName name
-);
+)
+{
+  static const char * strings[] = {
+    "TB", "B", "MB", "EB"
+  };
+
+  if (name < ARRAY_SIZE(strings))
+    return strings[name];
+  return "Unknown";
+}
+
 
 /** \~english
  * \brief Buffer parameters structure.
@@ -254,48 +240,30 @@ typedef struct BufModelBuffer {
 } BufModelBuffer, *BufModelBufferPtr;
 
 /** \~english
- * \brief Destroy memory allocation used by buffer object.
- *
- * \param buf Buffer to free.
- *
- * Supplied buffer may have been created by functions #createLeakingBuffer()
- * or #destroyRemovalBuffer().
- */
-void destroyBufModelBuffer(
-  BufModelBufferPtr buf
-);
-
-/** \~english
  * \brief Returns buffer name.
  *
  * \param bufferPtr BufferPtr buffer.
  * \return char * buffer name.
  */
-#define BUFFER_NAME(bufferPtr)                                                \
-  (                                                                           \
-    (CUSTOM_BUFFER == (bufferPtr)->header.param.name) ?                       \
-      (bufferPtr)->header.param.customName                                    \
-    :                                                                         \
-      predefinedBufferTypesName((bufferPtr)->header.param.name)               \
-  )
+static inline const char * bufferNameBufModelBuffer(
+  const BufModelBufferPtr buf
+)
+{
+  if (CUSTOM_BUFFER == buf->header.param.name)
+    return buf->header.param.customName;
+  return predefinedBufferTypesName(buf->header.param.name);
+}
 
 /** \~english
- * \brief Return true if given buffer name matches supplied one.
+ * \brief Destroy memory allocation used by buffer object.
  *
- * \param buf Buffer to test.
- * \param name Pre-defined buffer name.
- * \param customName Custom buffer name string if name value is set to
- * #CUSTOM_BUFFER value (otherwise shall be NULL).
- * \param customNameHash Optionnal custom buffer name hash value (if set to
- * 0, the value is computed if required from customName).
- * \return true The buffer name matches name and/or customName.
- * \return false The buffer name does not matches.
+ * \param buf Buffer to free.
+ *
+ * Supplied buffer may have been created by functions #_createLeakingBuffer()
+ * or #destroyRemovalBuffer().
  */
-bool matchBuffer(
-  const BufModelBufferPtr buf,
-  const BufModelBufferName name,
-  const char * customName,
-  uint32_t customNameHash
+void destroyBufModelBuffer(
+  BufModelBufferPtr buf
 );
 
 /** \~english
@@ -320,47 +288,6 @@ int setBufferOutput(
 int addFrameToBuffer(
   BufModelBufferPtr buf,
   BufModelBufferFrame frame
-);
-
-/** \~english
- * \brief Check if input data can fill given buffer without error.
- *
- * Compute minimal time required to hypotheticaly
- *
- * \param buf Updated buffer.
- * \param timestamp Current updating timestamp.
- * \param inputData Input data amount in bits.
- * \param fillingBitrate Input data filling bitrate in bits per second.
- * \param streamContext Input data source stream context.
- * \return true Input data can fill given buffer without error.
- * \return false Input data cannot fill given buffer, leading buffer overflow
- * or other error.
- */
-bool checkBufModelBuffer(
-  BufModelBufferPtr buf,
-  uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
-);
-
-/** \~english
- * \brief Update buffering chain state from given buffer.
- *
- * \param buf Buffer to update.
- * \param timestamp Current updating timestamp.
- * \param inputData Optionnal input data amount in bits.
- * \param fillingBitrate Input data filling bitrate in bits per second.
- * \param streamContext Input data source stream context.
- * \return int On success, a zero value is returned. Otherwise, a negative
- * value is returned.
- */
-int updateBufModelBuffer(
-  BufModelBufferPtr buf,
-  uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
 );
 
 /** \~english
@@ -418,19 +345,6 @@ void destroyBufModelBuffersList(
 );
 
 /** \~english
- * \brief Add given buffer to buffers list.
- *
- * \param list Destination list.
- * \param buf Added buffer.
- * \return int On success, a zero value is returned. Otherwise, a negative
- * value is returned.
- */
-int addBufferBufModelBuffersList(
-  BufModelBuffersListPtr list,
-  BufModelBufferPtr buf
-);
-
-/** \~english
  * \brief Add given frame to a specified buffer in supplied list.
  *
  * \param bufList Buffer list to fetch destination buffer from.
@@ -463,24 +377,6 @@ typedef struct BufModelLeakingBuffer {
 } BufModelLeakingBuffer, *BufModelLeakingBufferPtr;
 
 /** \~english
- * \brief Create a buffer using leaking output method.
- *
- * \param param Buffer parameters.
- * \param initialTimestamp Initial zero timestamp value.
- * \param removalBitrate Buffer output leaking bitrate in bits per second.
- * \return BufferPtr On success, created object is returned. Otherwise a
- * NULL pointer is returned.
- *
- * Created object must be passed to #destroyBufModelBuffer() function after use
- * (this function cast the buffer to #destroyLeakingBuffer() function).
- */
-BufModelBufferPtr createLeakingBuffer(
-  BufModelBufferParameters param,
-  uint64_t initialTimestamp,
-  uint64_t removalBitrate
-);
-
-/** \~english
  * \brief Create a buffer using leaking output method on supplied node.
  *
  * \param list Buffering model branch buffers list.
@@ -500,28 +396,21 @@ int createLeakingBufferNode(
 );
 
 /** \~english
- * \brief Destroy memory allocation done by #createLeakingBuffer().
+ * \brief Destroy memory allocation done by #_createLeakingBuffer().
  *
  * \param buf Buffer to free.
  */
-void destroyLeakingBuffer(
+static inline void destroyLeakingBuffer(
   BufModelLeakingBufferPtr buf
-);
+)
+{
+  if (NULL == buf)
+    return;
 
-/** \~english
- * \brief Return leaking buffer data amount ready to be removed from buffer.
- *
- * \param buf Leaking buffer.
- * \param timestamp Current timestamp.
- * \return size_t Buffer output data bandwidth in bits.
- *
- * Evaluates leakable data from buffer at current timestamp.
- */
-size_t computeLeakingBufferDataBandwidth(
-  BufModelLeakingBufferPtr buf,
-  size_t bufFillingLevel,
-  uint64_t timestamp
-);
+  destroyBufModel(buf->header.output);
+  destroyCircularBuffer(buf->header.storedFrames);
+  free(buf);
+}
 
 /** \~english
  * \typedef BufModelRemovalBufferPtr
@@ -535,22 +424,6 @@ size_t computeLeakingBufferDataBandwidth(
 typedef struct {
   BufModelBufferCommonHeader header;  /**< Common header.                    */
 } BufModelRemovalBuffer, *BufModelRemovalBufferPtr;
-
-/** \~english
- * \brief Create a buffer using removal timestamps output method.
- *
- * \param param Buffer parameters.
- * \param initialTimestamp Initial zero timestamp value.
- * \return BufferPtr On success, created object is returned. Otherwise a
- * NULL pointer is returned.
- *
- * Created object must be passed to #destroyBufModelBuffer() function after use
- * (this function cast the buffer to #destroyRemovalBuffer() function).
- */
-BufModelBufferPtr createRemovalBuffer(
-  BufModelBufferParameters param,
-  uint64_t initialTimestamp
-);
 
 /** \~english
  * \brief Create a buffer using removal timestamps output method on
@@ -575,25 +448,17 @@ int createRemovalBufferNode(
  *
  * \param buf Buffer to free.
  */
-void destroyRemovalBuffer(
+static inline void destroyRemovalBuffer(
   BufModelRemovalBufferPtr buf
-);
+)
+{
+  if (NULL == buf)
+    return;
 
-/** \~english
- * \brief Return removal timestamps buffer data amount ready to be removed
- * from buffer.
- *
- * \param buf Removal timestamps based buffer.
- * \param timestamp Current timestamp.
- * \return size_t Buffer output data bandwidth in bits.
- *
- * Evaluates data from in-buffer frames width removal timestamp lower or equal
- * to current timestamp.
- */
-size_t computeRemovalBufferDataBandwidth(
-  BufModelRemovalBufferPtr buf,
-  uint64_t timestamp
-);
+  destroyBufModel(buf->header.output);
+  destroyCircularBuffer(buf->header.storedFrames);
+  free(buf);
+}
 
 /** \~english
  * \brief #BufModelFilter filtering decision function prototype.
@@ -638,9 +503,20 @@ typedef enum {
  * \param type Type to return.
  * \return const char* String representation.
  */
-const char * getBufModelFilterLblTypeString(
-  const BufModelFilterLblType type
-);
+static inline const char * getBufModelFilterLblTypeString(
+  BufModelFilterLblType type
+)
+{
+  static const char * strings[] = {
+    "numeric",
+    "string",
+    "list"
+  };
+
+  if (type < ARRAY_SIZE(strings))
+    return strings[type];
+  return "unknown";
+}
 
 /** \~english
  * \brief Buffering model filter node label value.
@@ -694,25 +570,28 @@ typedef union BufModelFilterLblValue {
  * \param val Label value to release.
  * \param type Label value type.
  */
-void cleanBufModelFilterLblValue(
+static inline void cleanBufModelFilterLblValue(
   BufModelFilterLblValue val,
   BufModelFilterLblType type
-);
+)
+{
+  unsigned i;
 
-/** \~english
- * \brief Return true if both supplied label values are equal.
- *
- * \param left First value.
- * \param right Second value.
- * \param type Type of values.
- * \return true Both label values are evaluated as equal.
- * \return false Label values are different.
- */
-bool areEqualBufModelFilterLblValues(
-  BufModelFilterLblValue left,
-  BufModelFilterLblValue right,
-  BufModelFilterLblType type
-);
+  switch (type) {
+    case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
+      break;
+
+    case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
+      free(val.string);
+      break;
+
+    case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
+      for (i = 0; i < val.listLength; i++)
+        cleanBufModelFilterLblValue(val.list[i], val.listItemsType);
+      free(val.list);
+      break;
+  }
+}
 
 /** \~english
  * \brief Buffering Model filter node label structure.
@@ -762,9 +641,15 @@ typedef struct {
     }                                                                         \
   )
 
-void cleanBufModelFilterLbl(
+static inline void cleanBufModelFilterLbl(
   BufModelFilterLbl label
-);
+)
+{
+  cleanBufModelFilterLblValue(
+    label.value,
+    label.type
+  );
+}
 
 /** \~english
  * \brief Create and store on destination label a list-typed label containing
@@ -787,19 +672,6 @@ int setBufModelFilterLblList(
   BufModelFilterLblType valuesType,
   const void * valuesList,
   const unsigned valuesNb
-);
-
-/** \~english
- * \brief Return true if both supplied labels are equal.
- *
- * \param left First label.
- * \param right Second label.
- * \return true Both labels values are evaluated as equal.
- * \return false Labels are different.
- */
-bool areEqualBufModelFilterLbls(
-  BufModelFilterLbl left,
-  BufModelFilterLbl right
 );
 
 /** \~english
@@ -829,23 +701,6 @@ typedef struct BufModelFilter {
 } BufModelFilter, *BufModelFilterPtr;
 
 /** \~english
- * \brief Create a buffering model filter.
- *
- * \param fun Stream context filtering function pointer.
- * \param labelsType Type of filter nodes attached labels.
- * \return BufModelFilterPtr On success, created object is returned. Otherwise
- * a NULL pointer is returned.
- *
- * See #BufModelFilter documentation for more details about filters.
- * Created object must be passed to #destroyBufModelFilter() function after
- * use.
- */
-BufModelFilterPtr createBufModelFilter(
-  BufModelFilterDecisionFun fun,
-  BufModelFilterLblType labelsType
-);
-
-/** \~english
  * \brief Create a buffering model filter on supplied node.
  *
  * \param node Destination buffering model node.
@@ -861,30 +716,12 @@ int createBufModelFilterNode(
 );
 
 /** \~english
- * \brief Destroy memory allocation done by #createBufModelFilter().
+ * \brief Destroy memory allocation done by #createBufModelFilterNode().
  *
  * \param filter Filter object to free.
  */
 void destroyBufModelFilter(
   BufModelFilterPtr filter
-);
-
-/** \~english
- * \brief Add supplied buffering model node to filter.
- *
- * \param filter Destination filter.
- * \param node Node to add in filter outputs.
- * \param label Node attached label.
- * \return int On success, a zero value is returned. Otherwise, a negative
- * value is returned.
- *
- * Label must be of type defined at filter creation using
- * #createBufModelFilterNode(), otherwise an error is raised.
- */
-int addNodeToBufModelFilter(
-  BufModelFilterPtr filter,
-  BufModelNode node,
-  BufModelFilterLbl label
 );
 
 /** \~english
@@ -900,7 +737,7 @@ int addNodeToBufModelFilter(
  * #createBufModelFilterNode(), otherwise an error is raised.
  *
  * If supplied node is not a #NODE_FILTER node type, behaviour is undefined.
- * Can be ensured using #BUF_MODEL_NODE_IS_FILTER() macro.
+ * Can be ensured using #isBufferBufModelNode() macro.
  */
 int addNodeToBufModelFilterNode(
   BufModelNode filterNode,
@@ -915,46 +752,7 @@ int addNodeToBufModelFilterNode(
  * filling data). Otherwise, only the destination node is updated with
  * input data.
  */
-#define BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES 0
-
-/** \~english
- * \brief Check if input data can fill given filter without error.
- *
- * \param filter Buffering model filter to update.
- * \param timestamp Current update timestamp.
- * \param inputData Optionnal input data in bits.
- * \param fillingBitrate Input data filling bitrate.
- * \param streamContext Input data stream context.
- * \return true Input data can fill given buffering model without error.
- * \return false Input data cannot fill given buffering model, leading buffer
- * overflow or other error.
- */
-bool checkBufModelFilter(
-  BufModelFilterPtr filter,
-  uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
-);
-
-/** \~english
- * \brief Update buffering chain state from given filter.
- *
- * \param filter Buffering model filter to update.
- * \param timestamp Current update timestamp.
- * \param inputData Optionnal input data in bits.
- * \param fillingBitrate Input data filling bitrate.
- * \param streamContext Input data stream context.
- * \return int On success, a zero value is returned. Otherwise, a negative
- * value is returned.
- */
-int updateBufModelFilter(
-  BufModelFilterPtr filter,
-  uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
-);
+#define BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES  false
 
 /** \~english
  * \brief Check if input data can fill given buffering chain without error.
@@ -969,6 +767,7 @@ int updateBufModelFilter(
  * overflow or other error.
  */
 int checkBufModel(
+  BufModelOptions options,
   BufModelNode rootNode,
   uint64_t timestamp,
   size_t inputData,
@@ -988,6 +787,7 @@ int checkBufModel(
  * value is returned.
  */
 int updateBufModel(
+  BufModelOptions options,
   BufModelNode rootNode,
   uint64_t timestamp,
   size_t inputData,
@@ -995,16 +795,38 @@ int updateBufModel(
   void * streamContext
 );
 
-/** \~english
- * \brief Destroy whole buffering model from given root node.
- *
- * \param rootNode Root node of buffering model to free.
- *
- * Every element present in buffering model tree is destroyed.
- */
-void destroyBufModel(
-  BufModelNode rootNode
-);
+static inline bool isLinkedBufModelNode(
+  const BufModelNode node
+)
+{
+  switch (node.type) {
+    case NODE_VOID:
+      break;
+
+    case NODE_BUFFER:
+      return node.linkedElement.buffer->header.isLinked;
+
+    case NODE_FILTER:
+      return node.linkedElement.filter->isLinked;
+  }
+
+  return false;
+}
+
+static inline void setLinkedBufModelNode(
+  BufModelNode node
+)
+{
+  switch (node.type) {
+    case NODE_VOID:
+      break;
+    case NODE_BUFFER:
+      node.linkedElement.buffer->header.isLinked = true;
+      break;
+    case NODE_FILTER:
+      node.linkedElement.filter->isLinked = true;
+  }
+}
 
 /** \~english
  * \brief Print buffer representation on terminal for debug.

@@ -17,7 +17,14 @@
 SEI for the verification of the HRD conformance.
  *
  * \xrefitem references "References" "References list"
- *  [1] ITU-T Rec. H.264 (06/2019).
+ *  [1] ITU-T Rec. H.264 (08/2021).
+ *
+ * Used abbreviations (with chapters numbers in [1]):
+ *  - NAL : Network Abstraction Layer (4, 6.1);
+ *  - NALU : NAL Unit (3.97);
+ *  - SPS : Sequence Parameter Set (7.3.2.1, 7.4.2.1);
+ *  - PPS : Picture Paramter Set (7.3.2.2, 7.4.2.2);
+ *  - SEI : Supplemental Enhancement Information (7.3.2.3, 7.4.2.3).
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__H264__PARSER_H__

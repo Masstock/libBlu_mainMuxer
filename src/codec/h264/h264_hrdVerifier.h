@@ -40,6 +40,8 @@
 
 #define ELECARD_STREAMEYE_COMPARISON  false
 
+#define H264_HRD_DISABLE_C_3_2  false
+
 static inline bool checkH264CpbHrdVerifierAvailablity(
   const H264CurrentProgressParam * curState,
   LibbluESSettingsOptions options
@@ -338,8 +340,7 @@ int processAUH264HrdContext(
   H264CurrentProgressParam * curState,
   H264ConstraintsParam * constraints,
   bool isNewBufferingPeriod,
-  size_t AUlength,
-  bool doubleFrameTiming
+  size_t AUlength
 );
 
 #endif

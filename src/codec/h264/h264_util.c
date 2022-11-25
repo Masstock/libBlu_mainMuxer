@@ -68,7 +68,6 @@ H264ParametersHandlerPtr initH264ParametersHandler(
 
   handle->curProgParam = (H264CurrentProgressParam) {
     .curFrameNalUnits = NULL,
-    .lastPicStruct = -1,
 
     .useVuiUpdate =
       0x00 != settings->options.fpsChange
@@ -101,12 +100,11 @@ void resetH264ParametersHandler(
   handle->sequenceParametersSetValid = false;
   handle->sei.bufferingPeriodValid = false;
   handle->sei.picTimingValid = false;
-  handle->curProgParam.curNbSlices = 0;
-  handle->curProgParam.bottomFieldPresent = false;
-  handle->curProgParam.topFieldPresent = false;
-  handle->curProgParam.idrPresent = false;
-  handle->curProgParam.initPicOrderCntAU = false;
-  handle->curProgParam.lastNalUnitType = NAL_UNIT_TYPE_UNSPECIFIED;
+  handle->curProgParam.nbSlicesInPic = 0;
+  handle->curProgParam.auContent.bottomFieldPresent = false;
+  handle->curProgParam.auContent.topFieldPresent = false;
+  handle->curProgParam.auContent.framePresent = false;
+  handle->curProgParam.lstNaluType = NAL_UNIT_TYPE_UNSPECIFIED;
 }
 
 int completeH264ParametersHandler(
@@ -454,7 +452,7 @@ int addNalCellToAccessUnit(
       "No NAL unit cell in process for current Access Unit.\n"
     );
 
-  handle->curProgParam.lastNalUnitType = getCurrentNALUnitType(handle);
+  handle->curProgParam.lstNaluType = getNalUnitType(handle);
 
   nalUnit =
     handle->curProgParam.curFrameNalUnits

@@ -113,8 +113,7 @@ int writeByteDtsPatcherBitstreamHandle(
 
   if (handle->crc.crcInUse) {
     /* \warning Will include bits before activation */
-    if (applyCrc(&handle->crc, byte) < 0)
-      return -1;
+    applyCrc(&handle->crc, byte);
   }
 
   return 0;

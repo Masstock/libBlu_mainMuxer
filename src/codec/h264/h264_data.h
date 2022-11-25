@@ -78,6 +78,10 @@
 #define NAL_REF_IDC_HIGH                                    0x3
 #endif
 
+/** \~english
+ * \brief NAL Unit nal_ref_idc, Reference Indicator value.
+ *
+ */
 typedef enum {
   NAL_REF_IDC_NONE   = 0,
   NAL_REF_IDC_LOW    = 1,
@@ -85,11 +89,29 @@ typedef enum {
   NAL_REF_IDC_HIGH   = 3
 } H264NalRefIdcValue;
 
+/** \~english
+ * \brief Return true if NALU contains a SPS, a SPS Extension, a subset SPS,
+ * a PPS, a slice of a reference picture, a slice partition of a reference
+ * picture, or a prefix NALU preceding a slice of a reference picture.
+ *
+ * \param nal_ref_idc NALU header nal_ref_idc field value.
+ * \return true The NALU might be used as reference.
+ * \return false The NALU is not used as reference.
+ *
+ * Definition of concerned NALUs is from [1] 7.4.1.
+ */
+static inline bool isReferencePictureH264NalRefIdcValue(
+  H264NalRefIdcValue nal_ref_idc
+)
+{
+  return (NAL_REF_IDC_NONE != nal_ref_idc);
+}
+
 #define NAL_SPS_REF_IDC  NAL_REF_IDC_HIGH
 #define NAL_SEI_REF_IDC  NAL_REF_IDC_LOW
 
 /** \~english
- * \brief NAL unit nal_unit_type value.
+ * \brief NAL Unit nal_unit_type, Type value.
  *
  */
 typedef enum {
@@ -118,6 +140,42 @@ typedef enum {
   NAL_UNIT_TYPE_RESERVED_22                           = 22,
   NAL_UNIT_TYPE_RESERVED_23                           = 23
 } H264NalUnitTypeValue;
+
+/** \~english
+ * \brief Return true if coded slice NALU nal_unit_type value correspond
+ * to an IRD picture NALU.
+ *
+ * \param nal_unit_type Slice NALU header nal_unit_type field value.
+ * \return true NALU is a coded slice of an IDR picture NALU.
+ * \return false NALU is a coded slice of an non-IDR picture NALU.
+ */
+static inline bool isIdrPictureH264NalUnitTypeValue(
+  H264NalUnitTypeValue nal_unit_type
+)
+{
+  return (NAL_UNIT_TYPE_IDR_SLICE == nal_unit_type);
+}
+
+/** \~english
+ * \brief Return true if coded slice NALU nal_unit_type value is equal to 20
+ * or 21.
+ *
+ * \param nal_unit_type NALU header nal_unit_type field value.
+ * \return true NALU is a coded slice extension.
+ * \return false NALU is not a coded slice extension.
+ *
+ * Detected values corresponds to #NAL_UNIT_TYPE_CODED_SLICE_EXT and
+ * #NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT.
+ */
+static inline bool isCodedSliceExtensionH264NalUnitTypeValue(
+  H264NalUnitTypeValue nal_unit_type
+)
+{
+  return
+    NAL_UNIT_TYPE_CODED_SLICE_EXT == nal_unit_type
+    || NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT == nal_unit_type
+  ;
+}
 
 /** \~english
  * \brief Return a constant string representation of a nal_unit_type value.
@@ -616,6 +674,17 @@ typedef enum {
   H264_SLICE_GROUP_TYPE_EXPLICIT            = 6
 } H264SliceGroupMapTypeValue;
 
+static inline bool isChanging123H264SliceGroupMapTypeValue(
+  H264SliceGroupMapTypeValue slice_group_map_type
+)
+{
+  return
+    H264_SLICE_GROUP_TYPE_CHANGING_1 == slice_group_map_type
+    || H264_SLICE_GROUP_TYPE_CHANGING_2 == slice_group_map_type
+    || H264_SLICE_GROUP_TYPE_CHANGING_3 == slice_group_map_type
+  ;
+}
+
 typedef enum {
   H264_WEIGHTED_PRED_B_SLICES_DEFAULT  = 0,
   H264_WEIGHTED_PRED_B_SLICES_EXPLICIT = 1,
@@ -1040,7 +1109,7 @@ typedef struct {
 
     /* else */
     struct {
-      H264MemMngmntCtrlOpBlkPtr MemMngmntCtrlOp;
+      H264MemMngmntCtrlOpBlkPtr MemMngmntCtrlOp; /**< TODO: Clean memory management */
       bool adaptive_ref_pic_marking_mode_flag;
     };
   };
@@ -1069,11 +1138,20 @@ typedef struct {
   uint16_t frameNum;
 
   bool field_pic_flag;
-  bool bottom_field_flag;
+  bool bottom_field_flag;  /**< bottom_field_flag field value. If true,
+    specifies that the slice is part of a coded bottom field picture.
+    Otherwise, if false, specifies that the slice is part of a coded
+    top field picture or a frame picture. If this field is not present,
+    its value is false.                                                      */
 
   uint16_t idr_pic_id;
-  uint16_t pic_order_cnt_lsb;
-  int delta_pic_order_cnt_bottom;
+  int32_t pic_order_cnt_lsb;  /**< pic_order_cnt_lsb field value. This value
+    is at most an unsigned integer of 16 bits. So signed integer of 32 bits
+    is large enought and avoid unsigned/signed conversions in computation of
+    PicOrderCnt.                                                             */
+  int delta_pic_order_cnt_bottom;  /**< delta_pic_order_cnt field value.
+    This value specifies the order of bottom and top fields as a delta of
+    picture order count between both fields. Equal to  */
 
   int delta_pic_order_cnt[2];
 
@@ -1107,11 +1185,25 @@ typedef struct {
   uint32_t slice_group_change_cycle;
 
   /* Computed parameters: */
-  bool refPic;
-  bool IdrPicFlag;
-  bool isSliceExt;
+  bool isRefPic; /**< Obtained using #isReferencePictureH264NalRefIdcValue()
+    with slice header NALU nal_ref_idc value.                                */
+  bool isIdrPic; /**< Obtained using #isIdrPictureH264NalUnitTypeValue()
+    with slice header NALU nal_unit_type value. Equal to IdrPicFlag.         */
+  bool isCodedSliceExtension; /**< Obtained using
+    #isCodedSliceExtensionH264NalUnitTypeValue() with slice header NALU
+    nal_unit_type value.                                                     */
+  unsigned sps_pic_order_cnt_type;  /**< Copy of the active SPS
+    pic_order_cnt_type field.                                                */
 
-  unsigned pic_order_cnt_type; /* Copy from active SPS */
+  bool presenceOfMemManCtrlOp5;  /**< Presence of
+    memory_management_control_operation equal to 5 in dec_ref_pic_marking.
+    If the section dec_ref_pic_marking is not present, this value is false.  */
+
+  // bool refPic;
+  // bool IdrPicFlag;
+  // bool isSliceExt;
+
+  // unsigned pic_order_cnt_type; /* Copy from active SPS */
 
   bool MbaffFrameFlag;
   unsigned PicHeightInMbs;
@@ -1282,6 +1374,7 @@ typedef struct {
   unsigned consecutiveBPicNb;
 } H264ConstraintsParam;
 
+#if 0
 #define H264_PARTIAL_PICTURE(curProgParam)  \
   (                                         \
     (curProgParam).bottomFieldPresent ||    \
@@ -1293,59 +1386,73 @@ typedef struct {
     (curProgParam).bottomFieldPresent &&    \
     (curProgParam).topFieldPresent          \
   )
+#endif
+
+/** \~english
+ * \brief Last picture properties.
+ *
+ */
+typedef struct {
+  bool presenceOfMemManCtrlOp5;  /**< Presence of a
+    memory_management_control_operation equal to 5 in slice header.          */
+  bool isBottomField;            /**< Is a bottom field.                     */
+
+  uint32_t first_mb_in_slice;    /**< Slice header first_mb_in_slice field.  */
+
+  int32_t PicOrderCnt;           /**< Computed PicOrderCnt value.            */
+
+  struct {
+    int32_t TopFieldOrderCnt;   /**< Computed TopFieldOrderCnt value.        */
+    int32_t PicOrderCntMsb;     /**< Computed PicOrderCntMsb value.          */
+    int32_t pic_order_cnt_lsb;  /**< Slice header pic_order_cnt_lsb field
+      value.                                                                 */
+  }; /**< _computePicOrderCntType* functions dependant.                      */
+
+  int64_t dts;  /**< Decoding Time Stamp value in #MAIN_CLOCK_27MHZ ticks. Used with duration value. */
+  int64_t duration;  /**< Picture duration in #MAIN_CLOCK_27MHZ ticks. Next picture DTS value is set equal to last picture DTS plus this duration value. This computation manner is inspired from tsMuxer. */
+} H264LastPictureProperties;
+
+#define H264_PICTURES_BEFORE_RESTART  20
 
 typedef struct {
-  bool initializedParam;
+  bool initializedParam;  /**< Are bit-stream parameters initialized. */
+  bool restartRequired; /**< Some parsing parameters must be modified,
+    requiring restart of parsing. A threshold fixed by
+    #H264_PICTURES_BEFORE_RESTART defines the number of parsed pictures to
+    reach before cancelling parsing. This reduce the number of restarts when
+    adjusting DTS-PTS initial delay according to pictures references
+    structure.                                                               */
 
-  double frameRate;
-  int64_t frameDuration;
-  int64_t fieldDuration;
-  /* int64_t startPts; */
+  struct {
+    bool bottomFieldPresent;
+    bool topFieldPresent;
+    bool framePresent;
+  } auContent;  /**< Current Access content. Used to merge complementary field pair pictures. */
 
-  H264PicStructValue lastPicStruct;
-  int64_t lastDts;
-  int64_t dtsIncrement;
+  unsigned nbPics;  /**< Current number of parsed complete pictures. */
+  unsigned nbConsecutiveBPics;  /**< Current number of consecutive B-pictures. */
 
-  bool reachVclNaluOfaPrimCodedPic;
-  int64_t curNbAU; /**< Current number of access units. */
+  unsigned nbSlicesInPic;  /**< Current number of slices in current parsed picture. */
 
-  int64_t nbPics;
-  unsigned curNbConsecutiveBPics;
-  unsigned idxPicInGop;
+  double frameRate;  /**< Video frame-rate. */
+  int64_t frameDuration;  /**< Duration of one video frame in #MAIN_CLOCK_27MHZ ticks. */
+  int64_t fieldDuration;  /**< Duration of one video field in #MAIN_CLOCK_27MHZ ticks. */
 
-  unsigned curNbSlices;
-  uint32_t lastFirstMbInSlice;
-  unsigned curNbMbs;
+  bool reachVclNaluOfaPrimCodedPic;  /**< Is the first VCL NALU of the current Access Unit reached. Used to determine start of a new access unit and completion of the previous one. */
 
-  uint8_t lastNalUnitType;
+  int32_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
 
-  /* Separate fields pictures management related: */
-  bool bottomFieldPresent;
-  bool topFieldPresent;
-  bool idrPresent; /* IDR picture present in Access Unit */
+  bool halfPicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
+  int32_t initDecPicNbCntShift;  /**< Initial picture decoding delay in pictures units. */
 
-  int64_t picOrderCntAU; /* Access Unit lowest picOrderCnt */
-  bool initPicOrderCntAU;
+  int32_t PicOrderCnt; /**< PicOrderCnt of current picture. */
 
-  unsigned PrevRefFrameNum; /* PrevRefFrameNum */
-
-  /* Last picture parameters for Picture Order Count 0: */
-  int lastIDRPicOrderCnt;
-
-  int PicOrderCntMsb;
-  int PicOrderCntLsb;
-
-  bool presenceOfMemManCtrlOp5;
-  bool bottomFieldPicture;
-
-  int TopFieldOrderCnt; /* Top-field or frame order count. */
-
-  int maxPicOrderCnt;
-  int64_t cumulPicOrderCnt;
+  H264NalUnitTypeValue lstNaluType;  /**< Last parsed NALU nal_unit_type. */
+  H264LastPictureProperties lstPic;  /**< Last picture values.           */
 
   /* Frames sizes parsing : */
-  size_t largestFrameSize;
-  size_t largestIFrameSize;
+  size_t largestAUSize;  /**< Largest parsed Access Unit in bytes. */
+  size_t largestIPicAUSize;  /**< Largest parsed Access Unit containing an I picture in bytes. */
 
   /* Buffering informations : */
   uint64_t auCpbRemovalTime; /* Current AU CPB removal time in #MAIN_CLOCK_27MHZ ticks */
@@ -1360,8 +1467,7 @@ typedef struct {
   bool presenceOfUselessAccessUnitDelimiter;
   bool presenceOfUselessSequenceParameterSet;
 
-  bool picOrderCntType2use;
-  /* TODO: Forbiddens presence of two consecutive non-referential frames/non-complementary fields. */
+  bool picOrderCntType2use; /**< TODO: Forbiddens presence of two consecutive non-referential frames/non-complementary fields. */
 
   /* Triggered options : */
   bool useVuiRebuilding;

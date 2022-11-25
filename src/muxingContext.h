@@ -140,7 +140,7 @@ static inline bool isEnabledTStdModelLibbluMuxingContext(
   LibbluMuxingContextPtr ctx
 )
 {
-  return !BUF_MODEL_NODE_IS_VOID(ctx->tStdModel);
+  return !isVoidBufModelNode(ctx->tStdModel);
 }
 
 static inline bool pcrInjectionRequired(

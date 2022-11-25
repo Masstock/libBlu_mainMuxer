@@ -36,7 +36,13 @@ typedef struct {
   };  /**< Audio codecs related options.                                     */
 
   struct {
-    bool doubleFrameTiming;
+    bool secondPass;  /**< Is the second parsing attempt. */
+    bool halfPicOrderCnt;  /**< Divide by two the computed PicOrderCnt of
+      each picture. This option is automatically triggered.                  */
+    int32_t initDecPicNbCntShift;  /**< Initial decoding timestamp shifting
+      in pictures units (1 / frame-rate). This option is automatically
+      adjusted.                                                              */
+
     HdmvFrameRateCode fpsChange;
     LibbluAspectRatioMod arChange;
     uint8_t levelChange;

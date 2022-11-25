@@ -190,12 +190,17 @@ int addNalCellToAccessUnit(
   H264ParametersHandlerPtr handle
 );
 
-static inline uint8_t getNalRefIdc(
+/** \~english
+ * \brief Return the nal_ref_idc field value of the currently parsed NALU.
+ *
+ * \param handle H.264 parsing handle.
+ * \return H264NalRefIdcValue nal_ref_idc value.
+ */
+static inline H264NalRefIdcValue getNalRefIdc(
   const H264ParametersHandlerPtr handle
 )
 {
   assert(NULL != handle);
-  assert(handle->file.packetInitialized);
 
   return handle->file.nal_ref_idc;
 }
@@ -206,7 +211,7 @@ static inline uint8_t getNalRefIdc(
  * \param handle H.264 parsing handle.
  * \return H264NalUnitTypeValue nal_unit_type value.
  */
-static inline H264NalUnitTypeValue getCurrentNALUnitType(
+static inline H264NalUnitTypeValue getNalUnitType(
   const H264ParametersHandlerPtr handle
 )
 {

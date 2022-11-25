@@ -834,8 +834,6 @@ static unsigned computePicNum(
  * \param difference_of_pic_nums_minus1
  * \param picInfos
  * \return int
- *
- * \bug Computed picNumX does not seem accurate.
  */
 int markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
   H264HrdVerifierContextPtr ctx,
@@ -850,6 +848,7 @@ int markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
    *
    * memory_management_control_operation == 0x1 usage.
    */
+  // FIXME: Computed picNumX does not seem accurate.
   unsigned picNumX;
   unsigned i;
 
@@ -1300,8 +1299,7 @@ int processAUH264HrdContext(
   H264CurrentProgressParam * curState,
   H264ConstraintsParam * constraints,
   bool isNewBufferingPeriod,
-  size_t AUlength,
-  bool doubleFrameTiming
+  size_t AUlength
 )
 {
   H264HrdBufferingPeriodParameters * nal_hrd_parameters;
@@ -1430,7 +1428,7 @@ int processAUH264HrdContext(
       ctx,
       AUlength, isNewBufferingPeriod,
       nal_hrd_parameters, spsData, sliceHeader,
-      Tr_n, curState->curNbSlices
+      Tr_n, curState->nbSlicesInPic
     ) < 0
   )
     return -1;
@@ -1459,6 +1457,7 @@ int processAUH264HrdContext(
       /* cpbBitsOccupancy + number of bits from current AU already buffered */
       /* exceed CPB size. => Buffer overflow */
 
+#if !H264_HRD_DISABLE_C_3_2
       LIBBLU_H264_HRDV_ERROR(
         "Rec. ITU-T H.264 C.3.2 constraint is not satisfied "
         "(CPB Overflow happen, CPB size = %zu bits < %zu bits).\n",
@@ -1492,6 +1491,7 @@ int processAUH264HrdContext(
       }
 
       return -1;
+#endif
     }
 
     /* Else AU can be removed safely. */
@@ -1578,14 +1578,14 @@ int processAUH264HrdContext(
   }
 
   /* Adding current AU : */
-  picInfos.frameDisplayNum   = curState->picOrderCntAU / (1 << doubleFrameTiming);
+  picInfos.frameDisplayNum   = curState->PicOrderCnt;
   picInfos.frame_num         = sliceHeader->frameNum;
   picInfos.field_pic_flag    = sliceHeader->field_pic_flag;
   picInfos.bottom_field_flag = sliceHeader->bottom_field_flag;
-  picInfos.IdrPicFlag        = sliceHeader->IdrPicFlag && !dec_ref_pic_marking->no_output_of_prior_pics_flag;
+  picInfos.IdrPicFlag        = sliceHeader->isIdrPic && !dec_ref_pic_marking->no_output_of_prior_pics_flag;
   picInfos.dpb_output_delay  = dpb_output_delay;
 
-  if (sliceHeader->IdrPicFlag) {
+  if (sliceHeader->isIdrPic) {
     if (dec_ref_pic_marking->long_term_reference_flag)
       picInfos.usage = H264_USED_AS_LONG_TERM_REFERENCE;
     else
@@ -1599,7 +1599,7 @@ int processAUH264HrdContext(
       picInfos.usage = H264_USED_AS_LONG_TERM_REFERENCE;
     }
     else {
-      if (sliceHeader->refPic)
+      if (sliceHeader->isRefPic)
         picInfos.usage = H264_USED_AS_SHORT_TERM_REFERENCE;
       else
         picInfos.usage = H264_NOT_USED_AS_REFERENCE;
@@ -1607,7 +1607,7 @@ int processAUH264HrdContext(
   }
 
   if (
-    !sliceHeader->IdrPicFlag
+    !sliceHeader->isIdrPic
     && dec_ref_pic_marking->adaptive_ref_pic_marking_mode_flag
   ) {
     picInfos.memMngmntCtrlOperations = copyH264MemoryManagementControlOperations(
@@ -1643,6 +1643,7 @@ int processAUH264HrdContext(
     /* cpbBitsOccupancy exceed CPB size. */
     /* => Buffer overflow */
 
+#if !H264_HRD_DISABLE_C_3_2
     LIBBLU_H264_HRDV_ERROR(
       "Rec. ITU-T H.264 C.3.2 constraint is not satisfied "
       "(CPB Overflow happen, CPB size = %zu bits < %zu bits).\n",
@@ -1654,6 +1655,7 @@ int processAUH264HrdContext(
       ctx->nbProcessedAU,
       convertTimeH264HrdVerifierContext(ctx, ctx->clockTime)
     );
+#endif
   }
 
   /* Save constraints checks related parameters: */

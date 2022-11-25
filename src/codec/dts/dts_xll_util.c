@@ -499,11 +499,8 @@ int unpackBitsDtsXllPbr(
       ctx->remainingBits = 8;
 
       /* Applying CRC calculation if in use : */
-      if (
-        IN_USE_DTS_XLL_CRC(ctx)
-        && applyCrc(&ctx->crcCtx, ctx->byteBuf) < 0
-      )
-        return -1; /* Error during CRC applying */
+      if (IN_USE_DTS_XLL_CRC(ctx))
+        applyCrc(&ctx->crcCtx, ctx->byteBuf);
     }
 
     if (NULL != value)
@@ -575,11 +572,8 @@ int unpackByteDtsXllPbr(
     *byte = ctx->pbrBuffer[ctx->pbrBufferParsedSize];
 
   /* Applying CRC calculation if in use : */
-  if (
-    IN_USE_DTS_XLL_CRC(ctx)
-    && applyCrc(&ctx->crcCtx, ctx->pbrBuffer[ctx->pbrBufferParsedSize]) < 0
-  )
-    return -1; /* Error during CRC applying */
+  if (IN_USE_DTS_XLL_CRC(ctx))
+    applyCrc(&ctx->crcCtx, ctx->pbrBuffer[ctx->pbrBufferParsedSize]);
 
   ctx->pbrBufferParsedSize++;
 

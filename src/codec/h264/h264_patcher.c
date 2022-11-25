@@ -1363,8 +1363,8 @@ int completeH264SeiBufferingPeriodComputation(
     return 0; /* Nothing to do. */
 
   /* All AU in stream cannot be zero-size... */
-  assert(0 != handle->curProgParam.largestFrameSize);
-  assert(0 != handle->curProgParam.largestIFrameSize);
+  assert(0 != handle->curProgParam.largestAUSize);
+  assert(0 != handle->curProgParam.largestIPicAUSize);
 
   /* Usually, required parameters presence has been checked before. */
   assert(handle->sequenceParametersSetPresent);
@@ -1383,7 +1383,7 @@ int completeH264SeiBufferingPeriodComputation(
 
     nalBitRate = vuiParam->nal_hrd_parameters.schedSel[0].BitRate;
 
-    nalMaxCpbBufferingDelay = handle->curProgParam.largestFrameSize * 8l / nalBitRate;
+    nalMaxCpbBufferingDelay = handle->curProgParam.largestAUSize * 8l / nalBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", nalMaxCpbBufferingDelay);
 
     nalResultInitCpbRemovalDelay = ceil(nalMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
@@ -1418,7 +1418,7 @@ int completeH264SeiBufferingPeriodComputation(
 
     vclBitRate = vuiParam->vcl_hrd_parameters.schedSel[0].BitRate;
 
-    vclMaxCpbBufferingDelay = handle->curProgParam.largestFrameSize * 8l / vclBitRate;
+    vclMaxCpbBufferingDelay = handle->curProgParam.largestAUSize * 8l / vclBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", vclMaxCpbBufferingDelay);
 
     vclResultInitCpbRemovalDelay = ceil(vclMaxCpbBufferingDelay * H264_90KHZ_CLOCK);

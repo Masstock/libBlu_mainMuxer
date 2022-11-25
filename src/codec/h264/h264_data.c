@@ -398,8 +398,8 @@ void closeH264MemoryManagementControlOperations(
   H264MemMngmntCtrlOpBlkPtr nextOp;
 
   while (NULL != op) {
-    nextOp = op->nextOperation;
-    free(op->nextOperation);
+    H264MemMngmntCtrlOpBlkPtr nextOp = op->nextOperation;
+    free(op);
     op = nextOp;
   }
 }

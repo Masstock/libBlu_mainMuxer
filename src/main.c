@@ -238,14 +238,12 @@ static void printHelp(
   P("                      could be too high for those good-old red lasers).");
   P("                       (*)                                             ");
   P("                                                                       ");
-#if !DISABLE_T_STD_BUFFER_VER
   P("  --disable-tstd      Disable use of MPEG T-STD buffer verifier during ");
   P("                      mux. The verifier ensure accurate generated      ");
   P("                      stream buffering compliance according to MPEG-TS ");
   P("                      and BDAV specific specs but at an important speed");
   P("                      cost.                                            ");
   P("                                                                       ");
-#endif
   P(" Track specific options :                                              ");
   P("                                                                       ");
   P("  --esms=<filename>   Allows to specify a specific script file to use. ");
@@ -569,10 +567,8 @@ int main(
       "Expect a input META filename (see -h/--help).\n"
     );
 
-  if (initLibbluMuxingSettings(&param, outputTsFilepath, confFile) < 0) {
-    cleanLibbluMuxingSettings(param);
+  if (initLibbluMuxingSettings(&param, outputTsFilepath, confFile) < 0)
     goto free_return;
-  }
 
   LIBBLU_MUX_SETTINGS_SET_OPTION(
     &param,
@@ -590,7 +586,7 @@ int main(
   else {
     LibbluMuxingContextPtr ctx;
 
-    param.options.disableTStdBufVerifier = true;
+    param.options.disableBufModel = true;
 
     /* Create muxing context and destroy it immediately */
     if (NULL == (ctx = createLibbluMuxingContext(param)))

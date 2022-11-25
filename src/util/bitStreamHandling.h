@@ -215,7 +215,7 @@ static inline int initCrc(
   return 0;
 }
 
-static inline int applyCrc(
+static inline void applyCrc(
   CrcContext * crcCtx,
   uint8_t byte
 )
@@ -237,7 +237,7 @@ static inline int applyCrc(
       )
     ;
 
-    return 0;
+    return;
   }
 
   /* Manual CRC Operation : */
@@ -254,8 +254,6 @@ static inline int applyCrc(
     if (crcModulo <= crcCtx->crcBuffer)
       crcCtx->crcBuffer ^= crcCtx->crcParam.crcPoly;
   }
-
-  return 0;
 }
 
 static inline int endCrc(
@@ -599,10 +597,8 @@ static inline int readBit(
 
   if (bitStream->bitCount == 0) {
     /* Applying CRC calculation if in use : */
-    if (IN_USE_BITSTREAM_CRC(bitStream)) {
-      if (applyCrc(&bitStream->crcCtx, byte) < 0)
-        return -1;
-    }
+    if (IN_USE_BITSTREAM_CRC(bitStream))
+      applyCrc(&bitStream->crcCtx, byte);
 
     /* A complete byte as been readed, jumping to next one. */
     bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
@@ -619,72 +615,80 @@ static inline int readBit(
   return 0;
 }
 
+#if USE_ALTER_BIT_READING
 static inline int readBits(
   BitstreamReaderPtr bitStream,
   uint32_t * value,
-  size_t length
+  size_t size
 )
 {
-#if USE_ALTER_BIT_READING
-  const unsigned short andBits[9] = {
-    0x0, 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF
-  };
-
   uint8_t byte;
   unsigned readedBitsNb;
 
-  uint32_t recursiveValue;
-#else
-  bool bit;
-#endif
+  static const unsigned bitmask[9] = {
+    0x0, 0x1, 0x3, 0x7, 0xF,
+    0x1F, 0x3F, 0x7F, 0xFF
+  };
 
-  assert(length <= 32); /* Can't read more than 32 bits using readBits() */
+  assert(size <= 32); /* Can't read more than 32 bits using readBits() */
 
-#if USE_ALTER_BIT_READING
-  if (length == 0) {
+  if (size == 0) {
     if (NULL != value)
       *value = 0;
     return 0;
   }
 
-  readedBitsNb = MIN(length, bitStream->bitCount);
+  readedBitsNb = MIN(size, bitStream->bitCount);
   bitStream->bitCount -= readedBitsNb;
 
   if (nextBytes(bitStream, &byte, 1) < 0)
-    return -1;
+    LIBBLU_ERROR_RETURN("Prematurate end of file.\n");
 
-  if (NULL != value) {
-    *value = (uint32_t) (byte >> bitStream->bitCount) & andBits[readedBitsNb];
-  }
+  if (NULL != value)
+    *value = (byte >> bitStream->bitCount) & bitmask[readedBitsNb];
 
   if (bitStream->bitCount <= 0) {
     /* Applying CRC calculation if in use : */
-    if (
-      IN_USE_BITSTREAM_CRC(bitStream)
-      && applyCrc(&bitStream->crcCtx, byte) < 0
-    )
-      return -1; /* Error during CRC applying */
+    if (IN_USE_BITSTREAM_CRC(bitStream))
+      applyCrc(&bitStream->crcCtx, byte);
 
     /* A complete byte as been readed, jumping to next one. */
     bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
     bitStream->bitCount = 8; /* Reset the number of bits remaining in the current byte. */
 
     /* If reading offset goes outside of the reading buffer, buffering a new section of readed file. */
-    if (!isEof(bitStream) && bitStream->byteArrayOff >= bitStream->byteArrayLength) {
+    if (!isEof(bitStream) && bitStream->byteArrayLength <= bitStream->byteArrayOff) {
       if (fillBitstreamReader(bitStream) < 0)
         return -1;
     }
 
-    /* Reading recursively extra bits in following byte if needed : */
-    length -= readedBitsNb;
-    if (length != 0) {
-      if (readBits(bitStream, &recursiveValue, length) < 0)
-        return -1;
+    size -= readedBitsNb;
+    if (0 < size) {
+      /* Reading recursively extra bits in following byte if needed : */
+      uint32_t recursiveValue;
 
-      *value = (*value << length) | recursiveValue;
+      if (readBits(bitStream, &recursiveValue, size) < 0)
+        return -1;
+      *value = (*value << size) | recursiveValue;
     }
   }
+
+  return 0;
+}
+
 #else
+
+static inline int readBits(
+  BitstreamReaderPtr bitStream,
+  uint32_t * value,
+  size_t size
+)
+{
+  bool bit;
+
+  assert(0 < size);
+  assert(size <= 32); /* Can't read more than 32 bits using readBits() */
+
   if (NULL != value)
     *value = 0;
 
@@ -695,9 +699,11 @@ static inline int readBits(
     if (NULL != value)
       *value = (*value << 1) + ((uint8_t) bit);
   }
-#endif
+
   return 0;
 }
+
+#endif
 
 static inline int readBits64(
   BitstreamReaderPtr bitStream,
@@ -749,14 +755,16 @@ static inline int readByte(
 {
   uint8_t byte;
 
+  assert(NULL != bitStream);
+  assert(NULL != data);
+
   if (bitStream->bitCount != 8) {
     uint32_t value;
 
     if (readBits(bitStream, &value, 8) < 0)
       return -1;
 
-    if (NULL != data)
-      *data = (uint8_t) value;
+    *data = value;
     return 0;
   }
 
@@ -768,12 +776,11 @@ static inline int readByte(
   }
 
   byte = bitStream->byteArray[bitStream->byteArrayOff++];
-  if (NULL != data)
-    *data = byte;
+  *data = byte;
 
   /* Applying CRC calculation if in use : */
   if (IN_USE_BITSTREAM_CRC(bitStream))
-    return applyCrc(&bitStream->crcCtx, byte);
+    applyCrc(&bitStream->crcCtx, byte);
   return 0;
 }
 
@@ -874,9 +881,13 @@ static inline int skipBytes(
   size_t length
 )
 {
-  while (0 < (length--))
-    if (readByte(bitStream, NULL) < 0)
+
+  while (0 < (length--)) {
+    uint8_t ignored;
+
+    if (readByte(bitStream, &ignored) < 0)
       return -1;
+  }
 
   return 0;
 }
@@ -908,22 +919,6 @@ static inline int paddingBoundary(
     return 0; /* Already aligned */
   return skipBits(bitStream, paddingSize);
 }
-
-int initCrc(
-  CrcContext * crcCtx,
-  CrcParam param,
-  unsigned initialValue
-);
-
-int applyCrc(
-  CrcContext * crcCtx,
-  uint8_t bit
-);
-
-int endCrc(
-  CrcContext * crcCtx,
-  uint32_t * returnedCrcValue
-);
 
 static inline int writeByte(
   BitstreamWriterPtr bitStream,

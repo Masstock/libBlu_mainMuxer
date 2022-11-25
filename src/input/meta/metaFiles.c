@@ -9,7 +9,7 @@
 
 #include "metaFiles.h"
 
-static int parseHeaderMetaFile(
+static int _parseHeaderMetaFile(
   LibbluMetaFileStructPtr meta,
   LibbluMuxingSettings * dst
 )
@@ -37,7 +37,7 @@ static int parseHeaderMetaFile(
         break;
 
       case LBMETA_OPT__DISABLE_T_STD:
-        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, disableTStdBufVerifier, true);
+        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, disableBufModel, true);
         break;
 
       case LBMETA_OPT__START_TIME:
@@ -394,7 +394,7 @@ int parseMetaFile(
     goto free_return;
 
   /* META header, main mux and common options */
-  if (parseHeaderMetaFile(meta, dst) < 0)
+  if (_parseHeaderMetaFile(meta, dst) < 0)
     goto free_return;
 
   /* META tracks, ES filepath, track specific options */

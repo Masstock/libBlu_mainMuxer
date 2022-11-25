@@ -92,7 +92,7 @@ int createBdavStd(BufModelNode * rootNode)
   /* Add default root (void buffer) to discard untracked PIDs */
   return addNodeToBufModelFilterNode(
     *rootNode,
-    BUF_MODEL_NEW_NODE(),
+    newVoidBufModelNode(),
     BUF_MODEL_FILTER_NUMERIC_LABEL(-1)
   );
 }
@@ -171,7 +171,7 @@ int addESToBdavStd(
   BufModelBuffersListPtr strmBufList;
   BufModelNode streamNode;
 
-  if (!BUF_MODEL_NODE_IS_FILTER(rootNode))
+  if (!isFilterBufModelNode(rootNode))
     LIBBLU_ERROR_RETURN("Expect PID filter as T-STD model root node.\n");
 
   if (NULL == (strmBufList = createBufModelBuffersList()))
@@ -218,7 +218,7 @@ int addESToBdavStd(
 
       ret = 0;
       strmBufList = NULL;
-      streamNode = BUF_MODEL_NEW_NODE();
+      streamNode = newVoidBufModelNode();
   }
 
   if (ret < 0)
