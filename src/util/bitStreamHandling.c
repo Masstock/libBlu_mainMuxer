@@ -30,7 +30,6 @@ BitstreamReaderPtr createBitstreamReader(
 )
 {
   BitstreamReaderPtr bitStream;
-  char * buffer;
 
   assert(NULL != inputFilename);
   assert(32 < bufferSize);
@@ -51,21 +50,27 @@ BitstreamReaderPtr createBitstreamReader(
       errno
     );
 
-  if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
-    LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
+#if !defined(DISABLE_READ_BUFFER)
+  {
+    char * buffer;
 
-  if (setvbuf(bitStream->file, buffer, _IOFBF, IO_VBUF_SIZE) < 0)
-    LIBBLU_ERROR_FRETURN(
-      "Reading buffer definition error, %s (errno: %d).\n",
-      strerror(errno),
-      errno
-    );
-  bitStream->buffer = buffer;
+    if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
+      LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
+
+    if (setvbuf(bitStream->file, buffer, _IOFBF, IO_VBUF_SIZE) < 0)
+      LIBBLU_ERROR_FRETURN(
+        "Reading buffer definition error, %s (errno: %d).\n",
+        strerror(errno),
+        errno
+      );
+    bitStream->buffer = buffer;
+  }
+#endif
 
   if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-  bitStream->bufferLength = bitStream->byteArrayLength = bufferSize;
+  bitStream->bufferLength = bitStream->byteArraySize = bufferSize;
   bitStream->byteArrayOff = bufferSize;
   bitStream->bitCount = 8; /* By default, a complete byte can be readed at bit level. */
   bitStream->crcCtx = DEF_CRC_CTX();
@@ -88,7 +93,6 @@ BitstreamWriterPtr createBitstreamWriter(
 )
 {
   BitstreamWriterPtr bitStream;
-  char * buffer;
 
   assert(NULL != outputFilename);
   assert(32 < bufferSize);
@@ -105,19 +109,26 @@ BitstreamWriterPtr createBitstreamWriter(
       errno
     );
 
-  if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+#if !defined(DISABLE_WRITE_BUFFER)
+  {
+    char * buffer;
 
-  if (setvbuf(bitStream->file, buffer, _IOFBF, IO_VBUF_SIZE) < 0) {
-    perror("Unable to set writing buffer");
-    LIBBLU_ERROR_NRETURN("Error happen during writing buffer creation.\n");
+    if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
+      LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+
+    if (setvbuf(bitStream->file, buffer, _IOFBF, IO_VBUF_SIZE) < 0) {
+      perror("Unable to set writing buffer");
+      LIBBLU_ERROR_NRETURN("Error happen during writing buffer creation.\n");
+    }
+
+    bitStream->buffer = buffer;
   }
-  bitStream->buffer = buffer;
+#endif
 
   if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  bitStream->byteArrayLength = bufferSize;
+  bitStream->byteArraySize = bufferSize;
   bitStream->crcCtx = DEF_CRC_CTX();
 
   bitStream->identifier = generatedBistreamIdentifier();
@@ -138,77 +149,6 @@ void closeBitstreamWriter(
     fclose(bitStream->file);
   free(bitStream->buffer);
   free(bitStream);
-}
-
-int fillBitstreamReader(
-  BitstreamReaderPtr bitStream
-)
-{
-  size_t readedDataLen;
-
-  if (bitStream->byteArrayOff < bitStream->byteArrayLength)
-    return 0;
-
-  readedDataLen = fread(
-    bitStream->byteArray,
-    sizeof(uint8_t),
-    bitStream->byteArrayLength,
-    bitStream->file
-  );
-
-  if (bitStream->byteArrayLength != readedDataLen) {
-    if (ferror(bitStream->file))
-      LIBBLU_ERROR_RETURN(
-        "Error happen during input file reading, %s (errno: %d).\n",
-        strerror(errno),
-        errno
-      );
-
-    LIBBLU_DEBUG_COM(
-      "Unable to completly fill input buffer, reducing its size "
-      "(old: %zu, new: %zu, EOF: %s).\n",
-      bitStream->byteArrayLength,
-      readedDataLen,
-      BOOL_INFO(feof(bitStream->file))
-    );
-
-    /* Not enouth data to fill entire read buffer,
-    updating buffer virtual length. */
-    bitStream->byteArrayLength = readedDataLen;
-  }
-  bitStream->fileOffset = bitStream->fileOffset + readedDataLen;
-  bitStream->byteArrayOff = 0;
-
-  return 0;
-}
-
-int flushBitstreamWriter(
-  BitstreamWriterPtr bitStream
-)
-{
-  size_t readedLen;
-
-  if (bitStream->byteArrayOff == 0)
-    return 0; /* Empty writing buffer */
-
-  readedLen = fwrite(
-    bitStream->byteArray,
-    sizeof(uint8_t),
-    bitStream->byteArrayOff,
-    bitStream->file
-  );
-
-  if (bitStream->byteArrayOff != readedLen)
-    LIBBLU_ERROR_RETURN(
-      "Error happen during output file writing, %s (errno: %d).\n",
-      strerror(errno),
-      errno
-    );
-
-  bitStream->fileOffset += bitStream->byteArrayOff;
-  bitStream->byteArrayOff = 0;
-
-  return 0;
 }
 
 void crcTableGenerator(const CrcParam param)

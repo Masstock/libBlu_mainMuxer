@@ -35,9 +35,9 @@ int writeTpExtraHeader(
   );
 }
 
-static void prepareESTransportPacketMainHeader(
+static void _prepareESTransportPacketMainHeader(
   TPHeaderParameters * dst,
-  LibbluStreamPtr stream,
+  const LibbluStreamPtr stream,
   bool pcrInjectionRequirement
 )
 {
@@ -68,9 +68,9 @@ static void prepareESTransportPacketMainHeader(
   dst->continuityCounter = stream->packetNb & 0xF;
 }
 
-static void prepareSysTransportPacketMainHeader(
+static void _prepareSysTransportPacketMainHeader(
   TPHeaderParameters * dst,
-  LibbluStreamPtr stream,
+  const LibbluStreamPtr stream,
   bool pcrInjectionRequirement
 )
 {
@@ -108,9 +108,9 @@ static void prepareSysTransportPacketMainHeader(
   ;
 }
 
-static void prepareAdaptationField(
+static void _prepareAdaptationField(
   AdaptationFieldParameters * dst,
-  LibbluStreamPtr stream,
+  const LibbluStreamPtr stream,
   bool pcrInjectionRequirement,
   uint64_t pcrValue
 )
@@ -151,28 +151,32 @@ static void prepareAdaptationField(
         break;
 
       default:
-        dst->stuffingBytesLen = TP_SIZE - TP_HEADER_SIZE - remainingPayload - 2;
+        dst->stuffingBytesLen =
+          TP_SIZE - TP_HEADER_SIZE - remainingPayload - 2
+        ;
     }
   }
   else {
-    dst->stuffingBytesLen = TP_SIZE - TP_HEADER_SIZE - adaptationFieldSize - remainingPayload;
+    dst->stuffingBytesLen =
+      TP_SIZE - TP_HEADER_SIZE - adaptationFieldSize - remainingPayload
+    ;
   }
 }
 
 void prepareTPHeader(
   TPHeaderParameters * dst,
-  LibbluStreamPtr stream,
+  const LibbluStreamPtr stream,
   bool pcrInjectionRequirement,
   uint64_t pcrValue
 )
 {
   if (isESLibbluStream(stream))
-    prepareESTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
+    _prepareESTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
   else
-    prepareSysTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
+    _prepareSysTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
 
   if (dst->adaptationFieldControl & 0x2)
-    prepareAdaptationField(
+    _prepareAdaptationField(
       &dst->adaptationField,
       stream,
       pcrInjectionRequirement,
@@ -180,7 +184,7 @@ void prepareTPHeader(
     );
 }
 
-static size_t insertAdaptationField(
+static size_t _insertAdaptationField(
   uint8_t * tp,
   size_t offset,
   AdaptationFieldParameters param
@@ -373,7 +377,7 @@ static size_t insertAdaptationField(
   return offset;
 }
 
-static size_t insertPacketHeader(
+static size_t _insertPacketHeader(
   uint8_t * tp,
   size_t offset,
   TPHeaderParameters param
@@ -413,11 +417,11 @@ static size_t insertPacketHeader(
   );
 
   if (adaptationFieldPresenceTPHeader(param))
-    return insertAdaptationField(tp, offset, param.adaptationField);
+    return _insertAdaptationField(tp, offset, param.adaptationField);
   return offset;
 }
 
-static size_t insertPayload(
+static size_t _insertPayload(
   uint8_t * tp,
   size_t offset,
   LibbluStreamPtr stream,
@@ -471,7 +475,7 @@ int writeTransportPacket(
     );
 
   /* transport_packet header */
-  hdrSize = insertPacketHeader(tp, 0, header);
+  hdrSize = _insertPacketHeader(tp, 0, header);
   assert(hdrSize <= TP_SIZE);
   assert(hdrSize == computeSizeTPHeader(header));
 
@@ -485,7 +489,7 @@ int writeTransportPacket(
         pldSize
       );
 
-    insertPayload(tp, hdrSize, stream, pldSize);
+    _insertPayload(tp, hdrSize, stream, pldSize);
   } else {
     if (!isESLibbluStream(stream))
       markAsSuppliedLibbluSystemStream(&stream->sys);

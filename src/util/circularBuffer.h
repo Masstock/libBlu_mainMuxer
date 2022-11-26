@@ -10,6 +10,7 @@
 #ifndef __LIBBLU_MUXER__UTIL__CIRCULAR_BUFFER_H__
 #define __LIBBLU_MUXER__UTIL__CIRCULAR_BUFFER_H__
 
+#include "common.h"
 #include "errorCodes.h"
 
 /** \~english
@@ -36,9 +37,11 @@
  * \brief Modular circular buffer FIFO structure.
  */
 typedef struct {
-  void * buffer;               /**< Circular buffer array.                   */
-  size_t allocatedSize;        /**< Buffer current allocated size.           */
+  uint8_t * array;             /**< Circular buffer array.                   */
+  unsigned allocatedSizeShift; /**< Buffer current allocated size as a power
+    of 2.                                                                    */
   size_t usedSize;             /**< Buffer number of stored entries.         */
+
   size_t top;                  /**< Buffer first stored element index.       */
   size_t entrySize;            /**< Size in bytes of a buffer entry.         */
 } CircularBuffer, *CircularBufferPtr;
@@ -66,9 +69,16 @@ CircularBufferPtr createCircularBuffer(
  *
  * \param buf Circulat buffer object to free.
  */
-void destroyCircularBuffer(
+static inline void destroyCircularBuffer(
   CircularBufferPtr buf
-);
+)
+{
+  if (NULL == buf)
+    return;
+
+  free(buf->array);
+  free(buf);
+}
 
 /** \~english
  * \brief Create a new entry in supplied circular buffer and return a pointer
@@ -87,14 +97,31 @@ void * newEntryCircularBuffer(
   CircularBufferPtr buf
 );
 
-size_t getNbEntriesCircularBuffer(
+static inline size_t getNbEntriesCircularBuffer(
   CircularBufferPtr buf
-);
+)
+{
+  assert(NULL != buf);
 
-void * getEntryCircularBuffer(
+  return buf->usedSize;
+}
+
+static inline void * getEntryCircularBuffer(
   CircularBufferPtr buf,
   size_t index
-);
+)
+{
+  size_t entry;
+
+  assert(NULL != buf);
+
+  if (buf->usedSize <= index)
+    return NULL; /* Out of circular buffer index. */
+
+  entry = (buf->top + index) & ((1 << buf->allocatedSizeShift) - 1);
+
+  return (void *) (buf->array + entry * buf->entrySize);
+}
 
 /** \~english
  * \brief Pop first entry from supplied circular buffer.
@@ -107,9 +134,22 @@ void * getEntryCircularBuffer(
  * Returned entry is the oldest inserted value (First In First Out).
  * If buffer is empty, an error is returned.
  */
-int popCircularBuffer(
+static inline int popCircularBuffer(
   CircularBufferPtr buf,
   void ** entry
-);
+)
+{
+  assert(NULL != buf);
+
+  if (!buf->usedSize)
+    return -1; /* Empty circular buffer. */
+
+  if (NULL != entry)
+    *entry = (void *) (buf->array + buf->top * buf->entrySize);
+
+  buf->top = (buf->top + 1) & ((1 << buf->allocatedSizeShift) - 1);
+  buf->usedSize--;
+  return 0;
+}
 
 #endif

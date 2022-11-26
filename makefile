@@ -132,10 +132,11 @@ SOURCE_FILES =																\
 	tStdVerifier/bufferingModel.o											\
 	tStdVerifier/bdavStd.o													\
 	tStdVerifier/systemStreams.o											\
-	tStdVerifier/codec/lpcm.o												\
-	tStdVerifier/codec/h264.o												\
+	tStdVerifier/codec/ac3.o												\
 	tStdVerifier/codec/dts.o												\
-	tStdVerifier/codec/ac3.o
+	tStdVerifier/codec/h264.o												\
+	tStdVerifier/codec/hdmv.o												\
+	tStdVerifier/codec/lpcm.o
 
 LEXER_FILES =
 PARSER_FILES =

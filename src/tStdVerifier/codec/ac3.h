@@ -6,8 +6,8 @@
  *
  * \brief AC-3 (Dolby Digital) codec BDAV T-STD buffering modelization module.
  *
- * REFERENCE:
- *  - ETSI TS 102 366 V1.4.1 (2017-09) - Digital Audio Compression.
+ * \xrefitem references "References" "References list"
+ *  [1] ETSI TS 102 366 V1.4.1 (2017-09) - Digital Audio Compression.
  */
 
 #ifndef __LIBLU_MUXER__BUFFERING_MODEL__CODEC__AC3_H__
@@ -17,7 +17,7 @@
 #include "../../elementaryStream.h"
 
 /** \~english
- * \brief DTS Transport Buffer Size ('TBS') in bytes.
+ * \brief AC-3 Transport Buffer Size ('TBS') in bytes.
  *
  * This value is set to 512 bytes.
  */

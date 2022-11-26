@@ -16,9 +16,10 @@
 #include "tStdVerifierError.h"
 
 #include "systemStreams.h"
-#include "codec/h264.h"
-#include "codec/dts.h"
 #include "codec/ac3.h"
+#include "codec/dts.h"
+#include "codec/h264.h"
+#include "codec/hdmv.h"
 #include "codec/lpcm.h"
 
 int pidSwitchFilterDecisionFunBdavStd(

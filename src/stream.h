@@ -32,7 +32,7 @@ typedef struct {
 } LibbluStream, *LibbluStreamPtr;
 
 static inline bool isESLibbluStream(
-  LibbluStreamPtr stream
+  const LibbluStreamPtr stream
 )
 {
   return isEsStreamType(stream->type);

@@ -23,6 +23,9 @@
 #include "messages.h"
 #include "errorCodes.h"
 
+// #define DISABLE_WRITE_BUFFER
+// #define DISABLE_READ_BUFFER
+
 #define IO_VBUF_SIZE 1048576
 
 typedef struct {
@@ -60,7 +63,7 @@ typedef struct {
  */
 typedef struct {
   uint8_t * byteArray;      /**< Reading byte-array high-level buffer.       */
-  size_t byteArrayLength;   /**< Current length of byte-array buffer.        */
+  size_t byteArraySize;     /**< Current size of byte-array buffer in bytes. */
   size_t byteArrayOff;      /**< Reading offset in byte-array buffer.        */
   unsigned bitCount;        /**< Remaining unreaded bits in current pointed
     byte-array offset.                                                       */
@@ -70,7 +73,7 @@ typedef struct {
   FILE * file;    /**< Linked FILE * pointer.                                */
   char * buffer;  /**< Low level IO buffer.                                  */
 
-  int64_t fileSize;   /**< File length in bytes.                           */
+  int64_t fileSize;     /**< File length in bytes.                           */
   int64_t fileOffset;   /**< Current file position offset in bytes.          */
   size_t bufferLength;  /**< Initial byteArray buffer length in bytes.       */
   uint64_t identifier;  /**< Bytestream randomized identifier.               */
@@ -269,13 +272,66 @@ static inline int endCrc(
   return 0;
 }
 
-int fillBitstreamReader(
-  BitstreamReaderPtr bitStream
-);
+static inline int fillBitstreamReader(
+  BitstreamReaderPtr bs
+)
+{
+  size_t readedSize;
 
-int flushBitstreamWriter(
-  BitstreamWriterPtr bitStream
-);
+  if (bs->byteArrayOff < bs->byteArraySize)
+    return 0;
+
+  readedSize = fread(bs->byteArray, 1, bs->byteArraySize, bs->file);
+
+  if (bs->byteArraySize != readedSize) {
+    if (ferror(bs->file))
+      LIBBLU_ERROR_RETURN(
+        "Error happen during input file reading, %s (errno: %d).\n",
+        strerror(errno),
+        errno
+      );
+
+    LIBBLU_DEBUG_COM(
+      "Unable to completly fill input buffer, reducing its size "
+      "(old: %zu, new: %zu, EOF: %s).\n",
+      bs->byteArraySize,
+      readedSize,
+      BOOL_INFO(feof(bs->file))
+    );
+
+    /* Not enouth data to fill entire read buffer,
+    updating buffer virtual length. */
+    bs->byteArraySize = readedSize;
+  }
+  bs->fileOffset = bs->fileOffset + readedSize;
+  bs->byteArrayOff = 0;
+
+  return 0;
+}
+
+static inline int flushBitstreamWriter(
+  BitstreamWriterPtr bs
+)
+{
+  size_t readedSize;
+
+  if (bs->byteArrayOff == 0)
+    return 0; /* Empty writing buffer */
+
+  readedSize = fwrite(bs->byteArray, 1, bs->byteArrayOff, bs->file);
+
+  if (bs->byteArrayOff != readedSize)
+    LIBBLU_ERROR_RETURN(
+      "Error happen during output file writing, %s (errno: %d).\n",
+      strerror(errno),
+      errno
+    );
+
+  bs->fileOffset += bs->byteArrayOff;
+  bs->byteArrayOff = 0;
+
+  return 0;
+}
 
 static inline int isEof(
   const BitstreamReaderPtr bitStream
@@ -284,7 +340,7 @@ static inline int isEof(
   assert(NULL != bitStream);
 
   return
-    bitStream->byteArrayOff == bitStream->byteArrayLength
+    bitStream->byteArrayOff == bitStream->byteArraySize
     && bitStream->fileOffset == bitStream->fileSize
   ;
 }
@@ -297,7 +353,7 @@ static inline int64_t tellPos(
 
   return
     bitStream->fileOffset
-    - bitStream->byteArrayLength
+    - bitStream->byteArraySize
     + bitStream->byteArrayOff
   ;
 }
@@ -343,7 +399,7 @@ static inline int rewindFile(
 
   bitStream->fileOffset = 0x0;
   bitStream->byteArrayOff = bitStream->bufferLength;
-  bitStream->byteArrayLength = bitStream->bufferLength;
+  bitStream->byteArraySize = bitStream->bufferLength;
 
   return 0;
 }
@@ -375,7 +431,7 @@ static inline int seekPos(
 
   bitStream->fileOffset = ftell(bitStream->file);
   bitStream->byteArrayOff = bitStream->bufferLength;
-  bitStream->byteArrayLength = bitStream->bufferLength;
+  bitStream->byteArraySize = bitStream->bufferLength;
 
   return 0;
 }
@@ -392,13 +448,13 @@ static inline int nextBytes(
   if (isEof(bitStream)) /* End of file */
     return -1;
 
-  if (bitStream->byteArrayLength < bitStream->byteArrayOff + dataLen) {
+  if (bitStream->byteArraySize < bitStream->byteArrayOff + dataLen) {
     /* If asked bytes are out of the current reading buffer,
     perform shifting in buffer. */
 
 #if 1
     shiftingSteps = MIN(
-      bitStream->byteArrayLength - bitStream->byteArrayOff,
+      bitStream->byteArraySize - bitStream->byteArrayOff,
       bitStream->byteArrayOff
     );
 
@@ -412,12 +468,12 @@ static inline int nextBytes(
     readedDataLen = fread(
       bitStream->byteArray + shiftingSteps,
       sizeof(uint8_t),
-      bitStream->byteArrayLength - shiftingSteps,
+      bitStream->byteArraySize - shiftingSteps,
       bitStream->file
     );
 
-    if (readedDataLen != bitStream->byteArrayLength - shiftingSteps) {
-      bitStream->byteArrayLength = shiftingSteps + readedDataLen;
+    if (readedDataLen != bitStream->byteArraySize - shiftingSteps) {
+      bitStream->byteArraySize = shiftingSteps + readedDataLen;
 
       if (ferror(bitStream->file)) {
         LIBBLU_ERROR_RETURN(
@@ -441,7 +497,7 @@ static inline int nextBytes(
 
     shiftingSteps = (
       bitStream->byteArrayOff + dataLen
-    ) - bitStream->byteArrayLength;
+    ) - bitStream->byteArraySize;
 
     if (shiftingSteps > bitStream->byteArrayOff) {
       LIBBLU_ERROR_RETURN(
@@ -452,7 +508,7 @@ static inline int nextBytes(
     bitStream->byteArrayOff -= shiftingSteps;
     for (
       i = bitStream->byteArrayOff;
-      i < bitStream->byteArrayLength - shiftingSteps;
+      i < bitStream->byteArraySize - shiftingSteps;
       i++
     ) {
       bitStream->byteArray[i] = bitStream->byteArray[i + shiftingSteps];
@@ -467,7 +523,7 @@ static inline int nextBytes(
       );
 
       if (readedDataLen != shiftingSteps) {
-        bitStream->byteArrayOff = bitStream->byteArrayLength;
+        bitStream->byteArrayOff = bitStream->byteArraySize;
 
         if (ferror(bitStream->file)) {
           perror("Reading error");
@@ -606,7 +662,7 @@ static inline int readBit(
 
     /* If reading offset goes outside of the reading buffer,
     buffering a new section of readed file. */
-    if (bitStream->byteArrayOff >= bitStream->byteArrayLength) {
+    if (bitStream->byteArraySize <= bitStream->byteArrayOff) {
       if (fillBitstreamReader(bitStream) < 0)
         return -1; /* Error happen during low level file reading for buffering. */
     }
@@ -657,7 +713,7 @@ static inline int readBits(
     bitStream->bitCount = 8; /* Reset the number of bits remaining in the current byte. */
 
     /* If reading offset goes outside of the reading buffer, buffering a new section of readed file. */
-    if (!isEof(bitStream) && bitStream->byteArrayLength <= bitStream->byteArrayOff) {
+    if (!isEof(bitStream) && bitStream->byteArraySize <= bitStream->byteArrayOff) {
       if (fillBitstreamReader(bitStream) < 0)
         return -1;
     }
@@ -768,7 +824,7 @@ static inline int readByte(
     return 0;
   }
 
-  if (bitStream->byteArrayLength <= bitStream->byteArrayOff) {
+  if (bitStream->byteArraySize <= bitStream->byteArrayOff) {
     /* If the end of the reading buffer has been reached,
     buffering a new file section. */
     if (fillBitstreamReader(bitStream) < 0)
@@ -785,17 +841,48 @@ static inline int readByte(
 }
 
 static inline int readBytes(
-  BitstreamReaderPtr bitStream,
+  BitstreamReaderPtr bs,
   uint8_t * data,
-  const size_t dataLen
+  size_t size
 )
 {
+#if 0
   size_t i;
 
-  for (i = 0; i < dataLen; i++) {
-    if (readByte(bitStream, data++) < 0)
+  for (i = 0; i < size; i++) {
+    if (readByte(bs, data++) < 0)
       return -1;
   }
+#else
+  size_t off = 0;
+
+  while (0 < size) {
+    size_t availableSize = bs->byteArraySize - bs->byteArrayOff;
+
+    if (availableSize < size) {
+      memcpy(data + off, bs->byteArray + bs->byteArrayOff, availableSize);
+
+      off += availableSize;
+      bs->byteArrayOff += availableSize;
+      size -= availableSize;
+
+      if (fillBitstreamReader(bs) < 0)
+        return -1;
+    }
+    else {
+      memcpy(data + off, bs->byteArray + bs->byteArrayOff, size);
+      bs->byteArrayOff += size;
+      break;
+    }
+  }
+
+  /* Applying CRC calculation if in use : */
+  if (IN_USE_BITSTREAM_CRC(bs)) {
+    for (off = 0; off < size; off++)
+      applyCrc(&bs->crcCtx, data[off]);
+  }
+
+#endif
 
   return 0;
 }
@@ -925,7 +1012,7 @@ static inline int writeByte(
   uint8_t data
 )
 {
-  if (bitStream->byteArrayOff >= bitStream->byteArrayLength) {
+  if (bitStream->byteArraySize <= bitStream->byteArrayOff) {
     if (flushBitstreamWriter(bitStream) < 0)
       return -1;
   }
@@ -937,24 +1024,55 @@ static inline int writeByte(
 }
 
 static inline int writeBytes(
-  BitstreamWriterPtr bitStream,
+  BitstreamWriterPtr bs,
   const uint8_t * data,
-  const size_t dataLen
+  size_t size
 )
 {
+#if 0
   size_t i;
 
-  assert(NULL != bitStream);
+  assert(NULL != bs);
   assert(NULL != data);
 
-  for (i = 0; i < dataLen; i++) {
-    if (bitStream->byteArrayOff >= bitStream->byteArrayLength) {
-      if (flushBitstreamWriter(bitStream) < 0)
+  for (i = 0; i < size; i++) {
+    if (bs->byteArraySize <= bs->byteArrayOff) {
+      if (flushBitstreamWriter(bs) < 0)
         return -1;
     }
 
-    bitStream->byteArray[bitStream->byteArrayOff++] = data[i];
+    bs->byteArray[bs->byteArrayOff++] = data[i];
+    bs->fileSize++;
   }
+#else
+  size_t off = 0;
+  size_t totalSize = size;
+
+  assert(NULL != bs);
+  assert(NULL != data);
+
+  while (0 < size) {
+    size_t availableSize = bs->byteArraySize - bs->byteArrayOff;
+
+    if (availableSize < size) {
+      memcpy(bs->byteArray + bs->byteArrayOff, data + off, availableSize);
+
+      off += availableSize;
+      bs->byteArrayOff += availableSize;
+      size -= availableSize;
+
+      if (flushBitstreamWriter(bs) < 0)
+        return -1;
+    }
+    else {
+      memcpy(bs->byteArray + bs->byteArrayOff, data + off, size);
+      bs->byteArrayOff += size;
+      break;
+    }
+  }
+
+  bs->fileSize += totalSize;
+#endif
 
   return 0;
 }

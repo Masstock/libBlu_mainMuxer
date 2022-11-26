@@ -8,7 +8,9 @@
 
 #include "circularBuffer.h"
 
-CircularBufferPtr createCircularBuffer(size_t entrySize)
+CircularBufferPtr createCircularBuffer(
+  size_t entrySize
+)
 {
   CircularBufferPtr buf;
 
@@ -19,51 +21,43 @@ CircularBufferPtr createCircularBuffer(size_t entrySize)
 
   if (NULL == (buf = (CircularBufferPtr) malloc(sizeof(CircularBuffer))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  buf->buffer = NULL;
-  buf->allocatedSize = buf->usedSize = 0;
-  buf->top = 0;
-  buf->entrySize = entrySize;
+  *buf = (CircularBuffer) {
+    .allocatedSizeShift = 1,
+    .entrySize = entrySize,
+  };
 
   return buf;
 }
 
-void destroyCircularBuffer(CircularBufferPtr buf)
+void * newEntryCircularBuffer(
+  CircularBufferPtr buf
+)
 {
-  if (NULL == buf)
-    return;
-
-  free(buf->buffer);
-  free(buf);
-}
-
-void * newEntryCircularBuffer(CircularBufferPtr buf)
-{
-  void * newBuffer;
-  size_t newLength;
   size_t dI, bI, sI;
   /* dI: Destination Index, bI: Buffer Index, sI: Source Index. */
 
   assert(NULL != buf);
 
-  if (buf->allocatedSize <= buf->usedSize) {
-    newLength = GROW_CIRCULAR_BUFFER_SIZE(
-      buf->allocatedSize
-    );
+  if (NULL == buf->array || (1ul << buf->allocatedSizeShift) <= buf->usedSize) {
+    void * newBuffer;
+    size_t curSize, newSize;
 
-    if (newLength <= buf->usedSize)
+    curSize = 1ul << buf->allocatedSizeShift;
+    newSize = 1ul << (buf->allocatedSizeShift + 1);
+
+    if (!newSize || lb_mul_overflow(newSize, buf->entrySize))
       LIBBLU_ERROR_NRETURN("Circular buffer FIFO overflow.\n");
 
-    if (NULL == (newBuffer = realloc(buf->buffer, buf->entrySize * newLength)))
+    if (NULL == (newBuffer = realloc(buf->array, newSize * buf->entrySize)))
       LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
     /* Moving indexes from buffer. */
     for (
-      dI = buf->allocatedSize, bI = buf->allocatedSize - buf->top;
+      dI = curSize, bI = curSize - buf->top;
       bI < buf->usedSize;
       bI++, dI++
     ) {
-      sI = (buf->top + bI) % buf->allocatedSize;
+      sI = (buf->top + bI) & (curSize - 1);
       memcpy(
         newBuffer + dI * buf->entrySize,
         newBuffer + sI * buf->entrySize,
@@ -71,49 +65,13 @@ void * newEntryCircularBuffer(CircularBufferPtr buf)
       );
     }
 
-    buf->buffer = newBuffer;
-    buf->allocatedSize = newLength;
+    buf->array = newBuffer;
+    buf->allocatedSizeShift++;
   }
 
-  dI = (buf->top + (buf->usedSize++)) % buf->allocatedSize;
+  dI = (buf->top + (buf->usedSize++)) & ((1ul << buf->allocatedSizeShift) - 1);
 
-  return buf->buffer + dI * buf->entrySize;
-}
-
-size_t getNbEntriesCircularBuffer(CircularBufferPtr buf)
-{
-  assert(NULL != buf);
-
-  return buf->usedSize;
-}
-
-void * getEntryCircularBuffer(CircularBufferPtr buf, size_t index)
-{
-  size_t entry;
-
-  assert(NULL != buf);
-
-  if (buf->usedSize <= index)
-    return NULL; /* Out of circular buffer index. */
-
-  entry = (buf->top + index) % buf->allocatedSize;
-
-  return buf->buffer + entry * buf->entrySize;
-}
-
-int popCircularBuffer(CircularBufferPtr buf, void ** entry)
-{
-  assert(NULL != buf);
-
-  if (!buf->usedSize)
-    return -1; /* Empty circular buffer. */
-
-  if (NULL != entry)
-    *entry = buf->buffer + buf->top * buf->entrySize;
-
-  buf->top = (buf->top + 1) % buf->allocatedSize;
-  buf->usedSize--;
-  return 0;
+  return buf->array + dI * buf->entrySize;
 }
 
 #if 0

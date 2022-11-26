@@ -6,9 +6,9 @@
  *
  * \brief HDMV bitstreams data structures.
  *
- * REFERENCE:
- *  - Patent US 2009/0185789 A1
- *  - Patent US No. 8,638,861 B2
+ * \xrefitem references "References" "References list"
+ *  [1] Patent US 2009/0185789 A1
+ *  [2] Patent US No. 8,638,861 B2
  */
 
 /** \~english

@@ -7,41 +7,50 @@
 
 #include "bdavStd.h"
 
+static bool _matchPidSwitchFilterDecisionListBdavStd(
+  BufModelFilterLbl label,
+  uint16_t pid
+)
+{
+  unsigned i;
+
+  assert(BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC == label.value.listItemsType);
+
+  for (i = 0; i < label.value.listLength; i++) {
+    if (label.value.list[i].number == pid)
+      return true;
+  }
+
+  return false;
+}
+
 int pidSwitchFilterDecisionFunBdavStd(
   BufModelFilterPtr filter,
   unsigned * idx,
   void * streamPtr
 )
 {
-  unsigned i, j, voidBuf;
+  unsigned i, voidBuf;
   bool voidBufDef;
-
-  LibbluStreamPtr stream;
+  uint16_t pid;
 
   assert(NULL != filter);
   assert(NULL != streamPtr);
 
-  stream = (LibbluStreamPtr) streamPtr;
+  pid = ((LibbluStreamPtr) streamPtr)->pid;
 
   voidBufDef = false;
   for (i = 0; i < filter->nbUsedNodes; i++) {
     switch (filter->labels[i].type) {
       case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
-        assert(
-          BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC
-          == filter->labels[i].value.listItemsType
-        );
-
-        for (j = 0; j < filter->labels[i].value.listLength; j++) {
-          if (filter->labels[i].value.list[j].number == stream->pid) {
-            *idx = i;
-            return 0;
-          }
+        if (_matchPidSwitchFilterDecisionListBdavStd(filter->labels[i], pid)) {
+          *idx = i;
+          return 0;
         }
         break;
 
       case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-        if (filter->labels[i].value.number == stream->pid) {
+        if (filter->labels[i].value.number == pid) {
           *idx = i;
           return 0;
         }
@@ -61,8 +70,8 @@ int pidSwitchFilterDecisionFunBdavStd(
   /* Unable to find a appropriate route for PID, push in void */
   if (voidBufDef) {
     LIBBLU_INFO(
-      "No defined route for stream PID 0x%04" PRIu16 " in buffering model.\n",
-      stream->pid
+      "No defined route for stream PID 0x%04" PRIX16 " in buffering model.\n",
+      pid
     );
 
     *idx = voidBuf;
@@ -72,7 +81,7 @@ int pidSwitchFilterDecisionFunBdavStd(
   LIBBLU_ERROR_RETURN(
     "Unable to find a output route for PID=0x%04" PRIX16 " "
     "nor use a void route.",
-    stream->pid
+    pid
   );
 }
 
@@ -199,13 +208,18 @@ int addESToBdavStd(
       );
       break;
 
-#if 1
     case STREAM_CODING_TYPE_LPCM:
       ret = createLpcmBufferingChainBdavStd(
         &streamNode, es, initialTimestamp, strmBufList
       );
       break;
-#endif
+
+    case STREAM_CODING_TYPE_PG:
+    case STREAM_CODING_TYPE_IG:
+      ret = createHdmvBufferingChainBdavStd(
+        &streamNode, es, initialTimestamp, strmBufList
+      );
+      break;
 
     default:
       LIBBLU_INFO(
