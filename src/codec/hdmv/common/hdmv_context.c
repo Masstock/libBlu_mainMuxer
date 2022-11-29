@@ -311,6 +311,7 @@ static int _clearCurDisplaySet(
     /* Epoch start, clear DS */
     for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++)
       ctx->displaySet.sequences[i] = NULL;
+    resetHdmvSegmentsInventory(ctx->segInv);
     resetHdmvContextSegmentTypesCounter(&ctx->nbSequences);
   }
 
@@ -787,13 +788,9 @@ int _registeringSegmentsDisplaySet(
   hdmv_segtype_idx idx;
 
   for (idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
-    HdmvSequencePtr seq;
+    HdmvSequencePtr seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
 
-    for (
-      seq = getSequenceByIdxHdmvDisplaySet(ds, idx);
-      NULL != seq;
-      seq = seq->nextSequence
-    ) {
+    for (; NULL != seq; seq = seq->nextSequence) {
       HdmvSegmentPtr seg;
       uint64_t pts = seq->pts * 300;
       uint64_t dts = seq->dts * 300;
@@ -801,11 +798,7 @@ int _registeringSegmentsDisplaySet(
       if (!isFromDisplaySetNbHdmvSequence(seq, ctx->nbDisplaySets))
         continue;
 
-      for (
-        seg = seq->segments;
-        NULL != seg;
-        seg = seg->nextSegment
-      ) {
+      for (seg = seq->segments; NULL != seg; seg = seg->nextSegment) {
         if (_insertSegmentInScript(ctx, seg->param, pts, dts) < 0)
           return -1;
       }
@@ -976,7 +969,7 @@ HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
   if (NULL == seq->segments) /* Or as the new list header if its empty */
     seq->segments = seg;
   else
-    seq->lastSegment = seg;
+    seq->lastSegment->nextSegment = seg;
   seq->lastSegment = seg;
 
   return seq;
@@ -1057,10 +1050,18 @@ static int _updateSequence(
   assert(dst->type == src->type);
 
   switch (dst->type) {
-    case HDMV_SEGMENT_TYPE_PDS:
-      return updateHdmvPdsSegmentParameters(&dst->data.pd, src->data.pd);
-    case HDMV_SEGMENT_TYPE_ODS:
-      return updateHdmvObjectDataParameters(&dst->data.od, src->data.od);
+    case HDMV_SEGMENT_TYPE_PDS: {
+      if (updateHdmvPdsSegmentParameters(&dst->data.pd, src->data.pd) < 0)
+        return -1;
+      break;
+    }
+
+    case HDMV_SEGMENT_TYPE_ODS: {
+      if (updateHdmvObjectDataParameters(&dst->data.od, src->data.od) < 0)
+        return -1;
+      break;
+    }
+
     case HDMV_SEGMENT_TYPE_PCS:
       dst->data.pc = src->data.pc; break;
     case HDMV_SEGMENT_TYPE_WDS:
@@ -1069,14 +1070,15 @@ static int _updateSequence(
       dst->data.ic = src->data.ic; break;
     case HDMV_SEGMENT_TYPE_END:
       break;
+
     default:
       assert(0);
       return -1; /* Not updatable */
   }
 
   dst->displaySetIdx = src->displaySetIdx;
-  dst->segments = src->segments;
-  dst->lastSegment = src->lastSegment;
+  dst->segments      = src->segments;
+  dst->lastSegment   = src->lastSegment;
 
   return 0;
 }

@@ -6,6 +6,8 @@
  *
  * \brief Muxing context module.
  *
+ * \todo Increase speed when T-STD buffer verifier is activated.
+ *
  * \xrefitem references "References" "References list"
  *  [1] Siddaraju, Naveen & Rao, Kamisetty. (2012). Multiplexing the
  *      Elementary Streams of H.264 Video and MPEG4 HE AAC v2 Audio,

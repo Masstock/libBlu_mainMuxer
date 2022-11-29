@@ -416,22 +416,36 @@ int main(
   LPWSTR * argv_wchar;
 #endif
 
+  enum {
+    END_OF_LIST = 0,
+    BD_CLIPINF_OUTPUT = 'A',
+    CONFIG_FILE,
+    DEBUG,
+    ESMS_GENERATION_ONLY,
+    FORCE_ESMS_GENERATION,
+    HELP,
+    INPUT,
+    OUTPUT,
+    PRINT_DEBUG_OPTIONS
+  };
+
   static const struct option programOptions[] = {
-    {"conf"            , required_argument, NULL,  'c'},
-    {"d"               , optional_argument, NULL,  'd'},
-    {"debug"           , optional_argument, NULL,  'd'},
-    {"e"               , no_argument      , NULL,  'e'},
-    {"only-esms"       , no_argument      , NULL,  'e'},
-    {"f"               , no_argument      , NULL,  'f'},
-    {"force-esms"      , no_argument      , NULL,  'f'},
-    {"h"               , no_argument      , NULL,  'h'},
-    {"help"            , no_argument      , NULL,  'h'},
-    {"i"               , required_argument, NULL,  'i'},
-    {"input"           , required_argument, NULL,  'i'},
-    {"o"               , required_argument, NULL,  'o'},
-    {"output"          , required_argument, NULL,  'o'},
-    {"printdebug"      , no_argument      , NULL,  'p'},
-    {NULL              , no_argument      , NULL, '\0'}
+  //{"clip"            , optional_argument, NULL, BD_CLIPINF_OUTPUT          },
+    {"conf"            , required_argument, NULL, CONFIG_FILE                },
+    {"d"               , optional_argument, NULL, DEBUG                      },
+    {"debug"           , optional_argument, NULL, DEBUG                      },
+    {"e"               , no_argument      , NULL, ESMS_GENERATION_ONLY       },
+    {"only-esms"       , no_argument      , NULL, ESMS_GENERATION_ONLY       },
+    {"f"               , no_argument      , NULL, FORCE_ESMS_GENERATION      },
+    {"force-esms"      , no_argument      , NULL, FORCE_ESMS_GENERATION      },
+    {"h"               , no_argument      , NULL, HELP                       },
+    {"help"            , no_argument      , NULL, HELP                       },
+    {"i"               , required_argument, NULL, INPUT                      },
+    {"input"           , required_argument, NULL, INPUT                      },
+    {"o"               , required_argument, NULL, OUTPUT                     },
+    {"output"          , required_argument, NULL, OUTPUT                     },
+    {"printdebug"      , no_argument      , NULL, PRINT_DEBUG_OPTIONS        },
+    {NULL              , no_argument      , NULL, END_OF_LIST                }
   };
 
   if (NULL == setlocale(LC_ALL, ""))
@@ -488,7 +502,7 @@ int main(
     )
   ) {
     switch (option) {
-      case 'c':
+      case CONFIG_FILE:
 #if !defined(DISABLE_INI)
         if (NULL == optarg)
           LIBBLU_ERROR_RETURN("Expect a configuration filename after '-c'.\n");
@@ -498,46 +512,41 @@ int main(
 #endif
         break;
 
-      case 'd':
+      case DEBUG:
         if (enableDebugStatusString(NULL != optarg ? optarg : "all") < 0)
           return -1;
         break;
 
-      case 'e':
+      case ESMS_GENERATION_ONLY:
         esmsGenerationOnlyMode = true;
         break;
 
-      case 'f':
+      case FORCE_ESMS_GENERATION:
         forceRemakeScripts = true;
         break;
 
-      case 'h':
+      case HELP:
         /* Help */
         printHelp();
         return 0;
 
-      case 'i':
+      case INPUT:
         /* Input */
         if (NULL == optarg)
           LIBBLU_ERROR_RETURN("Expect a META filename after '-i'.\n");
         inputInstructionsFilepath = ARG_VAL;
         break;
 
-      case 'o':
+      case OUTPUT:
         /* Output */
         if (NULL == optarg)
           LIBBLU_ERROR_RETURN("Expect a output filename after '-o'.\n");
         outputTsFilepath = ARG_VAL;
         break;
 
-      case 'p':
+      case PRINT_DEBUG_OPTIONS:
         printDebugOptions();
         return 0;
-
-      case -1:
-        /* End of options */
-        cont = false;
-        break;
 
       default:
         LIBBLU_ERROR_RETURN(

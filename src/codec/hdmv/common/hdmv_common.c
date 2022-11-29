@@ -337,7 +337,7 @@ void resetHdmvContext(
   if (NULL == ctx)
     return;
 
-  clearHdmvSegmentsInventory(ctx->segInv);
+  resetHdmvSegmentsInventory(ctx->segInv);
 
   ctx->segRefs.pcs = NULL;
   ctx->segRefs.wds = NULL;

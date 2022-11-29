@@ -491,7 +491,7 @@ static inline void destroyHdmvSegmentsInventory(
   free(inv);
 }
 
-static inline void clearHdmvSegmentsInventory(
+static inline void resetHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
