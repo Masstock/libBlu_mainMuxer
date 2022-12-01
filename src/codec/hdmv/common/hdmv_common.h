@@ -355,7 +355,10 @@ typedef struct {
   HdmvDisplaySetUsageState initUsage;
   // bool duplicatedDS;
 
-  HdmvSequencePtr sequences[HDMV_NB_SEGMENT_TYPES];
+  HdmvSequencePtr sequences[HDMV_NB_SEGMENT_TYPES];      /**< Linked lists of
+    each type of sequence. */
+  HdmvSequencePtr lastSequences[HDMV_NB_SEGMENT_TYPES];  /**< Direct pointer
+    to the last sequence node of each sequence type linked list. */
   HdmvSequencePtr pendingSequences[HDMV_NB_SEGMENT_TYPES];
   HdmvContextSegmentTypesCounter nbSequences;  /**< Number of sequences in DS. */
 } HdmvDisplaySet;

@@ -309,8 +309,10 @@ static int _clearCurDisplaySet(
 
   if (HDMV_COMPO_STATE_EPOCH_START == composition_state) {
     /* Epoch start, clear DS */
-    for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++)
+    for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
       ctx->displaySet.sequences[i] = NULL;
+      ctx->displaySet.lastSequences[i] = NULL;
+    }
     resetHdmvSegmentsInventory(ctx->segInv);
     resetHdmvContextSegmentTypesCounter(&ctx->nbSequences);
   }
@@ -1162,6 +1164,7 @@ int completeSeqDisplaySetHdmvContext(
   if (NULL == sequenceListHdr) {
     /* If the list is empty, the pending is the new header */
     ctx->displaySet.sequences[idx] = sequence;
+    ctx->displaySet.lastSequences[idx] = sequence;
     incrementSequencesNbEpochHdmvContext(ctx, idx);
     goto success;
   }
@@ -1178,8 +1181,13 @@ int completeSeqDisplaySetHdmvContext(
     if (_checkNumberOfSequencesInEpoch(ctx, idx, sequenceListHdr->type) < 0)
       return -1;
 
+    ctx->displaySet.lastSequences[idx]->nextSequence = sequence;
+    ctx->displaySet.lastSequences[idx] = sequence;
+
+#if 0
     sequence->nextSequence = sequenceListHdr;
     ctx->displaySet.sequences[idx] = sequence;
+#endif
 
     incrementSequencesNbEpochHdmvContext(ctx, idx);
   }

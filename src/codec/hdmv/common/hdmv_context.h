@@ -1,4 +1,16 @@
-
+/** \~english
+ * \file hdmv_context.h
+ *
+ * \author Massimo "Masstock" EYNARD
+ * \version 0.5
+ *
+ * \brief HDMV bitstreams parsing context.
+ *
+ * \todo Concerns about ODS sequences/segments order: Implementation orders
+ * ODS by object_id, Scenarist use reference order in PCS. Does not seems an
+ * issue but might be investigated.
+ * \todo Timings computation not implemented.
+ */
 
 #ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__CONTEXT_H__
 #define __LIBBLU_MUXER__CODECS__HDMV__COMMON__CONTEXT_H__
