@@ -302,6 +302,13 @@
     ##__VA_ARGS__                                                             \
   )
 
+#define LIBBLU_HDMV_PAL_DEBUG_NH(format, ...)                                 \
+  LIBBLU_DEBUG_NO_HEADER(                                                     \
+    LIBBLU_DEBUG_HDMV_PAL,                                                    \
+    format,                                                                   \
+    ##__VA_ARGS__                                                             \
+  )
+
 /* ### Quantization : ###################################################### */
 
 #define LIBBLU_HDMV_QUANT_NAME  LIBBLU_HDMV_KEYWORD " quant"

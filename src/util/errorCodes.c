@@ -295,16 +295,12 @@ int enableDebugStatusString(
 
     enabledStatus[status] = 1;
     if (status == LIBBLU_DEBUG_GLB) {
-      memset(
-        enabledStatus,
-        1,
-        ARRAY_SIZE(enabledStatus) * sizeof(uint8_t)
-      );
+      memset(enabledStatus, 1, ARRAY_SIZE(enabledStatus));
     }
 
-    while (arrayMode && (ispunct(*string) || isspace(*string)))
+    while ((arrayMode && isspace(*string)) || (ispunct(*string)))
       string++;
-  } while (arrayMode && (*string != '\"' && *string != '\0'));
+  } while ((!arrayMode || *string != '\"') && *string != '\0');
 
   return 0;
 }

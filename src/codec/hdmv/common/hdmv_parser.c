@@ -186,7 +186,7 @@ static int _parseHdmvPaletteEntry(
   HdmvPaletteEntryParameters * entry;
   uint32_t value;
 
-  LIBBLU_HDMV_PARSER_DEBUG(
+  LIBBLU_HDMV_PAL_DEBUG(
     "   Palette_entry(%u): ",
     i
   );
@@ -196,7 +196,7 @@ static int _parseHdmvPaletteEntry(
     return -1;
   entry = &entries[value];
 
-  LIBBLU_HDMV_PARSER_DEBUG_NH(
+  LIBBLU_HDMV_PAL_DEBUG_NH(
     "palette_entry_id=%03u (0x%02X), ",
     value,
     value
@@ -207,7 +207,7 @@ static int _parseHdmvPaletteEntry(
     return -1;
   entry->y_value = value;
 
-  LIBBLU_HDMV_PARSER_DEBUG_NH(
+  LIBBLU_HDMV_PAL_DEBUG_NH(
     "Y=%03u (0x%02X), ",
     entry->y_value,
     entry->y_value
@@ -218,7 +218,7 @@ static int _parseHdmvPaletteEntry(
     return -1;
   entry->cr_value = value;
 
-  LIBBLU_HDMV_PARSER_DEBUG_NH(
+  LIBBLU_HDMV_PAL_DEBUG_NH(
     "Cr=%03u (0x%02X), ",
     entry->cr_value,
     entry->cr_value
@@ -229,7 +229,7 @@ static int _parseHdmvPaletteEntry(
     return -1;
   entry->cb_value = value;
 
-  LIBBLU_HDMV_PARSER_DEBUG_NH(
+  LIBBLU_HDMV_PAL_DEBUG_NH(
     "Cb=%03u (0x%02X), ",
     entry->cb_value,
     entry->cb_value
@@ -240,7 +240,7 @@ static int _parseHdmvPaletteEntry(
     return -1;
   entry->t_value = value;
 
-  LIBBLU_HDMV_PARSER_DEBUG_NH(
+  LIBBLU_HDMV_PAL_DEBUG_NH(
     "T=%03u (0x%02X);\n",
     entry->t_value,
     entry->t_value

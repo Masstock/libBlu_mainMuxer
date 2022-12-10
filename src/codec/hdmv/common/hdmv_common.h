@@ -237,6 +237,7 @@ static inline void initHdmvSegment(
 
 typedef struct HdmvSequence {
   struct HdmvSequence * nextSequence;
+  struct HdmvSequence * nextSequenceDO;
   unsigned displaySetIdx;  /**< Associated DS number from which this
     sequence is from. */
 
@@ -355,11 +356,22 @@ typedef struct {
   HdmvDisplaySetUsageState initUsage;
   // bool duplicatedDS;
 
+  struct {
+    HdmvSequencePtr head;     /**< Sequences linked list. */
+    HdmvSequencePtr last;     /**< Pointer to the last sequence in the linked list.  */
+    HdmvSequencePtr pending;  /**< Pending processed sequence. */
+  } sequences[HDMV_NB_SEGMENT_TYPES];
+
+  HdmvSequencePtr firstDO;  /**< First sequence in decoding order. */
+  HdmvSequencePtr lastDO;   /**< Last sequence in decoding order. */
+
+#if 0
   HdmvSequencePtr sequences[HDMV_NB_SEGMENT_TYPES];      /**< Linked lists of
     each type of sequence. */
   HdmvSequencePtr lastSequences[HDMV_NB_SEGMENT_TYPES];  /**< Direct pointer
     to the last sequence node of each sequence type linked list. */
   HdmvSequencePtr pendingSequences[HDMV_NB_SEGMENT_TYPES];
+#endif
   HdmvContextSegmentTypesCounter nbSequences;  /**< Number of sequences in DS. */
 } HdmvDisplaySet;
 
@@ -384,8 +396,10 @@ static inline HdmvSequencePtr getSequenceByIdxHdmvDisplaySet(
   hdmv_segtype_idx idx
 )
 {
-  return ds->sequences[idx];
+  return ds->sequences[idx].head;
 }
+
+#define getfirstDOSequenceByIdxHdmvDisplaySet 0
 
 static inline unsigned getNbSequencesHdmvDisplaySet(
   const HdmvDisplaySet ds

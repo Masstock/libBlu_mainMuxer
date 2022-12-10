@@ -8,7 +8,8 @@
  *
  * \todo Concerns about ODS sequences/segments order: Implementation orders
  * ODS by object_id, Scenarist use reference order in PCS. Does not seems an
- * issue but might be investigated.
+ * issue but might be investigated. (original decoding order is keeped if
+ * timing values are copied from input).
  * \todo Timings computation not implemented.
  */
 
@@ -25,6 +26,7 @@
 typedef struct {
   bool rawStreamInputMode;
   bool forceRetiming;
+  bool keepSegmentsOrder;
 
   uint64_t referenceClock;  /**< Reference start clock in 90kHz ticks.       */
   uint64_t lastClock;

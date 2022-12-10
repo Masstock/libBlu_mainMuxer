@@ -161,7 +161,10 @@ HdmvContextPtr createHdmvContext(
   /* Set input mode: */
   nextByteIsSegmentType = isValidHdmvSegmentType(nextUint8(ctx->input.file));
   ctx->param.rawStreamInputMode = nextByteIsSegmentType;
-  ctx->param.forceRetiming      = nextByteIsSegmentType;
+
+
+  ctx->param.forceRetiming      = ctx->param.rawStreamInputMode;
+  ctx->param.keepSegmentsOrder  = !ctx->param.forceRetiming;
 
   LIBBLU_HDMV_COM_DEBUG(
     " Parsing settings:\n"
@@ -175,6 +178,10 @@ HdmvContextPtr createHdmvContext(
   LIBBLU_HDMV_COM_DEBUG(
     "  - Force computation of timing values: %s.\n",
     BOOL_INFO(ctx->param.forceRetiming)
+  );
+  LIBBLU_HDMV_COM_DEBUG(
+    "  - Keep segments order: %s.\n",
+    BOOL_INFO(ctx->param.keepSegmentsOrder)
   );
 
   LIBBLU_HDMV_COM_DEBUG(
@@ -253,7 +260,7 @@ static HdmvSequencePtr _getPendingSequence(
   hdmv_segtype_idx idx
 )
 {
-  return ctx->displaySet.pendingSequences[idx];
+  return ctx->displaySet.sequences[idx].pending;
 }
 
 static void _setPendingSequence(
@@ -262,7 +269,7 @@ static void _setPendingSequence(
   HdmvSequencePtr seq
 )
 {
-  ctx->displaySet.pendingSequences[idx] = seq;
+  ctx->displaySet.sequences[idx].pending = seq;
 }
 
 static int _checkNewDisplaySetTransition(
@@ -310,12 +317,16 @@ static int _clearCurDisplaySet(
   if (HDMV_COMPO_STATE_EPOCH_START == composition_state) {
     /* Epoch start, clear DS */
     for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
-      ctx->displaySet.sequences[i] = NULL;
-      ctx->displaySet.lastSequences[i] = NULL;
+      ctx->displaySet.sequences[i].head    = NULL;
+      ctx->displaySet.sequences[i].last    = NULL;
     }
+
     resetHdmvSegmentsInventory(ctx->segInv);
     resetHdmvContextSegmentTypesCounter(&ctx->nbSequences);
   }
+
+  ctx->displaySet.firstDO = NULL;
+  ctx->displaySet.lastDO  = NULL;
 
   resetHdmvContextSegmentTypesCounter(&ctx->displaySet.nbSequences);
   return 0;
@@ -412,7 +423,7 @@ static int _checkCompletionOfEachSequence(
   hdmv_segtype_idx i;
 
   for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++)
-    notNull |= (NULL != ds.pendingSequences[i]);
+    notNull |= (NULL != ds.sequences[i].pending);
 
   return (notNull) ? -1 : 0;
 }
@@ -425,7 +436,7 @@ static void _getNonCompletedSequencesNames(
   hdmv_segtype_idx i;
 
   for (i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
-    if (NULL != ds.pendingSequences[i]) {
+    if (NULL != ds.sequences[i].pending) {
       const char * name = segmentTypeIndexStr(i);
       strcpy(dst, name);
       dst += strlen(name);
@@ -442,9 +453,9 @@ static int _getDisplaySetPts(
   int64_t pts;
 
   if (HDMV_STREAM_TYPE_IGS == ctx->type)
-    pts = ds->sequences[HDMV_SEGMENT_TYPE_ICS_IDX]->segments->param.header.pts;
+    pts = ds->sequences[HDMV_SEGMENT_TYPE_ICS_IDX].head->segments->param.header.pts;
   else /* HDMV_STREAM_TYPE_PGS == ctx->type */
-    pts = ds->sequences[HDMV_SEGMENT_TYPE_PCS_IDX]->segments->param.header.pts;
+    pts = ds->sequences[HDMV_SEGMENT_TYPE_PCS_IDX].head->segments->param.header.pts;
 
   pts += (int64_t) ctx->param.referenceClock;
   if (pts < 0)
@@ -692,7 +703,40 @@ int _computeTimestampsDisplaySet(
   return 0;
 }
 
-int _copySegmentsTimestampsDisplaySet(
+static void _copySegmentsTimestampsDisplaySetInDisplayOrder(
+  HdmvContextPtr ctx,
+  HdmvDisplaySet * ds
+)
+{
+  HdmvSequencePtr seq;
+
+  HdmvSegmentType lastType = HDMV_SEGMENT_TYPE_ERROR;
+
+  assert(NULL != ds->firstDO);
+  assert(NULL != ds->lastDO);
+
+  LIBBLU_HDMV_COM_DEBUG("  NOTE: Using input file headers time values:\n");
+
+  for (seq = ds->firstDO; NULL != seq; seq = seq->nextSequenceDO) {
+    assert(isFromDisplaySetNbHdmvSequence(seq, ctx->nbDisplaySets));
+
+    seq->pts = seq->segments->param.header.pts + ctx->param.referenceClock;
+    seq->dts = seq->segments->param.header.dts + ctx->param.referenceClock;
+
+    if (lastType != seq->type) {
+      LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(seq->type));
+      lastType = seq->type;
+    }
+
+    LIBBLU_HDMV_COM_DEBUG(
+      "    - PTS: %" PRIu64 " DTS: %" PRIu64 "\n",
+      seq->pts,
+      seq->dts
+    );
+  }
+}
+
+static void _copySegmentsTimestampsDisplaySet(
   HdmvContextPtr ctx,
   HdmvDisplaySet * ds
 )
@@ -706,11 +750,11 @@ int _copySegmentsTimestampsDisplaySet(
     bool displayedListName = false;
 
     for (; NULL != seq; seq = seq->nextSequence) {
-      seq->pts = seq->segments->param.header.pts + ctx->param.referenceClock;
-      seq->dts = seq->segments->param.header.dts + ctx->param.referenceClock;
-
       if (!isFromDisplaySetNbHdmvSequence(seq, ctx->nbDisplaySets))
         continue;
+
+      seq->pts = seq->segments->param.header.pts + ctx->param.referenceClock;
+      seq->dts = seq->segments->param.header.dts + ctx->param.referenceClock;
 
       if (!displayedListName) {
         LIBBLU_HDMV_COM_DEBUG("   - %s:\n", segmentTypeIndexStr(idx));
@@ -724,8 +768,6 @@ int _copySegmentsTimestampsDisplaySet(
       );
     }
   }
-
-  return 0;
 }
 
 int _setTimestampsDisplaySet(
@@ -735,7 +777,13 @@ int _setTimestampsDisplaySet(
 {
   if (ctx->param.forceRetiming)
     return _computeTimestampsDisplaySet(ctx, ds);
-  return _copySegmentsTimestampsDisplaySet(ctx, ds);
+
+  if (ctx->param.keepSegmentsOrder)
+    _copySegmentsTimestampsDisplaySetInDisplayOrder(ctx, ds);
+  else
+    _copySegmentsTimestampsDisplaySet(ctx, ds);
+
+  return 0;
 }
 
 int _insertSegmentInScript(
@@ -782,7 +830,30 @@ int _insertSegmentInScript(
   );
 }
 
-int _registeringSegmentsDisplaySet(
+static int _registeringSegmentsDisplaySetInDisplayOrder(
+  HdmvContextPtr ctx,
+  HdmvDisplaySet * ds
+)
+{
+  HdmvSequencePtr seq;
+
+  for (seq = ds->firstDO; NULL != seq; seq = seq->nextSequenceDO) {
+    HdmvSegmentPtr seg;
+    uint64_t pts = seq->pts * 300;
+    uint64_t dts = seq->dts * 300;
+
+    assert(isFromDisplaySetNbHdmvSequence(seq, ctx->nbDisplaySets));
+
+    for (seg = seq->segments; NULL != seg; seg = seg->nextSegment) {
+      if (_insertSegmentInScript(ctx, seg->param, pts, dts) < 0)
+        return -1;
+    }
+  }
+
+  return 0;
+}
+
+static int _registeringSegmentsDisplaySet(
   HdmvContextPtr ctx,
   HdmvDisplaySet * ds
 )
@@ -794,9 +865,13 @@ int _registeringSegmentsDisplaySet(
 
     for (; NULL != seq; seq = seq->nextSequence) {
       HdmvSegmentPtr seg;
+
       uint64_t pts = seq->pts * 300;
       uint64_t dts = seq->dts * 300;
 
+      assert(segmentTypeIndexHdmvContext(seq->type) == idx);
+
+      fprintf(stderr, "%u) %u == %u\n", idx, seq->displaySetIdx, ctx->nbDisplaySets);
       if (!isFromDisplaySetNbHdmvSequence(seq, ctx->nbDisplaySets))
         continue;
 
@@ -874,8 +949,14 @@ int completeDisplaySetHdmvContext(
     getTotalHdmvContextSegmentTypesCounter(ctx->displaySet.nbSequences)
   );
 
-  if (_registeringSegmentsDisplaySet(ctx, &ctx->displaySet) < 0)
-    return -1;
+  if (ctx->param.keepSegmentsOrder) {
+    if (_registeringSegmentsDisplaySetInDisplayOrder(ctx, &ctx->displaySet) < 0)
+      return -1;
+  }
+  else {
+    if (_registeringSegmentsDisplaySet(ctx, &ctx->displaySet) < 0)
+      return -1;
+  }
 
   ctx->displaySet.initUsage = HDMV_DS_COMPLETED;
 
@@ -1078,9 +1159,13 @@ static int _updateSequence(
       return -1; /* Not updatable */
   }
 
-  dst->displaySetIdx = src->displaySetIdx;
-  dst->segments      = src->segments;
-  dst->lastSegment   = src->lastSegment;
+  assert(NULL == src->nextSequenceDO);
+
+  fprintf(stderr, "UPDATE %u\n", src->displaySetIdx);
+  dst->nextSequenceDO = NULL;
+  dst->displaySetIdx  = src->displaySetIdx;
+  dst->segments       = src->segments;
+  dst->lastSegment    = src->lastSegment;
 
   return 0;
 }
@@ -1096,6 +1181,8 @@ static int _applySequenceUpdate(
 
   /* Apply update on the segment sharing the same ID */
   for (; NULL != dst; dst = dst->nextSequence) {
+    assert(dst->type == seq->type);
+
     if (_getIdSequence(dst) == lstSeqId) {
       /* Current sequence shares same ID as the last one */
       if (_updateSequence(dst, seq) < 0)
@@ -1137,6 +1224,22 @@ static int _checkNumberOfSequencesInEpoch(
   return 0;
 }
 
+static void _addSequenceToDisplayOrder(
+  HdmvContextPtr ctx,
+  HdmvSequencePtr seq
+)
+{
+  assert(NULL == seq->nextSequenceDO);
+
+  if (NULL != ctx->displaySet.lastDO)
+    ctx->displaySet.lastDO->nextSequenceDO = seq;
+  else {
+    assert(NULL == ctx->displaySet.firstDO);
+    ctx->displaySet.firstDO = seq;
+  }
+  ctx->displaySet.lastDO = seq;
+}
+
 int completeSeqDisplaySetHdmvContext(
   HdmvContextPtr ctx,
   hdmv_segtype_idx idx
@@ -1149,22 +1252,28 @@ int completeSeqDisplaySetHdmvContext(
   if (NULL == (sequence = _getPendingSequence(ctx, idx)))
     LIBBLU_HDMV_COM_ERROR_RETURN("No sequence to complete.\n");
   sequence->displaySetIdx = ctx->nbDisplaySets;
+  fprintf(stderr, "%u\n", ctx->nbDisplaySets);
 
   /* Get the header of completed sequences list of DS */
-  sequenceListHdr = ctx->displaySet.sequences[idx];
+  sequenceListHdr = ctx->displaySet.sequences[idx].head;
 
   if (ctx->duplicatedDS) {
     /* Special case, this DS is supposed to be a duplicate of the previous one. */
     if (_insertDuplicatedSequence(sequenceListHdr, sequence) < 0)
       return -1;
+
+    /* Update Display Order if not identical. */
+    // TODO: Does duplicated sequences must be identical ? If so use DO to check.
+
     incrementSequencesNbDSHdmvContext(ctx, idx);
     goto success;
   }
 
   if (NULL == sequenceListHdr) {
     /* If the list is empty, the pending is the new header */
-    ctx->displaySet.sequences[idx] = sequence;
-    ctx->displaySet.lastSequences[idx] = sequence;
+    ctx->displaySet.sequences[idx].head    = sequence;
+    ctx->displaySet.sequences[idx].last    = sequence;
+
     incrementSequencesNbEpochHdmvContext(ctx, idx);
     goto success;
   }
@@ -1181,8 +1290,8 @@ int completeSeqDisplaySetHdmvContext(
     if (_checkNumberOfSequencesInEpoch(ctx, idx, sequenceListHdr->type) < 0)
       return -1;
 
-    ctx->displaySet.lastSequences[idx]->nextSequence = sequence;
-    ctx->displaySet.lastSequences[idx] = sequence;
+    ctx->displaySet.sequences[idx].last->nextSequence = sequence;
+    ctx->displaySet.sequences[idx].last = sequence;
 
 #if 0
     sequence->nextSequence = sequenceListHdr;
@@ -1193,6 +1302,8 @@ int completeSeqDisplaySetHdmvContext(
   }
 
 success:
+  _addSequenceToDisplayOrder(ctx, sequence);
+
   incrementSequencesNbDSHdmvContext(ctx, idx);
   /* Reset pending sequence */
   _setPendingSequence(ctx, idx, NULL);
