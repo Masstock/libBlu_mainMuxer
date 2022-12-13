@@ -12,7 +12,7 @@
 #include "h264_checks.h"
 
 int checkH264AccessUnitDelimiterCompliance(
-  const H264AccessUnitDelimiterParameters param
+  H264AccessUnitDelimiterParameters param
 )
 {
   LIBBLU_H264_DEBUG_AUD(
@@ -22,7 +22,7 @@ int checkH264AccessUnitDelimiterCompliance(
 
   LIBBLU_H264_DEBUG_AUD(
     "   -> slice_type authorized: %s.\n",
-    h264PrimaryPictureTypeStr(param.primary_pic_type)
+    H264PrimaryPictureTypeStr(param.primary_pic_type)
   );
 
   if (H264_PRIM_PIC_TYPE_ALL < param.primary_pic_type)
@@ -35,8 +35,8 @@ int checkH264AccessUnitDelimiterCompliance(
 }
 
 int checkH264ProfileIdcCompliance(
-  const H264ProfileIdcValue profile_idc,
-  const H264ContraintFlags constraints
+  H264ProfileIdcValue profile_idc,
+  H264ContraintFlags constraints
 )
 {
   int i;
@@ -51,7 +51,7 @@ int checkH264ProfileIdcCompliance(
 
   LIBBLU_H264_DEBUG_SPS(
     "   => %s profile.\n",
-    h264ProfileIdcValueStr (
+    H264ProfileIdcValueStr (
       profile_idc,
       constraints
     )
@@ -94,7 +94,7 @@ int checkH264ProfileIdcCompliance(
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "%s profile is not part of the profiles allowed by BD-specs "
       "('profile_idc' == %d).\n",
-      h264ProfileIdcValueStr (
+      H264ProfileIdcValueStr (
         profile_idc,
         constraints
       ),
@@ -106,7 +106,7 @@ int checkH264ProfileIdcCompliance(
 }
 
 int checkH264LevelIdcCompliance(
-  const uint8_t level_idc
+  uint8_t level_idc
 )
 {
   unsigned i;
@@ -162,7 +162,7 @@ int checkH264LevelIdcCompliance(
 }
 
 int checkH264HrdParametersCompliance(
-  const H264HrdParameters param
+  H264HrdParameters param
 )
 {
   unsigned ShedSelIdx;
@@ -321,9 +321,9 @@ int checkH264HrdParametersCompliance(
 }
 
 int checkH264VuiParametersCompliance(
-  const H264VuiParameters param,
-  const H264SPSDataParameters spsParam,
-  const H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264VuiParameters param,
+  H264SPSDataParameters spsParam
 )
 {
   bool valid;
@@ -347,7 +347,7 @@ int checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    -> Sample Aspect Ratio, SAR "
       "(aspect_ratio_idc): %s (0x%X).\n",
-      h264AspectRatioIdcValueStr(param.aspect_ratio_idc),
+      H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
       param.aspect_ratio_idc
     );
 
@@ -381,7 +381,7 @@ int checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    -> Sample Aspect Ratio, SAR "
       "(aspect_ratio_idc): %s (Inferred).\n",
-      h264AspectRatioIdcValueStr(param.aspect_ratio_idc),
+      H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
       param.aspect_ratio_idc
     );
   }
@@ -407,11 +407,11 @@ int checkH264VuiParametersCompliance(
         "Invalid SAR '%s' in SPS VUI parameters for %ux%u, "
         "BD-specs require %s or %s for this "
         "resolution ('aspect_ratio_idc' == %d).\n",
-        h264AspectRatioIdcValueStr(param.aspect_ratio_idc),
+        H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
         spsParam.FrameWidth,
         spsParam.FrameHeight,
-        h264AspectRatioIdcValueStr(expectedSar.a),
-        h264AspectRatioIdcValueStr(expectedSar.b),
+        H264AspectRatioIdcValueStr(expectedSar.a),
+        H264AspectRatioIdcValueStr(expectedSar.b),
         param.aspect_ratio_idc
       );
     }
@@ -419,10 +419,10 @@ int checkH264VuiParametersCompliance(
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "Invalid SAR '%s' for %ux%u, BD-specs require %s for this "
       "resolution ('aspect_ratio_idc' == %d).\n",
-      h264AspectRatioIdcValueStr(param.aspect_ratio_idc),
+      H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
       spsParam.FrameWidth,
       spsParam.FrameHeight,
-      h264AspectRatioIdcValueStr(expectedSar.a),
+      H264AspectRatioIdcValueStr(expectedSar.a),
       param.aspect_ratio_idc
     );
   }
@@ -472,7 +472,7 @@ int checkH264VuiParametersCompliance(
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Video format (video_format): %s (0x%X).\n",
-      h264VideoFormatValueStr(param.video_format),
+      H264VideoFormatValueStr(param.video_format),
       param.video_format
     );
 
@@ -495,10 +495,10 @@ int checkH264VuiParametersCompliance(
         "Unexpected Video Format '%s' in SPS VUI parameters "
         "for %ux%u, should be '%s' for this "
         "resolution ('video_format' == %d).\n",
-        h264VideoFormatValueStr(param.video_format),
+        H264VideoFormatValueStr(param.video_format),
         spsParam.FrameWidth,
         spsParam.FrameHeight,
-        h264VideoFormatValueStr(expectedVideoFormat),
+        H264VideoFormatValueStr(expectedVideoFormat),
         param.video_format
       );
 
@@ -538,7 +538,7 @@ int checkH264VuiParametersCompliance(
       LIBBLU_H264_DEBUG_VUI(
         "     -> Colour primaries "
         "(colour_primaries): %s (0x%X).\n",
-        h264ColorPrimariesValueStr(colourParam->colour_primaries),
+        H264ColorPrimariesValueStr(colourParam->colour_primaries),
         colourParam->colour_primaries
       );
 
@@ -553,8 +553,8 @@ int checkH264VuiParametersCompliance(
         LIBBLU_WARNING(
           "Color Primaries in SPS VUI parameters should be defined to '%s', "
           "not '%s' ('colour_primaries' == 0x%X).\n",
-          h264ColorPrimariesValueStr(expectedColourPrimaries),
-          h264ColorPrimariesValueStr(colourParam->colour_primaries),
+          H264ColorPrimariesValueStr(expectedColourPrimaries),
+          H264ColorPrimariesValueStr(colourParam->colour_primaries),
           colourParam->colour_primaries
         );
         handle->curProgParam.wrongVuiParameters = true;
@@ -564,7 +564,7 @@ int checkH264VuiParametersCompliance(
       LIBBLU_H264_DEBUG_VUI(
         "     -> Transfer characteristics "
         "(transfer_characteristics): %s (0x%X).\n",
-        h264TransferCharacteristicsValueStr(colourParam->transfer_characteristics),
+        H264TransferCharacteristicsValueStr(colourParam->transfer_characteristics),
         colourParam->transfer_characteristics
       );
 
@@ -580,8 +580,8 @@ int checkH264VuiParametersCompliance(
           "Transfer Characteristics in SPS VUI parameters should "
           "be defined to '%s', not '%s' "
           "('transfer_characteristics' == 0x%X).\n",
-          h264TransferCharacteristicsValueStr(expectedTransferCharact),
-          h264TransferCharacteristicsValueStr(colourParam->transfer_characteristics),
+          H264TransferCharacteristicsValueStr(expectedTransferCharact),
+          H264TransferCharacteristicsValueStr(colourParam->transfer_characteristics),
           colourParam->transfer_characteristics
         );
         handle->curProgParam.wrongVuiParameters = true;
@@ -591,7 +591,7 @@ int checkH264VuiParametersCompliance(
       LIBBLU_H264_DEBUG_VUI(
         "     -> Matrix coefficients "
         "(matrix_coefficients): %s (0x%X).\n",
-        h264MatrixCoefficientsValueStr(colourParam->matrix_coefficients),
+        H264MatrixCoefficientsValueStr(colourParam->matrix_coefficients),
         colourParam->matrix_coefficients
       );
 
@@ -606,8 +606,8 @@ int checkH264VuiParametersCompliance(
         LIBBLU_WARNING(
           "Matrix coefficients in SPS VUI parameters should "
           "be defined to '%s', not '%s' ('matrix_coefficients' == 0x%X).\n",
-          h264MatrixCoefficientsValueStr(expectedMatrixCoeff),
-          h264MatrixCoefficientsValueStr(colourParam->matrix_coefficients),
+          H264MatrixCoefficientsValueStr(expectedMatrixCoeff),
+          H264MatrixCoefficientsValueStr(colourParam->matrix_coefficients),
           colourParam->matrix_coefficients
         );
         handle->curProgParam.wrongVuiParameters = true;
@@ -620,7 +620,7 @@ int checkH264VuiParametersCompliance(
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Video format (video_format): %s (Inferred).\n",
-      h264VideoFormatValueStr(param.video_format)
+      H264VideoFormatValueStr(param.video_format)
     );
     LIBBLU_H264_DEBUG_VUI(
       "    -> Full-range luma and chroma samples values "
@@ -959,8 +959,8 @@ static const char * getSequenceScalingListName(
 }
 
 int checkH264SequenceParametersSetCompliance(
-  const H264SPSDataParameters param,
-  H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters param
 )
 {
   int ret;
@@ -1102,7 +1102,7 @@ int checkH264SequenceParametersSetCompliance(
   if (H264_PROFILE_IS_HIGH(param.profile_idc)) {
     LIBBLU_H264_DEBUG_SPS(
       "  Chroma sampling format (chroma_format_idc): %s (0x%X).\n",
-      h264ChromaFormatIdcValueStr(param.chroma_format_idc),
+      H264ChromaFormatIdcValueStr(param.chroma_format_idc),
       param.chroma_format_idc
     );
 
@@ -1135,7 +1135,7 @@ int checkH264SequenceParametersSetCompliance(
         LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
           "Unexpected Chroma sampling format %s "
           "('chroma_format_idc' == %d).\n",
-          h264ChromaFormatIdcValueStr(param.chroma_format_idc),
+          H264ChromaFormatIdcValueStr(param.chroma_format_idc),
           param.chroma_format_idc
         );
       }
@@ -1280,7 +1280,7 @@ int checkH264SequenceParametersSetCompliance(
   else {
     LIBBLU_H264_DEBUG_SPS(
       "  Chroma sampling format (chroma_format_idc): %s (Inferred).\n",
-      h264ChromaFormatIdcValueStr(param.chroma_format_idc)
+      H264ChromaFormatIdcValueStr(param.chroma_format_idc)
     );
     LIBBLU_H264_DEBUG_SPS(
       "  Luma samples Bit Depth value (bit_depth_luma_minus8): "
@@ -1749,9 +1749,9 @@ int checkH264SequenceParametersSetCompliance(
 
   if (param.vui_parameters_present_flag) {
     ret = checkH264VuiParametersCompliance(
+      handle,
       param.vui_parameters,
-      param,
-      handle
+      param
     );
     if (ret < 0)
       return -1;
@@ -1807,8 +1807,8 @@ int checkH264SequenceParametersSetCompliance(
 }
 
 int checkH264SpsBitstreamCompliance(
-  const H264SPSDataParameters param,
-  const LibbluESSettingsOptions options
+  LibbluESSettingsOptions options,
+  H264SPSDataParameters param
 )
 {
   CheckVideoConfigurationRet ret;
@@ -1874,8 +1874,8 @@ int checkH264SpsBitstreamCompliance(
 }
 
 int checkH264PicParametersSetCompliance(
-  const H264PicParametersSetParameters param,
-  const H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264PicParametersSetParameters param
 )
 {
   unsigned i, j;
@@ -2005,7 +2005,7 @@ int checkH264PicParametersSetCompliance(
   LIBBLU_H264_DEBUG_PPS(
     "  Weighted prediction mode for B slices "
     "(weighted_bipred_idc): %s (0x%X).\n",
-    h264WeightedBipredIdcStr(param.weighted_bipred_idc),
+    H264WeightedBipredIdcStr(param.weighted_bipred_idc),
     param.weighted_bipred_idc
   );
 
@@ -2201,9 +2201,9 @@ int checkH264PicParametersSetCompliance(
 }
 
 int checkH264PicParametersSetChangeCompliance(
-  const H264PicParametersSetParameters first,
-  const H264PicParametersSetParameters second,
-  const H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264PicParametersSetParameters first,
+  H264PicParametersSetParameters second
 )
 {
   LIBBLU_H264_DEBUG_PPS(
@@ -2211,7 +2211,7 @@ int checkH264PicParametersSetChangeCompliance(
   );
 
   /* Check second parameters compliance : */
-  if (checkH264PicParametersSetCompliance(second, handle) < 0)
+  if (checkH264PicParametersSetCompliance(handle, second) < 0)
     return -1;
 
   /* Check second parameters mandatory parameters changeless : */
@@ -2223,28 +2223,9 @@ int checkH264PicParametersSetChangeCompliance(
   return 0; /* OK */
 }
 
-char * H264SEIMessagePayloadTypeStr(const H264SeiPayloadTypeValue payloadType)
-{
-  switch (payloadType) {
-    case H264_SEI_TYPE_BUFFERING_PERIOD:
-      return "Buffering period";
-
-    case H264_SEI_TYPE_PIC_TIMING:
-      return "Picture timing";
-
-    case H264_SEI_TYPE_USER_DATA_UNREGISTERED:
-      return "User data unregistered";
-
-    case H264_SEI_TYPE_RECOVERY_POINT:
-      return "Recovery point";
-  }
-
-  return "Reserved/Unknown";
-}
-
 int checkH264SeiBufferingPeriodCompliance(
-  const H264SeiBufferingPeriod param,
-  const H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264SeiBufferingPeriod param
 )
 {
   double maxDelay;
@@ -2374,8 +2355,8 @@ int checkH264SeiBufferingPeriodCompliance(
 
 bool constantH264SeiBufferingPeriodCheck(
   const H264ParametersHandlerPtr handle,
-  const H264SeiBufferingPeriod first,
-  const H264SeiBufferingPeriod second
+  H264SeiBufferingPeriod first,
+  H264SeiBufferingPeriod second
 )
 {
   int ret;
@@ -2417,8 +2398,8 @@ bool constantH264SeiBufferingPeriodCheck(
 
 int checkH264SeiBufferingPeriodChangeCompliance(
   const H264ParametersHandlerPtr handle,
-  const H264SeiBufferingPeriod first,
-  const H264SeiBufferingPeriod second
+  H264SeiBufferingPeriod first,
+  H264SeiBufferingPeriod second
 )
 {
   unsigned SchedSelIdx;
@@ -2431,7 +2412,7 @@ int checkH264SeiBufferingPeriodChangeCompliance(
   );
 
   /* Check second parameters compliance : */
-  if (checkH264SeiBufferingPeriodCompliance(second, handle) < 0)
+  if (checkH264SeiBufferingPeriodCompliance(handle, second) < 0)
     return -1;
 
   vuiParam = &handle->sequenceParametersSet.data.vui_parameters;
@@ -2479,8 +2460,8 @@ int checkH264SeiBufferingPeriodChangeCompliance(
 }
 
 int checkH264SeiPicTimingCompliance(
-  const H264SeiPicTiming param,
-  const H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264SeiPicTiming param
 )
 {
   unsigned i;
@@ -2538,7 +2519,7 @@ int checkH264SeiPicTimingCompliance(
 
     LIBBLU_H264_DEBUG_SEI(
       "    Picture structure (pic_struct): %s (0x%X).\n",
-      h264PicStructValueStr(param.pic_struct),
+      H264PicStructValueStr(param.pic_struct),
       param.pic_struct
     );
 
@@ -2563,7 +2544,7 @@ int checkH264SeiPicTimingCompliance(
 
         LIBBLU_H264_DEBUG_SEI(
           "      -> Picture scan type (ct_type): %s (0x%X).\n",
-          h264CtTypeValueStr(param.clock_timestamp[i].ct_type),
+          H264CtTypeValueStr(param.clock_timestamp[i].ct_type),
           param.clock_timestamp[i].ct_type
         );
 
@@ -2582,7 +2563,7 @@ int checkH264SeiPicTimingCompliance(
 
         LIBBLU_H264_DEBUG_SEI(
           "      -> Timestamp counting type (counting_type): %s (0x%X).\n",
-          h264CountingTypeValueStr(param.clock_timestamp[i].counting_type),
+          H264CountingTypeValueStr(param.clock_timestamp[i].counting_type),
           param.clock_timestamp[i].counting_type
         );
 
@@ -2676,8 +2657,8 @@ int checkH264SeiPicTimingChangeCompliance(
 #endif
 
 int checkH264SeiRecoveryPointCompliance(
-  const H264SeiRecoveryPoint param,
-  const H264ParametersHandlerPtr handle
+  const H264ParametersHandlerPtr handle,
+  H264SeiRecoveryPoint param
 )
 {
   if (!handle->sequenceParametersSetPresent)
@@ -2798,7 +2779,7 @@ int checkH264SeiRecoveryPointCompliance(
 
 int checkH264SeiRecoveryPointChangeCompliance(
   const H264ParametersHandlerPtr handle,
-  const H264SeiRecoveryPoint second
+  H264SeiRecoveryPoint second
 )
 {
   LIBBLU_H264_DEBUG_SEI(
@@ -2807,15 +2788,15 @@ int checkH264SeiRecoveryPointChangeCompliance(
   );
 
   /* Check second parameters compliance : */
-  if (checkH264SeiRecoveryPointCompliance(second, handle) < 0)
+  if (checkH264SeiRecoveryPointCompliance(handle, second) < 0)
     return -1;
 
   return 0; /* OK */
 }
 
 int checkH264RefPicListModificationCompliance(
-  const H264RefPicListModification param,
-  const H264SliceHeaderParameters sliceHeaderParam
+  H264RefPicListModification param,
+  H264SliceHeaderParameters sliceHeaderParam
 )
 {
   unsigned i;
@@ -2842,7 +2823,7 @@ int checkH264RefPicListModificationCompliance(
         LIBBLU_H264_DEBUG_SLICE(
           "     Modification indicator "
           "(modification_of_pic_nums_idc): %s (0x%X).\n",
-          h264ModificationOfPicNumsIdcValueStr(
+          H264ModificationOfPicNumsIdcValueStr(
             param.refPicListModificationl0[i].modification_of_pic_nums_idc
           ),
           param.refPicListModificationl0[i].modification_of_pic_nums_idc
@@ -2882,7 +2863,7 @@ int checkH264RefPicListModificationCompliance(
         LIBBLU_H264_DEBUG_SLICE(
           "     Modification indicator "
           "(modification_of_pic_nums_idc): %s (0x%X).\n",
-          h264ModificationOfPicNumsIdcValueStr(
+          H264ModificationOfPicNumsIdcValueStr(
             param.refPicListModificationl1[i].modification_of_pic_nums_idc
           ),
           param.refPicListModificationl1[i].modification_of_pic_nums_idc
@@ -2911,7 +2892,7 @@ int checkH264RefPicListModificationCompliance(
 }
 
 int checkH264PredWeightTableCompliance(
-  const H264PredWeightTable param
+  H264PredWeightTable param
 )
 {
 
@@ -2954,7 +2935,7 @@ int checkH264PredWeightTableCompliance(
 }
 
 int checkH264DecRefPicMarkingCompliance(
-  const H264DecRefPicMarking param
+  H264DecRefPicMarking param
 )
 {
 
@@ -2991,9 +2972,11 @@ int checkH264DecRefPicMarkingCompliance(
       );
 
     if (param.adaptive_ref_pic_marking_mode_flag) {
-      H264MemMngmntCtrlOpBlkPtr opBlk = param.MemMngmntCtrlOp;
+      unsigned i;
 
-      for (; NULL != opBlk; opBlk = opBlk->nextOperation) {
+      for (i = 0; i < param.nbMemMngmntCtrlOp; i++) {
+        const H264MemMngmntCtrlOpBlk * opBlk = &param.MemMngmntCtrlOp[i];
+
         LIBBLU_H264_DEBUG_SLICE("    - Instruction %u:\n");
 
         LIBBLU_H264_DEBUG_SLICE(
@@ -3002,21 +2985,9 @@ int checkH264DecRefPicMarkingCompliance(
           opBlk->operation
         );
 
-        if (opBlk->operation == H264_MEM_MGMNT_CTRL_OP_END) {
-          if (NULL != opBlk->nextOperation) {
-            /* This shall not happen */
-            LIBBLU_H264_ERROR_RETURN(
-              "Invalid 'end' memory management control operation, "
-              "not the last in list.\n"
-            );
-          }
-        }
-
         if (
-          opBlk->operation
-            == H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED
-          || opBlk->operation
-            == H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM
+          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED == opBlk->operation
+          || H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == opBlk->operation
         ) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Difference of pictures "
@@ -3026,9 +2997,7 @@ int checkH264DecRefPicMarkingCompliance(
           );
         }
 
-        if (
-          opBlk->operation == H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED
-        ) {
+        if (H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED == opBlk->operation) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Long-term picture number "
             "(long_term_pic_num): %u (0x%X).\n",
@@ -3038,10 +3007,8 @@ int checkH264DecRefPicMarkingCompliance(
         }
 
         if (
-          opBlk->operation
-            == H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM
-          || opBlk->operation
-            == H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM
+          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == opBlk->operation
+          || H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM == opBlk->operation
         ) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Long-term frame index "
@@ -3051,9 +3018,7 @@ int checkH264DecRefPicMarkingCompliance(
           );
         }
 
-        if (
-          opBlk->operation == H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM
-        ) {
+        if (H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM == opBlk->operation) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Maximum long-term frame index "
             "(max_long_term_frame_idx_plus1): %u (0x%X).\n",
@@ -3062,6 +3027,10 @@ int checkH264DecRefPicMarkingCompliance(
           );
         }
       }
+
+      if (H264_MEM_MGMNT_CTRL_OP_END != param.MemMngmntCtrlOp[param.nbMemMngmntCtrlOp-1].operation) {
+        // TODO: Emit warning, more memory_management_control_operation than supported.
+      }
     }
   }
 
@@ -3069,9 +3038,9 @@ int checkH264DecRefPicMarkingCompliance(
 }
 
 int checkH264SliceHeaderCompliance(
-  const H264SliceHeaderParameters param,
   const H264ParametersHandlerPtr handle,
-  const LibbluESSettingsOptions options
+  LibbluESSettingsOptions options,
+  H264SliceHeaderParameters param
 )
 {
   unsigned linkedPPSId;
@@ -3202,7 +3171,7 @@ int checkH264SliceHeaderCompliance(
 
   LIBBLU_H264_DEBUG_SLICE(
     "  Slice type (slice_type): %s (0x%X).\n",
-    h264SliceTypeValueStr(param.slice_type),
+    H264SliceTypeValueStr(param.slice_type),
     param.slice_type
   );
 
@@ -3265,7 +3234,7 @@ int checkH264SliceHeaderCompliance(
   if (handle->sequenceParametersSet.data.separate_colour_plane_flag) {
     LIBBLU_H264_DEBUG_SLICE(
       "  Colour plane (colour_plane_id): %s (0x%X).\n",
-      h264ColourPlaneIdValueStr(param.colour_plane_id),
+      H264ColourPlaneIdValueStr(param.colour_plane_id),
       param.colour_plane_id
     );
 
@@ -3619,7 +3588,7 @@ int checkH264SliceHeaderCompliance(
     LIBBLU_H264_DEBUG_SLICE(
       "   -> Deblocking filter status "
       "(disable_deblocking_filter_idc): %s (0x%X).\n",
-      h264DeblockingFilterIdcStr(param.disable_deblocking_filter_idc),
+      H264DeblockingFilterIdcStr(param.disable_deblocking_filter_idc),
       param.disable_deblocking_filter_idc
     );
 
@@ -3658,26 +3627,26 @@ int checkH264SliceHeaderCompliance(
 }
 
 int checkH264SliceLayerWithoutPartitioningCompliance(
-  const H264SliceLayerWithoutPartitioningParameters param,
   const H264ParametersHandlerPtr handle,
-  const LibbluESSettingsOptions options
+  LibbluESSettingsOptions options,
+  H264SliceLayerWithoutPartitioningParameters param
 )
 {
   /* assert(NULL != handle); */
 
-  return checkH264SliceHeaderCompliance(param.header, handle, options);
+  return checkH264SliceHeaderCompliance(handle, options, param.header);
 }
 
 int checkH264SliceHeaderChangeCompliance(
   const H264ParametersHandlerPtr handle,
-  const H264SliceHeaderParameters first,
-  const H264SliceHeaderParameters second,
-  const LibbluESSettingsOptions options
+  LibbluESSettingsOptions options,
+  H264SliceHeaderParameters first,
+  H264SliceHeaderParameters second
 )
 {
   assert(NULL != handle);
 
-  if (checkH264SliceHeaderCompliance(second, handle, options) < 0)
+  if (checkH264SliceHeaderCompliance(handle, options, second) < 0)
     return -1;
 
   /* Check slice types etc. */
@@ -3718,14 +3687,14 @@ int checkH264SliceHeaderChangeCompliance(
 
 int checkH264SliceLayerWithoutPartitioningChangeCompliance(
   const H264ParametersHandlerPtr handle,
-  const H264SliceLayerWithoutPartitioningParameters first,
-  const H264SliceLayerWithoutPartitioningParameters second,
-  const LibbluESSettingsOptions options
+  LibbluESSettingsOptions options,
+  H264SliceLayerWithoutPartitioningParameters first,
+  H264SliceLayerWithoutPartitioningParameters second
 )
 {
   /* assert(NULL != handle); */
 
   return checkH264SliceHeaderChangeCompliance(
-    handle, first.header, second.header, options
+    handle, options, first.header, second.header
   );
 }

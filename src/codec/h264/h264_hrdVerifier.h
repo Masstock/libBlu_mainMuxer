@@ -86,7 +86,8 @@ typedef struct {
 
   uint64_t dpb_output_delay;
   H264DpbHrdRefUsage usage;
-  H264MemMngmntCtrlOpBlkPtr memMngmntCtrlOperations; /* NULL: No op. */
+  H264MemMngmntCtrlOpBlk MemMngmntCtrlOp[H264_MAX_SUPPORTED_MEM_MGMNT_CTRL_OPS];
+  unsigned nbMemMngmntCtrlOp; /* 0: No op. */
 
   /* Computed values: */
   unsigned longTermFrameIdx;

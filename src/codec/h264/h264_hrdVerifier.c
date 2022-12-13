@@ -692,18 +692,17 @@ int applyDecodedReferencePictureMarkingProcessDPBH264Context(
     }
   }
   else {
-    if (NULL != infos->memMngmntCtrlOperations) {
+    if (0 < infos->nbMemMngmntCtrlOp) {
       /* Invoke 8.2.5.4 */
-      H264MemMngmntCtrlOpBlkPtr opBlk = infos->memMngmntCtrlOperations;
+      unsigned i;
 
-      for (; NULL != opBlk; opBlk = opBlk->nextOperation) {
+      for (i = 0; i < infos->nbMemMngmntCtrlOp; i++) {
+        const H264MemMngmntCtrlOpBlk * opBlk = &infos->MemMngmntCtrlOp[i];
         int ret = 0;
 
         switch (opBlk->operation) {
           case H264_MEM_MGMNT_CTRL_OP_END:
-            assert(NULL == opBlk->nextOperation); /* This shall be checked in h264_checks */
-            break;  /* Last block */
-
+            break;
           case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED:
             ret = markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
               ctx,
@@ -715,7 +714,6 @@ int applyDecodedReferencePictureMarkingProcessDPBH264Context(
           default:
             LIBBLU_TODO();
         }
-
         if (ret < 0)
           return -1;
       }
@@ -1524,9 +1522,6 @@ int processAUH264HrdContext(
     if (applyDecodedReferencePictureMarkingProcessDPBH264Context(ctx, &picInfos) < 0)
       return -1;
 
-    closeH264MemoryManagementControlOperations(picInfos.memMngmntCtrlOperations); /* TODO */
-    picInfos.memMngmntCtrlOperations = NULL;
-
     /* C.2.3.2. Not applied. */
 
     ECHO_DEBUG_DPB_HRDV_CTX(
@@ -1610,14 +1605,15 @@ int processAUH264HrdContext(
     !sliceHeader->isIdrPic
     && dec_ref_pic_marking->adaptive_ref_pic_marking_mode_flag
   ) {
-    picInfos.memMngmntCtrlOperations = copyH264MemoryManagementControlOperations(
-      dec_ref_pic_marking->MemMngmntCtrlOp
+    memcpy(
+      &picInfos.MemMngmntCtrlOp,
+      &dec_ref_pic_marking->MemMngmntCtrlOp,
+      dec_ref_pic_marking->nbMemMngmntCtrlOp * sizeof(H264MemMngmntCtrlOpBlk)
     );
-    if (NULL == picInfos.memMngmntCtrlOperations)
-      return -1;
+    picInfos.nbMemMngmntCtrlOp = dec_ref_pic_marking->nbMemMngmntCtrlOp;
   }
   else
-    picInfos.memMngmntCtrlOperations = NULL;
+    picInfos.nbMemMngmntCtrlOp = 0;
 
   if (ctx->clockTime < Tf_n)
     ctx->clockTime = Tf_n;  /* Align clock to Tf_n for next AU process. */

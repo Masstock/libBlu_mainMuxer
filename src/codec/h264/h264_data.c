@@ -8,29 +8,9 @@
 #include "h264_util.h"
 #include "h264_data.h"
 
-const char * h264PrimaryPictureTypeStr(
-  const H264PrimaryPictureType val
-)
-{
-  static const char * types[] = {
-    "I",
-    "I, P",
-    "I, P, B",
-    "SI",
-    "SI, SP",
-    "I, SI",
-    "I, P, SI, SP",
-    "I, P, B, SI, SP"
-  };
-
-  if (val < ARRAY_SIZE(types))
-    return types[val];
-  return "Unknown";
-}
-
-const char * h264ProfileIdcValueStr (
-  const H264ProfileIdcValue val,
-  const H264ContraintFlags constraints
+const char * H264ProfileIdcValueStr(
+  H264ProfileIdcValue val,
+  H264ContraintFlags constraints
 )
 {
   switch (val) {
@@ -96,285 +76,7 @@ const char * h264ProfileIdcValueStr (
   return "Unknown";
 }
 
-const char * h264ChromaFormatIdcValueStr(
-  const H264ChromaFormatIdcValue val
-)
-{
-  switch (val) {
-    case H264_CHROMA_FORMAT_400:
-      return "4:0:0";
-
-    case H264_CHROMA_FORMAT_420:
-      return "4:2:0";
-
-    case H264_CHROMA_FORMAT_422:
-      return "4:2:2";
-
-    case H264_CHROMA_FORMAT_444:
-      return "4:4:4";
-  }
-
-  return "Unknown";
-}
-
-const char * h264AspectRatioIdcValueStr(
-  const H264AspectRatioIdcValue val
-)
-{
-  static const char * aspectRatios[] = {
-    "Unspecified",
-    "1:1",
-    "12:11",
-    "10:11",
-    "16:11",
-    "40:33",
-    "24:11",
-    "20:11",
-    "32:11",
-    "80:33",
-    "18:11",
-    "15:11",
-    "64:33",
-    "160:99",
-    "4:3",
-    "3:2",
-    "2:1"
-  };
-
-  if ((unsigned) val < ARRAY_SIZE(aspectRatios))
-    return aspectRatios[val];
-  if (val == H264_ASPECT_RATIO_IDC_EXTENDED_SAR)
-    return "Extended_SAR";
-  return "Unknown";
-}
-
-const char * h264VideoFormatValueStr(
-  const H264VideoFormatValue val
-)
-{
-  static const char * videoFormats[] = {
-    "Component",
-    "PAL",
-    "NTSC",
-    "SECAM",
-    "MAC",
-    "Unspecified"
-  };
-
-  if (val < ARRAY_SIZE(videoFormats))
-    return videoFormats[val];
-  return "Unknown";
-}
-
-const char * h264ColorPrimariesValueStr(
-  const H264ColourPrimariesValue val
-)
-{
-  static const char * colour_primaries[] = {
-    "Unknown",
-    "BT.709",
-    "Unspecified",
-    "Unknown",
-    "BT.470M",
-    "BR.470BG",
-    "SMPTE 170M",
-    "SMPTE 240M",
-    "Generic",
-    "BT.2020",
-    "CIE XYZ",
-    "DCI-P3",
-    "Display P3"
-  };
-
-  if (val < ARRAY_SIZE(colour_primaries))
-    return colour_primaries[val];
-  if (val == H264_COLOR_PRIM_EBU3213)
-    return "EBU 3213-E";
-  return "Unknown";
-}
-
-const char * h264TransferCharacteristicsValueStr(
-  const H264TransferCharacteristicsValue val
-)
-{
-  static const char * transfer_characteristics[] = {
-    "Unknown",
-    "BT.709",
-    "Unspecified",
-    "Unknown",
-    "BT.470M",
-    "BR.470BG",
-    "SMPTE 170M",
-    "SMPTE 240M",
-    "Linear",
-    "Log 100:1",
-    "Log 100 * Sqrt(10):1",
-    "xvYCC",
-    "BT.1361-0",
-    "sRGB",
-    "BT.2020 10 bits",
-    "BT.2020 12 bits",
-    "SMPTE 2084PQ",
-    "SMPTE ST428-1",
-    "BT.2100-2 HLG"
-  };
-
-  if (val < ARRAY_SIZE(transfer_characteristics))
-    return transfer_characteristics[val];
-  return "Unknown";
-}
-
-const char * h264MatrixCoefficientsValueStr(
-  const H264MatrixCoefficientsValue val
-)
-{
-  static const char * matrix_coefficients[] = {
-    "sRGB/XYZ",
-    "BT.709",
-    "Unspecified",
-    "Unknown",
-    "BT.470M",
-    "BR.470BG",
-    "SMPTE 170M",
-    "SMPTE 240M",
-    "YCoCg",
-    "BT.2100-2 Y'CbCr",
-    "BT.2020",
-    "SMPTE ST 2085",
-    "Chromaticity-derived non-constant luminance system",
-    "Chromaticity-derived constant luminance system",
-    "BT.2100-2 ICtCp"
-  };
-
-  if (val < ARRAY_SIZE(matrix_coefficients))
-    return matrix_coefficients[val];
-  return "Unknown";
-}
-
-const char * h264WeightedBipredIdcStr(
-  const H264WeightedBipredIdc val
-)
-{
-  static const char * idcs[] = {
-    "Default",
-    "Explicit",
-    "Implicit"
-  };
-
-  if (val < ARRAY_SIZE(idcs))
-    return idcs[val];
-  return "Unknown";
-}
-
-const char * h264PicStructValueStr(
-  const H264PicStructValue val
-)
-{
-  static const char * picStructs[] = {
-    "(Progressive) Frame",
-    "Top field",
-    "Bottom field",
-    "Top field, Bottom field",
-    "Bottom field, Top field",
-    "Top field, Bottom field, Top field repeated",
-    "Bottom field, Top field, Bottom field repeated",
-    "Frame doubling",
-    "Frame tripling"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(picStructs))
-    return picStructs[val];
-  return "Unknown";
-}
-
-const char * h264CtTypeValueStr(
-  const H264CtTypeValue val
-)
-{
-  static const char * ctTypes[] = {
-    "Progressive",
-    "Interlaced",
-    "Unknown"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(ctTypes))
-    return ctTypes[val];
-  return "Unknown";
-}
-
-const char * h264CountingTypeValueStr(
-  const H264CountingTypeValue val
-)
-{
-  static const char * countingTypes[] = {
-    "No dropping of n_frames count values and no use of time_offset",
-    "No dropping of n_frames count values",
-    "Dropping of individual zero values of n_frames count",
-    "Dropping of individual MaxFPS - 1 values of n_frames count",
-    "dropping of the two lowest (value 0 and 1) n_frames counts when "
-    "seconds_value is equal to 0 and minutes_value is not an integer "
-    "multiple of 10",
-    "dropping of unspecified individual n_frames count values",
-    "dropping of unspecified numbers of unspecified n_frames count values"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(countingTypes))
-    return countingTypes[val];
-  return "Unknown";
-}
-
-const char * h264SliceTypeValueStr(
-  const H264SliceTypeValue val
-)
-{
-  static const char * types[] = {
-    "P Slice Unrestricted",
-    "B Slice Unrestricted",
-    "I Slice Unrestricted",
-    "SP Slice Unrestricted",
-    "SI Slice Unrestricted",
-    "P Slice",
-    "B Slice",
-    "I Slice",
-    "SP Slice",
-    "SI Slice"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(types))
-    return types[val];
-  return "Unknown";
-}
-
-const char * h264ColourPlaneIdValueStr(
-  const H264ColourPlaneIdValue val
-)
-{
-  static const char * colourPlane[] = {
-    "Y (luma)",
-    "Cb (blue differential chroma)",
-    "Cr (red differential chroma)"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(colourPlane))
-    return colourPlane[val];
-  return "Unknown";
-}
-
-const char * h264ModificationOfPicNumsIdcValueStr(
-  const H264ModificationOfPicNumsIdcValue val
-)
-{
-  static const char * indices[] = {
-    "Difference to subtract from picture number prediction value",
-    "Difference to add from picture number prediction value",
-    "Long-term picture used as reference picture",
-    "End of loop indicator"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(indices))
-    return indices[val];
-  return "Unknown";
-}
+#if 0
 
 H264MemMngmntCtrlOpBlkPtr createH264MemoryManagementControlOperations(
   void
@@ -434,20 +136,7 @@ H264MemMngmntCtrlOpBlkPtr copyH264MemoryManagementControlOperations(
   return copiedOp;
 }
 
-const char * h264DeblockingFilterIdcStr(
-  const H264DeblockingFilterIdc val
-)
-{
-  static const char * mode[] = {
-    "Enable",
-    "Disable",
-    "Disabled at slice boundaries"
-  };
-
-  if (0 <= val && val < ARRAY_SIZE(mode))
-    return mode[val];
-  return "Unknown";
-}
+#endif
 
 int initH264NalDeserializerContext(
   H264NalDeserializerContext * dst,
@@ -1118,8 +807,8 @@ unsigned getH264BrNal(
 /* ### Blu-ray specifications : ############################################ */
 
 H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
-  const unsigned frameWidth,
-  const unsigned frameHeight
+  unsigned frameWidth,
+  unsigned frameHeight
 )
 {
   switch (frameWidth) {
@@ -1157,7 +846,7 @@ H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
 }
 
 H264VideoFormatValue getH264BdavExpectedVideoFormat(
-  const double frameRate
+  double frameRate
 )
 {
   if (frameRate == 25 || frameRate == 50)
@@ -1166,7 +855,7 @@ H264VideoFormatValue getH264BdavExpectedVideoFormat(
 }
 
 H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
-  const unsigned frameHeight
+  unsigned frameHeight
 )
 {
   switch (frameHeight) {
@@ -1180,7 +869,7 @@ H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
 }
 
 H264TransferCharacteristicsValue getH264BdavExpectedTransferCharacteritics(
-  const unsigned frameHeight
+  unsigned frameHeight
 )
 {
   switch (frameHeight) {
@@ -1194,7 +883,7 @@ H264TransferCharacteristicsValue getH264BdavExpectedTransferCharacteritics(
 }
 
 H264MatrixCoefficientsValue getH264BdavExpectedMatrixCoefficients(
-  const unsigned frameHeight
+  unsigned frameHeight
 )
 {
   switch (frameHeight) {

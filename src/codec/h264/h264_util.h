@@ -139,8 +139,8 @@ int deserializeRbspCell(
 );
 
 typedef struct {
-  size_t allocatedArrayLength;
   uint8_t * array;
+  size_t arraySize;
 
   uint8_t * writingPointer;
   uint8_t * endPointer;

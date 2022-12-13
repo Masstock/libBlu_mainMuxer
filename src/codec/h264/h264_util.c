@@ -25,19 +25,10 @@ static int initOutputFileH264ParametersHandle(
 {
   assert(NULL != handle);
 
-  handle->esms = createEsmsFileHandler(
-    ES_VIDEO,
-    settings->options,
-    FMT_SPEC_INFOS_H264
-  );
-  if (NULL == handle->esms)
+  if (NULL == (handle->esms = createEsmsFileHandler(ES_VIDEO, settings->options, FMT_SPEC_INFOS_H264)))
     return -1;
 
-  handle->esmsFile = createBitstreamWriter(
-    settings->scriptFilepath,
-    WRITE_BUFFER_LEN
-  );
-  if (NULL == handle->esmsFile)
+  if (NULL == (handle->esmsFile = createBitstreamWriterDefBuf(settings->scriptFilepath)))
     return -1;
 
   if (appendSourceFileEsms(handle->esms, settings->esFilepath, &handle->esmsSrcFileIdx) < 0)
@@ -67,13 +58,10 @@ H264ParametersHandlerPtr initH264ParametersHandler(
     goto free_return;
 
   handle->curProgParam = (H264CurrentProgressParam) {
-    .curFrameNalUnits = NULL,
-
     .useVuiUpdate =
       0x00 != settings->options.fpsChange
       || isUsedLibbluAspectRatioMod(settings->options.arChange)
       || 0x00 != settings->options.levelChange
-    ,
   };
 
   handle->warningFlags = INIT_H264_WARNING_FLAGS();
@@ -140,6 +128,7 @@ void destroyH264ParametersHandler(
   for (i = 0; i < H264_MAX_PPS; i++)
     free(handle->picParametersSet[i]);
 
+#if 0
   if (
     handle->slicePresent
     && handle->slice.header.decRefPicMarkingPresent
@@ -153,6 +142,7 @@ void destroyH264ParametersHandler(
         handle->slice.header.dec_ref_pic_marking.MemMngmntCtrlOp
       );
   }
+#endif
 
   free(handle->curProgParam.curFrameNalUnits);
   for (i = 0; i < handle->modNalLst.nbSequenceParametersSet; i++)
@@ -293,7 +283,7 @@ H264NalByteArrayHandlerPtr createH264NalByteArrayHandler(
   if (NULL == baHandler)
     LIBBLU_H264_ERROR_NRETURN("Memory allocation error.\n");
 
-  baHandler->allocatedArrayLength = 0;
+  baHandler->arraySize = 0;
   baHandler->array = NULL;
 
   baHandler->writingPointer = NULL;
@@ -473,9 +463,6 @@ int writeH264NalByteArrayBit(
   bool bit
 )
 {
-  size_t newLength;
-  uint8_t * newArray;
-
   assert(NULL != baHandler);
 
   baHandler->curByte = (baHandler->curByte << 1) | bit;
@@ -487,26 +474,23 @@ int writeH264NalByteArrayBit(
 
     if (baHandler->endPointer <= baHandler->writingPointer + 1) {
       /* Need realloc */
+      uint8_t * newArray;
+      size_t newSize;
 
-      newLength =
-        baHandler->allocatedArrayLength
-        + H264_NAL_BYTE_ARRAY_SIZE_MULTIPLIER
-      ;
+      newSize = GROW_ALLOCATION(baHandler->arraySize, 1024);
+      if (newSize < baHandler->arraySize)
+        LIBBLU_H264_ERROR_RETURN("NALU byte array writer size overflow.\n");
 
-      newArray = (uint8_t *) realloc(
-        baHandler->array,
-        newLength * sizeof(uint8_t)
-      );
-      if (NULL == newArray)
+      if (NULL == (newArray = (uint8_t *) realloc(baHandler->array, newSize)))
         LIBBLU_H264_ERROR_RETURN("Memory allocation error.\n");
 
       /* Update pointers : */
       if (NULL == baHandler->writingPointer) /* Init pointers. */
         baHandler->writingPointer = baHandler->endPointer = newArray;
 
-      baHandler->array = newArray;
-      baHandler->endPointer += newLength;
-      baHandler->allocatedArrayLength = newLength;
+      baHandler->array       = newArray;
+      baHandler->arraySize   = newSize;
+      baHandler->endPointer += newSize;
     }
 
     if (baHandler->nbZeroBytes == 2 && baHandler->curByte <= 0x02) {
@@ -561,7 +545,7 @@ int writeH264NalByteArrayByte(
   return writeH264NalByteArrayBits(baHandler, byte, 8);
 }
 
-unsigned calcExpGolombCodeNbLeadingZeroBits(
+static unsigned _calcExpGolombCodeNbLeadingZeroBits(
   unsigned value
 )
 {
@@ -591,7 +575,7 @@ int writeH264NalByteArrayExpGolombCode(
 {
   unsigned leadingZeroBits;
 
-  leadingZeroBits = calcExpGolombCodeNbLeadingZeroBits(++value);
+  leadingZeroBits = _calcExpGolombCodeNbLeadingZeroBits(++value);
 
   /* prefix bits */
   if (writeH264NalByteArrayBits(baHandler, 0x0, leadingZeroBits) < 0)
@@ -688,7 +672,7 @@ size_t calcH264ExpGolombCodeLength(
   if (isSigned)
     value = ((int) value <= 0) ? (unsigned) -((int) value * 2) : value * 2 - 1;
 
-  return calcExpGolombCodeNbLeadingZeroBits(++value) * 2 + 1;
+  return _calcExpGolombCodeNbLeadingZeroBits(++value) * 2 + 1;
 }
 
 bool isByteAlignedNal(

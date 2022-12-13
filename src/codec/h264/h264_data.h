@@ -12,15 +12,14 @@
 
 #include "../../elementaryStreamProperties.h"
 
-#define H264_AR_CHANGE_EXPECTED_SEPARATOR                   ':'
-#define H264_LEVEL_CHANGE_EXPECTED_SEPARATOR                '.'
-#define H264_NAL_BYTE_ARRAY_SIZE_MULTIPLIER                1024
+#define H264_AR_CHANGE_EXPECTED_SEPARATOR  ':'
+#define H264_LEVEL_CHANGE_EXPECTED_SEPARATOR  '.'
 
 /* Switches : */
-#define DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION             0
-#define ALLOW_BUFFERING_PERIOD_CHANGE                         1
+#define DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION  false
+#define ALLOW_BUFFERING_PERIOD_CHANGE  true
 
-#define H264_MAX_CHROMA_CHANNELS_NB                           2
+#define H264_MAX_CHROMA_CHANNELS_NB  2
 
 
 /** \~english
@@ -71,13 +70,6 @@
  */
 #define H264_BDAV_MAX_CPB_SIZE  30000000
 
-#if 0
-#define NAL_REF_IDC_NONE                                    0x0
-#define NAL_REF_IDC_LOW                                     0x1
-#define NAL_REF_IDC_MEDIUM                                  0x2
-#define NAL_REF_IDC_HIGH                                    0x3
-#endif
-
 /** \~english
  * \brief NAL Unit nal_ref_idc, Reference Indicator value.
  *
@@ -88,6 +80,22 @@ typedef enum {
   NAL_REF_IDC_MEDIUM = 2,
   NAL_REF_IDC_HIGH   = 3
 } H264NalRefIdcValue;
+
+static inline const char * H264NalRefIdcValueStr(
+  H264NalRefIdcValue nal_ref_idc
+)
+{
+  const char * strings[] = {
+    "None",
+    "Low",
+    "Medium",
+    "High"
+  };
+
+  if (nal_ref_idc < ARRAY_SIZE(strings))
+    return strings[nal_ref_idc];
+  return "Unknown";
+}
 
 /** \~english
  * \brief Return true if NALU contains a SPS, a SPS Extension, a subset SPS,
@@ -251,9 +259,25 @@ typedef enum {
   H264_PRIM_PIC_TYPE_MASK_ALL     = 0xFF
 } H264PrimaryPictureTypeMask;
 
-const char * h264PrimaryPictureTypeStr(
-  const H264PrimaryPictureType val
-);
+static inline const char * H264PrimaryPictureTypeStr(
+  H264PrimaryPictureType val
+)
+{
+  static const char * strings[] = {
+    "I",
+    "I, P",
+    "I, P, B",
+    "SI",
+    "SI, SP",
+    "I, SI",
+    "I, P, SI, SP",
+    "I, P, B, SI, SP"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 #define H264_CHECK_PRIMARY_PICTURE_TYPE(ret, restr, typ)                      \
   {                                                                           \
@@ -350,9 +374,9 @@ static inline uint8_t valueH264ContraintFlags(
   ;
 }
 
-const char * h264ProfileIdcValueStr(
-  const H264ProfileIdcValue val,
-  const H264ContraintFlags constraints
+const char * H264ProfileIdcValueStr(
+  H264ProfileIdcValue val,
+  H264ContraintFlags constraints
 );
 
 /* Chroma format codes                                       */
@@ -364,9 +388,21 @@ typedef enum {
   H264_CHROMA_FORMAT_444 = 3
 } H264ChromaFormatIdcValue;
 
-const char * h264ChromaFormatIdcValueStr(
-  const H264ChromaFormatIdcValue val
-);
+static inline const char * H264ChromaFormatIdcValueStr(
+  H264ChromaFormatIdcValue val
+)
+{
+  static const char * strings[] = {
+    "4:0:0",
+    "4:2:0",
+    "4:2:2",
+    "4:4:4"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef struct {
   bool seq_scaling_list_present_flag[12];
@@ -425,9 +461,36 @@ typedef enum {
   H264_ASPECT_RATIO_IDC_EXTENDED_SAR = 255
 } H264AspectRatioIdcValue;
 
-const char * h264AspectRatioIdcValueStr(
+static inline const char * H264AspectRatioIdcValueStr(
   const H264AspectRatioIdcValue val
-);
+)
+{
+  static const char * strings[] = {
+    "Unspecified",
+    "1:1",
+    "12:11",
+    "10:11",
+    "16:11",
+    "40:33",
+    "24:11",
+    "20:11",
+    "32:11",
+    "80:33",
+    "18:11",
+    "15:11",
+    "64:33",
+    "160:99",
+    "4:3",
+    "3:2",
+    "2:1"
+  };
+
+  if ((unsigned) val < ARRAY_SIZE(strings))
+    return strings[val];
+  if (val == H264_ASPECT_RATIO_IDC_EXTENDED_SAR)
+    return "Extended_SAR";
+  return "Unknown";
+}
 
 typedef enum {
   H264_VIDEO_FORMAT_COMPONENT    = 0,
@@ -438,9 +501,23 @@ typedef enum {
   H264_VIDEO_FORMAT_UNSPECIFIED  = 5,
 } H264VideoFormatValue;
 
-const char * h264VideoFormatValueStr(
-  const H264VideoFormatValue val
-);
+static inline const char * H264VideoFormatValueStr(
+  H264VideoFormatValue val
+)
+{
+  static const char * strings[] = {
+    "Component",
+    "PAL",
+    "NTSC",
+    "SECAM",
+    "MAC",
+    "Unspecified"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef enum {
   H264_COLOR_PRIM_BT709        = 1,  /* BT.709     */
@@ -457,9 +534,32 @@ typedef enum {
   H264_COLOR_PRIM_EBU3213      = 22, /* EBU 3213-E */
 } H264ColourPrimariesValue;
 
-const char * h264ColorPrimariesValueStr(
-  const H264ColourPrimariesValue val
-);
+static inline const char * H264ColorPrimariesValueStr(
+  H264ColourPrimariesValue val
+)
+{
+  static const char * strings[] = {
+    "Unknown",
+    "BT.709",
+    "Unspecified",
+    "Unknown",
+    "BT.470M",
+    "BR.470BG",
+    "SMPTE 170M",
+    "SMPTE 240M",
+    "Generic",
+    "BT.2020",
+    "CIE XYZ",
+    "DCI-P3",
+    "Display P3"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  if (val == H264_COLOR_PRIM_EBU3213)
+    return "EBU 3213-E";
+  return "Unknown";
+}
 
 typedef enum {
   H264_TRANS_CHAR_BT709        = 1,  /* BT.709     */
@@ -481,9 +581,36 @@ typedef enum {
   H264_TRANS_CHAR_BT2100       = 18, /* BT.2100-2 HLG      */
 } H264TransferCharacteristicsValue;
 
-const char * h264TransferCharacteristicsValueStr(
-  const H264TransferCharacteristicsValue val
-);
+static inline const char * H264TransferCharacteristicsValueStr(
+  H264TransferCharacteristicsValue val
+)
+{
+  static const char * strings[] = {
+    "Unknown",
+    "BT.709",
+    "Unspecified",
+    "Unknown",
+    "BT.470M",
+    "BR.470BG",
+    "SMPTE 170M",
+    "SMPTE 240M",
+    "Linear",
+    "Log 100:1",
+    "Log 100 * Sqrt(10):1",
+    "xvYCC",
+    "BT.1361-0",
+    "sRGB",
+    "BT.2020 10 bits",
+    "BT.2020 12 bits",
+    "SMPTE 2084PQ",
+    "SMPTE ST428-1",
+    "BT.2100-2 HLG"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef enum {
   H264_MATRX_COEF_SGRB         = 0,  /* sRGB       */
@@ -502,9 +629,32 @@ typedef enum {
   H264_MATRX_COEF_ICTCP        = 14, /* BT.2100-2 ICtCp    */
 } H264MatrixCoefficientsValue;
 
-const char * h264MatrixCoefficientsValueStr(
-  const H264MatrixCoefficientsValue val
-);
+static inline const char * H264MatrixCoefficientsValueStr(
+  H264MatrixCoefficientsValue val
+)
+{
+  static const char * strings[] = {
+    "sRGB/XYZ",
+    "BT.709",
+    "Unspecified",
+    "Unknown",
+    "BT.470M",
+    "BR.470BG",
+    "SMPTE 170M",
+    "SMPTE 240M",
+    "YCoCg",
+    "BT.2100-2 Y'CbCr",
+    "BT.2020",
+    "SMPTE ST 2085",
+    "Chromaticity-derived non-constant luminance system",
+    "Chromaticity-derived constant luminance system",
+    "BT.2100-2 ICtCp"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef struct {
   H264ColourPrimariesValue colour_primaries;
@@ -692,9 +842,20 @@ typedef enum {
   H264_WEIGHTED_PRED_B_SLICES_RESERVED = 3
 } H264WeightedBipredIdc;
 
-const char * h264WeightedBipredIdcStr(
-  const H264WeightedBipredIdc val
-);
+static inline const char * H264WeightedBipredIdcStr(
+  H264WeightedBipredIdc val
+)
+{
+  static const char * strings[] = {
+    "Default",
+    "Explicit",
+    "Implicit"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 #define H264_MAX_SLICE_GROUPS  8
 
@@ -785,9 +946,26 @@ typedef enum {
   H264_PIC_STRUCT_TRIPLED_FRAME    =  8  /* Progressive frame displayed three times */
 } H264PicStructValue;
 
-const char * h264PicStructValueStr(
-  const H264PicStructValue val
-);
+static inline const char * H264PicStructValueStr(
+  H264PicStructValue val
+)
+{
+  static const char * strings[] = {
+    "(Progressive) Frame",
+    "Top field",
+    "Bottom field",
+    "Top field, Bottom field",
+    "Bottom field, Top field",
+    "Top field, Bottom field, Top field repeated",
+    "Bottom field, Top field, Bottom field repeated",
+    "Frame doubling",
+    "Frame tripling"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 #define H264_PIC_STRUCT_MAX_NUM_CLOCK_TS 3
 
@@ -798,9 +976,20 @@ typedef enum {
   H264_CT_TYPE_RESERVED    = 3
 } H264CtTypeValue;
 
-const char * h264CtTypeValueStr(
-  const H264CtTypeValue val
-);
+static inline const char * H264CtTypeValueStr(
+  H264CtTypeValue val
+)
+{
+  static const char * strings[] = {
+    "Progressive",
+    "Interlaced",
+    "Unknown"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef enum {
   H264_COUNTING_T_NO_DROP_UNUSED_TIME_OFF  = 0,
@@ -812,9 +1001,26 @@ typedef enum {
   H264_COUNTING_T_DROP_UNSPECIFIED_NB      = 6
 } H264CountingTypeValue;
 
-const char * h264CountingTypeValueStr(
-  const H264CountingTypeValue val
-);
+static inline const char * H264CountingTypeValueStr(
+  H264CountingTypeValue val
+)
+{
+  static const char * strings[] = {
+    "No dropping of n_frames count values and no use of time_offset",
+    "No dropping of n_frames count values",
+    "Dropping of individual zero values of n_frames count",
+    "Dropping of individual MaxFPS - 1 values of n_frames count",
+    "dropping of the two lowest (value 0 and 1) n_frames counts when "
+    "seconds_value is equal to 0 and minutes_value is not an integer "
+    "multiple of 10",
+    "dropping of unspecified individual n_frames count values",
+    "dropping of unspecified numbers of unspecified n_frames count values"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef struct {
   H264CtTypeValue ct_type;
@@ -877,6 +1083,24 @@ typedef enum {
   H264_SEI_TYPE_RECOVERY_POINT         = 6
 } H264SeiPayloadTypeValue;
 
+static inline const char * H264SEIMessagePayloadTypeStr(
+  H264SeiPayloadTypeValue payloadType
+)
+{
+  switch (payloadType) {
+    case H264_SEI_TYPE_BUFFERING_PERIOD:
+      return "Buffering period";
+    case H264_SEI_TYPE_PIC_TIMING:
+      return "Picture timing";
+    case H264_SEI_TYPE_USER_DATA_UNREGISTERED:
+      return "User data unregistered";
+    case H264_SEI_TYPE_RECOVERY_POINT:
+      return "Recovery point";
+  }
+
+  return "Reserved/Unknown";
+}
+
 typedef struct {
   H264SeiPayloadTypeValue payloadType;
   size_t payloadSize;
@@ -923,9 +1147,27 @@ typedef enum {
   H264_SLICE_TYPE_SI               = 9
 } H264SliceTypeValue;
 
-const char * h264SliceTypeValueStr(
-  const H264SliceTypeValue val
-);
+static inline const char * H264SliceTypeValueStr(
+  H264SliceTypeValue val
+)
+{
+  static const char * strings[] = {
+    "P Slice Unrestricted",
+    "B Slice Unrestricted",
+    "I Slice Unrestricted",
+    "SP Slice Unrestricted",
+    "SI Slice Unrestricted",
+    "P Slice",
+    "B Slice",
+    "I Slice",
+    "SP Slice",
+    "SI Slice"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 #define H264_MAX_SLICE_TYPE_VALUE 9
 
@@ -983,9 +1225,20 @@ typedef enum {
   H264_COLOUR_PLANE_ID_CR = 2
 } H264ColourPlaneIdValue;
 
-const char * h264ColourPlaneIdValueStr(
-  const H264ColourPlaneIdValue val
-);
+static inline const char * H264ColourPlaneIdValueStr(
+  H264ColourPlaneIdValue val
+)
+{
+  static const char * strings[] = {
+    "Y (luma)",
+    "Cb (blue differential chroma)",
+    "Cr (red differential chroma)"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 #define H264_MAX_ALLOWED_MOD_OF_PIC_NUMS_IDC 32
 
@@ -996,9 +1249,21 @@ typedef enum {
   H264_MOD_OF_PIC_IDC_END_LOOP           = 3
 } H264ModificationOfPicNumsIdcValue;
 
-const char * h264ModificationOfPicNumsIdcValueStr(
-  const H264ModificationOfPicNumsIdcValue val
-);
+static inline const char * H264ModificationOfPicNumsIdcValueStr(
+  H264ModificationOfPicNumsIdcValue val
+)
+{
+  static const char * strings[] = {
+    "Difference to subtract from picture number prediction value",
+    "Difference to add from picture number prediction value",
+    "Long-term picture used as reference picture",
+    "End of loop indicator"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef struct {
   H264ModificationOfPicNumsIdcValue modification_of_pic_nums_idc;
@@ -1062,7 +1327,7 @@ static inline const char * H264MemoryManagementControlOperationValueStr(
   H264MemoryManagementControlOperationValue val
 )
 {
-  static const char * instr[] = {
+  static const char * strings[] = {
     "End of instructions marker",
     "Mark a short-term reference picture as 'unused for reference'",
     "Mark a long-term reference picture as 'unused for reference'",
@@ -1072,13 +1337,13 @@ static inline const char * H264MemoryManagementControlOperationValueStr(
     "Mark current picture as 'used for long-term reference'"
   };
 
-  if (val < ARRAY_SIZE(instr))
-    return instr[val];
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
   return "Unknown";
 }
 
 typedef struct H264MemoryManagementControlOperationsBlock {
-  struct H264MemoryManagementControlOperationsBlock * nextOperation;
+  // struct H264MemoryManagementControlOperationsBlock * nextOperation;
 
   H264MemoryManagementControlOperationValue operation;
   unsigned difference_of_pic_nums_minus1;
@@ -1087,6 +1352,7 @@ typedef struct H264MemoryManagementControlOperationsBlock {
   unsigned max_long_term_frame_idx_plus1;
 } H264MemMngmntCtrlOpBlk, *H264MemMngmntCtrlOpBlkPtr;
 
+#if 0
 H264MemMngmntCtrlOpBlkPtr createH264MemoryManagementControlOperations(
   void
 );
@@ -1096,6 +1362,9 @@ void closeH264MemoryManagementControlOperations(
 H264MemMngmntCtrlOpBlkPtr copyH264MemoryManagementControlOperations(
   H264MemMngmntCtrlOpBlkPtr op
 );
+#endif
+
+#define H264_MAX_SUPPORTED_MEM_MGMNT_CTRL_OPS  16
 
 typedef struct {
   bool IdrPicFlag; /* For quick access */
@@ -1109,7 +1378,12 @@ typedef struct {
 
     /* else */
     struct {
+#if 0
       H264MemMngmntCtrlOpBlkPtr MemMngmntCtrlOp; /**< TODO: Clean memory management */
+#endif
+      H264MemMngmntCtrlOpBlk MemMngmntCtrlOp[H264_MAX_SUPPORTED_MEM_MGMNT_CTRL_OPS];
+      unsigned nbMemMngmntCtrlOp;
+
       bool adaptive_ref_pic_marking_mode_flag;
     };
   };
@@ -1125,9 +1399,20 @@ typedef enum {
   H264_DEBLOCKING_FILTER_DISABLED_INTER_SLICES = 2
 } H264DeblockingFilterIdc; /* disable_deblocking_filter_idc  */
 
-const char * h264DeblockingFilterIdcStr(
-  const H264DeblockingFilterIdc val
-);
+static inline const char * H264DeblockingFilterIdcStr(
+  H264DeblockingFilterIdc val
+)
+{
+  static const char * strings[] = {
+    "Enable",
+    "Disable",
+    "Disabled at slice boundaries"
+  };
+
+  if (0 <= val && val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
 
 typedef struct {
   uint32_t first_mb_in_slice;
@@ -1194,7 +1479,6 @@ typedef struct {
     nal_unit_type value.                                                     */
   unsigned sps_pic_order_cnt_type;  /**< Copy of the active SPS
     pic_order_cnt_type field.                                                */
-
   bool presenceOfMemManCtrlOp5;  /**< Presence of
     memory_management_control_operation equal to 5 in dec_ref_pic_marking.
     If the section dec_ref_pic_marking is not present, this value is false.  */
@@ -1573,24 +1857,24 @@ typedef struct {
   )
 
 H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
-  const unsigned frameWidth,
-  const unsigned frameHeight
+  unsigned frameWidth,
+  unsigned frameHeight
 );
 
 H264VideoFormatValue getH264BdavExpectedVideoFormat(
-  const double frameRate
+  double frameRate
 );
 
 H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
-  const unsigned frameHeight
+  unsigned frameHeight
 );
 
 H264TransferCharacteristicsValue getH264BdavExpectedTransferCharacteritics(
-  const unsigned frameHeight
+  unsigned frameHeight
 );
 
 H264MatrixCoefficientsValue getH264BdavExpectedMatrixCoefficients(
-  const unsigned frameHeight
+  unsigned frameHeight
 );
 
 /** \~english

@@ -35,12 +35,6 @@ int _initNALU(
 
   nalStartOffset = tellPos(param->file.inputFile);
 
-  LIBBLU_H264_DEBUG_NAL(
-    "0x%08" PRIX64 " === NAL Unit - %s ===\n",
-    nalStartOffset,
-    H264NalUnitTypeStr(param->file.nal_unit_type)
-  );
-
   while (
     !isEof(param->file.inputFile)
     && 0x000001 != nextUint24(param->file.inputFile)
@@ -95,19 +89,27 @@ int _initNALU(
     return -1;
   param->file.nal_ref_idc = value;
 
-  LIBBLU_H264_DEBUG_NAL(
-    " -> nal_ref_idc: %" PRIu8 ".\n",
-    getNalRefIdc(param)
-  );
-
   /* [u5 nal_unit_type] */
   if (readBits(param->file.inputFile, &value, 5) < 0)
     return -1;
   param->file.nal_unit_type = value;
 
   LIBBLU_H264_DEBUG_NAL(
-    " -> nal_unit_type: %" PRIu8 ".\n",
-    getNalUnitType(param)
+    "0x%08" PRIX64 " === NAL Unit - %s ===\n",
+    nalStartOffset,
+    H264NalUnitTypeStr(getNalUnitType(param))
+  );
+
+  LIBBLU_H264_DEBUG_NAL(
+    " -> nal_ref_idc: %u (%s).\n",
+    getNalRefIdc(param),
+    H264NalRefIdcValueStr(getNalRefIdc(param))
+  );
+
+  LIBBLU_H264_DEBUG_NAL(
+    " -> nal_unit_type: %u.\n",
+    getNalUnitType(param),
+    H264NalUnitTypeStr(getNalUnitType(param))
   );
 
   if (
@@ -1790,7 +1792,7 @@ int decodeH264SequenceParametersSet(
 )
 {
   /* seq_parameter_set_rbsp() */
-  H264SPSDataParameters seqParamSetDataParam;
+  H264SPSDataParameters spsData;
 
   assert(NULL != handle);
 
@@ -1801,7 +1803,7 @@ int decodeH264SequenceParametersSet(
     );
 
   /* seq_parameter_set_data() */
-  if (parseH264SequenceParametersSetData(handle, &seqParamSetDataParam) < 0)
+  if (parseH264SequenceParametersSetData(handle, &spsData) < 0)
     return -1;
 
   /* rbsp_trailing_bits() */
@@ -1815,26 +1817,22 @@ int decodeH264SequenceParametersSet(
     );
 
   if (!handle->sequenceParametersSetPresent) {
-    int ret = checkH264SequenceParametersSetCompliance(
-      seqParamSetDataParam,
-      handle
-    );
-    if (ret < 0)
+    if (checkH264SequenceParametersSetCompliance(handle, spsData) < 0)
       return -1;
 
-    if (checkH264SpsBitstreamCompliance(seqParamSetDataParam, options) < 0)
+    if (checkH264SpsBitstreamCompliance(options, spsData) < 0)
       return -1;
   }
   else {
     bool constantSps = constantH264SequenceParametersSetCheck(
       handle->sequenceParametersSet.data,
-      seqParamSetDataParam
+      spsData
     );
 
     if (!constantSps) {
       int ret = checkH264SequenceParametersSetChangeCompliance(
         handle->sequenceParametersSet.data,
-        seqParamSetDataParam
+        spsData
       );
       if (ret < 0)
         LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
@@ -1848,7 +1846,7 @@ int decodeH264SequenceParametersSet(
   handle->sequenceParametersSetPresent = true;
   handle->sequenceParametersSetGopValid = true;
   handle->sequenceParametersSetValid = true; /* All checks succeed. */
-  handle->sequenceParametersSet.data = seqParamSetDataParam; /* Update */
+  handle->sequenceParametersSet.data = spsData; /* Update */
 
   return 0;
 }
@@ -2152,11 +2150,7 @@ int decodeH264PicParametersSet(
 
   if (!handle->picParametersSetIdsPresent[ppsId]) {
     /* Newer PPS */
-    int ret = checkH264PicParametersSetCompliance(
-      pps,
-      handle
-    );
-    if (ret < 0)
+    if (checkH264PicParametersSetCompliance(handle, pps) < 0)
       return -1;
 
     handle->picParametersSetIdsPresentNb++;
@@ -2173,9 +2167,9 @@ int decodeH264PicParametersSet(
     if (!constantPps) {
       /* PPS if unconstant, check if changes are allowed */
       int ret = checkH264PicParametersSetChangeCompliance(
+        handle,
         *(handle->picParametersSet[ppsId]),
-        pps,
-        handle
+        pps
       );
       if (ret < 0)
         LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
@@ -2720,8 +2714,8 @@ int decodeH264SupplementalEnhancementInformation(
 )
 {
   /* sei_rbsp() */
-  int ret;
-  bool isConstant;
+  // int ret;
+  // bool isConstant;
 
   H264SeiMessageParameters seiMsg;
 
@@ -2739,11 +2733,7 @@ int decodeH264SupplementalEnhancementInformation(
 
   do {
     /* Parsing SEI_message() : */
-    ret = parseH264SupplementalEnhancementInformationMessage(
-      handle,
-      &seiMsg
-    );
-    if (ret < 0)
+    if (parseH264SupplementalEnhancementInformationMessage(handle, &seiMsg) < 0)
       return -1;
 
     if (seiMsg.tooEarlyEnd) {
@@ -2772,32 +2762,29 @@ int decodeH264SupplementalEnhancementInformation(
     );
 
     /* Compliance checks and parameters saving : */
-    ret = 0;
     switch (seiMsg.payloadType) {
       case H264_SEI_TYPE_BUFFERING_PERIOD:
         if (!handle->sei.bufferingPeriodPresent) {
-          ret = checkH264SeiBufferingPeriodCompliance(
-            seiMsg.bufferingPeriod,
-            handle
-          );
+          if (checkH264SeiBufferingPeriodCompliance(handle, seiMsg.bufferingPeriod) < 0)
+            return -1;
         }
         else {
-          isConstant = constantH264SeiBufferingPeriodCheck(
+          bool isConstant = constantH264SeiBufferingPeriodCheck(
             handle,
             handle->sei.bufferingPeriod,
             seiMsg.bufferingPeriod
           );
 
           if (!isConstant) {
-            ret = checkH264SeiBufferingPeriodChangeCompliance(
+            int ret = checkH264SeiBufferingPeriodChangeCompliance(
               handle,
               handle->sei.bufferingPeriod,
               seiMsg.bufferingPeriod
             );
+            if (ret < 0)
+              return -1;
           }
         }
-        if (ret < 0)
-          return -1;
 
         handle->sei.bufferingPeriod = seiMsg.bufferingPeriod; /* Update */
         handle->sei.bufferingPeriodPresent = true;
@@ -2806,11 +2793,7 @@ int decodeH264SupplementalEnhancementInformation(
 
       case H264_SEI_TYPE_PIC_TIMING:
         /* Always update */
-        ret = checkH264SeiPicTimingCompliance(
-          seiMsg.picTiming,
-          handle
-        );
-        if (ret < 0)
+        if (checkH264SeiPicTimingCompliance(handle, seiMsg.picTiming) < 0)
           return -1;
 
         if (handle->sei.picTimingPresent) {
@@ -2823,8 +2806,6 @@ int decodeH264SupplementalEnhancementInformation(
           );
 #endif
         }
-        if (ret < 0)
-          return -1;
 
         handle->sei.picTiming = seiMsg.picTiming; /* Always update */
         handle->sei.picTimingPresent = true;
@@ -2834,26 +2815,20 @@ int decodeH264SupplementalEnhancementInformation(
       case H264_SEI_TYPE_RECOVERY_POINT:
 
         if (!handle->sei.recoveryPointPresent) {
-          ret = checkH264SeiRecoveryPointCompliance(
-            seiMsg.recoveryPoint,
-            handle
-          );
+          if (checkH264SeiRecoveryPointCompliance(handle, seiMsg.recoveryPoint) < 0)
+            return -1;
         }
         else {
-          isConstant = constantH264SeiRecoveryPointCheck(
+          bool isConstant = constantH264SeiRecoveryPointCheck(
             handle->sei.recoveryPoint,
             seiMsg.recoveryPoint
           );
           if (!isConstant) {
             /* Check changes */
-            ret = checkH264SeiRecoveryPointChangeCompliance(
-              handle,
-              seiMsg.recoveryPoint
-            );
+            if (checkH264SeiRecoveryPointChangeCompliance(handle, seiMsg.recoveryPoint) < 0)
+              return -1;
           }
         }
-        if (ret < 0)
-          return -1;
 
         handle->sei.recoveryPoint = seiMsg.recoveryPoint; /* Update */
         handle->sei.recoveryPointPresent = true;
@@ -3112,6 +3087,56 @@ int parseH264PredWeightTable(
   return 0;
 }
 
+static int _checkAndSetPresentOperationsH264DecRefPicMarking(
+  H264DecRefPicMarking * param,
+  H264MemoryManagementControlOperationValue operation
+)
+{
+  switch (operation) {
+    case H264_MEM_MGMNT_CTRL_OP_END:
+    case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED:
+    case H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED:
+    case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM:
+      break;
+
+    case H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM:
+      if (param->presenceOfMemManCtrlOp4)
+        LIBBLU_H264_ERROR_RETURN(
+          "Presence of multiple 'memory_management_control_operation' "
+          "equal to 4 in a slice header.\n"
+        );
+      param->presenceOfMemManCtrlOp4 = true;
+      break;
+
+    case H264_MEM_MGMNT_CTRL_OP_ALL_UNUSED:
+      if (param->presenceOfMemManCtrlOp5)
+        LIBBLU_H264_ERROR_RETURN(
+          "Presence of multiple 'memory_management_control_operation' "
+          "equal to 5 in a slice header.\n"
+        );
+      param->presenceOfMemManCtrlOp5 = true;
+      break;
+
+    case H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM:
+      if (param->presenceOfMemManCtrlOp6)
+        LIBBLU_H264_ERROR_RETURN(
+          "Presence of multiple 'memory_management_control_operation' "
+          "equal to 6 in a slice header.\n"
+        );
+      param->presenceOfMemManCtrlOp6 = true;
+      break;
+
+    default:
+      LIBBLU_H264_ERROR_RETURN(
+        "Unknown 'memory_management_control_operation' == %u value in "
+        "slice header.\n",
+        operation
+      );
+  }
+
+  return 0;
+}
+
 int parseH264DecRefPicMarking(
   H264ParametersHandlerPtr handle,
   H264DecRefPicMarking * param,
@@ -3126,12 +3151,6 @@ int parseH264DecRefPicMarking(
   assert(NULL != param);
 
   param->IdrPicFlag = IdrPicFlag;
-
-  param->adaptive_ref_pic_marking_mode_flag = false;
-
-  param->presenceOfMemManCtrlOp4 = false;
-  param->presenceOfMemManCtrlOp5 = false;
-  param->presenceOfMemManCtrlOp6 = false;
 
   if (param->IdrPicFlag) {
     /* [b1 no_output_of_prior_pics_flag] */
@@ -3151,103 +3170,66 @@ int parseH264DecRefPicMarking(
     param->adaptive_ref_pic_marking_mode_flag = value;
 
     if (param->adaptive_ref_pic_marking_mode_flag) {
-      H264MemMngmntCtrlOpBlkPtr lastOp = NULL;
-      param->MemMngmntCtrlOp = NULL;
+      H264MemMngmntCtrlOpBlk * opBlk;
 
+      H264MemoryManagementControlOperationValue operation;
+
+      param->nbMemMngmntCtrlOp = 0;
       do {
-        H264MemMngmntCtrlOpBlkPtr newOp;
-
-        if (NULL == (newOp = createH264MemoryManagementControlOperations()))
-          return -1;
+        if (H264_MAX_SUPPORTED_MEM_MGMNT_CTRL_OPS <= param->nbMemMngmntCtrlOp)
+          opBlk = NULL;
+        else
+          opBlk = &param->MemMngmntCtrlOp[param->nbMemMngmntCtrlOp++];
 
         /* [ue memory_management_control_operation] */
         if (readExpGolombCodeNal(handle, &value, 8) < 0)
           LIBBLU_H264_READING_FAIL_RETURN();
-        newOp->operation = value;
+        operation = value;
 
-        switch (newOp->operation) {
-          case H264_MEM_MGMNT_CTRL_OP_END:
-          case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED:
-          case H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED:
-          case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM:
-            break;
+        if (NULL != opBlk)
+          opBlk->operation = operation;
 
-          case H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM:
-            if (param->presenceOfMemManCtrlOp4)
-              LIBBLU_H264_ERROR_RETURN(
-                "Presence of multiple 'memory_management_control_operation' "
-                "equal to 4 in a slice header.\n"
-              );
-            param->presenceOfMemManCtrlOp4 = true;
-            break;
-
-          case H264_MEM_MGMNT_CTRL_OP_ALL_UNUSED:
-            if (param->presenceOfMemManCtrlOp5)
-              LIBBLU_H264_ERROR_RETURN(
-                "Presence of multiple 'memory_management_control_operation' "
-                "equal to 5 in a slice header.\n"
-              );
-            param->presenceOfMemManCtrlOp5 = true;
-            break;
-
-          case H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM:
-            if (param->presenceOfMemManCtrlOp6)
-              LIBBLU_H264_ERROR_RETURN(
-                "Presence of multiple 'memory_management_control_operation' "
-                "equal to 6 in a slice header.\n"
-              );
-            param->presenceOfMemManCtrlOp6 = true;
-            break;
-
-          default:
-            LIBBLU_H264_ERROR_RETURN(
-              "Unknown 'memory_management_control_operation' == %u value in "
-              "slice header.\n",
-              newOp->operation
-            );
-        }
+        if (_checkAndSetPresentOperationsH264DecRefPicMarking(param, operation) < 0)
+          return -1;
 
         if (
-          newOp->operation == H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED
-          || newOp->operation == H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM
+          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED == operation
+          || H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == operation
         ) {
           /* [ue difference_of_pic_nums_minus1] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->difference_of_pic_nums_minus1 = value;
+          if (NULL != opBlk)
+            opBlk->difference_of_pic_nums_minus1 = value;
         }
 
-        if (newOp->operation == H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED) {
+        if (H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED == operation) {
           /* [ue long_term_pic_num] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->long_term_pic_num = value;
+          if (NULL != opBlk)
+            opBlk->long_term_pic_num = value;
         }
 
         if (
-          newOp->operation == H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM
-          || newOp->operation == H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM
+          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == operation
+          || H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM == operation
         ) {
           /* [ue long_term_frame_idx] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->long_term_frame_idx = value;
+          if (NULL != opBlk)
+            opBlk->long_term_frame_idx = value;
         }
 
-        if (newOp->operation == H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM) {
+        if (H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM == operation) {
           /* [ue max_long_term_frame_idx_plus1] */
           if (readExpGolombCodeNal(handle, &value, 16) < 0)
             LIBBLU_H264_READING_FAIL_RETURN();
-          newOp->max_long_term_frame_idx_plus1 = value;
+          if (NULL != opBlk)
+            opBlk->max_long_term_frame_idx_plus1 = value;
         }
-
-        /* Add op to loop : */
-        if (NULL == param->MemMngmntCtrlOp)
-          param->MemMngmntCtrlOp = newOp;
-        else
-          lastOp->nextOperation = newOp;
-        lastOp = newOp;
-      } while (H264_MEM_MGMNT_CTRL_OP_END != lastOp->operation);
+      } while (H264_MEM_MGMNT_CTRL_OP_END != operation);
     }
   }
 
@@ -3590,18 +3572,13 @@ int parseH264SliceHeader(
   }
 
   param->decRefPicMarkingPresent = getNalRefIdc(handle) != 0;
+
+  memset(&param->dec_ref_pic_marking, 0, sizeof(H264DecRefPicMarking));
+
   if (param->decRefPicMarkingPresent) {
     /* dec_ref_pic_marking() */
     if (parseH264DecRefPicMarking(handle, &param->dec_ref_pic_marking, IdrPicFlag) < 0)
       return -1;
-  }
-  else {
-    param->dec_ref_pic_marking.MemMngmntCtrlOp = NULL;
-    param->dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag = false;
-    param->dec_ref_pic_marking.presenceOfMemManCtrlOp4 = false;
-    param->dec_ref_pic_marking.presenceOfMemManCtrlOp5 = false;
-    param->dec_ref_pic_marking.presenceOfMemManCtrlOp6 = false;
-    param->dec_ref_pic_marking.IdrPicFlag = IdrPicFlag;
   }
 
   if (
@@ -3694,6 +3671,7 @@ int parseH264SliceHeader(
   param->isIdrPic = IdrPicFlag;
   param->isCodedSliceExtension = isExt;
   param->sps_pic_order_cnt_type = sps->pic_order_cnt_type;
+  param->presenceOfMemManCtrlOp5 = param->dec_ref_pic_marking.presenceOfMemManCtrlOp5;
 
   param->MbaffFrameFlag =
     sps->mb_adaptive_frame_field_flag
@@ -3898,20 +3876,22 @@ int decodeH264SliceLayerWithoutPartitioning(
 
   /* Always do checks : */
   LIBBLU_H264_DEBUG_SLICE("  Slice header:\n");
+
   if (!handle->slicePresent) {
     ret = checkH264SliceLayerWithoutPartitioningCompliance(
-      sliceParam, handle, options
+      handle, options, sliceParam
     );
   }
   else {
     ret = checkH264SliceLayerWithoutPartitioningChangeCompliance(
-      handle, handle->slice, sliceParam, options
+      handle, options, handle->slice, sliceParam
     );
   }
   if (ret < 0)
     return -1;
 
   /* Update current slice : */
+#if 0
   if (
     handle->slicePresent
     && handle->slice.header.decRefPicMarkingPresent
@@ -3926,6 +3906,7 @@ int decodeH264SliceLayerWithoutPartitioning(
       );
     }
   }
+#endif
 
   handle->slice.header = sliceParam.header;
   handle->slicePresent = true;
