@@ -30,21 +30,6 @@ static inline bool constantH264AccessUnitDelimiterCheck(
 }
 
 /* seq_parameter_set_rbsp() NAL */
-int checkH264ProfileIdcCompliance(
-  H264ProfileIdcValue profile_idc,
-  H264ContraintFlags constraints
-);
-int checkH264LevelIdcCompliance(
-  uint8_t level_idc
-);
-int checkH264HrdParametersCompliance(
-  H264HrdParameters param
-);
-int checkH264VuiParametersCompliance(
-  const H264ParametersHandlerPtr handle,
-  H264VuiParameters param,
-  H264SPSDataParameters spsParam
-);
 int checkH264SequenceParametersSetCompliance(
   const H264ParametersHandlerPtr handle,
   H264SPSDataParameters param
@@ -340,10 +325,12 @@ int checkH264SeiBufferingPeriodChangeCompliance(
   H264SeiBufferingPeriod first,
   H264SeiBufferingPeriod second
 );
+
 int checkH264SeiPicTimingCompliance(
   const H264ParametersHandlerPtr handle,
   H264SeiPicTiming param
 );
+
 int checkH264SeiRecoveryPointCompliance(
   const H264ParametersHandlerPtr handle,
   H264SeiRecoveryPoint param
@@ -368,16 +355,6 @@ int checkH264SeiRecoveryPointChangeCompliance(
 );
 
 /* slice_layer_without_partitioning_rbsp() NAL */
-int checkH264RefPicListModificationCompliance(
-  H264RefPicListModification param,
-  H264SliceHeaderParameters sliceHeaderParam
-);
-int checkH264PredWeightTableCompliance(
-  H264PredWeightTable param
-);
-int checkH264DecRefPicMarkingCompliance(
-  H264DecRefPicMarking param
-);
 int checkH264SliceHeaderCompliance(
   const H264ParametersHandlerPtr handle,
   LibbluESSettingsOptions options,

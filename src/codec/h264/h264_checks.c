@@ -34,7 +34,7 @@ int checkH264AccessUnitDelimiterCompliance(
   return 0; /* OK */
 }
 
-int checkH264ProfileIdcCompliance(
+static int _checkH264ProfileIdcCompliance(
   H264ProfileIdcValue profile_idc,
   H264ContraintFlags constraints
 )
@@ -105,7 +105,7 @@ int checkH264ProfileIdcCompliance(
   return 0; /* OK */
 }
 
-int checkH264LevelIdcCompliance(
+static int _checkH264LevelIdcCompliance(
   uint8_t level_idc
 )
 {
@@ -161,7 +161,7 @@ int checkH264LevelIdcCompliance(
   return 0;
 }
 
-int checkH264HrdParametersCompliance(
+static int _checkH264HrdParametersCompliance(
   H264HrdParameters param
 )
 {
@@ -320,14 +320,12 @@ int checkH264HrdParametersCompliance(
   return 0;
 }
 
-int checkH264VuiParametersCompliance(
+static int _checkH264VuiParametersCompliance(
   const H264ParametersHandlerPtr handle,
   H264VuiParameters param,
   H264SPSDataParameters spsParam
 )
 {
-  bool valid;
-
   H264BdavExpectedAspectRatioRet expectedSar;
   H264VideoFormatValue expectedVideoFormat;
   H264ColourPrimariesValue expectedColourPrimaries;
@@ -397,11 +395,8 @@ int checkH264VuiParametersCompliance(
     spsParam.FrameWidth,
     spsParam.FrameHeight
   );
-  valid = CHECK_H264_BDAV_EXPECTED_ASPECT_RATIO(
-    expectedSar, param.aspect_ratio_idc
-  );
 
-  if (!valid) {
+  if (!isRespectedH264BdavExpectedAspectRatio(expectedSar, param.aspect_ratio_idc)) {
     if (expectedSar.a != expectedSar.b) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Invalid SAR '%s' in SPS VUI parameters for %ux%u, "
@@ -775,7 +770,7 @@ int checkH264VuiParametersCompliance(
   }
 
   if (param.nal_hrd_parameters_present_flag) {
-    if (checkH264HrdParametersCompliance(param.nal_hrd_parameters) < 0)
+    if (_checkH264HrdParametersCompliance(param.nal_hrd_parameters) < 0)
       return -1;
   }
 
@@ -787,7 +782,7 @@ int checkH264VuiParametersCompliance(
   );
 
   if (param.vcl_hrd_parameters_present_flag) {
-    if (checkH264HrdParametersCompliance(param.vcl_hrd_parameters) < 0)
+    if (_checkH264HrdParametersCompliance(param.vcl_hrd_parameters) < 0)
       return -1;
   }
 
@@ -970,7 +965,7 @@ int checkH264SequenceParametersSetCompliance(
 
   assert(NULL != handle);
 
-  ret = checkH264ProfileIdcCompliance(
+  ret = _checkH264ProfileIdcCompliance(
     param.profile_idc,
     param.constraint_set_flags
   );
@@ -1006,7 +1001,7 @@ int checkH264SequenceParametersSetCompliance(
     );
   }
 
-  if (checkH264LevelIdcCompliance(param.level_idc) < 0)
+  if (_checkH264LevelIdcCompliance(param.level_idc) < 0)
     return -1;
   updateH264LevelLimits(handle, param.level_idc);
 
@@ -1748,7 +1743,7 @@ int checkH264SequenceParametersSetCompliance(
   }
 
   if (param.vui_parameters_present_flag) {
-    ret = checkH264VuiParametersCompliance(
+    ret = _checkH264VuiParametersCompliance(
       handle,
       param.vui_parameters,
       param
@@ -1930,19 +1925,18 @@ int checkH264PicParametersSetCompliance(
     MARK_H264_WARNING_FLAG(handle, useOfLowEfficientCavlc);
   }
 
-  validEntropyCodingMode = H264_IS_VALID_ENTROPY_CODING_MODE_RESTR(
-    handle->constraints.restrictedEntropyCodingMode,
+  validEntropyCodingMode = isRespectedH264EntropyCodingModeRestriction(
+    handle->constraints.restrEntropyCodingMode,
     param.entropy_coding_mode_flag
   );
 
-  if (!validEntropyCodingMode) {
+  if (!validEntropyCodingMode)
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "%s entropy coding mode is not allowed for bitstream profile "
       "conformance, 'entropy_coding_mode_flag' shall be fixed to 0b%X.\n",
       (param.entropy_coding_mode_flag) ? "CABAC" : "CAVLC",
-      param.entropy_coding_mode_flag
+      !param.entropy_coding_mode_flag
     );
-  }
 
   LIBBLU_H264_DEBUG_PPS(
     "  Picture field order syntax present in slice headers "
@@ -2794,7 +2788,7 @@ int checkH264SeiRecoveryPointChangeCompliance(
   return 0; /* OK */
 }
 
-int checkH264RefPicListModificationCompliance(
+static int _checkH264RefPicListModificationCompliance(
   H264RefPicListModification param,
   H264SliceHeaderParameters sliceHeaderParam
 )
@@ -2802,8 +2796,8 @@ int checkH264RefPicListModificationCompliance(
   unsigned i;
 
   if (
-    !H264_SLICE_IS_TYPE_I(sliceHeaderParam.slice_type)
-    && !H264_SLICE_IS_TYPE_SI(sliceHeaderParam.slice_type)
+    !is_I_H264SliceTypeValue(sliceHeaderParam.slice_type)
+    && !is_SI_H264SliceTypeValue(sliceHeaderParam.slice_type)
   ) {
     LIBBLU_H264_DEBUG_SLICE(
       "  ref_pic_list_modification() - Reference picture list modification:\n"
@@ -2848,7 +2842,7 @@ int checkH264RefPicListModificationCompliance(
     }
   }
 
-  if (H264_SLICE_IS_TYPE_B(sliceHeaderParam.slice_type)) {
+  if (is_B_H264SliceTypeValue(sliceHeaderParam.slice_type)) {
     LIBBLU_H264_DEBUG_SLICE(
       "   Modification of reference picture list 1 "
       "(ref_pic_list_modification_flag_l1): %s (0b%X).\n",
@@ -2891,11 +2885,10 @@ int checkH264RefPicListModificationCompliance(
   return 0;
 }
 
-int checkH264PredWeightTableCompliance(
+static int _checkH264PredWeightTableCompliance(
   H264PredWeightTable param
 )
 {
-
 
   LIBBLU_H264_DEBUG_SLICE(
     "  pred_weight_table() - Prediction weight table:\n"
@@ -2934,7 +2927,8 @@ int checkH264PredWeightTableCompliance(
   return 0;
 }
 
-int checkH264DecRefPicMarkingCompliance(
+static int _checkH264DecRefPicMarkingCompliance(
+  H264ParametersHandlerPtr handle,
   H264DecRefPicMarking param
 )
 {
@@ -2972,22 +2966,27 @@ int checkH264DecRefPicMarkingCompliance(
       );
 
     if (param.adaptive_ref_pic_marking_mode_flag) {
+      H264MemoryManagementControlOperationValue operation;
       unsigned i;
+
+      assert(0 < param.nbMemMngmntCtrlOp); // At least 'End of list' op.
+
 
       for (i = 0; i < param.nbMemMngmntCtrlOp; i++) {
         const H264MemMngmntCtrlOpBlk * opBlk = &param.MemMngmntCtrlOp[i];
 
         LIBBLU_H264_DEBUG_SLICE("    - Instruction %u:\n");
 
+        operation = opBlk->operation;
         LIBBLU_H264_DEBUG_SLICE(
           "     Operation (memory_management_control_operation): %s (0x%X).\n",
-          H264MemoryManagementControlOperationValueStr(opBlk->operation),
-          opBlk->operation
+          H264MemoryManagementControlOperationValueStr(operation),
+          operation
         );
 
         if (
-          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED == opBlk->operation
-          || H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == opBlk->operation
+          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED == operation
+          || H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == operation
         ) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Difference of pictures "
@@ -2997,7 +2996,7 @@ int checkH264DecRefPicMarkingCompliance(
           );
         }
 
-        if (H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED == opBlk->operation) {
+        if (H264_MEM_MGMNT_CTRL_OP_LONG_TERM_UNUSED == operation) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Long-term picture number "
             "(long_term_pic_num): %u (0x%X).\n",
@@ -3007,8 +3006,8 @@ int checkH264DecRefPicMarkingCompliance(
         }
 
         if (
-          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == opBlk->operation
-          || H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM == opBlk->operation
+          H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_USED_LONG_TERM == operation
+          || H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM == operation
         ) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Long-term frame index "
@@ -3018,7 +3017,7 @@ int checkH264DecRefPicMarkingCompliance(
           );
         }
 
-        if (H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM == opBlk->operation) {
+        if (H264_MEM_MGMNT_CTRL_OP_MAX_LONG_TERM == operation) {
           LIBBLU_H264_DEBUG_SLICE(
             "      -> Maximum long-term frame index "
             "(max_long_term_frame_idx_plus1): %u (0x%X).\n",
@@ -3028,8 +3027,17 @@ int checkH264DecRefPicMarkingCompliance(
         }
       }
 
-      if (H264_MEM_MGMNT_CTRL_OP_END != param.MemMngmntCtrlOp[param.nbMemMngmntCtrlOp-1].operation) {
+      if (
+        H264_MEM_MGMNT_CTRL_OP_END != operation
+        && CHECK_H264_WARNING_FLAG(handle, tooMuchMemoryManagementCtrlOp)
+      ) {
         // TODO: Emit warning, more memory_management_control_operation than supported.
+        LIBBLU_WARNING(
+          "More 'memory_management_control_operation' fields present in slice "
+          "header than supported, HRD Verifier operations might be "
+          "incorrect.\n"
+        );
+        MARK_H264_WARNING_FLAG(handle, tooMuchMemoryManagementCtrlOp);
       }
     }
   }
@@ -3050,7 +3058,7 @@ int checkH264SliceHeaderCompliance(
   H264VuiParameters * vuiParam;
   H264PicParametersSetParameters * ppsParam;
 
-  H264AllowedSliceTypes allowedSliceTypes;
+  H264PrimaryPictureType allowedSliceTypes;
 
   assert(handle->accessUnitDelimiterPresent);
   assert(handle->sequenceParametersSetPresent);
@@ -3183,26 +3191,21 @@ int checkH264SliceHeaderCompliance(
 
   /* Check if slice type is allowed: */
   allowedSliceTypes = handle->constraints.allowedSliceTypes;
-  if (!H264_IS_VALID_SLICE_TYPE(allowedSliceTypes, param.slice_type))
+  if (!isAllowedH264SliceTypeValue(param.slice_type, allowedSliceTypes))
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "Unallowed 'slice_type' == %u in use for bitstream profile "
       "conformance.\n",
       param.slice_type
     );
 
-  if (param.isIdrPic && !H264_SLICE_IS_TYPE_I(param.slice_type))
+  if (param.isIdrPic && !is_I_H264SliceTypeValue(param.slice_type))
     LIBBLU_H264_ERROR_RETURN(
       "Non I-slice type value 'slice_type' == %u in use in an IDR picture.\n"
     );
 
   /* Check Access unit delimiter primary_pic_type */
-  H264_CHECK_PRIMARY_PICTURE_TYPE(
-    allowedSliceTypes,
-    handle->accessUnitDelimiter.primary_pic_type,
-    param.slice_type
-  );
-
-  if (!allowedSliceTypes) {
+  allowedSliceTypes = handle->accessUnitDelimiter.primary_pic_type;
+  if (!isAllowedH264SliceTypeValue(param.slice_type, allowedSliceTypes)) {
     LIBBLU_H264_ERROR_RETURN(
       "Wrong Access Unit Delimiter slice type indicator, "
       "'primary_pic_type' == %u while picture 'slice_type' == %u.\n",
@@ -3417,7 +3420,7 @@ int checkH264SliceHeaderCompliance(
     );
   }
 
-  if (H264_SLICE_IS_TYPE_B(param.slice_type)) {
+  if (is_B_H264SliceTypeValue(param.slice_type)) {
     LIBBLU_H264_DEBUG_SLICE(
       "  Inter prediction decoding process "
       "(direct_spatial_mv_pred_flag): %s (0b%X).\n",
@@ -3430,9 +3433,9 @@ int checkH264SliceHeaderCompliance(
   }
 
   if (
-    H264_SLICE_IS_TYPE_P(param.slice_type)
-    || H264_SLICE_IS_TYPE_SP(param.slice_type)
-    || H264_SLICE_IS_TYPE_B(param.slice_type)
+    is_P_H264SliceTypeValue(param.slice_type)
+    || is_SP_H264SliceTypeValue(param.slice_type)
+    || is_B_H264SliceTypeValue(param.slice_type)
   ) {
     LIBBLU_H264_DEBUG_SLICE(
       "  Override default number of reference indexes "
@@ -3452,7 +3455,7 @@ int checkH264SliceHeaderCompliance(
       );
 
     if (
-      H264_SLICE_IS_TYPE_B(param.slice_type)
+      is_B_H264SliceTypeValue(param.slice_type)
       && !param.field_pic_flag
       && 15 < ppsParam->num_ref_idx_l1_default_active_minus1
       && !param.num_ref_idx_active_override_flag
@@ -3485,7 +3488,7 @@ int checkH264SliceHeaderCompliance(
           param.num_ref_idx_l0_active_minus1
         );
 
-      if (H264_SLICE_IS_TYPE_B(param.slice_type)) {
+      if (is_B_H264SliceTypeValue(param.slice_type)) {
         LIBBLU_H264_DEBUG_SLICE(
           "   -> Number of reference index for reference picture list 1 "
           "(num_ref_idx_l1_active_minus1): %u (0x%X).\n",
@@ -3511,36 +3514,36 @@ int checkH264SliceHeaderCompliance(
     LIBBLU_H264_ERROR_RETURN("Unsupported 3D MVC format.\n");
   }
   else
-    if (checkH264RefPicListModificationCompliance(param.refPicListMod, param) < 0)
+    if (_checkH264RefPicListModificationCompliance(param.refPicListMod, param) < 0)
       return -1;
 
   if (
     (
       ppsParam->weighted_pred_flag && (
-        H264_SLICE_IS_TYPE_P(param.slice_type)
-        || H264_SLICE_IS_TYPE_SP(param.slice_type)
+        is_P_H264SliceTypeValue(param.slice_type)
+        || is_SP_H264SliceTypeValue(param.slice_type)
       )
     )
     || (
       ppsParam->weighted_bipred_idc == H264_WEIGHTED_PRED_B_SLICES_EXPLICIT &&
-      H264_SLICE_IS_TYPE_B(param.slice_type)
+      is_B_H264SliceTypeValue(param.slice_type)
     )
   ) {
     /* pred_weight_table() */
-    if (checkH264PredWeightTableCompliance(param.pred_weight_table) < 0)
+    if (_checkH264PredWeightTableCompliance(param.pred_weight_table) < 0)
       return -1;
   }
 
   if (param.decRefPicMarkingPresent) {
     /* dec_ref_pic_marking() */
-    if (checkH264DecRefPicMarkingCompliance(param.dec_ref_pic_marking) < 0)
+    if (_checkH264DecRefPicMarkingCompliance(handle, param.dec_ref_pic_marking) < 0)
       return -1;
   }
 
   if (
     ppsParam->entropy_coding_mode_flag &&
-    !H264_SLICE_IS_TYPE_I(param.slice_type) &&
-    !H264_SLICE_IS_TYPE_SI(param.slice_type)
+    !is_I_H264SliceTypeValue(param.slice_type) &&
+    !is_SI_H264SliceTypeValue(param.slice_type)
   ) {
     LIBBLU_H264_DEBUG_SLICE(
       "  CABAC initialization table index "
@@ -3562,8 +3565,8 @@ int checkH264SliceHeaderCompliance(
     param.slice_qp_delta
   );
 
-  if (H264_SLICE_IS_TYPE_SP(param.slice_type) || H264_SLICE_IS_TYPE_SI(param.slice_type)) {
-    if (H264_SLICE_IS_TYPE_SP(param.slice_type)) {
+  if (is_SP_H264SliceTypeValue(param.slice_type) || is_SI_H264SliceTypeValue(param.slice_type)) {
+    if (is_SP_H264SliceTypeValue(param.slice_type)) {
       LIBBLU_H264_DEBUG_SLICE(
         "  Decoding process used to decode P macroblocks in SP slice "
         "(sp_for_switch_flag): %s (0b%X).\n",
@@ -3652,8 +3655,8 @@ int checkH264SliceHeaderChangeCompliance(
   /* Check slice types etc. */
   if (second.first_mb_in_slice != 0x0 && first.slice_type != second.slice_type) {
     if (
-      !H264_SLICE_TYPE_IS_UNRESTRICTED(first.slice_type)
-      || !H264_SLICE_TYPE_IS_UNRESTRICTED(second.slice_type)
+      !isUnrestrictedH264SliceTypeValue(first.slice_type)
+      || !isUnrestrictedH264SliceTypeValue(second.slice_type)
     ) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Unallowed different type of slices in the same picture.\n"

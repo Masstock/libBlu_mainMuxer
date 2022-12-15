@@ -35,10 +35,10 @@ typedef struct {
 
   bool useOfLowEfficientCavlc;
   bool useOfLowEfficientConstaintIntraPred;
-} H264WarningFlags;
 
-#define INIT_H264_WARNING_FLAGS()                                             \
-  ((H264WarningFlags) {false})
+  bool tooMuchMemoryManagementCtrlOp;  /**< The number of present
+    'memory_management_control_operation' exceeds the maximum supported.     */
+} H264WarningFlags;
 
 typedef struct {
   EsmsFileHeaderPtr esms;
@@ -77,13 +77,20 @@ typedef struct {
 
   /* H264CabacParsingContext cabac; */
   H264WarningFlags warningFlags;
-} H264ParametersHandle, *H264ParametersHandlerPtr;
+} H264ParametersHandler, *H264ParametersHandlerPtr;
 
 #define CHECK_H264_WARNING_FLAG(H264ParametersHandlerPtr, warningName)        \
   (!(H264ParametersHandlerPtr)->warningFlags.warningName)
 
 #define MARK_H264_WARNING_FLAG(H264ParametersHandlerPtr, warningName)         \
   ((H264ParametersHandlerPtr)->warningFlags.warningName = true)
+
+static inline bool inUseHrdVerifierH264ParametersHandler(
+  const H264ParametersHandlerPtr handle
+)
+{
+  return (NULL != handle->hrdVerifier);
+}
 
 void updateH264LevelLimits(
   H264ParametersHandlerPtr handle,
@@ -125,9 +132,6 @@ int updatePPSH264Parameters(
   const H264PicParametersSetParameters * param,
   unsigned id
 );
-
-#define IN_USE_H264_CPB_HRD_VERIFIER(handle)                                   \
-  (NULL != (handle)->hrdVerifier)
 
 int initIfRequiredH264CpbHrdVerifier(
   H264ParametersHandlerPtr handle,

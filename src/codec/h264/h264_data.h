@@ -248,17 +248,6 @@ typedef enum {
   H264_PRIM_PIC_TYPE_ALL     = 7
 } H264PrimaryPictureType;
 
-typedef enum {
-  H264_PRIM_PIC_TYPE_MASK_I       = 0x84,
-  H264_PRIM_PIC_TYPE_MASK_IP      = 0xA5,
-  H264_PRIM_PIC_TYPE_MASK_IPB     = 0xE7,
-  H264_PRIM_PIC_TYPE_MASK_SI      = 0x10,
-  H264_PRIM_PIC_TYPE_MASK_SISP    = 0x18,
-  H264_PRIM_PIC_TYPE_MASK_ISI     = 0x94,
-  H264_PRIM_PIC_TYPE_MASK_IPSISP  = 0xBD,
-  H264_PRIM_PIC_TYPE_MASK_ALL     = 0xFF
-} H264PrimaryPictureTypeMask;
-
 static inline const char * H264PrimaryPictureTypeStr(
   H264PrimaryPictureType val
 )
@@ -278,22 +267,6 @@ static inline const char * H264PrimaryPictureTypeStr(
     return strings[val];
   return "Unknown";
 }
-
-#define H264_CHECK_PRIMARY_PICTURE_TYPE(ret, restr, typ)                      \
-  {                                                                           \
-    static const unsigned primPicTypMasks[] = {                               \
-      H264_PRIM_PIC_TYPE_MASK_I,                                              \
-      H264_PRIM_PIC_TYPE_MASK_IP,                                             \
-      H264_PRIM_PIC_TYPE_MASK_IPB,                                            \
-      H264_PRIM_PIC_TYPE_MASK_SI,                                             \
-      H264_PRIM_PIC_TYPE_MASK_SISP,                                           \
-      H264_PRIM_PIC_TYPE_MASK_ISI,                                            \
-      H264_PRIM_PIC_TYPE_MASK_IPSISP,                                         \
-      H264_PRIM_PIC_TYPE_MASK_ALL                                             \
-    };                                                                        \
-    assert((restr) < ARRAY_SIZE(primPicTypMasks));                            \
-    (ret) = primPicTypMasks[(restr)] & (typ);                                 \
-  }
 
 typedef struct {
   H264PrimaryPictureType primary_pic_type;
@@ -1135,17 +1108,87 @@ typedef struct {
 } H264SupplementalEnhancementInformationParameters;
 
 typedef enum {
-  H264_SLICE_TYPE_P_UNRESCTRICTED  = 0,
-  H264_SLICE_TYPE_B_UNRESCTRICTED  = 1,
-  H264_SLICE_TYPE_I_UNRESCTRICTED  = 2,
-  H264_SLICE_TYPE_SP_UNRESCTRICTED = 3,
-  H264_SLICE_TYPE_SI_UNRESCTRICTED = 4,
-  H264_SLICE_TYPE_P                = 5,
-  H264_SLICE_TYPE_B                = 6,
-  H264_SLICE_TYPE_I                = 7,
-  H264_SLICE_TYPE_SP               = 8,
-  H264_SLICE_TYPE_SI               = 9
+  H264_SLICE_TYPE_P_UNRESCTRICTED   = 0,
+  H264_SLICE_TYPE_B_UNRESCTRICTED   = 1,
+  H264_SLICE_TYPE_I_UNRESCTRICTED   = 2,
+  H264_SLICE_TYPE_SP_UNRESCTRICTED  = 3,
+  H264_SLICE_TYPE_SI_UNRESCTRICTED  = 4,
+  H264_SLICE_TYPE_P                 = 5,
+  H264_SLICE_TYPE_B                 = 6,
+  H264_SLICE_TYPE_I                 = 7,
+  H264_SLICE_TYPE_SP                = 8,
+  H264_SLICE_TYPE_SI                = 9
 } H264SliceTypeValue;
+
+static inline bool is_P_H264SliceTypeValue(
+  H264SliceTypeValue slice_type
+)
+{
+  return (1 << slice_type) & 0x21;
+}
+
+static inline bool is_B_H264SliceTypeValue(
+  H264SliceTypeValue slice_type
+)
+{
+  return (1 << slice_type) & 0x42;
+}
+
+static inline bool is_I_H264SliceTypeValue(
+  H264SliceTypeValue slice_type
+)
+{
+  return (1 << slice_type) & 0x84;
+}
+
+static inline bool is_SP_H264SliceTypeValue(
+  H264SliceTypeValue slice_type
+)
+{
+  return (1 << slice_type) & 0x108;
+}
+
+static inline bool is_SI_H264SliceTypeValue(
+  H264SliceTypeValue slice_type
+)
+{
+  return (1 << slice_type) & 0x210;
+}
+
+static inline bool isUnrestrictedH264SliceTypeValue(
+  H264SliceTypeValue slice_type
+)
+{
+  return slice_type <= 4;
+}
+
+/** \~english
+ * \brief Check consistency between AUD primary_pic_type and Slice slice_type.
+ *
+ * \param primary_pic_type
+ * \return true
+ * \return false
+ */
+static inline bool isAllowedH264SliceTypeValue(
+  H264SliceTypeValue slice_type,
+  H264PrimaryPictureType primary_pic_type
+)
+{
+  static const unsigned primPicTypMasks[] = {
+    0x84,
+    0xA5,
+    0xE7,
+    0x10,
+    0x18,
+    0x94,
+    0xBD,
+    0xFF
+  };
+
+  assert(primary_pic_type < ARRAY_SIZE(primPicTypMasks));
+
+  return primPicTypMasks[primary_pic_type] & (1 << slice_type);
+}
 
 static inline const char * H264SliceTypeValueStr(
   H264SliceTypeValue val
@@ -1169,60 +1212,46 @@ static inline const char * H264SliceTypeValueStr(
   return "Unknown";
 }
 
-#define H264_MAX_SLICE_TYPE_VALUE 9
+#if 0
 
-#define H264_SLICE_IS_TYPE_P(slice_type)                                      \
-  (                                                                           \
-    (1 << (slice_type))                                                       \
-    & (                                                                       \
-      (1 << H264_SLICE_TYPE_P_UNRESCTRICTED)                                  \
-      | (1 << H264_SLICE_TYPE_P)                                              \
-    )                                                                         \
-  )
+/** binary mask:
+ * 0 - I slice type
+ * 1 - P slice type
+ * 2 - B slice type
+ */
+typedef enum {
+  H264_RESTRICTED_P_SLICE_TYPE       = 1 << 0,
+  H264_RESTRICTED_B_SLICE_TYPE       = 1 << 1,
+  H264_RESTRICTED_I_SLICE_TYPE       = 1 << 2,
+  H264_RESTRICTED_SP_SLICE_TYPE      = 1 << 3,
+  H264_RESTRICTED_SI_SLICE_TYPE      = 1 << 4,
 
-#define H264_SLICE_IS_TYPE_B(slice_type)                                      \
-  (                                                                           \
-    (1 << (slice_type))                                                       \
-    & (                                                                       \
-      (1 << H264_SLICE_TYPE_B_UNRESCTRICTED)                                  \
-      | (1 << H264_SLICE_TYPE_B)                                              \
-    )                                                                         \
-  )
+  H264_RESTRICTED_IP_SLICE_TYPES     =
+    H264_RESTRICTED_I_SLICE_TYPE
+    | H264_RESTRICTED_P_SLICE_TYPE,
 
-#define H264_SLICE_IS_TYPE_I(slice_type)                                      \
-  (                                                                           \
-    (1 << (slice_type))                                                       \
-    & (                                                                       \
-      (1 << H264_SLICE_TYPE_I_UNRESCTRICTED)                                  \
-      | (1 << H264_SLICE_TYPE_I)                                              \
-    )                                                                         \
-  )
+  H264_RESTRICTED_IPB_SLICE_TYPES    =
+    H264_RESTRICTED_I_SLICE_TYPE
+    | H264_RESTRICTED_P_SLICE_TYPE
+    | H264_RESTRICTED_B_SLICE_TYPE,
 
-#define H264_SLICE_IS_TYPE_SP(slice_type)                                     \
-  (                                                                           \
-    (1 << (slice_type))                                                       \
-    & (                                                                       \
-      (1 << H264_SLICE_TYPE_SP_UNRESCTRICTED)                                 \
-      | (1 << H264_SLICE_TYPE_SP)                                             \
-    )                                                                         \
-  )
+  H264_UNRESTRICTED_SLICE_TYPE       = 0x1F
+} H264AllowedSliceTypes;
 
-#define H264_SLICE_IS_TYPE_SI(slice_type)                                     \
-  (                                                                           \
-    (1 << (slice_type))                                                       \
-    & (                                                                       \
-      (1 << H264_SLICE_TYPE_SI_UNRESCTRICTED)                                 \
-      | (1 << H264_SLICE_TYPE_SI)                                             \
-    )                                                                         \
-  )
+static inline bool isAllowedH264SliceTypeValue(
+  H264SliceTypeValue slice_type,
+  H264AllowedSliceTypes allowedSliceTypes
+)
+{
+  return (allowedSliceTypes | allowedSliceTypes << 5) & (1 << slice_type);
+}
 
-#define H264_SLICE_TYPE_IS_UNRESTRICTED(slice_type)       \
-  ((slice_type) <= 4)
+#endif
 
 typedef enum {
-  H264_COLOUR_PLANE_ID_Y  = 0,
-  H264_COLOUR_PLANE_ID_CB = 1,
-  H264_COLOUR_PLANE_ID_CR = 2
+  H264_COLOUR_PLANE_ID_Y   = 0,
+  H264_COLOUR_PLANE_ID_CB  = 1,
+  H264_COLOUR_PLANE_ID_CR  = 2
 } H264ColourPlaneIdValue;
 
 static inline const char * H264ColourPlaneIdValueStr(
@@ -1553,56 +1582,28 @@ typedef enum {
     H264_422_CHROMA_FORMAT_IDC
 } H264ChromaFormatIdcRestriction;
 
-/** binary mask:
- * 0 - I slice type
- * 1 - P slice type
- * 2 - B slice type
- */
 typedef enum {
-  H264_UNRESTRICTED_SLICE_TYPE       = 0x0,
-
-  H264_RESTRICTED_P_SLICE_TYPE       = 1 << 0,
-  H264_RESTRICTED_B_SLICE_TYPE       = 1 << 1,
-  H264_RESTRICTED_I_SLICE_TYPE       = 1 << 2,
-  H264_RESTRICTED_SP_SLICE_TYPE      = 1 << 3,
-  H264_RESTRICTED_SI_SLICE_TYPE      = 1 << 4,
-
-  H264_RESTRICTED_IP_SLICE_TYPES     =
-    H264_RESTRICTED_I_SLICE_TYPE
-    | H264_RESTRICTED_P_SLICE_TYPE,
-
-  H264_RESTRICTED_IPB_SLICE_TYPES    =
-    H264_RESTRICTED_I_SLICE_TYPE
-    | H264_RESTRICTED_P_SLICE_TYPE
-    | H264_RESTRICTED_B_SLICE_TYPE
-} H264AllowedSliceTypes;
-
-#define H264_IS_VALID_SLICE_TYPE(restr, type)                                 \
-  (                                                                           \
-    (restr) == H264_UNRESTRICTED_SLICE_TYPE                                   \
-    || (((restr) | ((restr) << 5)) & (1 << (type)))                           \
-  )
-
-typedef enum {
-  H264_ENTROPY_CODING_MODE_UNRESTRICTED = 0x0,
   H264_ENTROPY_CODING_MODE_CAVLC_ONLY   = 0x1,
-  H264_ENTROPY_CODING_MODE_CABAC_ONLY   = 0x2
+  H264_ENTROPY_CODING_MODE_CABAC_ONLY   = 0x2,
+  H264_ENTROPY_CODING_MODE_UNRESTRICTED = 0x3
 } H264EntropyCodingModeRestriction;
 
 /** \~english
  * \brief Check if given 'entropy_coding_mode_flag' comply with entropy coding
- * mode restriction.
+ * mode restr.
  *
  * \param restr H264EntropyCodingModeRestriction Restriction condition.
- * \param flag bool PPS 'entropy_coding_mode_flag' flag.
- * \return true PPS entropy coding mode respect restriction condition.
- * \return false PPS entropy coding mode violate restriction condition.
+ * \param entropy_coding_mode_flag bool PPS 'entropy_coding_mode_flag' flag.
+ * \return true PPS entropy coding mode respect restr condition.
+ * \return false PPS entropy coding mode violate restr condition.
  */
-#define H264_IS_VALID_ENTROPY_CODING_MODE_RESTR(restr, flag)                  \
-  (                                                                           \
-    (restr) == H264_ENTROPY_CODING_MODE_UNRESTRICTED                          \
-    || ((flag) ^ ((restr) == H264_ENTROPY_CODING_MODE_CAVLC_ONLY))            \
-  )
+static inline bool isRespectedH264EntropyCodingModeRestriction(
+  H264EntropyCodingModeRestriction restr,
+  bool entropy_coding_mode_flag
+)
+{
+  return (restr & (1 << entropy_coding_mode_flag));
+}
 
 typedef struct {
   /* Table A-1 - Level limits */
@@ -1630,7 +1631,7 @@ typedef struct {
 
   /* Profile related restricted settings */
   bool idrPicturesOnly; /* Implies max_num_ref_frames, max_num_reorder_frames, max_dec_frame_buffering and dpb_output_delay == 0 */
-  H264AllowedSliceTypes allowedSliceTypes;
+  H264PrimaryPictureType allowedSliceTypes;
   bool forbiddenSliceDataPartitionLayersNal;
   bool forbiddenArbitrarySliceOrder;
   H264ChromaFormatIdcRestriction restrictedChromaFormatIdc;
@@ -1639,7 +1640,7 @@ typedef struct {
   bool restrictedFrameMbsOnlyFlag; /* restrictedFrameMbsOnlyFlag || frame_mbs_only_flag */
   bool forbiddenWeightedPredModesUse;
   bool forbiddenQpprimeYZeroTransformBypass;
-  H264EntropyCodingModeRestriction restrictedEntropyCodingMode;
+  H264EntropyCodingModeRestriction restrEntropyCodingMode;
   unsigned maxAllowedNumSliceGroups;
   bool forbiddenPPSExtensionParameters;
   bool forbiddenRedundantPictures;
@@ -1657,20 +1658,6 @@ typedef struct {
   unsigned gopMaxLength;
   unsigned consecutiveBPicNb;
 } H264ConstraintsParam;
-
-#if 0
-#define H264_PARTIAL_PICTURE(curProgParam)  \
-  (                                         \
-    (curProgParam).bottomFieldPresent ||    \
-    (curProgParam).topFieldPresent          \
-  )
-
-#define H264_COMPLETE_PICTURE(curProgParam) \
-  (                                         \
-    (curProgParam).bottomFieldPresent &&    \
-    (curProgParam).topFieldPresent          \
-  )
-#endif
 
 /** \~english
  * \brief Last picture properties.
@@ -1837,45 +1824,106 @@ unsigned getH264cpbBrNalFactor(
 
 /* ### Blu-ray specifications : ############################################ */
 
+/** \~english
+ * \brief Blu-ray specifications expected aspect_ratio_idc values.
+ *
+ * Used to set up to two allowed aspect_ratio_idc values (both fields might
+ * be set to the same value to allow only one value).
+ */
 typedef struct {
-  H264AspectRatioIdcValue a;
-  H264AspectRatioIdcValue b;
+  H264AspectRatioIdcValue a;  /**< First valid aspect_ratio_idc value.       */
+  H264AspectRatioIdcValue b;  /**< Second valid aspect_ratio_idc value.      */
 } H264BdavExpectedAspectRatioRet;
 
-#define NEW_H264_BDAV_EXPECTED_ASPECT_RATIO_RET(val1, val2)                   \
-  (                                                                           \
-    (H264BdavExpectedAspectRatioRet) {                                        \
-      .a = (val1),                                                            \
-      .b = (val2)                                                             \
-    }                                                                         \
-  )
-
-#define CHECK_H264_BDAV_EXPECTED_ASPECT_RATIO(ret, val)                       \
-  (                                                                           \
-    (ret).a == (val)                                                          \
-    || (ret).b == (val)                                                       \
-  )
-
-H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
+static inline H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
   unsigned frameWidth,
   unsigned frameHeight
-);
+)
+{
+  switch (frameWidth) {
+    case 1920:
+    case 1280:
+      return (H264BdavExpectedAspectRatioRet) {
+        H264_ASPECT_RATIO_IDC_1_BY_1,
+        H264_ASPECT_RATIO_IDC_1_BY_1
+      };
 
-H264VideoFormatValue getH264BdavExpectedVideoFormat(
+    case 1440:
+      return (H264BdavExpectedAspectRatioRet) {
+        H264_ASPECT_RATIO_IDC_4_BY_3,
+        H264_ASPECT_RATIO_IDC_4_BY_3
+      };
+
+    case 720:
+      if (frameHeight == 576) {
+        return (H264BdavExpectedAspectRatioRet) {
+          H264_ASPECT_RATIO_IDC_12_BY_11,
+          H264_ASPECT_RATIO_IDC_16_BY_11
+        };
+      }
+      return (H264BdavExpectedAspectRatioRet) {
+        H264_ASPECT_RATIO_IDC_10_BY_11,
+        H264_ASPECT_RATIO_IDC_40_BY_33
+      };
+  }
+
+  return (H264BdavExpectedAspectRatioRet) {
+    H264_ASPECT_RATIO_IDC_12_BY_11,
+    H264_ASPECT_RATIO_IDC_16_BY_11
+  };
+}
+
+static inline bool isRespectedH264BdavExpectedAspectRatio(
+  H264BdavExpectedAspectRatioRet restr,
+  H264AspectRatioIdcValue aspect_ratio_idc
+)
+{
+  return restr.a == aspect_ratio_idc || restr.b == aspect_ratio_idc;
+}
+
+static inline H264VideoFormatValue getH264BdavExpectedVideoFormat(
   double frameRate
-);
+)
+{
+  if (FLOAT_COMPARE(frameRate, 25.0) || FLOAT_COMPARE(frameRate, 50.0))
+    return H264_VIDEO_FORMAT_PAL;
+  return H264_VIDEO_FORMAT_NTSC;
+}
 
-H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
+static inline H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
   unsigned frameHeight
-);
+)
+{
+  switch (frameHeight) {
+    case 576: return H264_COLOR_PRIM_BT470BG;
+    case 480: return H264_COLOR_PRIM_SMPTE170M;
+  }
+  return H264_COLOR_PRIM_BT709;
+}
 
-H264TransferCharacteristicsValue getH264BdavExpectedTransferCharacteritics(
+static inline H264TransferCharacteristicsValue
+getH264BdavExpectedTransferCharacteritics(
   unsigned frameHeight
-);
+)
+{
+  switch (frameHeight) {
+    case 576: return H264_TRANS_CHAR_BT470BG;
+    case 480: return H264_TRANS_CHAR_SMPTE170M;
+  }
+  return H264_TRANS_CHAR_BT709;
+}
 
-H264MatrixCoefficientsValue getH264BdavExpectedMatrixCoefficients(
+static inline H264MatrixCoefficientsValue
+getH264BdavExpectedMatrixCoefficients(
   unsigned frameHeight
-);
+)
+{
+  switch (frameHeight) {
+    case 576: return H264_MATRX_COEF_BT470M;
+    case 480: return H264_MATRX_COEF_SMPTE170M;
+  }
+  return H264_MATRX_COEF_BT709;
+}
 
 /** \~english
  * \brief Max allowed number of CPB configurations.

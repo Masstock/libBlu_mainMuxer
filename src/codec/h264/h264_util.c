@@ -50,10 +50,10 @@ H264ParametersHandlerPtr initH264ParametersHandler(
 
   LIBBLU_H264_DEBUG(
     "Allocate the %u bytes context.\n",
-    sizeof(H264ParametersHandle)
+    sizeof(H264ParametersHandler)
   );
 
-  handle = (H264ParametersHandlerPtr) calloc(1, sizeof(H264ParametersHandle));
+  handle = (H264ParametersHandlerPtr) calloc(1, sizeof(H264ParametersHandler));
   if (NULL == handle)
     goto free_return;
 
@@ -63,8 +63,6 @@ H264ParametersHandlerPtr initH264ParametersHandler(
       || isUsedLibbluAspectRatioMod(settings->options.arChange)
       || 0x00 != settings->options.levelChange
   };
-
-  handle->warningFlags = INIT_H264_WARNING_FLAGS();
 
   if (initInputFileH264ParametersHandle(handle, settings) < 0)
     goto free_return;

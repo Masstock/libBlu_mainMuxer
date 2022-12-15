@@ -635,15 +635,16 @@ void updateH264ProfileLimits(
 
   constraintsParam->cpbBrVclFactor = getH264cpbBrVclFactor(profile_idc);
   constraintsParam->cpbBrNalFactor = getH264cpbBrNalFactor(profile_idc);
+  constraintsParam->restrEntropyCodingMode = H264_ENTROPY_CODING_MODE_UNRESTRICTED;
 
   switch (profile_idc) {
     case H264_PROFILE_BASELINE:
       /* A.2.1 Baseline profile constraints */
-      constraintsParam->allowedSliceTypes = H264_RESTRICTED_IP_SLICE_TYPES;
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IP;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->restrictedFrameMbsOnlyFlag = true;
       constraintsParam->forbiddenWeightedPredModesUse = true;
-      constraintsParam->restrictedEntropyCodingMode =
+      constraintsParam->restrEntropyCodingMode =
         H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
       constraintsParam->maxAllowedNumSliceGroups = 8;
       constraintsParam->forbiddenPPSExtensionParameters = true;
@@ -660,7 +661,7 @@ void updateH264ProfileLimits(
 
     case H264_PROFILE_MAIN:
       /* A.2.2 Main profile constraints */
-      constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
       constraintsParam->maxAllowedNumSliceGroups = 1;
@@ -673,7 +674,7 @@ void updateH264ProfileLimits(
     case H264_PROFILE_EXTENDED:
       /* A.2.3 Extended profile constraints */
       constraintsParam->forcedDirect8x8InferenceFlag = true;
-      constraintsParam->restrictedEntropyCodingMode =
+      constraintsParam->restrEntropyCodingMode =
         H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
       constraintsParam->maxAllowedNumSliceGroups = 8;
       constraintsParam->forbiddenPPSExtensionParameters = true;
@@ -683,7 +684,7 @@ void updateH264ProfileLimits(
 
     case H264_PROFILE_HIGH:
       /* A.2.4 High profile constraints */
-      constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
       constraintsParam->maxAllowedNumSliceGroups = 1;
@@ -702,14 +703,14 @@ void updateH264ProfileLimits(
 
         if (constraintsFlags.set5) {
           /* A.2.4.2 Constrained High profile constraints */
-          constraintsParam->allowedSliceTypes = H264_RESTRICTED_IP_SLICE_TYPES;
+          constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IP;
         }
       }
       break;
 
     case H264_PROFILE_HIGH_10:
       /* A.2.5 High 10 profile constraints */
-      constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
       constraintsParam->maxAllowedNumSliceGroups = 1;
@@ -731,7 +732,7 @@ void updateH264ProfileLimits(
 
     case H264_PROFILE_HIGH_422:
       /* A.2.6 High 4:2:2 profile constraints */
-      constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
       constraintsParam->maxAllowedNumSliceGroups = 1;
@@ -750,7 +751,7 @@ void updateH264ProfileLimits(
     case H264_PROFILE_HIGH_444_PREDICTIVE:
     case H264_PROFILE_CAVLC_444_INTRA:
       /* A.2.7 High 4:4:4 Predictive profile constraints */
-      constraintsParam->allowedSliceTypes = H264_RESTRICTED_IPB_SLICE_TYPES;
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
       constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
       constraintsParam->forbiddenArbitrarySliceOrder = true;
       constraintsParam->maxAllowedNumSliceGroups = 1;
@@ -766,7 +767,7 @@ void updateH264ProfileLimits(
 
         if (profile_idc == H264_PROFILE_CAVLC_444_INTRA) {
           /* A.2.11 CAVLC 4:4:4 Intra profile constraints */
-          constraintsParam->restrictedEntropyCodingMode =
+          constraintsParam->restrEntropyCodingMode =
             H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
         }
       }
@@ -802,96 +803,4 @@ unsigned getH264BrNal(
   }
 
   return constraints.cpbBrNalFactor * constraints.MaxBR;
-}
-
-/* ### Blu-ray specifications : ############################################ */
-
-H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
-  unsigned frameWidth,
-  unsigned frameHeight
-)
-{
-  switch (frameWidth) {
-    case 1920:
-    case 1280:
-      return NEW_H264_BDAV_EXPECTED_ASPECT_RATIO_RET(
-        H264_ASPECT_RATIO_IDC_1_BY_1,
-        H264_ASPECT_RATIO_IDC_1_BY_1
-      );
-
-    case 1440:
-      return NEW_H264_BDAV_EXPECTED_ASPECT_RATIO_RET(
-        H264_ASPECT_RATIO_IDC_4_BY_3,
-        H264_ASPECT_RATIO_IDC_4_BY_3
-      );
-
-    case 720:
-      if (frameHeight == 576) {
-        return NEW_H264_BDAV_EXPECTED_ASPECT_RATIO_RET(
-          H264_ASPECT_RATIO_IDC_12_BY_11,
-          H264_ASPECT_RATIO_IDC_16_BY_11
-        );
-      }
-
-      return NEW_H264_BDAV_EXPECTED_ASPECT_RATIO_RET(
-        H264_ASPECT_RATIO_IDC_10_BY_11,
-        H264_ASPECT_RATIO_IDC_40_BY_33
-      );
-  }
-
-  return NEW_H264_BDAV_EXPECTED_ASPECT_RATIO_RET(
-    H264_ASPECT_RATIO_IDC_12_BY_11,
-    H264_ASPECT_RATIO_IDC_16_BY_11
-  );
-}
-
-H264VideoFormatValue getH264BdavExpectedVideoFormat(
-  double frameRate
-)
-{
-  if (frameRate == 25 || frameRate == 50)
-    return H264_VIDEO_FORMAT_PAL;
-  return H264_VIDEO_FORMAT_NTSC;
-}
-
-H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
-  unsigned frameHeight
-)
-{
-  switch (frameHeight) {
-    case 576:
-      return H264_COLOR_PRIM_BT470BG;
-    case 480:
-      return H264_COLOR_PRIM_SMPTE170M;
-  }
-
-  return H264_COLOR_PRIM_BT709;
-}
-
-H264TransferCharacteristicsValue getH264BdavExpectedTransferCharacteritics(
-  unsigned frameHeight
-)
-{
-  switch (frameHeight) {
-    case 576:
-      return H264_TRANS_CHAR_BT470BG;
-    case 480:
-      return H264_TRANS_CHAR_SMPTE170M;
-  }
-
-  return H264_TRANS_CHAR_BT709;
-}
-
-H264MatrixCoefficientsValue getH264BdavExpectedMatrixCoefficients(
-  unsigned frameHeight
-)
-{
-  switch (frameHeight) {
-    case 576:
-      return H264_MATRX_COEF_BT470M;
-    case 480:
-      return H264_MATRX_COEF_SMPTE170M;
-  }
-
-  return H264_MATRX_COEF_BT709;
 }
