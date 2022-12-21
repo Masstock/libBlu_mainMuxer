@@ -9,7 +9,7 @@
 
 static int _readSettingsFromConfigHandle(
   LibbluMuxingSettings * dst,
-  IniFileContextPtr handle
+  const IniFileContextPtr handle
 )
 {
   lbc * string;

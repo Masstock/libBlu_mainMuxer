@@ -15,6 +15,8 @@
 #define LIBBLU_H264_PREFIX "H.264: "
 #define LIBBLU_H264_HRDV_PREFIX "H.264 HRD Verifier: "
 
+/* ### H.264 Common : ###################################################### */
+
 #define LIBBLU_H264_INFO(format, ...)                                         \
   LIBBLU_INFO(LIBBLU_H264_PREFIX format, ##__VA_ARGS__)
 
@@ -27,11 +29,18 @@
 #define LIBBLU_H264_ERROR_FRETURN(format, ...)                                \
   LIBBLU_ERROR_FRETURN(LIBBLU_H264_PREFIX format, ##__VA_ARGS__)
 
+/* ### H.264 Checks : ###################################################### */
+
 #define LIBBLU_H264_COMPLIANCE_ERROR_RETURN(format, ...)                      \
   LIBBLU_ERROR_RETURN("H.264 Compliance issue: " format, ##__VA_ARGS__)
 
 #define LIBBLU_H264_COMPLIANCE_ERROR_FRETURN(format, ...)                     \
   LIBBLU_ERROR_FRETURN("H.264 Compliance issue: " format, ##__VA_ARGS__)
+
+/* ### H.264 HDR Verifier : ################################################ */
+
+#define LIBBLU_H264_HRDV_WARNING(format, ...)                                 \
+  LIBBLU_WARNING(LIBBLU_H264_HRDV_PREFIX format, ##__VA_ARGS__)
 
 #define LIBBLU_H264_HRDV_ERROR(format, ...)                                   \
   LIBBLU_ERROR(LIBBLU_H264_HRDV_PREFIX format, ##__VA_ARGS__)
@@ -47,8 +56,8 @@
 
 #define LIBBLU_H264_READING_FAIL_RETURN()                                     \
   LIBBLU_ERROR_RETURN(                                                        \
-    LIBBLU_H264_PREFIX "Reading failed at line %u, %s.\n",                    \
-    __LINE__, __FILE__                                                        \
+    LIBBLU_H264_PREFIX "Reading failed at %s:%s():%u.\n",                     \
+    __FILE__, __func__, __LINE__                                              \
   )
 
 /* ### Debugging ########################################################### */
@@ -107,6 +116,11 @@
 #define LIBBLU_H264_DEBUG_SLICE(format, ...)                                  \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_H264_PARSING_SLICE, "H.264/Slc", format, ##__VA_ARGS__       \
+  )
+
+#define LIBBLU_H264_DEBUG_HRD(format, ...)                                    \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_H264_HRD, "H.264/HRD", format, ##__VA_ARGS__                 \
   )
 
 #endif

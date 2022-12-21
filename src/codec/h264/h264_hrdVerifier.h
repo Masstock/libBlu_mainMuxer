@@ -11,8 +11,9 @@
 #ifndef __LIBBLU_MUXER__CODECS__H264__HRD_VERIFIER_H__
 #define __LIBBLU_MUXER__CODECS__H264__HRD_VERIFIER_H__
 
-#include "../../util.h"
 #include "../../elementaryStreamOptions.h"
+#include "../../ini/iniHandler.h"
+#include "../../util.h"
 #include "../common/esParsingSettings.h"
 
 #include "h264_error.h"
@@ -44,7 +45,8 @@
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
   const H264CurrentProgressParam * curState,
-  LibbluESSettingsOptions options
+  const LibbluESSettingsOptions * options,
+  H264SPSDataParameters sps
 )
 {
   assert(NULL != curState);
@@ -52,7 +54,16 @@ static inline bool checkH264CpbHrdVerifierAvailablity(
   if (curState->stillPictureTolerance)
     return false; /* Disabled for still pictures */
 
-  if (options.discardSei) {
+  if (!sps.vui_parameters_present_flag)
+    return false; /* Missing VUI parameters */
+  if (!sps.vui_parameters.nal_hrd_parameters_present_flag)
+    return false; /* Missing NAL HRD parameters */
+  if (sps.vui_parameters.low_delay_hrd_flag)
+    return false; /* Unsupported low-delay */ // TODO: Low Delay not supported
+  if (!sps.vui_parameters.timing_info_present_flag)
+    return false; /* Missing timing_info */
+
+  if (options->discardSei) {
     LIBBLU_INFO(
       H264_HRD_VERIFIER_PREFIX
       "Compliance tests disabled by SEI discarding.\n"
@@ -60,7 +71,7 @@ static inline bool checkH264CpbHrdVerifierAvailablity(
     return false; /* Disabled */
   }
 
-  if (options.forceRebuildSei) {
+  if (options->forceRebuildSei) {
     LIBBLU_INFO(
       H264_HRD_VERIFIER_PREFIX
       "Compliance tests disabled by SEI rebuilding.\n"
@@ -124,17 +135,20 @@ typedef struct {
   bool cpb;
   bool dpb;
   bool fileOutput;
-} H264HrdVerifierDebugFlags;
 
-static inline void setFromOptionsH264HrdVerifierDebugFlags(
-  H264HrdVerifierDebugFlags * dst,
-  const LibbluESSettingsOptions * options
+  FILE * fd;
+} H264HrdVerifierDebug;
+
+typedef struct {
+  bool abortOnError;
+} H264HrdVerifierOptions;
+
+static inline void defaultH264HrdVerifierOptions(
+  H264HrdVerifierOptions * dst
 )
 {
-  *dst = (H264HrdVerifierDebugFlags) {
-    .cpb = options->echoHrdCpb,
-    .dpb = options->echoHrdDpb,
-    .fileOutput = (NULL != options->echoHrdLogFilepath)
+  *dst = (H264HrdVerifierOptions) {
+    .abortOnError = false
   };
 }
 
@@ -196,8 +210,8 @@ typedef struct {
     uint64_t initial_cpb_removal_delay_offset;
   } nMinusOneAUParameters;
 
-  H264HrdVerifierDebugFlags hrdDebugFlags;
-  FILE * hrdDebugFd;
+  H264HrdVerifierDebug debug;
+  H264HrdVerifierOptions options;
 } H264HrdVerifierContext, *H264HrdVerifierContextPtr;
 
 H264HrdVerifierContextPtr createH264HrdVerifierContext(

@@ -7,8 +7,6 @@
 #include <math.h>
 #include <assert.h>
 
-#include <errno.h>
-
 #include "h264_checks.h"
 
 int checkH264AccessUnitDelimiterCompliance(
@@ -16,7 +14,8 @@ int checkH264AccessUnitDelimiterCompliance(
 )
 {
   LIBBLU_H264_DEBUG_AUD(
-    "  Primary coded picture slices types (primary_pic_type): 0x%02" PRIX8 ".\n",
+    "  Primary coded picture slices types (primary_pic_type): "
+    "0x%02" PRIX8 ".\n",
     param.primary_pic_type
   );
 
@@ -320,197 +319,349 @@ static int _checkH264HrdParametersCompliance(
   return 0;
 }
 
-static int _checkH264VuiParametersCompliance(
-  const H264ParametersHandlerPtr handle,
-  H264VuiParameters param,
-  H264SPSDataParameters spsParam
+static int _checkAspectRatioInfoH264VuiParametersCompliance(
+  H264SPSDataParameters sps,
+  H264VuiParameters vui
 )
 {
-  H264BdavExpectedAspectRatioRet expectedSar;
-  H264VideoFormatValue expectedVideoFormat;
-  H264ColourPrimariesValue expectedColourPrimaries;
-  H264TransferCharacteristicsValue expectedTransferCharact;
-  H264MatrixCoefficientsValue expectedMatrixCoeff;
+  H264BdavExpectedAspectRatioRet expected;
 
-  const H264VuiColourDescriptionParameters * colourParam;
-
-  LIBBLU_H264_DEBUG_VUI(
-    "   Aspect ratio information "
-    "(aspect_ratio_info_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.aspect_ratio_info_present_flag),
-    param.aspect_ratio_info_present_flag
+  expected = getH264BdavExpectedAspectRatioIdc(
+    sps.FrameWidth,
+    sps.FrameHeight
   );
 
-  if (param.aspect_ratio_info_present_flag) {
-    LIBBLU_H264_DEBUG_VUI(
-      "    -> Sample Aspect Ratio, SAR "
-      "(aspect_ratio_idc): %s (0x%X).\n",
-      H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
-      param.aspect_ratio_idc
-    );
-
-    if (
-      H264_ASPECT_RATIO_IDC_2_BY_1 < param.aspect_ratio_idc
-      && param.aspect_ratio_idc != H264_ASPECT_RATIO_IDC_EXTENDED_SAR
-    ) {
-      LIBBLU_H264_ERROR_RETURN(
-        "Reserved 'aspect_ratio_idc' == %d in use in VUI parameters.\n",
-        param.aspect_ratio_idc
-      );
-    }
-
-    if (param.aspect_ratio_idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
-      LIBBLU_H264_DEBUG_VUI(
-        "    -> Sample aspect ratio horizontal size (sar_width): %u.\n",
-        param.sar_width
-      );
-      LIBBLU_H264_DEBUG_VUI(
-        "    -> Sample aspect ratio vertical size (sar_height): %u.\n",
-        param.sar_height
-      );
-      LIBBLU_H264_DEBUG_VUI(
-        "     => Extended SAR ratio: %u:%u.\n",
-        param.sar_width,
-        param.sar_height
-      );
-    }
-  }
-  else {
-    LIBBLU_H264_DEBUG_VUI(
-      "    -> Sample Aspect Ratio, SAR "
-      "(aspect_ratio_idc): %s (Inferred).\n",
-      H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
-      param.aspect_ratio_idc
-    );
-  }
-
-  if (!param.aspect_ratio_info_present_flag) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-      "Missing required 'aspect_ratio_idc' information in SPS VUI parameters "
-      "('aspect_ratio_info_present_flag' == 0b0).\n"
-    );
-  }
-
-  expectedSar = getH264BdavExpectedAspectRatioIdc(
-    spsParam.FrameWidth,
-    spsParam.FrameHeight
-  );
-
-  if (!isRespectedH264BdavExpectedAspectRatio(expectedSar, param.aspect_ratio_idc)) {
-    if (expectedSar.a != expectedSar.b) {
+  if (!isRespectedH264BdavExpectedAspectRatio(expected, vui.aspect_ratio_idc)) {
+    if (expected.a != expected.b) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Invalid SAR '%s' in SPS VUI parameters for %ux%u, "
         "BD-specs require %s or %s for this "
         "resolution ('aspect_ratio_idc' == %d).\n",
-        H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
-        spsParam.FrameWidth,
-        spsParam.FrameHeight,
-        H264AspectRatioIdcValueStr(expectedSar.a),
-        H264AspectRatioIdcValueStr(expectedSar.b),
-        param.aspect_ratio_idc
+        H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
+        sps.FrameWidth,
+        sps.FrameHeight,
+        H264AspectRatioIdcValueStr(expected.a),
+        H264AspectRatioIdcValueStr(expected.b),
+        vui.aspect_ratio_idc
       );
     }
 
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "Invalid SAR '%s' for %ux%u, BD-specs require %s for this "
       "resolution ('aspect_ratio_idc' == %d).\n",
-      H264AspectRatioIdcValueStr(param.aspect_ratio_idc),
-      spsParam.FrameWidth,
-      spsParam.FrameHeight,
-      H264AspectRatioIdcValueStr(expectedSar.a),
-      param.aspect_ratio_idc
+      H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
+      sps.FrameWidth,
+      sps.FrameHeight,
+      H264AspectRatioIdcValueStr(expected.a),
+      vui.aspect_ratio_idc
+    );
+  }
+
+  return 0;
+}
+
+static int _checkVideoFormatH264VuiParametersCompliance(
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters sps,
+  H264VuiParameters vui
+)
+{
+  H264VideoFormatValue expected;
+
+  expected = getH264BdavExpectedVideoFormat(
+    vui.FrameRate
+  );
+
+  if (
+    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFormat)
+    && expected != vui.video_format
+  ) {
+    LIBBLU_WARNING(
+      "Unexpected Video Format '%s' in SPS VUI parameters "
+      "for %ux%u, should be '%s' for this "
+      "resolution ('video_format' == %d).\n",
+      H264VideoFormatValueStr(vui.video_format),
+      sps.FrameWidth,
+      sps.FrameHeight,
+      H264VideoFormatValueStr(expected),
+      vui.video_format
+    );
+
+    handle->curProgParam.wrongVuiParameters = true;
+    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFormat);
+  }
+
+  return 0;
+}
+
+static int _checkColPrimH264VuiParametersCompliance(
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters sps,
+  H264VuiColourDescriptionParameters colour_desc
+)
+{
+  H264ColourPrimariesValue used, expected;
+
+  used = colour_desc.colour_primaries;
+  expected = getH264BdavExpectedColorPrimaries(
+    sps.FrameHeight
+  );
+
+  if (
+    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedColourPrimaries)
+    && expected != used
+  ) {
+    LIBBLU_WARNING(
+      "Color Primaries in SPS VUI parameters should be defined to '%s', "
+      "not '%s' ('colour_primaries' == 0x%X).\n",
+      H264ColorPrimariesValueStr(expected),
+      H264ColorPrimariesValueStr(used),
+      used
+    );
+    handle->curProgParam.wrongVuiParameters = true;
+    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedColourPrimaries);
+  }
+
+  return 0;
+}
+
+static int _checkTransfCharactH264VuiParametersCompliance(
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters sps,
+  H264VuiColourDescriptionParameters colour_desc
+)
+{
+  H264TransferCharacteristicsValue used, expected;
+
+  used = colour_desc.transfer_characteristics;
+  expected = getH264BdavExpectedTransferCharacteritics(
+    sps.FrameHeight
+  );
+
+  if (
+    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedTranferCharact)
+    && expected != used
+  ) {
+    LIBBLU_WARNING(
+      "Transfer Characteristics in SPS VUI parameters should "
+      "be defined to '%s', not '%s' "
+      "('transfer_characteristics' == 0x%X).\n",
+      H264TransferCharacteristicsValueStr(expected),
+      H264TransferCharacteristicsValueStr(used),
+      used
+    );
+    handle->curProgParam.wrongVuiParameters = true;
+    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedTranferCharact);
+  }
+
+  return 0;
+}
+
+static int _checkMatrixCoeffH264VuiParametersCompliance(
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters sps,
+  H264VuiColourDescriptionParameters colour_desc
+)
+{
+  H264MatrixCoefficientsValue used, expected;
+
+  used = colour_desc.matrix_coefficients;
+  expected = getH264BdavExpectedMatrixCoefficients(
+    sps.FrameHeight
+  );
+
+  if (
+    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedMatrixCoeff)
+    && expected != used
+  ) {
+    LIBBLU_WARNING(
+      "Matrix coefficients in SPS VUI parameters should "
+      "be defined to '%s', not '%s' ('matrix_coefficients' == 0x%X).\n",
+      H264MatrixCoefficientsValueStr(expected),
+      H264MatrixCoefficientsValueStr(used),
+      used
+    );
+    handle->curProgParam.wrongVuiParameters = true;
+    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedMatrixCoeff);
+  }
+
+  return 0;
+}
+
+static int _checkH264VuiColDescParametersCompliance(
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters sps,
+  H264VuiColourDescriptionParameters colour_desc
+)
+{
+
+  LIBBLU_H264_DEBUG_VUI(
+    "     -> Colour primaries "
+    "(colour_primaries): %s (0x%X).\n",
+    H264ColorPrimariesValueStr(colour_desc.colour_primaries),
+    colour_desc.colour_primaries
+  );
+
+  if (_checkColPrimH264VuiParametersCompliance(handle, sps, colour_desc) < 0)
+    return -1;
+
+  LIBBLU_H264_DEBUG_VUI(
+    "     -> Transfer characteristics "
+    "(transfer_characteristics): %s (0x%X).\n",
+    H264TransferCharacteristicsValueStr(colour_desc.transfer_characteristics),
+    colour_desc.transfer_characteristics
+  );
+
+  if (_checkTransfCharactH264VuiParametersCompliance(handle, sps, colour_desc) < 0)
+    return -1;
+
+  LIBBLU_H264_DEBUG_VUI(
+    "     -> Matrix coefficients "
+    "(matrix_coefficients): %s (0x%X).\n",
+    H264MatrixCoefficientsValueStr(colour_desc.matrix_coefficients),
+    colour_desc.matrix_coefficients
+  );
+
+  if (_checkMatrixCoeffH264VuiParametersCompliance(handle, sps, colour_desc) < 0)
+    return -1;
+
+  return 0;
+}
+
+static int _checkH264VuiParametersCompliance(
+  const H264ParametersHandlerPtr handle,
+  H264SPSDataParameters sps
+)
+{
+  H264VuiParameters vui = sps.vui_parameters;
+
+  LIBBLU_H264_DEBUG_VUI(
+    "   Aspect ratio information "
+    "(aspect_ratio_info_present_flag): %s (0b%X).\n",
+    BOOL_PRESENCE(vui.aspect_ratio_info_present_flag),
+    vui.aspect_ratio_info_present_flag
+  );
+
+  if (vui.aspect_ratio_info_present_flag) {
+    LIBBLU_H264_DEBUG_VUI(
+      "    -> Sample Aspect Ratio, SAR "
+      "(aspect_ratio_idc): %s (0x%X).\n",
+      H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
+      vui.aspect_ratio_idc
+    );
+
+    if (
+      H264_ASPECT_RATIO_IDC_2_BY_1 < vui.aspect_ratio_idc
+      && vui.aspect_ratio_idc != H264_ASPECT_RATIO_IDC_EXTENDED_SAR
+    ) {
+      LIBBLU_H264_ERROR_RETURN(
+        "Reserved 'aspect_ratio_idc' == %d in use in VUI parameters.\n",
+        vui.aspect_ratio_idc
+      );
+    }
+
+    if (vui.aspect_ratio_idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
+      LIBBLU_H264_DEBUG_VUI(
+        "    -> Sample aspect ratio horizontal size (sar_width): %u.\n",
+        vui.sar_width
+      );
+      LIBBLU_H264_DEBUG_VUI(
+        "    -> Sample aspect ratio vertical size (sar_height): %u.\n",
+        vui.sar_height
+      );
+      LIBBLU_H264_DEBUG_VUI(
+        "     => Extended SAR ratio: %u:%u.\n",
+        vui.sar_width,
+        vui.sar_height
+      );
+    }
+
+    /* Check aspect_ratio_idc values */
+    if (_checkAspectRatioInfoH264VuiParametersCompliance(sps, vui) < 0)
+      return -1;
+  }
+  else {
+    LIBBLU_H264_DEBUG_VUI(
+      "    -> Sample Aspect Ratio, SAR "
+      "(aspect_ratio_idc): %s (Inferred).\n",
+      H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
+      vui.aspect_ratio_idc
+    );
+
+    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      "Missing required 'aspect_ratio_idc' information in SPS VUI parameters "
+      "('aspect_ratio_info_present_flag' == 0b0).\n"
     );
   }
 
   LIBBLU_H264_DEBUG_VUI(
     "   Over-scan preference information "
     "(overscan_info_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.overscan_info_present_flag),
-    param.overscan_info_present_flag
+    BOOL_PRESENCE(vui.overscan_info_present_flag),
+    vui.overscan_info_present_flag
   );
 
-  if (param.overscan_info_present_flag) {
+  if (vui.overscan_info_present_flag) {
     LIBBLU_H264_DEBUG_VUI(
-      "    -> Over-scan preference "
-      "(overscan_appropriate_flag): %s (0b%X).\n",
-      (param.overscan_appropriate_flag) ? "Crop decoded pictures" : "Add margins",
-      param.overscan_appropriate_flag
+      "    -> Over-scan preference (overscan_appropriate_flag): %s (0b%X).\n",
+      H264OverscanAppropriateValueStr(vui.overscan_appropriate_flag),
+      vui.overscan_appropriate_flag
     );
-
-    if (
-      CHECK_H264_WARNING_FLAG(handle, vuiInvalidOverscan)
-      && param.overscan_appropriate_flag != 0x0
-    ) {
-      LIBBLU_WARNING(
-        "Over-scan preference in VUI parameters shouldn't allow cropping "
-        "of decoded pictures ('overscan_appropriate_flag' == 0b0).\n"
-      );
-      handle->curProgParam.wrongVuiParameters = true;
-      MARK_H264_WARNING_FLAG(handle, vuiInvalidOverscan);
-    }
   }
   else {
     LIBBLU_H264_DEBUG_VUI(
-      "    -> Over-scan preference: Unspecified (Inferred).\n"
+      "    -> Over-scan preference: %s (Inferred).\n",
+      H264OverscanAppropriateValueStr(vui.overscan_appropriate_flag)
     );
+  }
+
+  if (
+    CHECK_H264_WARNING_FLAG(handle, vuiInvalidOverscan)
+    && vui.overscan_appropriate_flag == H264_OVERSCAN_APPROP_CROP
+  ) {
+    LIBBLU_WARNING(
+      "Over-scan preference in VUI parameters shouldn't allow cropping "
+      "of decoded pictures ('overscan_appropriate_flag' == 0b0).\n"
+    );
+    handle->curProgParam.wrongVuiParameters = true;
+    MARK_H264_WARNING_FLAG(handle, vuiInvalidOverscan);
   }
 
   LIBBLU_H264_DEBUG_VUI(
     "   Video signal type parameters "
     "(video_signal_type_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.video_signal_type_present_flag),
-    param.video_signal_type_present_flag
+    BOOL_PRESENCE(vui.video_signal_type_present_flag),
+    vui.video_signal_type_present_flag
   );
 
-  if (param.video_signal_type_present_flag) {
+  if (vui.video_signal_type_present_flag) {
     handle->curProgParam.missingVSTVuiParameters = false;
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Video format (video_format): %s (0x%X).\n",
-      H264VideoFormatValueStr(param.video_format),
-      param.video_format
+      H264VideoFormatValueStr(vui.video_format),
+      vui.video_format
     );
 
-    if (H264_VIDEO_FORMAT_UNSPECIFIED < param.video_format) {
+    if (H264_VIDEO_FORMAT_UNSPECIFIED < vui.video_format)
       LIBBLU_H264_ERROR_RETURN(
         "Reserved 'video_format' == %d in use.\n",
-        param.video_format
-      );
-    }
-
-    expectedVideoFormat = getH264BdavExpectedVideoFormat(
-      param.FrameRate
-    );
-
-    if (
-      CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFormat)
-      && expectedVideoFormat != param.video_format
-    ) {
-      LIBBLU_WARNING(
-        "Unexpected Video Format '%s' in SPS VUI parameters "
-        "for %ux%u, should be '%s' for this "
-        "resolution ('video_format' == %d).\n",
-        H264VideoFormatValueStr(param.video_format),
-        spsParam.FrameWidth,
-        spsParam.FrameHeight,
-        H264VideoFormatValueStr(expectedVideoFormat),
-        param.video_format
+        vui.video_format
       );
 
-      handle->curProgParam.wrongVuiParameters = true;
-      MARK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFormat);
-    }
+    if (_checkVideoFormatH264VuiParametersCompliance(handle, sps, vui) < 0)
+      return -1;
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Full-range luma and chroma samples values "
       "(video_full_range_flag): %s (0b%X).\n",
-      BOOL_STR(param.video_full_range_flag),
-      param.video_full_range_flag
+      BOOL_STR(vui.video_full_range_flag),
+      vui.video_full_range_flag
     );
 
     if (
       CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFullRange)
-      && param.video_full_range_flag
+      && vui.video_full_range_flag
     ) {
       LIBBLU_WARNING(
         "Video color range shall be set to 'limited' in SPS VUI parameters "
@@ -523,91 +674,15 @@ static int _checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    -> Color description parameters "
       "(colour_description_present_flag): %s (0b%X).\n",
-      BOOL_PRESENCE(param.colour_description_present_flag),
-      param.colour_description_present_flag
+      BOOL_PRESENCE(vui.colour_description_present_flag),
+      vui.colour_description_present_flag
     );
 
-    if (param.colour_description_present_flag) {
-      colourParam = &param.colour_description;
+    if (vui.colour_description_present_flag) {
+      H264VuiColourDescriptionParameters col_desc = vui.colour_description;
 
-      LIBBLU_H264_DEBUG_VUI(
-        "     -> Colour primaries "
-        "(colour_primaries): %s (0x%X).\n",
-        H264ColorPrimariesValueStr(colourParam->colour_primaries),
-        colourParam->colour_primaries
-      );
-
-      expectedColourPrimaries = getH264BdavExpectedColorPrimaries(
-        spsParam.FrameHeight
-      );
-
-      if (
-        CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedColourPrimaries)
-        && expectedColourPrimaries != colourParam->colour_primaries
-      ) {
-        LIBBLU_WARNING(
-          "Color Primaries in SPS VUI parameters should be defined to '%s', "
-          "not '%s' ('colour_primaries' == 0x%X).\n",
-          H264ColorPrimariesValueStr(expectedColourPrimaries),
-          H264ColorPrimariesValueStr(colourParam->colour_primaries),
-          colourParam->colour_primaries
-        );
-        handle->curProgParam.wrongVuiParameters = true;
-        MARK_H264_WARNING_FLAG(handle, vuiUnexpectedColourPrimaries);
-      }
-
-      LIBBLU_H264_DEBUG_VUI(
-        "     -> Transfer characteristics "
-        "(transfer_characteristics): %s (0x%X).\n",
-        H264TransferCharacteristicsValueStr(colourParam->transfer_characteristics),
-        colourParam->transfer_characteristics
-      );
-
-      expectedTransferCharact = getH264BdavExpectedTransferCharacteritics(
-        spsParam.FrameHeight
-      );
-
-      if (
-        CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedTranferCharact)
-        && expectedTransferCharact != colourParam->transfer_characteristics
-      ) {
-        LIBBLU_WARNING(
-          "Transfer Characteristics in SPS VUI parameters should "
-          "be defined to '%s', not '%s' "
-          "('transfer_characteristics' == 0x%X).\n",
-          H264TransferCharacteristicsValueStr(expectedTransferCharact),
-          H264TransferCharacteristicsValueStr(colourParam->transfer_characteristics),
-          colourParam->transfer_characteristics
-        );
-        handle->curProgParam.wrongVuiParameters = true;
-        MARK_H264_WARNING_FLAG(handle, vuiUnexpectedTranferCharact);
-      }
-
-      LIBBLU_H264_DEBUG_VUI(
-        "     -> Matrix coefficients "
-        "(matrix_coefficients): %s (0x%X).\n",
-        H264MatrixCoefficientsValueStr(colourParam->matrix_coefficients),
-        colourParam->matrix_coefficients
-      );
-
-      expectedMatrixCoeff = getH264BdavExpectedMatrixCoefficients(
-        spsParam.FrameHeight
-      );
-
-      if (
-        CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedMatrixCoeff)
-        && expectedMatrixCoeff != colourParam->matrix_coefficients
-      ) {
-        LIBBLU_WARNING(
-          "Matrix coefficients in SPS VUI parameters should "
-          "be defined to '%s', not '%s' ('matrix_coefficients' == 0x%X).\n",
-          H264MatrixCoefficientsValueStr(expectedMatrixCoeff),
-          H264MatrixCoefficientsValueStr(colourParam->matrix_coefficients),
-          colourParam->matrix_coefficients
-        );
-        handle->curProgParam.wrongVuiParameters = true;
-        MARK_H264_WARNING_FLAG(handle, vuiUnexpectedMatrixCoeff);
-      }
+      if (_checkH264VuiColDescParametersCompliance(handle, sps, col_desc) < 0)
+        return -1;
     }
   }
   else {
@@ -615,35 +690,57 @@ static int _checkH264VuiParametersCompliance(
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Video format (video_format): %s (Inferred).\n",
-      H264VideoFormatValueStr(param.video_format)
+      H264VideoFormatValueStr(vui.video_format)
     );
     LIBBLU_H264_DEBUG_VUI(
       "    -> Full-range luma and chroma samples values "
       "(video_full_range_flag): %s (Inferred).\n",
-      BOOL_STR(param.video_full_range_flag)
+      BOOL_STR(vui.video_full_range_flag)
     );
     LIBBLU_H264_DEBUG_VUI(
       "    -> Color description parameters "
       "(colour_description_present_flag): %s (Inferred).\n",
-      BOOL_PRESENCE(param.colour_description_present_flag)
+      BOOL_PRESENCE(vui.colour_description_present_flag)
     );
+
+    if (CHECK_H264_WARNING_FLAG(handle, vuiMissingVideoSignalType)) {
+      LIBBLU_WARNING(
+        "Video Signal Type parameters shall be present in SPS VUI parameters "
+        "according to BD-specs.\n"
+      );
+      handle->curProgParam.wrongVuiParameters = true;
+      MARK_H264_WARNING_FLAG(handle, vuiMissingVideoSignalType);
+    }
   }
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiMissingVideoSignalType)
-    && !param.video_signal_type_present_flag
-  ) {
-    LIBBLU_WARNING(
-      "Video Signal Type parameters shall be present in SPS VUI parameters "
-      "according to BD-specs.\n"
+  if (!vui.colour_description_present_flag) {
+    H264VuiColourDescriptionParameters col_desc = vui.colour_description;
+
+    LIBBLU_H264_DEBUG_VUI(
+      "     -> Colour primaries "
+      "(colour_primaries): %s (Inferred).\n",
+      H264ColorPrimariesValueStr(col_desc.colour_primaries),
+      col_desc.colour_primaries
     );
-    handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiMissingVideoSignalType);
+
+    LIBBLU_H264_DEBUG_VUI(
+      "     -> Transfer characteristics "
+      "(transfer_characteristics): %s (Inferred).\n",
+      H264TransferCharacteristicsValueStr(col_desc.transfer_characteristics),
+      col_desc.transfer_characteristics
+    );
+
+    LIBBLU_H264_DEBUG_VUI(
+      "     -> Matrix coefficients "
+      "(matrix_coefficients): %s (Inferred).\n",
+      H264MatrixCoefficientsValueStr(col_desc.matrix_coefficients),
+      col_desc.matrix_coefficients
+    );
   }
 
   if (
     CHECK_H264_WARNING_FLAG(handle, vuiMissingColourDesc)
-    && !param.colour_description_present_flag
+    && !vui.colour_description_present_flag
   ) {
     LIBBLU_WARNING(
       "Color Description parameters shall be present in SPS VUI parameters "
@@ -656,40 +753,40 @@ static int _checkH264VuiParametersCompliance(
   LIBBLU_H264_DEBUG_VUI(
     "   Chroma location information "
     "(chroma_loc_info_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.chroma_loc_info_present_flag),
-    param.chroma_loc_info_present_flag
+    BOOL_PRESENCE(vui.chroma_loc_info_present_flag),
+    vui.chroma_loc_info_present_flag
   );
 
-  if (param.chroma_loc_info_present_flag) {
+  if (vui.chroma_loc_info_present_flag) {
     LIBBLU_H264_DEBUG_VUI(
       "    -> Top-field "
       "(chroma_sample_loc_type_top_field): %u (0x%X).\n",
-      param.chroma_sample_loc_type_top_field,
-      param.chroma_sample_loc_type_top_field
+      vui.chroma_sample_loc_type_top_field,
+      vui.chroma_sample_loc_type_top_field
     );
     LIBBLU_H264_DEBUG_VUI(
       "    -> Bottom-field "
       "(chroma_sample_loc_type_bottom_field): %u (0x%X).\n",
-      param.chroma_sample_loc_type_bottom_field,
-      param.chroma_sample_loc_type_bottom_field
+      vui.chroma_sample_loc_type_bottom_field,
+      vui.chroma_sample_loc_type_bottom_field
     );
 
     if (
       (
-        param.chroma_sample_loc_type_top_field != 0
-        && param.chroma_sample_loc_type_top_field != 2
+        vui.chroma_sample_loc_type_top_field != 0
+        && vui.chroma_sample_loc_type_top_field != 2
       )
       || (
-        param.chroma_sample_loc_type_bottom_field != 0
-        && param.chroma_sample_loc_type_bottom_field != 2
+        vui.chroma_sample_loc_type_bottom_field != 0
+        && vui.chroma_sample_loc_type_bottom_field != 2
       )
     ) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Chroma sample location if present shall be set to 0 or 2 "
         "according to BD-specs ('chroma_sample_loc_type_top_field' == %d / "
         "'chroma_sample_loc_type_bottom_field' == %d).\n",
-        param.chroma_sample_loc_type_top_field,
-        param.chroma_sample_loc_type_bottom_field
+        vui.chroma_sample_loc_type_top_field,
+        vui.chroma_sample_loc_type_bottom_field
       );
     }
   }
@@ -697,50 +794,50 @@ static int _checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    -> Top-field "
       "(chroma_sample_loc_type_top_field): %u (Inferred).\n",
-      param.chroma_sample_loc_type_top_field
+      vui.chroma_sample_loc_type_top_field
     );
     LIBBLU_H264_DEBUG_VUI(
       "    -> Bottom-field "
       "(chroma_sample_loc_type_bottom_field): %u (Inferred).\n",
-      param.chroma_sample_loc_type_bottom_field
+      vui.chroma_sample_loc_type_bottom_field
     );
   }
 
   LIBBLU_H264_DEBUG_VUI(
     "   Timing information (timing_info_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.timing_info_present_flag),
-    param.timing_info_present_flag
+    BOOL_PRESENCE(vui.timing_info_present_flag),
+    vui.timing_info_present_flag
   );
 
-  if (!param.timing_info_present_flag)
+  if (!vui.timing_info_present_flag)
     LIBBLU_H264_ERROR_RETURN(
       "Timing information shall be present in SPS VUI parameters "
       "('timing_info_present_flag' == 0b0).\n"
     );
 
-  if (param.timing_info_present_flag) {
+  if (vui.timing_info_present_flag) {
     LIBBLU_H264_DEBUG_VUI(
       "    -> Number of time units (num_units_in_tick): "
       "%" PRIu32 " (0x%" PRIx32 ").\n",
-      param.num_units_in_tick,
-      param.num_units_in_tick
+      vui.num_units_in_tick,
+      vui.num_units_in_tick
     );
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Time scale clock (time_scale): "
       "%" PRIu32 " Hz (0x%" PRIx32 ").\n",
-      param.time_scale,
-      param.time_scale
+      vui.time_scale,
+      vui.time_scale
     );
 
     LIBBLU_H264_DEBUG_VUI(
       "    -> Fixed frame rate "
       "(fixed_frame_rate_flag): %s (0x%X).\n",
-      BOOL_STR(param.fixed_frame_rate_flag),
-      param.fixed_frame_rate_flag
+      BOOL_STR(vui.fixed_frame_rate_flag),
+      vui.fixed_frame_rate_flag
     );
 
-    if (!param.fixed_frame_rate_flag) {
+    if (!vui.fixed_frame_rate_flag) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Forbidden use of a variable frame-rate mode "
         "('fixed_frame_rate_flag' == 0b0).\n"
@@ -750,18 +847,18 @@ static int _checkH264VuiParametersCompliance(
     /* Equation D-2 */
     LIBBLU_H264_DEBUG_VUI(
       "    => Frame-rate: %.3f.\n",
-      param.FrameRate
+      vui.FrameRate
     );
   }
 
   LIBBLU_H264_DEBUG_VUI(
     "   NAL HRD parameters "
     "(nal_hrd_parameters_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.nal_hrd_parameters_present_flag),
-    param.nal_hrd_parameters_present_flag
+    BOOL_PRESENCE(vui.nal_hrd_parameters_present_flag),
+    vui.nal_hrd_parameters_present_flag
   );
 
-  if (!param.nal_hrd_parameters_present_flag) {
+  if (!vui.nal_hrd_parameters_present_flag) {
     LIBBLU_H264_DEBUG_VUI(
       "    -> Warning: Absence of NAL HRD parameters is only tolerated "
       "for still-picture steams.\n"
@@ -769,31 +866,31 @@ static int _checkH264VuiParametersCompliance(
     handle->curProgParam.stillPictureTolerance = true;
   }
 
-  if (param.nal_hrd_parameters_present_flag) {
-    if (_checkH264HrdParametersCompliance(param.nal_hrd_parameters) < 0)
+  if (vui.nal_hrd_parameters_present_flag) {
+    if (_checkH264HrdParametersCompliance(vui.nal_hrd_parameters) < 0)
       return -1;
   }
 
   LIBBLU_H264_DEBUG_VUI(
     "   VCL HRD parameters "
     "(vcl_hrd_parameters_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.vcl_hrd_parameters_present_flag),
-    param.vcl_hrd_parameters_present_flag
+    BOOL_PRESENCE(vui.vcl_hrd_parameters_present_flag),
+    vui.vcl_hrd_parameters_present_flag
   );
 
-  if (param.vcl_hrd_parameters_present_flag) {
-    if (_checkH264HrdParametersCompliance(param.vcl_hrd_parameters) < 0)
+  if (vui.vcl_hrd_parameters_present_flag) {
+    if (_checkH264HrdParametersCompliance(vui.vcl_hrd_parameters) < 0)
       return -1;
   }
 
-  if (param.nal_hrd_parameters_present_flag || param.vcl_hrd_parameters_present_flag) {
+  if (vui.nal_hrd_parameters_present_flag || vui.vcl_hrd_parameters_present_flag) {
     LIBBLU_H264_DEBUG_VUI(
       "   Low delay (low_delay_hrd_flag): %s (0b%X).\n",
-      BOOL_STR(param.low_delay_hrd_flag),
-      param.low_delay_hrd_flag
+      BOOL_STR(vui.low_delay_hrd_flag),
+      vui.low_delay_hrd_flag
     );
 
-    if (param.low_delay_hrd_flag) {
+    if (vui.low_delay_hrd_flag) {
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Forbidden use of low delay HRD "
         "('low_delay_hrd_flag' == 0b1).\n"
@@ -824,8 +921,8 @@ static int _checkH264VuiParametersCompliance(
   LIBBLU_H264_DEBUG_VUI(
     "   Picture Structure in SEI picture timing messages "
     "(pic_struct_present_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.pic_struct_present_flag),
-    param.pic_struct_present_flag
+    BOOL_PRESENCE(vui.pic_struct_present_flag),
+    vui.pic_struct_present_flag
   );
   /**
    * NOTE: Compliance of 'pic_struct_present_flag' is verified
@@ -835,13 +932,14 @@ static int _checkH264VuiParametersCompliance(
   LIBBLU_H264_DEBUG_VUI(
     "   Video Sequence Bitstream Restriction parameters "
     "(bitstream_restriction_flag): %s (0b%X).\n",
-    BOOL_PRESENCE(param.bitstream_restriction_flag),
-    param.bitstream_restriction_flag
+    BOOL_PRESENCE(vui.bitstream_restriction_flag),
+    vui.bitstream_restriction_flag
   );
 
-  if (param.bitstream_restriction_flag) {
-    const H264VuiVideoSeqBitstreamRestrictionsParameters * restrParam;
-    restrParam = &param.bistream_restrictions;
+  if (vui.bitstream_restriction_flag) {
+    const H264VuiVideoSeqBsRestrParameters * restrParam =
+      &vui.bistream_restrictions
+    ;
 
     LIBBLU_H264_DEBUG_VUI(
       "    Samples outside picture boundaries in Motion Vectors "
@@ -851,42 +949,31 @@ static int _checkH264VuiParametersCompliance(
     );
 
     LIBBLU_H264_DEBUG_VUI(
-      "    Maximum picture size "
-      "(max_bytes_per_pic_denom): "
-    );
-    if (restrParam->max_bytes_per_pic_denom != 0) {
-      LIBBLU_H264_DEBUG_VUI_NH(
-        "%" PRIu8 " bytes",
-        restrParam->max_bytes_per_pic_denom
-      );
-    }
-    else
-      LIBBLU_H264_DEBUG_VUI_NH("Unlimited");
-    LIBBLU_H264_DEBUG_VUI_NH(
-      " (0x%02" PRIX8 ").\n",
+      "    Maximum picture size (max_bytes_per_pic_denom): "
+      "%u bytes (0x%02X).\n",
+      restrParam->max_bytes_per_pic_denom,
       restrParam->max_bytes_per_pic_denom
     );
+    if (!restrParam->max_bytes_per_pic_denom)
+      LIBBLU_H264_DEBUG_VUI(
+        "     -> Unlimited.\n"
+      );
 
     LIBBLU_H264_DEBUG_VUI(
       "    Maximum macro-block size (max_bits_per_mb_denom): "
-    );
-    if (restrParam->max_bits_per_mb_denom != 0) {
-      LIBBLU_H264_DEBUG_VUI_NH(
-        "%" PRIu8 " bits",
-        restrParam->max_bits_per_mb_denom
-      );
-    }
-    else
-      LIBBLU_H264_DEBUG_VUI_NH("Unlimited");
-    LIBBLU_H264_DEBUG_VUI_NH(
-      " (0x%02" PRIX8 ").\n",
+      "%u bits (0x%02X).\n",
+      restrParam->max_bits_per_mb_denom,
       restrParam->max_bits_per_mb_denom
     );
+    if (!restrParam->max_bits_per_mb_denom)
+      LIBBLU_H264_DEBUG_VUI(
+        "     -> Unlimited.\n"
+      );
 
     LIBBLU_H264_DEBUG_VUI(
       "    Maximum horizontal motion vector length "
       "(log2_max_mv_length_horizontal): "
-      "%.2f luma sample(s) (0x%02" PRIX8 ").\n",
+      "%.2f luma sample(s) (0x%02X).\n",
       0.25 * restrParam->log2_max_mv_length_horizontal,
       restrParam->log2_max_mv_length_horizontal
     );
@@ -894,7 +981,7 @@ static int _checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    Maximum vertical motion vector length "
       "(log2_max_mv_length_vertical): "
-      "%.2f luma sample(s) (0x%02" PRIX8 ").\n",
+      "%.2f luma sample(s) (0x%02X).\n",
       0.25 * restrParam->log2_max_mv_length_vertical,
       restrParam->log2_max_mv_length_vertical
     );
@@ -902,7 +989,7 @@ static int _checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    Maximum number of frames in DPB "
       "(max_num_reorder_frames): "
-      "%" PRIu16 " frame buffers (0x%04" PRIX8 ").\n",
+      "%" PRIu16 " frame buffers (0x%04X).\n",
       restrParam->max_num_reorder_frames,
       restrParam->max_num_reorder_frames
     );
@@ -910,7 +997,7 @@ static int _checkH264VuiParametersCompliance(
     LIBBLU_H264_DEBUG_VUI(
       "    HRD-DPB required size "
       "(max_dec_frame_buffering): "
-      "%" PRIu16 " frame buffers (0x%04" PRIX8 ").\n",
+      "%" PRIu16 " frame buffers (0x%04X).\n",
       restrParam->max_dec_frame_buffering,
       restrParam->max_dec_frame_buffering
     );
@@ -919,7 +1006,7 @@ static int _checkH264VuiParametersCompliance(
   return 0;
 }
 
-static const char * getSequenceScalingListName(
+static const char * _getSequenceScalingListName(
   int indice
 )
 {
@@ -1264,7 +1351,7 @@ int checkH264SequenceParametersSetCompliance(
       for (i = 0; i < nbLists; i++) {
         LIBBLU_H264_DEBUG_SPS(
           "   -> %s (seq_scaling_list_present_flag[%X]): %s (0b%X).\n",
-          getSequenceScalingListName(i), i,
+          _getSequenceScalingListName(i), i,
           BOOL_PRESENCE(param.seq_scaling_matrix.seq_scaling_list_present_flag[i]),
           param.seq_scaling_matrix.seq_scaling_list_present_flag[i]
         );
@@ -1745,7 +1832,6 @@ int checkH264SequenceParametersSetCompliance(
   if (param.vui_parameters_present_flag) {
     ret = _checkH264VuiParametersCompliance(
       handle,
-      param.vui_parameters,
       param
     );
     if (ret < 0)

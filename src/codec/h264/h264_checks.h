@@ -91,8 +91,8 @@ static inline bool constantH264VuiColourDescriptionParametersCheck(
 }
 
 static inline bool constantH264VuiVideoSeqBitstreamRestrictionsParametersCheck(
-  H264VuiVideoSeqBitstreamRestrictionsParameters first,
-  H264VuiVideoSeqBitstreamRestrictionsParameters second
+  H264VuiVideoSeqBsRestrParameters first,
+  H264VuiVideoSeqBsRestrParameters second
 )
 {
   return START_CHECK

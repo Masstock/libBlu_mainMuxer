@@ -634,9 +634,10 @@ static int _processCompleteAccessUnit(
         (sps->frame_mbs_only_flag) ? "p" : "i"
       );
 
-    frameRate = getHdmvFrameRateCode(
-      handle->curProgParam.frameRate
-    );
+    if (handle->curProgParam.frameRate < 0)
+      LIBBLU_H264_ERROR_RETURN("Missing Frame-rate information (not present in bitstream).\n");
+
+    frameRate = getHdmvFrameRateCode(handle->curProgParam.frameRate);
     if (!frameRate)
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Frame-rate %.3f is unsupported.\n",
@@ -1134,6 +1135,76 @@ static int _parseH264HrdParameters(
   return 0;
 }
 
+/** \~english
+ * \brief max_num_reorder_frames / max_dec_frame_buffering fields default
+ * value.
+ *
+ * \param handle
+ * \param sps
+ * \return unsigned
+ */
+static unsigned _defaultMaxNumReorderFramesDecFrameBuffering(
+  const H264ParametersHandlerPtr handle,
+  const H264SPSDataParameters * sps
+)
+{
+  unsigned MaxDpbMbs = handle->constraints.MaxDpbMbs;
+
+  bool equalToZero = (
+    sps->constraint_set_flags.set3
+    && (
+      sps->profile_idc == H264_PROFILE_CAVLC_444_INTRA
+      || sps->profile_idc == H264_PROFILE_SCALABLE_HIGH
+      || sps->profile_idc == H264_PROFILE_HIGH
+      || sps->profile_idc == H264_PROFILE_HIGH_10
+      || sps->profile_idc == H264_PROFILE_HIGH_422
+      || sps->profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
+    )
+  );
+
+  if (equalToZero)
+    return 0;
+
+  /* Equation A.3.1.h) MaxDpbFrames */
+  return MIN(
+    MaxDpbMbs / (sps->PicWidthInMbs * sps->FrameHeightInMbs),
+    16
+  );
+}
+
+/** \~english
+ * \brief
+ *
+ * \param vui
+ *
+ * Default values according to [1] E.2.1 VUI parameters semantics.
+ */
+static void _setDefaultH264VuiParameters(
+  H264VuiParameters * dst
+)
+{
+  *dst = (H264VuiParameters) {
+    .aspect_ratio_idc = H264_ASPECT_RATIO_IDC_UNSPECIFIED,
+    .overscan_appropriate_flag = H264_OVERSCAN_APPROP_UNSPECIFIED,
+    .video_format = H264_VIDEO_FORMAT_UNSPECIFIED,
+    .colour_description = {
+      .colour_primaries = H264_COLOR_PRIM_UNSPECIFIED,
+      .transfer_characteristics = H264_TRANS_CHAR_UNSPECIFIED,
+      .matrix_coefficients = H264_MATRX_COEF_UNSPECIFIED
+    },
+    .low_delay_hrd_flag = true, // 1 - fixed_frame_rate_flag
+    .bistream_restrictions = {
+      .motion_vectors_over_pic_boundaries_flag = true,
+      .max_bytes_per_pic_denom = 2,
+      .max_bits_per_mb_denom = 1,
+      .log2_max_mv_length_horizontal = 15,
+      .log2_max_mv_length_vertical = 15,
+      // max_num_reorder_frames set after parsing
+      // max_dec_frame_buffering set after parsing
+    }
+  };
+}
+
 static int _parseH264VuiParameters(
   H264ParametersHandlerPtr handle,
   H264VuiParameters * param
@@ -1165,12 +1236,6 @@ static int _parseH264VuiParameters(
         LIBBLU_H264_READING_FAIL_RETURN();
       param->sar_height = value;
     }
-    else
-      param->sar_width = param->sar_height = 0;
-  }
-  else {
-    param->aspect_ratio_idc = H264_ASPECT_RATIO_IDC_UNSPECIFIED;
-    param->sar_width = param->sar_height = 0;
   }
 
   /* [b1 overscan_info_present_flag] */
@@ -1184,8 +1249,6 @@ static int _parseH264VuiParameters(
       LIBBLU_H264_READING_FAIL_RETURN();
     param->overscan_appropriate_flag = value;
   }
-  else
-    param->overscan_appropriate_flag = false;
 
   /* [b1 video_signal_type_present_flag] */
   if (readBitsNal(handle, &value, 1) < 0)
@@ -1224,26 +1287,6 @@ static int _parseH264VuiParameters(
         LIBBLU_H264_READING_FAIL_RETURN();
       param->colour_description.matrix_coefficients = value;
     }
-    else {
-      param->colour_description.colour_primaries =
-        H264_COLOR_PRIM_UNSPECIFIED;
-      param->colour_description.transfer_characteristics =
-        H264_TRANS_CHAR_UNSPECIFIED;
-      param->colour_description.matrix_coefficients =
-        H264_MATRX_COEF_UNSPECIFIED;
-    }
-  }
-  else {
-    param->video_format =
-      H264_VIDEO_FORMAT_UNSPECIFIED;
-    param->video_full_range_flag = false;
-    param->colour_description_present_flag = false;
-    param->colour_description.colour_primaries =
-      H264_COLOR_PRIM_UNSPECIFIED;
-    param->colour_description.transfer_characteristics =
-      H264_TRANS_CHAR_UNSPECIFIED;
-    param->colour_description.matrix_coefficients =
-      H264_MATRX_COEF_UNSPECIFIED;
   }
 
   /* [b1 chroma_loc_info_present_flag] */
@@ -1262,10 +1305,6 @@ static int _parseH264VuiParameters(
       LIBBLU_H264_READING_FAIL_RETURN();
     param->chroma_sample_loc_type_bottom_field = value;
   }
-  else
-    param->chroma_sample_loc_type_top_field = 0,
-    param->chroma_sample_loc_type_bottom_field = 0
-  ;
 
   /* [b1 timing_info_present_flag] */
   if (readBitsNal(handle, &value, 1) < 0)
@@ -1331,6 +1370,10 @@ static int _parseH264VuiParameters(
       LIBBLU_H264_READING_FAIL_RETURN();
     param->low_delay_hrd_flag = value;
   }
+  else {
+    /* Default value */
+    param->low_delay_hrd_flag = 1 - param->fixed_frame_rate_flag;
+  }
 
   /* [b1 pic_struct_present_flag] */
   if (readBitsNal(handle, &value, 1) < 0)
@@ -1378,16 +1421,40 @@ static int _parseH264VuiParameters(
       LIBBLU_H264_READING_FAIL_RETURN();
     param->bistream_restrictions.max_dec_frame_buffering = value;
   }
-  else {
-    /* Default values : */
-    param->bistream_restrictions.motion_vectors_over_pic_boundaries_flag = true;
-    param->bistream_restrictions.max_bytes_per_pic_denom = 2;
-    param->bistream_restrictions.max_bits_per_mb_denom = 1;
-    param->bistream_restrictions.log2_max_mv_length_horizontal = 15;
-    param->bistream_restrictions.log2_max_mv_length_vertical = 15;
-  }
 
   return 0;
+}
+
+static void _updateH264VuiParameters(
+  H264ParametersHandlerPtr handle,
+  H264SPSDataParameters * sps
+)
+{
+  H264VuiParameters * vui = &sps->vui_parameters;
+  H264VuiVideoSeqBsRestrParameters * bs_restr = &vui->bistream_restrictions;
+
+  /* Set saved frame-rate value. */
+  handle->curProgParam.frameRate = -1;
+  if (
+    sps->vui_parameters_present_flag
+    && vui->timing_info_present_flag
+  ) {
+    /* Frame rate information present */
+    handle->curProgParam.frameRate = vui->FrameRate;
+  }
+
+  if (
+    !sps->vui_parameters_present_flag
+    || !vui->bitstream_restriction_flag
+  ) {
+    /* [1] E.2.1 VUI parameters semantics */
+    unsigned nbFrames = _defaultMaxNumReorderFramesDecFrameBuffering(
+      handle, sps
+    );
+
+    bs_restr->max_num_reorder_frames = nbFrames;
+    bs_restr->max_dec_frame_buffering = nbFrames;
+  }
 }
 
 static int _parseH264SequenceParametersSetData(
@@ -1677,21 +1744,12 @@ static int _parseH264SequenceParametersSetData(
     LIBBLU_H264_READING_FAIL_RETURN();
   param->vui_parameters_present_flag = value;
 
+  _setDefaultH264VuiParameters(&param->vui_parameters);
+
   if (param->vui_parameters_present_flag) {
     if (_parseH264VuiParameters(handle, &param->vui_parameters) < 0)
       return -1;
   }
-
-  if (
-    param->vui_parameters_present_flag
-    && param->vui_parameters.timing_info_present_flag
-  ) {
-    /* Frame rate information present */
-    handle->curProgParam.frameRate =
-      param->vui_parameters.FrameRate;
-  }
-  else
-    handle->curProgParam.frameRate = -1;
 
   /* Derivate values computation : */
   switch (param->chroma_format_idc) {
@@ -1773,6 +1831,9 @@ static int _parseH264SequenceParametersSetData(
       param->frame_crop_offset.top + param->frame_crop_offset.bottom
     )
   ;
+
+  /* Use computed values to update missing VUI fields and handle */
+  _updateH264VuiParameters(handle, param);
 
   return 0;
 }

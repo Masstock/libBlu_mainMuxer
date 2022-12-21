@@ -466,6 +466,27 @@ static inline const char * H264AspectRatioIdcValueStr(
 }
 
 typedef enum {
+  H264_OVERSCAN_APPROP_ADD_MARGIN   = 0,
+  H264_OVERSCAN_APPROP_CROP         = 1,
+  H264_OVERSCAN_APPROP_UNSPECIFIED  = 3
+} H264OverscanAppropriateValue;
+
+static inline const char * H264OverscanAppropriateValueStr(
+  H264OverscanAppropriateValue val
+)
+{
+  static const char * strings[] = {
+    "Avoid overscan",
+    "Use overscan",
+    "Unspecified"
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "Unknown";
+}
+
+typedef enum {
   H264_VIDEO_FORMAT_COMPONENT    = 0,
   H264_VIDEO_FORMAT_PAL          = 1,
   H264_VIDEO_FORMAT_NTSC         = 2,
@@ -635,15 +656,20 @@ typedef struct {
   H264MatrixCoefficientsValue matrix_coefficients;
 } H264VuiColourDescriptionParameters;
 
+/** \~english
+ * \brief H.264 VUI coded video sequence bitstream restrictions parameters.
+ *
+ * Described in [1] E.2.1 VUI parameters semantics.
+ */
 typedef struct {
   bool motion_vectors_over_pic_boundaries_flag;
-  uint8_t max_bytes_per_pic_denom;
-  uint8_t max_bits_per_mb_denom;
-  uint8_t log2_max_mv_length_horizontal;
-  uint8_t log2_max_mv_length_vertical;
-  uint16_t max_num_reorder_frames;
-  uint8_t max_dec_frame_buffering;
-} H264VuiVideoSeqBitstreamRestrictionsParameters;
+  unsigned max_bytes_per_pic_denom;
+  unsigned max_bits_per_mb_denom;
+  unsigned log2_max_mv_length_horizontal;
+  unsigned log2_max_mv_length_vertical;
+  unsigned max_num_reorder_frames;
+  unsigned max_dec_frame_buffering;
+} H264VuiVideoSeqBsRestrParameters;
 
 typedef struct {
   bool aspect_ratio_info_present_flag;
@@ -655,7 +681,7 @@ typedef struct {
     parameters.                                                              */
 
   bool overscan_info_present_flag;
-  bool overscan_appropriate_flag;
+  H264OverscanAppropriateValue overscan_appropriate_flag;
 
   bool video_signal_type_present_flag;
   struct {
@@ -694,7 +720,7 @@ typedef struct {
 
   bool pic_struct_present_flag;
   bool bitstream_restriction_flag;
-  H264VuiVideoSeqBitstreamRestrictionsParameters bistream_restrictions;
+  H264VuiVideoSeqBsRestrParameters bistream_restrictions;
 } H264VuiParameters;
 
 typedef struct {

@@ -13,7 +13,7 @@
 #include "util.h"
 #include "elementaryStream.h"
 #include "dtcpSettings.h"
-#include "ini/iniData.h"
+#include "ini/iniHandler.h"
 
 #define LIBBLU_MAX_NB_STREAMS  32
 

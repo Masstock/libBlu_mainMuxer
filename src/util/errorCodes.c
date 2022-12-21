@@ -161,6 +161,11 @@ static const struct {
   ),
 
   DECLARE_OPTION(
+    LIBBLU_DEBUG_H264_HRD,
+    "h264_hrd",
+    "H.264 HRD informations"
+  ),
+  DECLARE_OPTION(
     LIBBLU_DEBUG_H264_HRD_CPB,
     "h264_hrd_cpb",
     "H.264 HRD Coded Picture Buffer status"
@@ -169,11 +174,6 @@ static const struct {
     LIBBLU_DEBUG_H264_HRD_DPB,
     "h264_hrd_dpb",
     "H.264 HRD Decoded Picture Buffer status"
-  ),
-  DECLARE_OPTION(
-    LIBBLU_DEBUG_H264_HRD_OPERATIONS,
-    "h264_hrd_operations",
-    "H.264 HRD verification operations"
   ),
 
   /* HDMV Common : */

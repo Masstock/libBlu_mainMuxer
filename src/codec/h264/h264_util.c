@@ -187,21 +187,34 @@ int initIfRequiredH264CpbHrdVerifier(
   LibbluESSettingsOptions * options
 )
 {
+  H264HrdVerifierContextPtr ctx;
+  bool available;
+
   assert(NULL == handle->hrdVerifier);
   assert(NULL != options);
 
-  if (checkH264CpbHrdVerifierAvailablity(&handle->curProgParam, *options)) {
-    /* If HRD verifier can be initialized, try to do so. */
-    handle->hrdVerifier = createH264HrdVerifierContext(
-      options,
-      &handle->sequenceParametersSet.data,
-      &handle->constraints
-    );
-    if (NULL == handle->hrdVerifier)
-      return -1;
+  available = checkH264CpbHrdVerifierAvailablity(
+    &handle->curProgParam,
+    options,
+    handle->sequenceParametersSet.data
+  );
+
+  if (!available) {
+    /* Missing fields/unsupported configuration, disable HRD Verifier */
+    options->disableHrdVerifier = true;
+    return 0;
   }
-  else
-    options->disableHrdVerifier = true; /* Otherwise disable it. */
+
+  /* If HRD verifier can be initialized, try to do so. */
+  ctx = createH264HrdVerifierContext(
+    options,
+    &handle->sequenceParametersSet.data,
+    &handle->constraints
+  );
+  if (NULL == ctx)
+    return -1;
+
+  handle->hrdVerifier = ctx;
 
   return 0;
 }
