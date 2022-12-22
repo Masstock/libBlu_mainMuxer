@@ -21,15 +21,6 @@
 
 #define HRD_VERIFIER_VERBOSE_LEVEL 1
 
-/* NOTE ABOUT TIME VALUES:
- * t values in ITU-T H.264 are express in seconds.
- * Here t values are express in time_scale * 90000 tick units
- * for convenience.
- * That means some time-base values are modified to apply this
- * clock scale and cannot be interpreted as original ones.
- * Conversion is usable for debugging with convertTimeH264HrdVerifierContext() function.
- */
-
 #define H264_HRD_VERIFIER_NAME  lbc_str("HRD-Verifier")
 #define H264_CPB_HRD_MSG_NAME   lbc_str("HRD-Verifier CPB")
 #define H264_DPB_HRD_MSG_NAME   lbc_str("HRD-Verifier DPB")
@@ -203,9 +194,6 @@ typedef struct {
 
     uint64_t removalTime;
 
-    uint64_t pts;
-    uint64_t dts;
-
     uint64_t initial_cpb_removal_delay;
     uint64_t initial_cpb_removal_delay_offset;
   } nMinusOneAUParameters;
@@ -252,99 +240,6 @@ void echoDebugH264HrdVerifierContext(
   echoDebugH264HrdVerifierContext(                                            \
     ctx, LIBBLU_DEBUG_H264_HRD_DPB, lbc_str(format), ##__VA_ARGS__            \
   )
-
-/** \~english
- * \brief Convert a time value in c ticks to seconds.
- *
- * \param ctx Used HRD context.
- * \param time Time value to convert in c ticks.
- * \return double Associated time value in seconds.
- */
-double convertTimeH264HrdVerifierContext(
-  H264HrdVerifierContextPtr ctx,
-  uint64_t time
-);
-
-/** \~english
- * \brief Declare a new Access Unit with given parameters into the CPB FIFO.
- *
- * \param ctx Destination HRD context.
- * \param length Size of the access unit in bits.
- * \param removalTime Removal time of the access unit (t_r) in c ticks.
- * \param AUIdx Index of the access unit.
- * \param picInfos Picture informations associated with access unit.
- * \return int Upon successfull adding, a zero value is returned. Otherwise,
- * a negative value is returned.
- */
-int addAUToCPBH264HrdVerifierContext(
-  H264HrdVerifierContextPtr ctx,
-  size_t length,
-  uint64_t removalTime,
-  unsigned AUIdx,
-  H264DpbHrdPicInfos picInfos
-);
-
-/** \~english
- * \brief Remove the oldest declared Access Unit from the CPB FIFO.
- *
- * \param ctx Used HRD context.
- * \return int Upon successfull poping, a zero value is returned. Otherwise,
- * a negative value is returned.
- */
-int popAUFromCPBH264HrdVerifierContext(
-  H264HrdVerifierContextPtr ctx
-);
-
-H264CpbHrdAU * getOldestAUFromCPBH264HrdVerifierContext(
-  H264HrdVerifierContextPtr ctx
-);
-
-H264CpbHrdAU * getNewestAUFromCPBH264HrdVerifierContext(
-  H264HrdVerifierContextPtr ctx
-);
-
-int addDecodedPictureToH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  H264CpbHrdAU * pic,
-  uint64_t outputTime
-);
-
-int popDecodedPictureFromH264HrdContext(H264HrdVerifierContextPtr ctx, unsigned idx);
-int setDecodedPictureAsRefUnusedInH264HrdContext(H264HrdVerifierContextPtr ctx, unsigned idx);
-H264DpbHrdPic * getDecodedPictureFromH264HrdContext(H264HrdVerifierContextPtr ctx, unsigned idx);
-
-void printDPBStatusH264HrdContext(H264HrdVerifierContextPtr ctx);
-
-int updateDPBH264HrdContext(H264HrdVerifierContextPtr ctx, uint64_t currentTime);
-void clearDPBH264HrdContext(H264HrdVerifierContextPtr ctx);
-
-int markAllDecodedPicturesAsUnusedH264HrdContext(H264HrdVerifierContextPtr ctx);
-
-int markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  unsigned difference_of_pic_nums_minus1,
-  H264DpbHrdPicInfos * picInfos
-);
-
-int markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  unsigned frameNum
-);
-int markShortTermRefPictureAsUsedForLongTermReferenceH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  unsigned frameNum, unsigned longTermFrameIdx
-);
-
-int checkH264CpbHrdConformanceTests(
-  H264ConstraintsParam * constraints,
-  H264HrdVerifierContextPtr ctx,
-  size_t AUlength,
-  bool AUIsNewBufferingPeriod,
-  H264HrdBufferingPeriodParameters * AUNalHrdParam,
-  H264SPSDataParameters * AUSpsData,
-  H264SliceHeaderParameters * AUSliceHeader,
-  uint64_t Tr_n, unsigned AUNbSlices
-);
 
 int processAUH264HrdContext(
   H264HrdVerifierContextPtr ctx,

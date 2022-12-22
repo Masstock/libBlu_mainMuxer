@@ -411,6 +411,36 @@ typedef struct {
   uint8_t time_offset_length;
 } H264HrdParameters;
 
+static inline uint64_t BitRateH264HrdParameters(
+  H264HrdParameters hrd_parameters,
+  unsigned SchedSelIdx
+)
+{
+  assert(SchedSelIdx <= hrd_parameters.cpb_cnt_minus1);
+
+  return hrd_parameters.schedSel[SchedSelIdx].BitRate;
+}
+
+static inline uint64_t CpbSizeH264HrdParameters(
+  H264HrdParameters hrd_parameters,
+  unsigned SchedSelIdx
+)
+{
+  assert(SchedSelIdx <= hrd_parameters.cpb_cnt_minus1);
+
+  return hrd_parameters.schedSel[SchedSelIdx].CpbSize;
+}
+
+static inline uint64_t cbr_flagH264HrdParameters(
+  H264HrdParameters hrd_parameters,
+  unsigned SchedSelIdx
+)
+{
+  assert(SchedSelIdx <= hrd_parameters.cpb_cnt_minus1);
+
+  return hrd_parameters.schedSel[SchedSelIdx].cbr_flag;
+}
+
 typedef enum {
   H264_ASPECT_RATIO_IDC_ERROR        = -1,
 
