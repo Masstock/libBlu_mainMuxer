@@ -9,33 +9,28 @@
 
 #include "muxingContext.h"
 
-static uint64_t getMinInitialDelay(
+static uint64_t _getMinInitialDelay(
   const LibbluStreamPtr * esStreams,
   unsigned nbEsStreams
 )
 {
-  uint64_t initialDelay;
-  unsigned i;
 
-  initialDelay = 0;
-  for (i = 0; i < nbEsStreams; i++)
+  uint64_t initialDelay = 0;
+  for (unsigned i = 0; i < nbEsStreams; i++)
     initialDelay = MAX(initialDelay, esStreams[i]->es.refPts);
 
   return initialDelay;
 }
 
-static int addSystemStreamToContext(
+static int _addSystemStreamToContext(
   LibbluMuxingContextPtr ctx,
   LibbluStreamPtr sysStream
 )
 {
-  StreamHeapTimingInfos timing;
+  assert(!isESLibbluStream(sysStream));
 
   int priority;
   uint64_t pesDuration;
-  uint64_t pesTsNb;
-
-  assert(!isESLibbluStream(sysStream));
 
   switch (sysStream->type) {
     case TYPE_PCR:
@@ -64,13 +59,11 @@ static int addSystemStreamToContext(
       pesDuration = PAT_DELAY;
   }
 
-  pesTsNb = DIV_ROUND_UP(
-    sysStream->sys.dataLength,
-    TP_SIZE - TP_HEADER_SIZE
+  uint64_t pesTsNb = MAX(
+    1, DIV_ROUND_UP(sysStream->sys.dataLength, TP_PAYLOAD_SIZE)
   );
-  pesTsNb = MAX(pesTsNb, 1);
 
-  timing = (StreamHeapTimingInfos) {
+  StreamHeapTimingInfos timing = {
     .tsPt = ctx->currentStcTs,
     .tsPriority = priority,
     .pesDuration = pesDuration,
@@ -83,11 +76,6 @@ static int addSystemStreamToContext(
     "pesTsNb: %" PRIu64 ", tsPt: %" PRIu64 ", tsDuration: %" PRIu64 ".\n",
     sysStream->pid, timing.pesTsNb, timing.tsPt, timing.tsDuration
   );
-  /* LIBBLU_DEBUG_COM(
-    "Adding to context System stream PID 0x%04x: "
-    "pesTsNb: %" PRIu64 ", tsPt: %" PRIu64 ".\n",
-    sysStream->pid, timing.pesTsNb, timing.tsPt
-  ); */
 
   return addStreamHeap(
     ctx->systemStreamsHeap,
@@ -96,11 +84,12 @@ static int addSystemStreamToContext(
   );
 }
 
-static int initPatSystemStream(
+static int _initPatSystemStream(
   LibbluMuxingContextPtr ctx
 )
 {
   PatParameters param;
+  LibbluStreamPtr stream;
 
   /* TODO: Move to MuxingSettings. */
   static const uint16_t tsId = 0x0000;
@@ -111,144 +100,219 @@ static int initPatSystemStream(
     return -1;
   ctx->patParam = param;
 
-  if (NULL == (ctx->pat = createPATSystemLibbluStream(param, PAT_PID)))
+  if (NULL == (stream = createLibbluStream(TYPE_PAT, PAT_PID)))
     return -1;
 
-  return addSystemStreamToContext(ctx, ctx->pat);
+  if (preparePATSystemStream(&stream->sys, param) < 0)
+    goto free_return;
+
+  if (_addSystemStreamToContext(ctx, stream) < 0)
+    goto free_return;
+
+  ctx->pat = stream;
+  return 0;
+
+free_return:
+  destroyLibbluStream(stream);
+  return -1;
 }
 
-static int initPmtSystemStream(
+static int _initPmtSystemStream(
   LibbluMuxingContextPtr ctx
 )
 {
-  int ret;
-  unsigned i;
-
-  PmtParameters param;
-  uint16_t pcrPID;
-
   LibbluESProperties esProperties[LIBBLU_MAX_NB_STREAMS];
   LibbluESFmtSpecProp esFmtSpecProperties[LIBBLU_MAX_NB_STREAMS];
   uint16_t esStreamsPids[LIBBLU_MAX_NB_STREAMS];
-  unsigned nbEsStreams;
+  uint16_t pcrPID;
+
+  PmtParameters param;
+  LibbluStreamPtr stream;
 
   /* TODO: Move to MuxingSettings. */
-  static const uint16_t mainPmtProgramNb = 0x0001;
-  static const uint16_t pmtPid = PMT_PID;
+  static const uint16_t mainProgramNb = 0x0001;
+  static const uint16_t pid = PMT_PID;
 
   if (ctx->settings.options.pcrOnESPackets)
     pcrPID = ctx->settings.options.pcrPID;
   else
     pcrPID = PCR_PID;
 
-  nbEsStreams = nbESLibbluMuxingContext(ctx);
+  unsigned nbEsStreams = nbESLibbluMuxingContext(ctx);
   assert(nbEsStreams <= LIBBLU_MAX_NB_STREAMS);
 
-  for (i = 0; i < nbEsStreams; i++) {
+  for (unsigned i = 0; i < nbEsStreams; i++) {
     esProperties[i] = ctx->elementaryStreams[i]->es.prop;
     esFmtSpecProperties[i] = ctx->elementaryStreams[i]->es.fmtSpecProp;
     esStreamsPids[i] = ctx->elementaryStreams[i]->pid;
   }
 
-  ret = preparePMTParam(
+  int ret = preparePMTParam(
     &param,
     esProperties,
     esFmtSpecProperties,
     esStreamsPids,
     nbEsStreams,
     ctx->settings.dtcpParameters,
-    mainPmtProgramNb,
+    mainProgramNb,
     pcrPID
   );
   if (ret < 0)
     return -1;
   ctx->pmtParam = param;
 
-  if (NULL == (ctx->pmt = createPMTSystemLibbluStream(param, pmtPid)))
+  if (NULL == (stream = createLibbluStream(TYPE_PMT, pid)))
     return -1;
 
-  return addSystemStreamToContext(ctx, ctx->pmt);
+  if (preparePMTSystemStream(&stream->sys, param) < 0)
+    goto free_return;
+
+  if (_addSystemStreamToContext(ctx, stream) < 0)
+    goto free_return;
+
+  ctx->pmt = stream;
+  return 0;
+
+free_return:
+  destroyLibbluStream(stream);
+  return -1;
 }
 
-static int initPcrSystemStream(
+static int _initPcrSystemStream(
   LibbluMuxingContextPtr ctx
 )
 {
   /* NOTE: Prepared regardless pcrOnESPackets to follow timings. */
-  if (NULL == (ctx->pcr = createPCRSystemLibbluStream(PCR_PID)))
+  LibbluStreamPtr stream;
+
+  if (NULL == (stream = createLibbluStream(TYPE_PCR, PCR_PID)))
     return -1;
 
-  return addSystemStreamToContext(ctx, ctx->pcr);
+  if (preparePCRSystemStream(&stream->sys) < 0)
+    goto free_return;
+
+  if (_addSystemStreamToContext(ctx, stream) < 0)
+    goto free_return;
+
+  ctx->pcr = stream;
+  return 0;
+
+free_return:
+  destroyLibbluStream(stream);
+  return -1;
 }
 
-static int initSitSystemStream(
+static int _initSitSystemStream(
   LibbluMuxingContextPtr ctx
 )
 {
   SitParameters param;
+  LibbluStreamPtr stream;
 
   /* TODO: Move to MuxingSettings. */
-  static const uint16_t mainPmtProgramNb = 0x0001;
+  static const uint16_t mainProgramNb = 0x0001;
 
-  prepareSITParam(
-    &param,
-    ctx->settings.targetMuxingRate,
-    mainPmtProgramNb
-  );
+  prepareSITParam(&param, ctx->settings.targetMuxingRate, mainProgramNb);
   ctx->sitParam = param;
 
-  if (NULL == (ctx->sit = createSITSystemLibbluStream(param, SIT_PID)))
+  if (NULL == (stream = createLibbluStream(TYPE_SIT, SIT_PID)))
     return -1;
 
-  return addSystemStreamToContext(ctx, ctx->sit);
-}
+  if (prepareSITSystemStream(&stream->sys, param) < 0)
+    goto free_return;
 
-static int initNullSystemStream(
-  LibbluMuxingContextPtr ctx
-)
-{
-  if (NULL == (ctx->null = createNULLSystemLibbluStream(NULL_PID)))
-    return -1;
+  if (_addSystemStreamToContext(ctx, stream) < 0)
+    goto free_return;
+
+  ctx->sit = stream;
   return 0;
+
+free_return:
+  destroyLibbluStream(stream);
+  return -1;
 }
 
-static int initSystemStreams(
+static int _initNullSystemStream(
   LibbluMuxingContextPtr ctx
 )
 {
-  if (initPatSystemStream(ctx) < 0)
+  LibbluStreamPtr stream;
+
+  if (NULL == (stream = createLibbluStream(TYPE_NULL, NULL_PID)))
     return -1;
 
-  if (initPmtSystemStream(ctx) < 0)
+  if (prepareNULLSystemStream(&stream->sys) < 0)
+    goto free_return;
+
+  ctx->null = stream;
+  return 0;
+
+free_return:
+  destroyLibbluStream(stream);
+  return -1;
+}
+
+/** \~english
+ * \brief Return if the MPEG-TS T-STD / BDAV-STD buffering model is in use.
+ *
+ * \param ctx Muxer working context.
+ * \return true The buffering model is active and must be used to monitor
+ * buffering accuracy and compliance of generated transport stream.
+ * \return false No buffering model is currently in use. Multiplexing is done
+ * regardless of buffering considerations.
+ */
+static bool _isEnabledTStdModelLibbluMuxingContext(
+  LibbluMuxingContextPtr ctx
+)
+{
+  return !isVoidBufModelNode(ctx->tStdModel);
+}
+
+static int _initSystemStreams(
+  LibbluMuxingContextPtr ctx
+)
+{
+  if (_initPatSystemStream(ctx) < 0)
     return -1;
 
-  if (initPcrSystemStream(ctx) < 0)
+  if (_initPmtSystemStream(ctx) < 0)
     return -1;
 
-  if (initSitSystemStream(ctx) < 0)
+  if (_initPcrSystemStream(ctx) < 0)
     return -1;
 
-  if (initNullSystemStream(ctx) < 0)
+  if (_initSitSystemStream(ctx) < 0)
     return -1;
 
-  if (isEnabledTStdModelLibbluMuxingContext(ctx))
+  if (_initNullSystemStream(ctx) < 0)
+    return -1;
+
+  if (_isEnabledTStdModelLibbluMuxingContext(ctx)) {
     return addSystemToBdavStd(
       ctx->tStdSystemBuffersList,
       ctx->tStdModel,
       ctx->currentStcTs,
       ctx->settings.targetMuxingRate
     );
+  }
 
   return 0;
 }
 
-static void computeInitialTimings(
+static void _updateCurrentStcLibbluMuxingContext(
+  LibbluMuxingContextPtr ctx,
+  const double value
+)
+{
+  ctx->currentStc = value;
+  ctx->currentStcTs = (uint64_t) MAX(0, value);
+}
+
+static void _computeInitialTimings(
   LibbluMuxingContextPtr ctx
 )
 {
-  uint64_t startPcr, initialDecodingDelay, stdBufferDelay;
-
-  startPcr = ctx->settings.initialPresentationTime;
+  uint64_t startPcr = ctx->settings.initialPresentationTime;
 
   LIBBLU_DEBUG_COM(
     "User requested startPcr: %" PRIu64 " (27MHz clock).\n",
@@ -256,21 +320,19 @@ static void computeInitialTimings(
   );
 
   /* Define transport stream timestamps. */
-  ctx->byteStcDuration =
-    (double) MAIN_CLOCK_27MHZ * 8
-    / ctx->settings.targetMuxingRate
-  ;
+  ctx->byteStcDuration = 8.0 * MAIN_CLOCK_27MHZ / ctx->settings.targetMuxingRate;
   ctx->tpStcDuration = TP_SIZE * ctx->byteStcDuration;
-  ctx->tpStcIncrementation = (uint64_t) floor(ctx->tpStcDuration);
+  ctx->tpStcDuration_floor = (uint64_t) floor(ctx->tpStcDuration);
+  ctx->tpStcDuration_ceil  = (uint64_t) ceil(ctx->tpStcDuration);
 
   /* Compute minimal decoding delay due to ESs first DTS/PTS difference */
-  initialDecodingDelay = getMinInitialDelay(
+  uint64_t initialDecodingDelay = _getMinInitialDelay(
     ctx->elementaryStreams,
     nbESLibbluMuxingContext(ctx)
   );
 
   /* Initial timing model delay between muxer and demuxer STCs */
-  stdBufferDelay = (uint64_t) ceil(
+  uint64_t stdBufferDelay = (uint64_t) ceil(
     ctx->settings.initialTStdBufDuration * MAIN_CLOCK_27MHZ
   );
 
@@ -283,7 +345,7 @@ static void computeInitialTimings(
   }
 
   /* Compute initial muxing STC value as user choosen value minus delays. */
-  updateCurrentStcLibbluMuxingContext(
+  _updateCurrentStcLibbluMuxingContext(
     ctx,
     ROUND_90KHZ_CLOCK(startPcr - initialDecodingDelay) - stdBufferDelay
   );
@@ -307,15 +369,13 @@ static void computeInitialTimings(
   ctx->stdBufDelay = stdBufferDelay;
 }
 
-static int initiateElementaryStreamsTStdModel(
+static int _initiateElementaryStreamsTStdModel(
   LibbluMuxingContextPtr ctx
 )
 {
-  unsigned i;
-  LibbluStreamPtr stream;
 
-  for (i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
-    stream = ctx->elementaryStreams[i];
+  for (unsigned i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
+    LibbluStreamPtr stream = ctx->elementaryStreams[i];
 
     /* Create the buffering chain associated to the ES' PID */
     if (addESToBdavStd(ctx->tStdModel, &stream->es, stream->pid, ctx->currentStcTs) < 0)
@@ -325,17 +385,17 @@ static int initiateElementaryStreamsTStdModel(
   return 0;
 }
 
-static int calcPesTiming(
+static int _computePesTiming(
   StreamHeapTimingInfos * timing,
   const LibbluESPtr es,
-  uint64_t stdBufDelay
+  const LibbluMuxingContextPtr ctx
 )
 {
   uint64_t dts;
   size_t avgPesPacketSize;
 
-  assert(stdBufDelay <= es->curPesPacket.prop.dts);
-  dts = es->curPesPacket.prop.dts - stdBufDelay;
+  assert(ctx->stdBufDelay <= es->curPesPacket.prop.dts);
+  dts = es->curPesPacket.prop.dts - ctx->stdBufDelay;
 
   if (0 == (timing->bitrate = es->prop.bitrate))
     LIBBLU_ERROR_RETURN("Unable to get ES bitrate, broken script.");
@@ -373,12 +433,12 @@ static int calcPesTiming(
    * of variable parameters issues.
    */
   timing->pesDuration = floor(MAIN_CLOCK_27MHZ / timing->pesNb);
-  timing->pesTsNb = DIV_ROUND_UP(avgPesPacketSize, TP_SIZE - TP_HEADER_SIZE);
+  timing->pesTsNb = DIV_ROUND_UP(avgPesPacketSize, TP_PAYLOAD_SIZE);
   timing->tsDuration = timing->pesDuration / MAX(1, timing->pesTsNb);
 
 #if SHIFT_PACKETS_BEFORE_DTS
-  if (timing->pesTsNb * 846 < dts)
-    timing->tsPt = dts - timing->pesTsNb * 846;
+  if (timing->pesTsNb * ctx->tpStcDuration_ceil < dts)
+    timing->tsPt = dts - timing->pesTsNb * ctx->tpStcDuration_ceil;
   else
     timing->tsPt = dts;
 #else
@@ -389,7 +449,7 @@ static int calcPesTiming(
   return 0;
 }
 
-static int genEsmsFilename(
+static int _genEsmsFilename(
   const lbc * streamFilepath,
   unsigned nameIncrement,
   lbc * buffer,
@@ -408,7 +468,7 @@ static int genEsmsFilename(
   );
 }
 
-static bool isSharedUsedScript(
+static bool _isSharedUsedScript(
   const lbc * scriptFilepath,
   LibbluESSettings * alreadyRegisteredES,
   unsigned alreadyRegisteredESNb
@@ -424,7 +484,7 @@ static bool isSharedUsedScript(
   return false;
 }
 
-static int findValidESScript(
+static int _findValidESScript(
   LibbluESSettings * settings,
   LibbluESSettings * ardyRegES,
   unsigned ardyRegESNb
@@ -445,7 +505,7 @@ static int findValidESScript(
       settings->scriptFilepath
     );
   else
-    fpSize = genEsmsFilename(
+    fpSize = _genEsmsFilename(
       settings->filepath,
       increment++,
       scriptFilepath,
@@ -468,10 +528,10 @@ static int findValidESScript(
 
   while (
     isAValidESMSFile(scriptFilepath, scriptFlags, NULL) < 0
-    && isSharedUsedScript(scriptFilepath, ardyRegES, ardyRegESNb)
+    && _isSharedUsedScript(scriptFilepath, ardyRegES, ardyRegESNb)
     && increment < 100
   ) {
-    fpSize = genEsmsFilename(
+    fpSize = _genEsmsFilename(
       settings->filepath,
       increment++,
       scriptFilepath,
@@ -498,19 +558,64 @@ static int findValidESScript(
   return 0;
 }
 
+static int _prepareLibbluESStream(
+  LibbluMuxingContextPtr ctx,
+  unsigned esStrmId,
+  bool forceRebuildScript
+)
+{
+  LibbluESSettings * esSettings;
+  LibbluStreamPtr stream;
+  LibbluESFormatUtilities utilities;
+  uint16_t pid;
+
+  LIBBLU_DEBUG_COM(" Find/check script filepath.\n");
+
+  esSettings = &ctx->settings.inputStreams[esStrmId];
+  if (_findValidESScript(esSettings, ctx->settings.inputStreams, esStrmId) < 0)
+    return -1;
+
+  LIBBLU_DEBUG_COM(" Creation of the Elementary Stream handle.\n");
+
+  /* Use a fake PID value (0x0000), real PID value requested later. */
+  if (NULL == (stream = createLibbluStream(TYPE_ES, 0x0000)))
+    goto free_return;
+  initLibbluES(&stream->es, esSettings);
+
+  LIBBLU_DEBUG_COM(" Preparation of the ES handle.\n");
+
+  /* Get the forced script rebuilding option */
+  forceRebuildScript |= esSettings->options.forcedScriptBuilding;
+
+  LIBBLU_DEBUG_COM(
+    " Force rebuilding of script: %s.\n",
+    BOOL_STR(forceRebuildScript)
+  );
+
+  if (prepareLibbluES(&stream->es, &utilities, forceRebuildScript) < 0)
+   goto free_return;;
+
+  LIBBLU_DEBUG_COM(" Request and set PID value.\n");
+
+  if (requestESPIDLibbluStream(&ctx->pidValues, &pid, stream) < 0)
+    goto free_return;
+  stream->pid = pid;
+
+  ctx->elementaryStreams[esStrmId] = stream;
+  ctx->elementaryStreamsUtilities[esStrmId] = utilities;
+  return 0;
+
+free_return:
+  destroyLibbluStream(stream);
+  return -1;
+}
+
 LibbluMuxingContextPtr createLibbluMuxingContext(
   LibbluMuxingSettings settings
 )
 {
   LibbluMuxingContextPtr ctx;
-
   int ret;
-  unsigned i;
-
-  bool tStdBufModelEnabled;
-  bool forceRebuildAllScripts;
-
-  LibbluStreamPtr stream;
 
   if (
     !settings.nbInputStreams
@@ -539,8 +644,8 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   setDefaultPmtParameters(&ctx->pmtParam, 0x0001, PMT_PID);
   setDefaultSitParameters(&ctx->sitParam);
 
-  tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableBufModel);
-  forceRebuildAllScripts = LIBBLU_MUX_SETTINGS_OPTION(&settings, forcedScriptBuilding);
+  bool tStdBufModelEnabled = !LIBBLU_MUX_SETTINGS_OPTION(&settings, disableBufModel);
+  bool forceRebuildAllScripts = LIBBLU_MUX_SETTINGS_OPTION(&settings, forcedScriptBuilding);
 
   /* Interpret PCR carrying options */
   ctx->pcrParam.carriedByES = LIBBLU_MUX_SETTINGS_OPTION(
@@ -572,68 +677,34 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
   }
 
   LIBBLU_DEBUG_COM("Initialization of Elementary Streams.\n");
-  for (i = 0; i < ctx->settings.nbInputStreams; i++) {
-    LibbluESSettings * esSettings;
-    bool forceRebuildScript;
-    uint16_t pid;
-
-    LibbluESFormatUtilities utilities;
-
-    esSettings = ctx->settings.inputStreams + i;
-
-    /* Find/check script filename */
-    LIBBLU_DEBUG_COM(" Check script filepath.\n");
-    if (findValidESScript(esSettings, ctx->settings.inputStreams, i) < 0)
+  for (unsigned i = 0; i < ctx->settings.nbInputStreams; i++) {
+    if (_prepareLibbluESStream(ctx, i, forceRebuildAllScripts) < 0)
       goto free_return;
-
-    LIBBLU_DEBUG_COM(" Creation of the Elementary Stream handle.\n");
-    stream = createElementaryLibbluStream(esSettings);
-    if (NULL == stream)
-      goto free_return;
-    ctx->elementaryStreams[i] = stream;
-
-    /* Get the forced script rebuilding option */
-    forceRebuildScript =
-      (forceRebuildAllScripts || esSettings->options.forcedScriptBuilding)
-    ;
-
-    /* Prepare the ES */
-    LIBBLU_DEBUG_COM(" Preparation of the Elementary Stream handle.\n");
-    if (prepareLibbluES(&stream->es, &utilities, forceRebuildScript) < 0)
-      goto free_return;
-
-    /* Choose and set stream PID value */
-    LIBBLU_DEBUG_COM(" Request a PID value.\n");
-    if (requestESPIDLibbluStream(&ctx->pidValues, &pid, stream) < 0)
-      goto free_return;
-    setPIDLibbluStream(stream, pid);
-
-    ctx->elementaryStreamsUtilities[i] = utilities;
   }
 
   /* Compute initial timing values in accordance with each ES timings */
   LIBBLU_DEBUG_COM("Computing the initial timing values.\n");
-  computeInitialTimings(ctx);
+  _computeInitialTimings(ctx);
 
   /* Init System streams */
   LIBBLU_DEBUG_COM("Initialization of Systeam Streams.\n");
-  if (initSystemStreams(ctx) < 0)
+  if (_initSystemStreams(ctx) < 0)
     goto free_return;
 
   /* Initiate the T-STD buffering chain with computed timings */
-  if (isEnabledTStdModelLibbluMuxingContext(ctx)) {
+  if (_isEnabledTStdModelLibbluMuxingContext(ctx)) {
     LIBBLU_DEBUG_COM("Feeding the T-STD/BDAV-STD buffering model.\n");
-    if (initiateElementaryStreamsTStdModel(ctx) < 0)
+    if (_initiateElementaryStreamsTStdModel(ctx) < 0)
       goto free_return;
   }
 
   /* Build the first PES packets to set mux priorities */
   LIBBLU_DEBUG_COM("Initial PES packets building.\n");
-  for (i = 0; i < ctx->settings.nbInputStreams; i++) {
+  for (unsigned i = 0; i < ctx->settings.nbInputStreams; i++) {
     StreamHeapTimingInfos timing;
     LibbluESFormatUtilities utilities;
 
-    stream = ctx->elementaryStreams[i];
+    LibbluStreamPtr stream = ctx->elementaryStreams[i];
     utilities = ctx->elementaryStreamsUtilities[i];
 
     LIBBLU_DEBUG_COM(" Building the next PES packets.\n");
@@ -646,7 +717,9 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
     switch (ret) {
       case 0: /* No more PES packet */
         LIBBLU_ERROR_FRETURN(
-          "Empty script, unable to build a single PES packet.\n"
+          "Empty script, unable to build a single PES packet, "
+          "'%" PRI_LBCS "'.\n",
+          stream->es.settings->scriptFilepath
         );
       case 1: /* Success */
         break;
@@ -655,7 +728,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
     }
 
     LIBBLU_DEBUG_COM(" Use properties to set timestamps.\n");
-    if (calcPesTiming(&timing, &stream->es, ctx->stdBufDelay) < 0)
+    if (_computePesTiming(&timing, &stream->es, ctx) < 0)
       goto free_return;
 
     LIBBLU_DEBUG_COM(
@@ -684,14 +757,12 @@ void destroyLibbluMuxingContext(
   LibbluMuxingContextPtr ctx
 )
 {
-  unsigned i;
-
   if (NULL == ctx)
     return;
 
   cleanLibbluMuxingSettings(ctx->settings);
   cleanLibbluPIDValues(ctx->pidValues);
-  for (i = 0; i < LIBBLU_MAX_NB_STREAMS; i++)
+  for (unsigned i = 0; i < LIBBLU_MAX_NB_STREAMS; i++)
     destroyLibbluStream(ctx->elementaryStreams[i]);
 
   destroyStreamHeap(ctx->systemStreamsHeap);
@@ -721,7 +792,7 @@ void destroyLibbluMuxingContext(
  * \return int Upon success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
-static int writeTpExtraHeaderIfRequired(
+static int _writeTpExtraHeaderIfRequired(
   LibbluMuxingContextPtr ctx,
   BitstreamWriterPtr output
 )
@@ -749,7 +820,7 @@ static int writeTpExtraHeaderIfRequired(
  * transport packets with a reserved PID, implemented as a system stream.
  * In that case, a system transport packet shall be emited.
  */
-static bool checkPcrInjection(
+static bool _checkPcrInjection(
   LibbluMuxingContextPtr ctx
 )
 {
@@ -775,7 +846,7 @@ static bool checkPcrInjection(
  * the given 'stream' object is used by the modelizer to determine the flow
  * of the given bytes.
  */
-static bool checkBufferingModelAvailability(
+static bool _checkBufferingModelAvailability(
   LibbluMuxingContextPtr ctx,
   LibbluStreamPtr stream,
   size_t size
@@ -791,7 +862,7 @@ static bool checkBufferingModelAvailability(
   );
 }
 
-int putDataToBufferingModel(
+static int _putDataToBufferingModel(
   LibbluMuxingContextPtr ctx,
   LibbluStreamPtr stream,
   size_t size
@@ -826,6 +897,28 @@ int putDataToBufferingModel(
   return ret;
 }
 
+static bool _pcrInjectionRequired(
+  LibbluMuxingContextPtr ctx,
+  uint16_t pid
+)
+{
+  return
+    ctx->pcrParam.carriedByES
+    && ctx->pcrParam.injectionRequired
+    && ctx->pcrParam.esCarryingPID == pid
+  ;
+}
+
+static void _increaseCurrentStcLibbluMuxingContext(
+  LibbluMuxingContextPtr ctx
+)
+{
+  _updateCurrentStcLibbluMuxingContext(
+    ctx,
+    ctx->currentStc + ctx->tpStcDuration
+  );
+}
+
 /** \~english
  * \brief Attempt to mux a system stream packet.
  *
@@ -853,9 +946,9 @@ int putDataToBufferingModel(
  * system, neither ES timestamp is reached and NULL packet insertion
  * is skipped, producing a VBR mux), PCR value (and so 'currentStcTs') must be
  * increased prior to next packet insertion using
- * #increaseCurrentStcLibbluMuxingContext().
+ * #_increaseCurrentStcLibbluMuxingContext().
  */
-static int muxNextSystemStreamPacket(
+static int _muxNextSystemStreamPacket(
   LibbluMuxingContextPtr ctx,
   BitstreamWriterPtr output
 )
@@ -871,7 +964,7 @@ static int muxNextSystemStreamPacket(
     return 0; /* Timestamp not reached, no tp to mux. */
   extractStreamHeap(ctx->systemStreamsHeap, &tpTimeData, &tpStream);
 
-  if (tpStream->type == TYPE_PCR && checkPcrInjection(ctx)) {
+  if (tpStream->type == TYPE_PCR && _checkPcrInjection(ctx)) {
     /* PCR system stream timestamp reached, but PCR fields are carried by
     ES transport packet and so no specific packet shall be emited. Skip
     transport packet generation. */
@@ -883,7 +976,7 @@ static int muxNextSystemStreamPacket(
     bool isTStdManagedStream = false;
 
     injectedPacket = true; /* By default, inject the packet */
-    if (isEnabledTStdModelLibbluMuxingContext(ctx)) {
+    if (_isEnabledTStdModelLibbluMuxingContext(ctx)) {
       /* Check if the stream buffering is monitored */
       isTStdManagedStream = isManagedSystemBdavStd(
         tpStream->pid,
@@ -892,7 +985,7 @@ static int muxNextSystemStreamPacket(
 
       if (isTStdManagedStream) {
         /* Inject the packet only if it does not overflow. */
-        injectedPacket = checkBufferingModelAvailability(
+        injectedPacket = _checkBufferingModelAvailability(
           ctx, tpStream, TP_SIZE
         );
       }
@@ -909,7 +1002,7 @@ static int muxNextSystemStreamPacket(
 
       pcrPresence = (
         (tpStream->type == TYPE_PCR)
-        || pcrInjectionRequired(ctx, tpStream->pid)
+        || _pcrInjectionRequired(ctx, tpStream->pid)
       );
       pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
 
@@ -917,7 +1010,7 @@ static int muxNextSystemStreamPacket(
       prepareTPHeader(&header, tpStream, pcrPresence, pcrValue);
 
       /* Write if required by muxing options the tp_extra_header() */
-      if (writeTpExtraHeaderIfRequired(ctx, output) < 0)
+      if (_writeTpExtraHeaderIfRequired(ctx, output) < 0)
         return -1;
 
       /* Write the current transport packet */
@@ -955,7 +1048,7 @@ static int muxNextSystemStreamPacket(
           return -1;
 
         /* Put the packet data */
-        if (putDataToBufferingModel(ctx, tpStream, packetSize) < 0)
+        if (_putDataToBufferingModel(ctx, tpStream, packetSize) < 0)
           return -1;
       }
 
@@ -967,13 +1060,31 @@ static int muxNextSystemStreamPacket(
     }
   }
 
-  /* Re-insert the system stream to the heap */
   if (addStreamHeap(ctx->systemStreamsHeap, tpTimeData, tpStream) < 0)
     return -1;
+
   return injectedPacket; /* 0: No packet written, 1: One packet written */
 }
 
-static int muxNextESPacket(
+static int _retriveAssociatedESUtilities(
+  const LibbluMuxingContextPtr ctx,
+  LibbluStreamPtr stream,
+  LibbluESFormatUtilities * utils
+)
+{
+
+  for (unsigned i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
+    if (ctx->elementaryStreams[i] == stream) {
+      if (NULL != utils)
+        *utils = ctx->elementaryStreamsUtilities[i];
+      return 0;
+    }
+  }
+
+  return -1;
+}
+
+static int _muxNextESPacket(
   LibbluMuxingContextPtr ctx,
   BitstreamWriterPtr output
 )
@@ -981,80 +1092,69 @@ static int muxNextESPacket(
   int ret;
 
   StreamHeapTimingInfos tpTimeData;
-  LibbluStreamPtr tpStream;
+  LibbluStreamPtr stream;
   TPHeaderParameters tpHeader;
   bool isTStdManagedStream;
 
-  bool pcrInjection;
-  uint64_t pcrValue;
-
-  size_t headerSize, payloadSize;
-
-  tpStream = NULL;
+  stream = NULL;
   while (
-    NULL == tpStream
+    NULL == stream
     && streamIsReadyStreamHeap(ctx->elementaryStreamsHeap, ctx->currentStcTs)
   ) {
-    extractStreamHeap(ctx->elementaryStreamsHeap, &tpTimeData, &tpStream);
+    extractStreamHeap(ctx->elementaryStreamsHeap, &tpTimeData, &stream);
 
-    isTStdManagedStream = (NULL != tpStream->es.lnkdBufList);
+    isTStdManagedStream = (NULL != stream->es.lnkdBufList);
 
     if (isTStdManagedStream) {
-      pcrInjection = pcrInjectionRequired(ctx, tpStream->pid);
-      pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
+      bool pcrInjection = _pcrInjectionRequired(ctx, stream->pid);
+      uint64_t pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
 
-      prepareTPHeader(&tpHeader, tpStream, pcrInjection, pcrValue);
+      prepareTPHeader(&tpHeader, stream, pcrInjection, pcrValue);
 
-      if (!checkBufferingModelAvailability(ctx, tpStream, TP_SIZE)) {
+      if (!_checkBufferingModelAvailability(ctx, stream, TP_SIZE)) {
         /* ES tp insertion leads to overflow, increase its timestamp and try
         with another ES. */
 
         LIBBLU_T_STD_VERIF_TEST_DEBUG(
           "Skipping injection PID 0x%04" PRIX16 " at %" PRIi64 ".\n",
-          tpStream->pid,
+          stream->pid,
           ctx->currentStcTs
         );
-        /* printf("%" PRIu64 "\n", tpTimeData.tsPt); */
-
-        /* printBufModelBufferingChain(ctx->tStdModel); */
 
 #if 1
         incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
 #else
-        tpTimeData.tsPt += ctx->tpStcIncrementation;
-        /* tpTimeData.tsPt = ctx->currentStcTs + ctx->tpStcIncrementation; */
+        tpTimeData.tsPt += ctx->tpStcDuration_floor;
+        /* tpTimeData.tsPt = ctx->currentStcTs + ctx->tpStcDuration_floor; */
 #endif
 
-        if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, tpStream) < 0)
+        if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, stream) < 0)
           return -1;
-        tpStream = NULL; /* Reset to keep in loop */
+        stream = NULL; /* Reset to keep in loop */
       }
     }
   }
 
-  if (NULL == tpStream)
+  if (NULL == stream)
     return 0; /* Nothing currently to mux */
 
   if (!isTStdManagedStream) {
     /* Prepare tp header (it has already been prepared if T-STD buf model
     is used. */
-    pcrInjection = pcrInjectionRequired(ctx, tpStream->pid);
-    pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
+    bool pcrInjection = _pcrInjectionRequired(ctx, stream->pid);
+    uint64_t pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
 
-    prepareTPHeader(&tpHeader, tpStream, pcrInjection, pcrValue);
+    prepareTPHeader(&tpHeader, stream, pcrInjection, pcrValue);
   }
 
   /* Write if required by muxing options the tp_extra_header() */
-  if (writeTpExtraHeaderIfRequired(ctx, output) < 0)
+  if (_writeTpExtraHeaderIfRequired(ctx, output) < 0)
     return -1;
 
   /* Write the current transport packet */
-  ret = writeTransportPacket(
-    output, tpStream, tpHeader,
-    &headerSize,
-    &payloadSize
-  );
-  if (ret < 0)
+  size_t headerSize, payloadSize;
+
+  if (writeTransportPacket(output, stream, tpHeader, &headerSize, &payloadSize) < 0)
     return -1;
 
   LIBBLU_DEBUG(
@@ -1063,7 +1163,7 @@ static int muxNextESPacket(
     "(0x%04" PRIX16 ", tsPt: %" PRIu64 ").\n",
     ctx->currentStcTs,
     ctx->currentStcTs,
-    tpStream->pid,
+    stream->pid,
     tpTimeData.tsPt
   );
 
@@ -1077,12 +1177,12 @@ static int muxNextESPacket(
     LIBBLU_T_STD_VERIF_DECL_DEBUG(
       "Registering %zu+%zu=%zu bytes of TP for PID 0x%04" PRIX16 ".\n",
       headerSize, payloadSize, packetSize,
-      tpStream->pid
+      stream->pid
     );
 
     /* Register the packet */
     ret = addESTsFrameToBdavStd(
-      tpStream->es.lnkdBufList,
+      stream->es.lnkdBufList,
       headerSize,
       payloadSize
     );
@@ -1090,21 +1190,21 @@ static int muxNextESPacket(
       return -1;
 
     /* Put the packet data */
-    if (putDataToBufferingModel(ctx, tpStream, packetSize) < 0)
+    if (_putDataToBufferingModel(ctx, stream, packetSize) < 0)
       return -1;
   }
 
   /* Check remaining data in processed PES packet : */
-  if (0 == remainingPesDataLibbluES(tpStream->es)) {
+  if (0 == remainingPesDataLibbluES(stream->es)) {
     /* If no more data, build new PES packet */
     LibbluESFormatUtilities utilities;
 
-    if (retriveAssociatedESUtilities(ctx, tpStream, &utilities) < 0)
+    if (_retriveAssociatedESUtilities(ctx, stream, &utilities) < 0)
       LIBBLU_ERROR_RETURN("Unable to retrive ES associated utilities.\n");
 
     ret = buildNextPesPacketLibbluES(
-      &tpStream->es,
-      tpStream->pid,
+      &stream->es,
+      stream->pid,
       ctx->referentialStc,
       utilities.preparePesHeader
     );
@@ -1122,17 +1222,17 @@ static int muxNextESPacket(
       "PID 0x%04" PRIX16 ", %zu bytes, "
       "DTS: %" PRIu64 ", PTS: %" PRIu64 ", currentStcTs: %" PRIu64
       "(end of script ? %s, Queued frames nb: %u).\n",
-      tpStream->pid,
-      tpStream->es.curPesPacket.data.dataUsedSize,
-      tpStream->es.curPesPacket.prop.dts,
-      tpStream->es.curPesPacket.prop.pts,
+      stream->pid,
+      stream->es.curPesPacket.data.dataUsedSize,
+      stream->es.curPesPacket.prop.dts,
+      stream->es.curPesPacket.prop.pts,
       ctx->currentStcTs,
-      BOOL_INFO(tpStream->es.endOfScriptReached),
-      tpStream->es.pesPacketsScriptsQueueSize
+      BOOL_INFO(stream->es.endOfScriptReached),
+      stream->es.pesPacketsScriptsQueueSize
     );
 
 #if 1
-    if (calcPesTiming(&tpTimeData, &tpStream->es, ctx->stdBufDelay) < 0)
+    if (_computePesTiming(&tpTimeData, &stream->es, ctx) < 0)
       return -1;
 #endif
 
@@ -1147,26 +1247,27 @@ static int muxNextESPacket(
 #if 1
       incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
 #else
-      tpTimeData.tsPt += ctx->tpStcIncrementation;
+      tpTimeData.tsPt += ctx->tpStcDuration_floor;
 #endif
   }
 
-  /* Update progression bar : */
-  if (tpStream->pid == ctx->elementaryStreams[0]->pid)
+  if (stream->pid == ctx->elementaryStreams[0]->pid) {
+    /* Update progression bar : */
     ctx->progress =
       (double) (
-        tpStream->es.curPesPacket.prop.pts
+        stream->es.curPesPacket.prop.pts
         - ctx->referentialStc
-        + tpStream->es.refPts
-      ) / tpStream->es.endPts
+        + stream->es.refPts
+      ) / stream->es.endPts
     ;
+  }
 
-  if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, tpStream) < 0)
+  if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, stream) < 0)
     return -1;
   return 1;
 }
 
-static int muxNullPacket(
+static int _muxNullPacket(
   LibbluMuxingContextPtr ctx,
   BitstreamWriterPtr output
 )
@@ -1178,7 +1279,7 @@ static int muxNullPacket(
   prepareTPHeader(&header, ctx->null, false, 0);
 
   /* Write if required by muxing options the tp_extra_header() */
-  if (writeTpExtraHeaderIfRequired(ctx, output) < 0)
+  if (_writeTpExtraHeaderIfRequired(ctx, output) < 0)
     return -1;
 
   if (writeTransportPacket(output, ctx->null, header, NULL, NULL) < 0)
@@ -1208,30 +1309,40 @@ int muxNextPacketLibbluMuxingContext(
   assert(NULL != output);
 
   /* Try to mux System tp */
-  if ((nbMuxedPackets = muxNextSystemStreamPacket(ctx, output)) < 0)
+  if ((nbMuxedPackets = _muxNextSystemStreamPacket(ctx, output)) < 0)
     return -1; /* Error */
   if (0 < nbMuxedPackets)
     goto success; /* System tp muxed with success */
 
   /* Otherwise, try to mux a Elementary Stream tp */
-  if ((nbMuxedPackets = muxNextESPacket(ctx, output)) < 0)
+  if ((nbMuxedPackets = _muxNextESPacket(ctx, output)) < 0)
     return -1; /* Error */
   if (0 < nbMuxedPackets)
     goto success; /* ES tp muxed with success */
 
   /* Otherwise, put a NULL packet to ensure CBR mux (or do nothing if VBR) */
   if (LIBBLU_MUX_SETTINGS_OPTION(&ctx->settings, cbrMuxing)) {
-    if (muxNullPacket(ctx, output) < 0)
+    if (_muxNullPacket(ctx, output) < 0)
       return -1; /* Error */
   }
 
 success:
   /* Increase System Time Clock (and 'currentStcTs') */
-  increaseCurrentStcLibbluMuxingContext(ctx);
+  _increaseCurrentStcLibbluMuxingContext(ctx);
 
   return 0;
 }
 
+/** \~english
+ * \brief Align stream to Aligned Unit boundaries (32 TPs) as specified in BD
+ * specifications.
+ *
+ * \param ctx
+ * \param output
+ * \return int
+ *
+ * Padding is done using Null packets.
+ */
 int padAlignedUnitLibbluMuxingContext(
   LibbluMuxingContextPtr ctx,
   BitstreamWriterPtr output
@@ -1241,9 +1352,9 @@ int padAlignedUnitLibbluMuxingContext(
   assert(NULL != output);
 
   while (ctx->nbTsPacketsMuxed % 32) {
-    if (muxNullPacket(ctx, output) < 0)
+    if (_muxNullPacket(ctx, output) < 0)
       return -1; /* Error */
-    increaseCurrentStcLibbluMuxingContext(ctx);
+    _increaseCurrentStcLibbluMuxingContext(ctx);
   }
 
   return 0;

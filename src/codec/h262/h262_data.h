@@ -1,0 +1,29 @@
+
+
+#ifndef __LIBBLU_MUXER__CODECS__H262__DATA_H__
+#define __LIBBLU_MUXER__CODECS__H262__DATA_H__
+
+/* Extension start codes IDs : */
+
+/** \~english
+ * \brief H.262 extension_start_code_identifier code value.
+ *
+ * Defined in [1] "Table 6-2 - extension_start_code_identifier codes" table.
+ */
+typedef enum {
+  H262_EXT_STARTCODEEXT_RESERVED_0         = 0x0,
+  H262_EXT_STARTCODEEXT_SEQUENCE           = 0x1,
+  H262_EXT_STARTCODEEXT_SEQUENCE_DISPLAY   = 0x2,
+  H262_EXT_STARTCODEEXT_QUANT_MATRIX       = 0x3,
+  H262_EXT_STARTCODEEXT_COPYRIGHT          = 0x4,
+  H262_EXT_STARTCODEEXT_SEQUENCE_SCALABLE  = 0x5,
+  H262_EXT_STARTCODEEXT_RESERVED_6         = 0x6,
+  H262_EXT_STARTCODEEXT_PICTURE_DISPLAY    = 0x7,
+  H262_EXT_STARTCODEEXT_PICTURE_CODING     = 0x8,
+  H262_EXT_STARTCODEEXT_SPATIAL_SCALABLE   = 0x9,
+  H262_EXT_STARTCODEEXT_TEMPORAL_SCALABLE  = 0xA,
+  H262_EXT_STARTCODEEXT_CAMERA_PARAMETERS  = 0xB,
+  H262_EXT_STARTCODEEXT_ITU_T              = 0xC
+} H262ExtensionStartCodeIdentifier;
+
+#endif

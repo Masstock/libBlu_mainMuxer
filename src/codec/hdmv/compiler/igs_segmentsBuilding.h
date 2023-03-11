@@ -296,6 +296,8 @@ static inline size_t computeSizeHdmvObjectDefinitionSegments(
   return size;
 }
 
+#define HDMV_MAX_OBJ_DATA_LEN    0xFFFFFF
+
 uint8_t * buildObjectDataIgsCompiler(
   const HdmvPicturePtr param,
   size_t * size

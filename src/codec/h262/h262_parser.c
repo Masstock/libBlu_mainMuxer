@@ -501,11 +501,11 @@ int decodeSequenceExtension(
   /* [u4 extension_start_code_identifier] */
   if (readBits(m2vInput, &value, 4) < 0)
     return -1;
-  if (value != SEQUENCE_EXTENSION)
+  if (value != H262_EXT_STARTCODEEXT_SEQUENCE)
     LIBBLU_H262_ERROR_RETURN(
       "Unexpected extension identifier for a sequence extension "
       "(expect 0x%01X, got %0x%01" PRIX32 ").\n",
-      SEQUENCE_EXTENSION,
+      H262_EXT_STARTCODEEXT_SEQUENCE,
       value
     );
 
@@ -938,11 +938,11 @@ int decodeSequenceDisplayExtension(
   if (readBits(m2vInput, &value, 4) < 0)
     return -1;
 
-  if (value != SEQUENCE_DISPLAY_EXTENSION)
+  if (value != H262_EXT_STARTCODEEXT_SEQUENCE_DISPLAY)
     LIBBLU_H262_ERROR_RETURN(
       "Unexpected extension identifier for a sequence display extension "
       "(expect 0x%01X, got %0x%01" PRIX32 ").\n",
-      SEQUENCE_DISPLAY_EXTENSION,
+      H262_EXT_STARTCODEEXT_SEQUENCE_DISPLAY,
       value
     );
 
@@ -1309,11 +1309,11 @@ int decodePictureCodingExtension(
   if (readBits(m2vInput, &value, 4) < 0)
     return -1;
 
-  if (value != PICTURE_CODING_EXTENSION)
+  if (value != H262_EXT_STARTCODEEXT_PICTURE_CODING)
     LIBBLU_H262_ERROR_RETURN(
       "Unexpected extension identifier for a picture coding extension "
       "(expect 0x%01X, got %0x%01" PRIX32 ").\n",
-      PICTURE_CODING_EXTENSION,
+      H262_EXT_STARTCODEEXT_PICTURE_CODING,
       value
     );
 
@@ -1403,6 +1403,147 @@ int decodePictureCodingExtension(
   return 0;
 }
 
+int decodeQuantMatrixExtension(BitstreamReaderPtr m2vInput, H262QuantMatrixExtensionParameters * param)
+{
+  uint32_t value;
+
+  /* [u4 extension_start_code_identifier] */
+  if (readBits(m2vInput, &value, 4) < 0)
+    return -1;
+
+  if (value != H262_EXT_STARTCODEEXT_QUANT_MATRIX)
+    LIBBLU_H262_ERROR_RETURN(
+      "Unexpected extension identifier for a quant matrix extension "
+      "(expect 0x%X, got %0x%" PRIX32 ").\n",
+      H262_EXT_STARTCODEEXT_QUANT_MATRIX,
+      value
+    );
+
+  /* [b1 load_intra_quantiser_matrix_flag] */
+  if (readBits(m2vInput, &value, 1) < 0)
+    return -1;
+  param->load_intra_quantiser_matrix = value;
+
+  if (param->load_intra_quantiser_matrix) {
+    /* intra_quantiser_matrix present. */
+
+    /* [u8 intra_quantiser_matrix[0]] */
+    if (readBits(m2vInput, &value, 8) < 0)
+      return -1;
+    param->intra_quantiser_matrix[0] = value;
+
+    if (param->intra_quantiser_matrix[0] != 8)
+      LIBBLU_H262_ERROR_RETURN(
+        "Forbidden Intra quantizer matrix coefficient 0, "
+        "the value shall be always 8 "
+        "(intra_quantiser_matrix[0] == %" PRIu8 ").\n",
+        param->intra_quantiser_matrix[0]
+      );
+
+    /* [u8*63 intra_quantiser_matrix[1..63]] */
+    for (unsigned i = 1; i < 64; i++) {
+      if (readBits(m2vInput, &value, 8) < 0)
+        return -1;
+      param->intra_quantiser_matrix[i] = value;
+
+      if (!param->intra_quantiser_matrix[i])
+        LIBBLU_H262_ERROR_RETURN(
+          "Forbidden Intra quantizer matrix coefficient %u, "
+          "the value zero is forbidden "
+          "(intra_quantiser_matrix[%u] == 0).\n",
+          i, i
+        );
+    }
+  }
+
+  /* [b1 load_non_intra_quantiser_matrix_flag] */
+  if (readBits(m2vInput, &value, 1) < 0)
+    return -1;
+  param->load_non_intra_quantiser_matrix = value;
+
+  if (param->load_non_intra_quantiser_matrix) {
+    /* non_intra_quantiser_matrix present. */
+
+    /* [u8*64 non_intra_quantiser_matrix] */
+    for (unsigned i = 0; i < 64; i++) {
+      if (readBits(m2vInput, &value, 8) < 0)
+        return -1;
+      param->non_intra_quantiser_matrix[i] = value;
+
+      if (!param->non_intra_quantiser_matrix[i])
+        LIBBLU_H262_ERROR_RETURN(
+          "Forbidden non-Intra quantizer matrix coefficient %u, "
+          "the value zero is forbidden "
+          "(intra_quantiser_matrix[%u] == 0).\n",
+          i, i
+        );
+    }
+  }
+
+  /* [b1 load_chroma_intra_quantiser_matrix] */
+  if (readBits(m2vInput, &value, 1) < 0)
+    return -1;
+  param->load_chroma_intra_quantiser_matrix = value;
+
+  if (param->load_chroma_intra_quantiser_matrix) {
+    /* chroma_intra_quantiser_matrix present. */
+
+    /* [u8 chroma_intra_quantiser_matrix[0]] */
+    if (readBits(m2vInput, &value, 8) < 0)
+      return -1;
+    param->chroma_intra_quantiser_matrix[0] = value;
+
+    if (param->chroma_intra_quantiser_matrix[0] != 8)
+      LIBBLU_H262_ERROR_RETURN(
+        "Forbidden chroma Intra quantizer matrix coefficient 0, "
+        "the value shall be always 8 "
+        "(chroma_intra_quantiser_matrix[0] == %" PRIu8 ").\n",
+        param->chroma_intra_quantiser_matrix[0]
+      );
+
+    /* [u8*63 chroma_intra_quantiser_matrix[1..63]] */
+    for (unsigned i = 1; i < 64; i++) {
+      if (readBits(m2vInput, &value, 8) < 0)
+        return -1;
+      param->chroma_intra_quantiser_matrix[i] = value;
+
+      if (!param->chroma_intra_quantiser_matrix[i])
+        LIBBLU_H262_ERROR_RETURN(
+          "Forbidden chroma Intra quantizer matrix coefficient %u, "
+          "the value zero is forbidden "
+          "(chroma_intra_quantiser_matrix[%u] == 0).\n",
+          i, i
+        );
+    }
+  }
+
+  /* [b1 load_chroma_non_intra_quantiser_matrix] */
+  if (readBits(m2vInput, &value, 1) < 0)
+    return -1;
+  param->load_chroma_non_intra_quantiser_matrix = value;
+
+  if (param->load_chroma_non_intra_quantiser_matrix) {
+    /* non_intra_quantiser_matrix present. */
+
+    /* [u8*64 chroma_non_intra_quantiser_matrix] */
+    for (unsigned i = 0; i < 64; i++) {
+      if (readBits(m2vInput, &value, 8) < 0)
+        return -1;
+      param->chroma_non_intra_quantiser_matrix[i] = value;
+
+      if (!param->chroma_non_intra_quantiser_matrix[i])
+        LIBBLU_H262_ERROR_RETURN(
+          "Forbidden chroma non-Intra quantizer matrix coefficient %u, "
+          "the value zero is forbidden "
+          "(intra_quantiser_matrix[%u] == 0).\n",
+          i, i
+        );
+    }
+  }
+
+  return 0;
+}
+
 int decodeCopyrightExtension(BitstreamReaderPtr m2vInput, H262CopyrightExtensionParameters * param)
 {
   uint32_t value;
@@ -1411,15 +1552,15 @@ int decodeCopyrightExtension(BitstreamReaderPtr m2vInput, H262CopyrightExtension
   if (readBits(m2vInput, &value, 4) < 0)
     return -1;
 
-  if (value != COPYRIGHT_EXTENSION)
+  if (value != H262_EXT_STARTCODEEXT_COPYRIGHT)
     LIBBLU_H262_ERROR_RETURN(
       "Unexpected extension identifier for a copyright extension "
       "(expect 0x%01X, got %0x%01" PRIX32 ").\n",
-      COPYRIGHT_EXTENSION,
+      H262_EXT_STARTCODEEXT_COPYRIGHT,
       value
     );
 
-  /* [u1 copyright_flag] */
+  /* [b1 copyright_flag] */
   if (readBits(m2vInput, &value, 1) < 0)
     return -1;
   param->copyrightFlag = value;
@@ -1616,13 +1757,13 @@ int decodeExtension(
     switch (location) {
       case EXT_LOC_SEQUENCE_EXTENSION:
         switch (nextUint8(m2vInput) >> 4) {
-          case SEQUENCE_DISPLAY_EXTENSION:
+          case H262_EXT_STARTCODEEXT_SEQUENCE_DISPLAY:
             param->sequenceDisplayPresence = true;
             if (decodeSequenceDisplayExtension(m2vInput, &(param->sequenceDisplay)) < 0)
               return -1;
             break;
 
-          case SEQUENCE_SCALABLE_EXTENSION:
+          case H262_EXT_STARTCODEEXT_SEQUENCE_SCALABLE:
             LIBBLU_H262_ERROR_RETURN(
               "Unexpected scalable extension, scalable bitstream aren't "
               "allowed in BDAV specifications.\n"
@@ -1643,18 +1784,23 @@ int decodeExtension(
 
       case EXT_LOC_PICTURE_CODING_EXTENSION:
         switch (nextUint8(m2vInput) >> 4) {
-          case QUAND_MATRIX_EXTENSION:
-          case PICTURE_DISPLAY_EXTENSION:
-          case PICTURE_SPATIAL_SCALABLE_EXTENSION:
-          case PICTURE_TEMPORAL_SCALABLE_EXTENSION:
-          case CAMERA_PARAMETERS_EXTENSION:
-          case ITU_T_EXTENSION:
+          case H262_EXT_STARTCODEEXT_QUANT_MATRIX:
+            param->quantMatrixPresence = true;
+            if (decodeQuantMatrixExtension(m2vInput, &(param->quantMatrix)) < 0)
+              return -1;
+            break;
+
+          case H262_EXT_STARTCODEEXT_PICTURE_DISPLAY:
+          case H262_EXT_STARTCODEEXT_SPATIAL_SCALABLE:
+          case H262_EXT_STARTCODEEXT_TEMPORAL_SCALABLE:
+          case H262_EXT_STARTCODEEXT_CAMERA_PARAMETERS:
+          case H262_EXT_STARTCODEEXT_ITU_T:
             LIBBLU_ERROR_RETURN(
               "Unsupported extension id %X.\n",
               nextUint8(m2vInput) >> 4
             );
 
-          case COPYRIGHT_EXTENSION:
+          case H262_EXT_STARTCODEEXT_COPYRIGHT:
             param->copyrightPresence = true;
             if (decodeCopyrightExtension(m2vInput, &(param->copyright)) < 0)
               return -1;

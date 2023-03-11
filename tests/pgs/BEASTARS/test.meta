@@ -1,4 +1,0 @@
-MUXOPT --start-time=378000000
-V_MPEG4/ISO/AVC, "video.avc" # --disable-hrd-verifier
-A_LPCM, "audio_JA.wav"
-M_HDMV/PGS, "test.sup"

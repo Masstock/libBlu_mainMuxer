@@ -72,10 +72,6 @@ typedef struct {
 
   H264ModifiedNalUnitsList modNalLst;
 
-  H264HrdVerifierContextPtr hrdVerifier;
-  bool enoughDataToUseHrdVerifier;
-
-  /* H264CabacParsingContext cabac; */
   H264WarningFlags warningFlags;
 } H264ParametersHandler, *H264ParametersHandlerPtr;
 
@@ -84,13 +80,6 @@ typedef struct {
 
 #define MARK_H264_WARNING_FLAG(H264ParametersHandlerPtr, warningName)         \
   ((H264ParametersHandlerPtr)->warningFlags.warningName = true)
-
-static inline bool inUseHrdVerifierH264ParametersHandler(
-  const H264ParametersHandlerPtr handle
-)
-{
-  return (NULL != handle->hrdVerifier);
-}
 
 void updateH264LevelLimits(
   H264ParametersHandlerPtr handle,
@@ -102,11 +91,6 @@ void updateH264ProfileLimits(
   H264ProfileIdcValue profile_idc,
   H264ContraintFlags constraintsFlags,
   bool applyBdavConstraints
-);
-
-unsigned getH264BrNal(
-  H264ConstraintsParam constraints,
-  H264ProfileIdcValue profile_idc
 );
 
 /* Handling functions : */
@@ -133,36 +117,34 @@ int updatePPSH264Parameters(
   unsigned id
 );
 
-int initIfRequiredH264CpbHrdVerifier(
-  H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions * options
-);
-
 int deserializeRbspCell(
   H264ParametersHandlerPtr handle
 );
 
 typedef struct {
-  uint8_t * array;
-  size_t arraySize;
+  uint8_t * array;           /**< Builded NALU destination byte array.       */
+  uint8_t * writingPointer;  /**< Byte array writting offset pointer.        */
+  uint8_t * endPointer;      /**< Pointer to the byte following the end of
+    the allocated byte array.                                                */
+  size_t allocatedSize;      /**< Byte array allocated size.                 */
 
-  uint8_t * writingPointer;
-  uint8_t * endPointer;
+  bool rbspZone;             /**< Set to true to append following bits as
+    'rbsp_byte' fields, requiring insertion of 'emulation_prevention_
+    three_byte' to prevent forbidden byte sequences.                         */
 
-  uint8_t curByte;
-  bool rbspZone;
+  uint8_t curByte;           /**< Pending byte, used as a buffer for bit-
+    level writtings.                                                         */
+  unsigned curNbBits;        /**< Current amount of bits in curByte buffer.  */
 
-  unsigned curNbBits;
-  unsigned nbZeroBytes;
+  unsigned nbZeroBytes;      /**< Current number of consecutive zero bytes.  */
 } H264NalByteArrayHandler, *H264NalByteArrayHandlerPtr;
 
-#define H264_NAL_BA_HDLR_NB_WRITTEN_BYTES(h264NalByteArrayHandlerPtr)         \
-  (                                                                           \
-    (size_t) (                                                                \
-      (h264NalByteArrayHandlerPtr)->writingPointer                            \
-      - (h264NalByteArrayHandlerPtr)->array                                   \
-    )                                                                         \
-  )
+static inline size_t nbBytesH264NalByteArrayHandler(
+  const H264NalByteArrayHandlerPtr baHandler
+)
+{
+  return (baHandler->writingPointer - baHandler->array);
+}
 
 H264NalByteArrayHandlerPtr createH264NalByteArrayHandler(
   H264NalHeaderParameters headerParam
@@ -176,14 +158,9 @@ H264AUNalUnitPtr createNewNalCell(
   H264NalUnitTypeValue nal_unit_type
 );
 
-H264AUNalUnitPtr recoverCurNalCell(
-  H264ParametersHandlerPtr handle
-);
-
 int replaceCurNalCell(
   H264ParametersHandlerPtr handle,
-  void * newParam,
-  size_t newParamSize
+  H264AUNalUnitReplacementData newParam
 );
 
 int discardCurNalCell(
@@ -410,55 +387,9 @@ static inline int skipBitsNal(
   return 0;
 }
 
-static inline int reachNextNal(
+int reachNextNal(
   H264ParametersHandlerPtr handle
-)
-{
-
-#if 0
-  uint32_t value;
-  size_t fieldLength;
-
-  while (
-    !isEof(handle->file.inputFile)
-    && (value = nextUint32(handle->file.inputFile)) != 0x00000001
-    && (value >> 8) != 0x000001
-  ) {
-    fieldLength = ((value >> 8) & 0x000003) ? 3 : 1;
-
-    if (skipBytes(handle->file.inputFile, fieldLength) < 0) {
-      if (isEof(handle->file.inputFile))
-        break;
-      return -1;
-    }
-  }
-
-  handle->file.packetInitialized = false;
-  return 0;
-#else
-  register uint32_t value;
-  int ret;
-
-  ret = 0;
-  while (
-    ret <= 0
-    && 0 < (value = nextUint32(handle->file.inputFile))
-  ) {
-    if (0x01 == (value & 0xFFFFFF))
-      break;
-    if (0x00 == (value & 0xFF))
-      ret = skipBytes(handle->file.inputFile, 1);
-    else
-      ret = skipBytes(handle->file.inputFile, 3);
-  }
-
-  handle->file.packetInitialized = false;
-
-  if (0 < nextUint8(handle->file.inputFile))
-    ret = skipBytes(handle->file.inputFile, 1);
-  return ret;
-#endif
-}
+);
 
 /* Writing functions : */
 int writeH264NalByteArrayBit(

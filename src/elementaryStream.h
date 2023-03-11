@@ -86,74 +86,37 @@ static inline void cleanLibbluESSettings(
   free(settings.options.pbrFilepath);
 }
 
-static inline int setFpsChangeLibbluESSettings(
+/* ### ES settings definition : ############################################ */
+
+int setFpsChangeLibbluESSettings(
   LibbluESSettings * dst,
   const lbc * expr
-)
-{
-  HdmvFrameRateCode idc;
+);
 
-  if (parseFpsChange(expr, &idc) < 0)
-    return -1;
-
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, fpsChange, idc);
-  return 0;
-}
-
-static inline int setArChangeLibbluESSettings(
+int setArChangeLibbluESSettings(
   LibbluESSettings * dst,
   const lbc * expr
-)
-{
-  LibbluAspectRatioMod values;
+);
 
-  if (parseArChange(expr, &values) < 0)
-    return -1;
-
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, arChange, values);
-  return 0;
-}
-
-static inline int setLevelChangeLibbluESSettings(
+int setLevelChangeLibbluESSettings(
   LibbluESSettings * dst,
   const lbc * expr
-)
-{
-  uint8_t idc;
+);
 
-  if (parseLevelChange(expr, &idc) < 0)
-    return -1;
-
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, levelChange, idc);
-  return 0;
-}
-
-static inline int setPbrFilepathLibbluESSettings(
+int setPbrFilepathLibbluESSettings(
   LibbluESSettings * dst,
   const lbc * expr,
   const lbc * metaFilepath
-)
-{
-  int ret;
-  lbc path[PATH_BUFSIZE];
-  lbc * pathDup;
+);
 
-  if (!lbc_cwk_path_is_absolute(expr))
-    ret = lb_get_relative_fp_from_anchor(path, PATH_BUFSIZE, expr, metaFilepath);
-  else
-    ret = lbc_snprintf(path, PATH_BUFSIZE * sizeof(lbc), "%s", expr);
-  if (ret < 0)
-    return -1;
+#define LIBBLU_MIN_HDMV_INIT_TIMESTAMP  0
 
-  if (lbc_access_fp(path, "r") < 0)
-    return -1;
+#define LIBBLU_MAX_HDMV_INIT_TIMESTAMP  0x7FFFFFFF
 
-  if (NULL == (pathDup = lbc_strdup(path)))
-    return -1;
-
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, pbrFilepath, pathDup);
-  return 0;
-}
+int setHdmvInitialTimestampLibbluESSettings(
+  LibbluESSettings * dst,
+  uint64_t value
+);
 
 /** \~english
  * \brief Set the ES attached main source file parsed to generate ESMS.

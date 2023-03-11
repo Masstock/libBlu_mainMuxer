@@ -66,7 +66,7 @@ lbc * lookupIniFile(
   const char * expr
 )
 {
-  assert(NULL != ctx);
-
+  if (NULL == ctx)
+    return NULL;
   return lookupIniFileNode(ctx->tree, expr);
 }

@@ -154,6 +154,24 @@ int initH264NalDeserializerContext(
   return 0;
 }
 
+unsigned getH264BrNal(
+  H264ConstraintsParam constraints,
+  H264ProfileIdcValue profile_idc
+)
+{
+  switch (profile_idc) {
+    case H264_PROFILE_BASELINE:
+    case H264_PROFILE_MAIN:
+    case H264_PROFILE_EXTENDED:
+      return 1200 * constraints.MaxBR;
+
+    default:
+      assert(0 < constraints.cpbBrNalFactor);
+  }
+
+  return constraints.cpbBrNalFactor * constraints.MaxBR;
+}
+
 unsigned getH264MaxMBPS(
   uint8_t level_idc
 )
@@ -533,29 +551,6 @@ unsigned getH264MaxSubMbRectSize(
   return 0; /* Unknown/Unrestricted level. */
 }
 
-void updateH264LevelLimits(
-  H264ParametersHandlerPtr param,
-  uint8_t level_idc
-)
-{
-  assert(NULL != param);
-
-  param->constraints.MaxMBPS = getH264MaxMBPS(level_idc);
-  param->constraints.MaxFS = getH264MaxFS(level_idc);
-  param->constraints.MaxDpbMbs = getH264MaxDpbMbs(level_idc);
-  param->constraints.MaxBR = getH264MaxBR(level_idc);
-  param->constraints.MaxCPB = getH264MaxCPB(level_idc);
-  param->constraints.MaxVmvR = getH264MaxVmvR(level_idc);
-  param->constraints.MinCR = getH264MinCR(level_idc);
-  param->constraints.MaxMvsPer2Mb = getH264MaxMvsPer2Mb(level_idc);
-
-  param->constraints.SliceRate = getH264SliceRate(level_idc);
-  param->constraints.MinLumaBiPredSize = getH264MinLumaBiPredSize(level_idc);
-  param->constraints.direct_8x8_inference_flag = getH264direct_8x8_inference_flag(level_idc);
-  param->constraints.frame_mbs_only_flag = getH264frame_mbs_only_flag(level_idc);
-  param->constraints.MaxSubMbRectSize = getH264MaxSubMbRectSize(level_idc);
-}
-
 unsigned getH264cpbBrVclFactor(
   H264ProfileIdcValue profile_idc
 )
@@ -618,189 +613,4 @@ unsigned getH264cpbBrNalFactor(
   }
 
   return 0; /* Unconcerned profile. */
-}
-
-void updateH264ProfileLimits(
-  H264ParametersHandlerPtr param,
-  H264ProfileIdcValue profile_idc,
-  H264ContraintFlags constraintsFlags,
-  bool applyBdavConstraints
-)
-{
-  H264ConstraintsParam * constraintsParam;
-
-  assert(NULL != param);
-
-  constraintsParam = &param->constraints;
-
-  constraintsParam->cpbBrVclFactor = getH264cpbBrVclFactor(profile_idc);
-  constraintsParam->cpbBrNalFactor = getH264cpbBrNalFactor(profile_idc);
-  constraintsParam->restrEntropyCodingMode = H264_ENTROPY_CODING_MODE_UNRESTRICTED;
-
-  switch (profile_idc) {
-    case H264_PROFILE_BASELINE:
-      /* A.2.1 Baseline profile constraints */
-      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IP;
-      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
-      constraintsParam->restrictedFrameMbsOnlyFlag = true;
-      constraintsParam->forbiddenWeightedPredModesUse = true;
-      constraintsParam->restrEntropyCodingMode =
-        H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
-      constraintsParam->maxAllowedNumSliceGroups = 8;
-      constraintsParam->forbiddenPPSExtensionParameters = true;
-      constraintsParam->maxAllowedLevelPrefix = 15;
-      constraintsParam->restrictedPcmSampleValues = true;
-
-      if (constraintsFlags.set1) {
-        /* A.2.1.1 Constrained Baseline profile constraints */
-        constraintsParam->forbiddenArbitrarySliceOrder = true;
-       constraintsParam->maxAllowedNumSliceGroups = 1;
-        constraintsParam->forbiddenRedundantPictures = true;
-      }
-      break;
-
-    case H264_PROFILE_MAIN:
-      /* A.2.2 Main profile constraints */
-      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
-      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
-      constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 1;
-      constraintsParam->forbiddenPPSExtensionParameters = true;
-      constraintsParam->forbiddenRedundantPictures = true;
-      constraintsParam->maxAllowedLevelPrefix = 15;
-      constraintsParam->restrictedPcmSampleValues = true;
-      break;
-
-    case H264_PROFILE_EXTENDED:
-      /* A.2.3 Extended profile constraints */
-      constraintsParam->forcedDirect8x8InferenceFlag = true;
-      constraintsParam->restrEntropyCodingMode =
-        H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
-      constraintsParam->maxAllowedNumSliceGroups = 8;
-      constraintsParam->forbiddenPPSExtensionParameters = true;
-      constraintsParam->maxAllowedLevelPrefix = 15;
-      constraintsParam->restrictedPcmSampleValues = true;
-      break;
-
-    case H264_PROFILE_HIGH:
-      /* A.2.4 High profile constraints */
-      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
-      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
-      constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 1;
-      constraintsParam->forbiddenRedundantPictures = true;
-      constraintsParam->restrictedChromaFormatIdc =
-        (applyBdavConstraints) ?
-          H264_420_CHROMA_FORMAT_IDC
-          : H264_MONO_420_CHROMA_FORMAT_IDC
-      ;
-      constraintsParam->maxAllowedBitDepthMinus8 = 0;
-      constraintsParam->forbiddenQpprimeYZeroTransformBypass = true;
-
-      if (constraintsFlags.set4) {
-        /* A.2.4.1 Progressive High profile constraints */
-        constraintsParam->restrictedFrameMbsOnlyFlag = true;
-
-        if (constraintsFlags.set5) {
-          /* A.2.4.2 Constrained High profile constraints */
-          constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IP;
-        }
-      }
-      break;
-
-    case H264_PROFILE_HIGH_10:
-      /* A.2.5 High 10 profile constraints */
-      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
-      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
-      constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 1;
-      constraintsParam->forbiddenRedundantPictures = true;
-      constraintsParam->restrictedChromaFormatIdc =
-        H264_MONO_420_CHROMA_FORMAT_IDC;
-      constraintsParam->maxAllowedBitDepthMinus8 = 0;
-      constraintsParam->forbiddenQpprimeYZeroTransformBypass = true;
-
-      if (constraintsFlags.set4) {
-        /* A.2.5.1 Progressive High 10 profile constraints */
-        constraintsParam->restrictedFrameMbsOnlyFlag = true;
-      }
-      if (constraintsFlags.set3) {
-        /* A.2.8 High 10 Intra profile constraints */
-        constraintsParam->idrPicturesOnly = true;
-      }
-      break;
-
-    case H264_PROFILE_HIGH_422:
-      /* A.2.6 High 4:2:2 profile constraints */
-      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
-      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
-      constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 1;
-      constraintsParam->forbiddenRedundantPictures = true;
-      constraintsParam->restrictedChromaFormatIdc =
-        H264_MONO_TO_422_CHROMA_FORMAT_IDC;
-      constraintsParam->maxAllowedBitDepthMinus8 = 2;
-      constraintsParam->forbiddenQpprimeYZeroTransformBypass = true;
-
-      if (constraintsFlags.set3) {
-        /* A.2.9 High 10 Intra profile constraints */
-        constraintsParam->idrPicturesOnly = true;
-      }
-      break;
-
-    case H264_PROFILE_HIGH_444_PREDICTIVE:
-    case H264_PROFILE_CAVLC_444_INTRA:
-      /* A.2.7 High 4:4:4 Predictive profile constraints */
-      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
-      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
-      constraintsParam->forbiddenArbitrarySliceOrder = true;
-      constraintsParam->maxAllowedNumSliceGroups = 1;
-      constraintsParam->forbiddenRedundantPictures = true;
-      constraintsParam->maxAllowedBitDepthMinus8 = 6;
-
-      if (
-        constraintsFlags.set3
-        || profile_idc == H264_PROFILE_CAVLC_444_INTRA
-      ) {
-        /* A.2.10 High 4:4:4 Intra profile constraints */
-        constraintsParam->idrPicturesOnly = true;
-
-        if (profile_idc == H264_PROFILE_CAVLC_444_INTRA) {
-          /* A.2.11 CAVLC 4:4:4 Intra profile constraints */
-          constraintsParam->restrEntropyCodingMode =
-            H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
-        }
-      }
-      break;
-
-    default:
-      LIBBLU_WARNING(
-        "Profile-specific constraints for the bitstream's "
-        "profile_idc are not yet implemented.\n"
-        " -> Some parameters may not be supported and/or bitstream "
-        "may be wrongly indicated as Rec. ITU-T H.264 compliant.\n"
-      );
-  }
-}
-
-unsigned getH264BrNal(
-  H264ConstraintsParam constraints,
-  H264ProfileIdcValue profile_idc
-)
-{
-  switch (profile_idc) {
-    case H264_PROFILE_BASELINE:
-    case H264_PROFILE_MAIN:
-    case H264_PROFILE_EXTENDED:
-      return 1200 * constraints.MaxBR;
-
-    default:
-      if (!constraints.cpbBrNalFactor)
-        LIBBLU_ERROR(
-          "Warning, no defined cpbBrNalFactor for profile_idc %u.\n",
-          profile_idc
-        );
-  }
-
-  return constraints.cpbBrNalFactor * constraints.MaxBR;
 }

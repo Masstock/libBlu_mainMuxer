@@ -9,7 +9,7 @@
 
 #include "metaReader.h"
 
-static size_t parseString(
+static size_t _parseString(
   const lbc * expr,
   lbc * dst
 )
@@ -37,6 +37,8 @@ static size_t parseString(
     return 0;
   return prefixSize + lbc_strlen(dst);
 }
+
+/* ### META File option : ################################################## */
 
 LibbluMetaFileOption * createLibbluMetaFileOption(
   const lbc * name,
@@ -67,7 +69,20 @@ free_return:
   return NULL;
 }
 
-static int parseOptionsMetaFileStructure(
+void destroyLibbluMetaFileOption(
+  LibbluMetaFileOption * option
+)
+{
+  if (NULL == option)
+    return;
+
+  destroyLibbluMetaFileOption(option->next);
+  free(option->name);
+  free(option->arg);
+  free(option);
+}
+
+static int _parseOptionsMetaFileStructure(
   const lbc * line,
   LibbluMetaFileOption ** dst
 )
@@ -104,7 +119,7 @@ static int parseOptionsMetaFileStructure(
       rp++;
       while (lbc_isspace((lbc_int) *rp))
         rp++;
-      if (0 == (size = parseString(rp, arg)))
+      if (0 == (size = _parseString(rp, arg)))
         LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
       rp += size;
       argPres = true;
@@ -158,7 +173,21 @@ free_return:
   return NULL;
 }
 
-static int parseTrackMetaFileStructure(
+void destroyLibbluMetaFileTrack(
+  LibbluMetaFileTrack * track
+)
+{
+  if (NULL == track)
+    return;
+
+  destroyLibbluMetaFileTrack(track->next);
+  free(track->codec);
+  free(track->filepath);
+  destroyLibbluMetaFileOption(track->options);
+  free(track);
+}
+
+static int _parseTrackMetaFileStructure(
   FILE * input,
   LibbluMetaFileStructPtr dst
 )
@@ -196,7 +225,7 @@ static int parseTrackMetaFileStructure(
   if (*rp == lbc_char('#'))
     LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
 
-  if (0 == (size = parseString(rp, filepath)))
+  if (0 == (size = _parseString(rp, filepath)))
     LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
   rp += size;
 
@@ -217,7 +246,7 @@ static int parseTrackMetaFileStructure(
   else
     prevTrack->next = track;
 
-  if (parseOptionsMetaFileStructure(rp, &track->options) < 0)
+  if (_parseOptionsMetaFileStructure(rp, &track->options) < 0)
     return -1;
 
   return 0;
@@ -241,7 +270,19 @@ LibbluMetaFileStructPtr createLibbluMetaFileStruct(
   return meta;
 }
 
-static int parseHeaderMetaFileStructure(
+void destroyLibbluMetaFileStruct(
+  LibbluMetaFileStructPtr meta
+)
+{
+  if (NULL == meta)
+    return;
+
+  destroyLibbluMetaFileOption(meta->commonOptions);
+  destroyLibbluMetaFileTrack(meta->tracks);
+  free(meta);
+}
+
+static int _parseHeaderMetaFileStructure(
   FILE * input,
   LibbluMetaFileStructPtr dst
 )
@@ -271,7 +312,7 @@ static int parseHeaderMetaFileStructure(
     );
   }
 
-  if (parseOptionsMetaFileStructure(buf, &dst->commonOptions) < 0)
+  if (_parseOptionsMetaFileStructure(buf, &dst->commonOptions) < 0)
     return -1;
 
   return 0;
@@ -286,11 +327,11 @@ LibbluMetaFileStructPtr parseMetaFileStructure(
   if (NULL == (meta = createLibbluMetaFileStruct()))
     return NULL;
 
-  if (parseHeaderMetaFileStructure(input, meta) < 0)
+  if (_parseHeaderMetaFileStructure(input, meta) < 0)
     goto free_return;
 
   while (!feof(input)) {
-    if (parseTrackMetaFileStructure(input, meta) < 0)
+    if (_parseTrackMetaFileStructure(input, meta) < 0)
       goto free_return;
   }
 

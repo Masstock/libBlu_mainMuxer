@@ -488,13 +488,6 @@ int writeObjectDefinitionSegmentsIgsCompiler(
   const IgsCompilerCompositionPtr compo
 )
 {
-  int ret;
-
-  size_t segmentsSize;
-  unsigned i;
-
-  uint8_t * objData;
-
   assert(NULL != ctx);
   assert(NULL != compo);
 
@@ -503,7 +496,7 @@ int writeObjectDefinitionSegmentsIgsCompiler(
   );
 
   /* Compute required output buffer size. */
-  segmentsSize = computeSizeHdmvObjectDefinitionSegments(
+  size_t segmentsSize = computeSizeHdmvObjectDefinitionSegments(
     compo->objPics,
     compo->nbUsedObjPics
   );
@@ -519,7 +512,8 @@ int writeObjectDefinitionSegmentsIgsCompiler(
     "  Writting segments...\n"
   );
 
-  for (i = 0; i < compo->nbUsedObjPics; i++) {
+  uint8_t * objData = NULL;
+  for (unsigned i = 0; i < compo->nbUsedObjPics; i++) {
     HdmvPicturePtr obj;
     uint8_t * objFragData;
     uint8_t version;
@@ -536,14 +530,10 @@ int writeObjectDefinitionSegmentsIgsCompiler(
     /* Build fragments while data remaining */
     frstInSeq = true;
     while (0 < objSize) {
-      size_t objFragSize;
-
-      bool lstInSeq;
-
-      objFragSize = MIN(objSize, HDMV_MAX_SIZE_OBJECT_DEFINITION_FRAGMENT);
+      size_t objFragSize = MIN(objSize, HDMV_MAX_SIZE_OBJECT_DEFINITION_FRAGMENT);
       objSize -= objFragSize;
 
-      ret = writeSegmentHeader(
+      int ret = writeSegmentHeader(
         ctx,
         HDMV_SEGMENT_TYPE_ODS,
         HDMV_SIZE_OBJECT_DEFINITION_SEGMENT_HEADER + objFragSize
@@ -555,7 +545,7 @@ int writeObjectDefinitionSegmentsIgsCompiler(
         goto free_return;
 
       /* sequence_descriptor() */
-      lstInSeq = (0 == objSize);
+      bool lstInSeq = (0 == objSize);
       if (writeSequenceDescriptorIgsCompiler(ctx, frstInSeq, lstInSeq) < 0)
         goto free_return;
 
@@ -582,14 +572,127 @@ free_return:
 
 /* ###### Interactive Composition Segment (0x18) : ######################### */
 
+static size_t _appendButtonNeighborInfoIgsCompiler(
+  HdmvButtonNeighborInfoParam param,
+  uint8_t * arr,
+  size_t off
+)
+{
+  /* [u16 upper_button_id_ref] */
+  WB_ARRAY(arr, off, param.upper_button_id_ref >> 8);
+  WB_ARRAY(arr, off, param.upper_button_id_ref);
+
+  /* [u16 left_button_id_ref] */
+  WB_ARRAY(arr, off, param.lower_button_id_ref >> 8);
+  WB_ARRAY(arr, off, param.lower_button_id_ref);
+
+  /* [u16 lower_button_id_ref] */
+  WB_ARRAY(arr, off, param.left_button_id_ref >> 8);
+  WB_ARRAY(arr, off, param.left_button_id_ref);
+
+  /* [u16 right_button_id_ref] */
+  WB_ARRAY(arr, off, param.right_button_id_ref >> 8);
+  WB_ARRAY(arr, off, param.right_button_id_ref);
+
+  return off;
+}
+
+static size_t _appendButtonNormalStateInfoIgsCompiler(
+  HdmvButtonNormalStateInfoParam param,
+  uint8_t * arr,
+  size_t off
+)
+{
+  /* [u16 normal_start_object_id_ref] */
+  WB_ARRAY(arr, off, param.start_object_id_ref >> 8);
+  WB_ARRAY(arr, off, param.start_object_id_ref);
+
+  /* [u16 normal_end_object_id_ref] */
+  WB_ARRAY(arr, off, param.end_object_id_ref >> 8);
+  WB_ARRAY(arr, off, param.end_object_id_ref);
+
+  /* [b1 normal_repeat_flag] [b1 normal_complete_flag] [v6 reserved] */
+  WB_ARRAY(arr, off, (param.repeat_flag << 7) | (param.complete_flag << 6));
+
+  return off;
+}
+
+static size_t _appendButtonSelectedStateInfoIgsCompiler(
+  HdmvButtonSelectedStateInfoParam param,
+  uint8_t * arr,
+  size_t off
+)
+{
+  /* [u8 selected_state_sound_id_ref] */
+  WB_ARRAY(arr, off, param.state_sound_id_ref);
+
+  /* [u16 selected_start_object_id_ref] */
+  WB_ARRAY(arr, off, param.start_object_id_ref >> 8);
+  WB_ARRAY(arr, off, param.start_object_id_ref);
+
+  /* [u16 selected_end_object_id_ref] */
+  WB_ARRAY(arr, off, param.end_object_id_ref >> 8);
+  WB_ARRAY(arr, off, param.end_object_id_ref);
+
+  /* [b1 selected_repeat_flag] [b1 selected_complete_flag] [v6 reserved] */
+  WB_ARRAY(arr, off, (param.repeat_flag << 7) | (param.complete_flag << 6));
+
+  return off;
+}
+
+static size_t _appendButtonActivatedStateInfoIgsCompiler(
+  HdmvButtonActivatedStateInfoParam param,
+  uint8_t * arr,
+  size_t off
+)
+{
+  /* [u8 activated_state_sound_id_ref] */
+  WB_ARRAY(arr, off, param.state_sound_id_ref);
+
+  /* [u16 activated_start_object_id_ref] */
+  WB_ARRAY(arr, off, param.start_object_id_ref >> 8);
+  WB_ARRAY(arr, off, param.start_object_id_ref);
+
+  /* [u16 activated_end_object_id_ref] */
+  WB_ARRAY(arr, off, param.end_object_id_ref >> 8);
+  WB_ARRAY(arr, off, param.end_object_id_ref);
+
+  return off;
+}
+
+static size_t _appendNavigationCommandIgsCompiler(
+  const HdmvNavigationCommand * param,
+  uint8_t * arr,
+  size_t off
+)
+{
+  /* [u32 opcode] */
+  WB_ARRAY(arr, off, param->opcode >> 24);
+  WB_ARRAY(arr, off, param->opcode >> 16);
+  WB_ARRAY(arr, off, param->opcode >>  8);
+  WB_ARRAY(arr, off, param->opcode);
+
+  /* [u32 destination] */
+  WB_ARRAY(arr, off, param->destination >> 24);
+  WB_ARRAY(arr, off, param->destination >> 16);
+  WB_ARRAY(arr, off, param->destination >>  8);
+  WB_ARRAY(arr, off, param->destination);
+
+  /* [u32 source] */
+  WB_ARRAY(arr, off, param->source >> 24);
+  WB_ARRAY(arr, off, param->source >> 16);
+  WB_ARRAY(arr, off, param->source >>  8);
+  WB_ARRAY(arr, off, param->source);
+
+  return off;
+}
+
 size_t appendButtonIgsCompiler(
   const HdmvButtonParam * param,
   uint8_t * arr,
   size_t off
 )
 {
-  unsigned i;
-
   assert(NULL != param);
   assert(NULL != arr);
 
@@ -613,117 +716,39 @@ size_t appendButtonIgsCompiler(
   WB_ARRAY(arr, off, param->button_vertical_position);
 
   /* neighbor_info() */
-  {
-    /* [u16 upper_button_id_ref] */
-    WB_ARRAY(arr, off, param->neighbor_info.upper_button_id_ref >> 8);
-    WB_ARRAY(arr, off, param->neighbor_info.upper_button_id_ref);
-
-    /* [u16 left_button_id_ref] */
-    WB_ARRAY(arr, off, param->neighbor_info.lower_button_id_ref >> 8);
-    WB_ARRAY(arr, off, param->neighbor_info.lower_button_id_ref);
-
-    /* [u16 lower_button_id_ref] */
-    WB_ARRAY(arr, off, param->neighbor_info.left_button_id_ref >> 8);
-    WB_ARRAY(arr, off, param->neighbor_info.left_button_id_ref);
-
-    /* [u16 right_button_id_ref] */
-    WB_ARRAY(arr, off, param->neighbor_info.right_button_id_ref >> 8);
-    WB_ARRAY(arr, off, param->neighbor_info.right_button_id_ref);
-  }
+  off = _appendButtonNeighborInfoIgsCompiler(param->neighbor_info, arr, off);
 
   /* normal_state_info() */
-  {
-    /* [u16 normal_start_object_id_ref] */
-    WB_ARRAY(arr, off, param->normal_state_info.start_object_id_ref >> 8);
-    WB_ARRAY(arr, off, param->normal_state_info.start_object_id_ref);
-
-    /* [u16 normal_end_object_id_ref] */
-    WB_ARRAY(arr, off, param->normal_state_info.end_object_id_ref >> 8);
-    WB_ARRAY(arr, off, param->normal_state_info.end_object_id_ref);
-
-    /* [b1 normal_repeat_flag] [b1 normal_complete_flag] [v6 reserved] */
-    WB_ARRAY(
-      arr, off,
-      (param->normal_state_info.repeat_flag     << 7)
-      | (param->normal_state_info.complete_flag << 6)
-    );
-  }
+  off = _appendButtonNormalStateInfoIgsCompiler(param->normal_state_info, arr, off);
 
   /* selected_state_info() */
-  {
-    /* [u8 selected_state_sound_id_ref] */
-    WB_ARRAY(arr, off, param->selected_state_info.state_sound_id_ref);
-
-    /* [u16 selected_start_object_id_ref] */
-    WB_ARRAY(arr, off, param->selected_state_info.start_object_id_ref >> 8);
-    WB_ARRAY(arr, off, param->selected_state_info.start_object_id_ref);
-
-    /* [u16 selected_end_object_id_ref] */
-    WB_ARRAY(arr, off, param->selected_state_info.end_object_id_ref >> 8);
-    WB_ARRAY(arr, off, param->selected_state_info.end_object_id_ref);
-
-    /* [b1 selected_repeat_flag] [b1 selected_complete_flag] [v6 reserved] */
-    WB_ARRAY(
-      arr, off,
-      (param->selected_state_info.repeat_flag     << 7)
-      | (param->selected_state_info.complete_flag << 6)
-    );
-  }
+  off = _appendButtonSelectedStateInfoIgsCompiler(param->selected_state_info, arr, off);
 
   /* activated_state_info() */
-  {
-    /* [u8 activated_state_sound_id_ref] */
-    WB_ARRAY(arr, off, param->activated_state_info.state_sound_id_ref);
-
-    /* [u16 activated_start_object_id_ref] */
-    WB_ARRAY(arr, off, param->activated_state_info.start_object_id_ref >> 8);
-    WB_ARRAY(arr, off, param->activated_state_info.start_object_id_ref);
-
-    /* [u16 activated_end_object_id_ref] */
-    WB_ARRAY(arr, off, param->activated_state_info.end_object_id_ref >> 8);
-    WB_ARRAY(arr, off, param->activated_state_info.end_object_id_ref);
-  }
+  off = _appendButtonActivatedStateInfoIgsCompiler(param->activated_state_info, arr, off);
 
   /* [u16 number_of_navigation_commands] */
   WB_ARRAY(arr, off, param->number_of_navigation_commands >> 8);
   WB_ARRAY(arr, off, param->number_of_navigation_commands);
 
-  {
-    HdmvNavigationCommand * com = param->navigation_commands;
-
-    for (i = 0; i < param->number_of_navigation_commands; com = com->next, i++) {
-      /* Navigation_command() */
-      if (NULL == com)
-        LIBBLU_HDMV_SEGBUILD_ERROR_ZRETURN(
-          "Unexpected too short commands list (%u/%u).\n",
-          i, param->number_of_navigation_commands
-        );
-
-      /* [u32 opcode] */
-      WB_ARRAY(arr, off, com->opcode >> 24);
-      WB_ARRAY(arr, off, com->opcode >> 16);
-      WB_ARRAY(arr, off, com->opcode >>  8);
-      WB_ARRAY(arr, off, com->opcode);
-
-      /* [u32 destination] */
-      WB_ARRAY(arr, off, com->destination >> 24);
-      WB_ARRAY(arr, off, com->destination >> 16);
-      WB_ARRAY(arr, off, com->destination >>  8);
-      WB_ARRAY(arr, off, com->destination);
-
-      /* [u32 source] */
-      WB_ARRAY(arr, off, com->source >> 24);
-      WB_ARRAY(arr, off, com->source >> 16);
-      WB_ARRAY(arr, off, com->source >>  8);
-      WB_ARRAY(arr, off, com->source);
-    }
-
-    if (NULL != com)
+  HdmvNavigationCommand * com = param->navigation_commands;
+  for (unsigned i = 0; i < param->number_of_navigation_commands; i++) {
+    /* Navigation_command() */
+    if (NULL == com)
       LIBBLU_HDMV_SEGBUILD_ERROR_ZRETURN(
-        "Unexpected too long commands list (%u).\n",
-        param->number_of_navigation_commands
+        "Unexpected too short commands list (%u/%u).\n",
+        i, param->number_of_navigation_commands
       );
+
+    off = _appendNavigationCommandIgsCompiler(com, arr, off);
+    com = com->next;
   }
+
+  if (NULL != com)
+    LIBBLU_HDMV_SEGBUILD_ERROR_ZRETURN(
+      "Unexpected too long commands list (%u).\n",
+      param->number_of_navigation_commands
+    );
 
   return off;
 }
@@ -953,8 +978,8 @@ uint8_t * buildInteractiveCompositionIgsCompiler(
     | ((param->user_interface_model & 0x1) << 6)
   );
 
-  if (param->stream_model == HDMV_STREAM_MODEL_OOM) {
-    /* Out of Mux related parameters */
+  if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
+    /* In Mux related parameters */
 
     /* [v7 reserved] [u33 composition_time_out_pts] */
     WB_ARRAY(arr, off, param->oomRelatedParam.composition_time_out_pts >> 32);

@@ -734,20 +734,10 @@ EsmsCommandNodePtr createEsmsCommandNode(
   EsmsCommandType type
 );
 
-static inline void destroyEsmsCommandNode(
+void destroyEsmsCommandNode(
   EsmsCommandNodePtr node,
   bool recursive
-)
-{
-  if (NULL == node)
-    return;
-
-  if (recursive)
-    destroyEsmsCommandNode(node->next, true);
-
-  cleanEsmsCommand(node->command);
-  free(node);
-}
+);
 
 static inline void attachEsmsCommandNode(
   EsmsCommandNodePtr root,
@@ -802,20 +792,10 @@ EsmsPesPacketNodePtr createEsmsPesPacketNode(
   void
 );
 
-static inline void destroyEsmsPesPacketNode(
+void destroyEsmsPesPacketNode(
   EsmsPesPacketNodePtr node,
   bool recursive
-)
-{
-  if (NULL == node)
-    return;
-
-  if (recursive)
-    destroyEsmsPesPacketNode(node->next, true);
-
-  destroyEsmsCommandNode(node->commands, true);
-  free(node);
-}
+);
 
 static inline void attachEsmsPesPacketNode(
   EsmsPesPacketNodePtr root,

@@ -38,54 +38,6 @@
  */
 #define IGS_COMPILER_XML_VERBOSE_LEVEL_LOW  3
 
-/** \~english
- * \brief Composition_descriptor()'s composition_state parameter
- * "normal" (0b00) value.
- */
-#define IGS_COMPILER_XML_STATE_NORMAL_CASE_STR  "NormalCase"
-
-/** \~english
- * \brief Composition_descriptor()'s composition_state parameter
- * "acquisition_point" (0b01) value.
- */
-#define IGS_COMPILER_XML_STATE_ACQ_PNT_STR  "AcquisitionPoint"
-
-/** \~english
- * \brief Composition_descriptor()'s composition_state parameter
- * "epoch_start" (0b10) value.
- */
-#define IGS_COMPILER_XML_STATE_EPOCH_START_STR  "EpochStart"
-
-/** \~english
- * \brief Composition_descriptor()'s composition_state parameter
- * "epoch_continue" (0b11) value.
- */
-#define IGS_COMPILER_XML_STATE_EPOCH_CONT_STR  "EpochContinue"
-
-/** \~english
- * \brief Interactive_composition()'s stream_model parameter
- * "out_of_mux" (0b0) value.
- */
-#define IGS_COMPILER_XML_STREAM_MODEL_OOM  "OoM"
-
-/** \~english
- * \brief Interactive_composition()'s stream_model parameter
- * "multiplexed" (0b1) value.
- */
-#define IGS_COMPILER_XML_STREAM_MODEL_MULTIPLEXED  "Multiplexed"
-
-/** \~english
- * \brief Interactive_composition()'s user_interface_model parameter
- * "pop_up" (0b0) value.
- */
-#define IGS_COMPILER_XML_UI_MODEL_POP_UP  "Pop-Up"
-
-/** \~english
- * \brief Interactive_composition()'s user_interface_model parameter
- * "normal" (0b1) value.
- */
-#define IGS_COMPILER_XML_UI_MODEL_NORMAL  "Normal"
-
 void echoErrorIgsXmlFile(
   const lbc * format,
   ...
@@ -207,6 +159,30 @@ int parseVideoDescriptorIgsXmlFile(
 );
 
 /** \~english
+ * \brief Composition_descriptor()'s composition_state parameter
+ * "normal" (0b00) value.
+ */
+#define IGS_COMPILER_XML_STATE_NORMAL_CASE_STR  "NormalCase"
+
+/** \~english
+ * \brief Composition_descriptor()'s composition_state parameter
+ * "acquisition_point" (0b01) value.
+ */
+#define IGS_COMPILER_XML_STATE_ACQ_PNT_STR  "AcquisitionPoint"
+
+/** \~english
+ * \brief Composition_descriptor()'s composition_state parameter
+ * "epoch_start" (0b10) value.
+ */
+#define IGS_COMPILER_XML_STATE_EPOCH_START_STR  "EpochStart"
+
+/** \~english
+ * \brief Composition_descriptor()'s composition_state parameter
+ * "epoch_continue" (0b11) value.
+ */
+#define IGS_COMPILER_XML_STATE_EPOCH_CONT_STR  "EpochContinue"
+
+/** \~english
  * \brief Parse composition_descriptor() structure
  * from IGS XML description file.
  *
@@ -217,6 +193,30 @@ int parseCompositionDescriptorIgsXmlFile(
   IgsCompilerContextPtr ctx,
   HdmvCDParameters * param
 );
+
+/** \~english
+ * \brief Interactive_composition()'s stream_model parameter
+ * "out_of_mux" (0b0) value.
+ */
+#define IGS_COMPILER_XML_STREAM_MODEL_OOM  "OoM"
+
+/** \~english
+ * \brief Interactive_composition()'s stream_model parameter
+ * "multiplexed" (0b1) value.
+ */
+#define IGS_COMPILER_XML_STREAM_MODEL_MULTIPLEXED  "Multiplexed"
+
+/** \~english
+ * \brief Interactive_composition()'s user_interface_model parameter
+ * "pop_up" (0b0) value.
+ */
+#define IGS_COMPILER_XML_UI_MODEL_POP_UP  "Pop-Up"
+
+/** \~english
+ * \brief Interactive_composition()'s user_interface_model parameter
+ * "normal" (0b1) value.
+ */
+#define IGS_COMPILER_XML_UI_MODEL_NORMAL  "Normal"
 
 /** \~english
  * \brief Parse interactive_composition() structure parameters

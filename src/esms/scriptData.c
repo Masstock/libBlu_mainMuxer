@@ -446,6 +446,29 @@ EsmsCommandNodePtr createEsmsCommandNode(
   return node;
 }
 
+/** \~english
+ * \brief
+ *
+ * \param node
+ * \param recursive
+ *
+ * \todo iterative ?
+ */
+void destroyEsmsCommandNode(
+  EsmsCommandNodePtr node,
+  bool recursive
+)
+{
+  if (NULL == node)
+    return;
+
+  if (recursive)
+    destroyEsmsCommandNode(node->next, true);
+
+  cleanEsmsCommand(node->command);
+  free(node);
+}
+
 /* ### ESMS script PES packet node : ####################################### */
 
 EsmsPesPacketNodePtr createEsmsPesPacketNode(
@@ -467,6 +490,21 @@ EsmsPesPacketNodePtr createEsmsPesPacketNode(
   node->commands = NULL;
 
   return node;
+}
+
+void destroyEsmsPesPacketNode(
+  EsmsPesPacketNodePtr node,
+  bool recursive
+)
+{
+  if (NULL == node)
+    return;
+
+  if (recursive)
+    destroyEsmsPesPacketNode(node->next, true);
+
+  destroyEsmsCommandNode(node->commands, true);
+  free(node);
 }
 
 /* ### ESMS files utilities : ############################################## */

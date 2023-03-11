@@ -33,20 +33,6 @@ static inline void cleanHdmvPictureLibraries(
 
 /* ######################################################################### */
 
-#define HDMV_PIC_SIGNATURE_SIZE  8
-
-typedef enum {
-  HDMV_PIC_FORMAT_UNK  = -1,
-
-  HDMV_PIC_FORMAT_PNG
-} HdmvPictureFormat;
-
-HdmvPictureFormat identifyFormatHdmvPictureLibraries(
-  uint8_t magic[HDMV_PIC_SIGNATURE_SIZE]
-);
-
-/* ######################################################################### */
-
 HdmvPicturePtr openHdmvPicture(
   HdmvPictureLibraries * libs,
   const lbc * filepath,

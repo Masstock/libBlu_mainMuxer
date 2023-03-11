@@ -2301,7 +2301,7 @@ static int decodeAc3Sync(
         return -1;
 
       if (0x0 != crcResult)
-        LIBBLU_AC3_ERROR("CRC checksum error at the 5/8 of the frame.\n");
+        LIBBLU_AC3_ERROR_RETURN("CRC checksum error at the 5/8 of the frame.\n");
 
       /* Compute CRC for the remaining bytes */
       if (initCrc(BITSTREAM_CRC_CTX(ac3Input), crcParam, 0) < 0)
@@ -2314,7 +2314,7 @@ static int decodeAc3Sync(
         return -1;
 
       if (0x0 != crcResult)
-        LIBBLU_AC3_ERROR("CRC checksum error at the end of the frame.\n");
+        LIBBLU_AC3_ERROR_RETURN("CRC checksum error at the end of the frame.\n");
     }
     else {
       /* Skipping remaining frame bytes with CRC disabled */

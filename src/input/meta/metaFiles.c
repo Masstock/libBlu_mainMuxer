@@ -122,6 +122,22 @@ static int _parseHeaderMetaFile(
         LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, echoHrdDpb, true);
         break;
 
+      case LBMETA_OPT__HDMV_INITIAL_TIMESTAMP:
+        if (setHdmvInitialTimestampLibbluMuxingSettings(dst, argument.u64) < 0)
+          LIBBLU_ERROR_RETURN(
+            "Invalid '%" PRI_LBCS "' option value, "
+            "value shall be between %" PRIu64 " and %" PRIu64 " "
+            "(inclusive).\n",
+            option.name,
+            LIBBLU_MIN_HDMV_INIT_TIMESTAMP,
+            LIBBLU_MAX_HDMV_INIT_TIMESTAMP
+          );
+        break;
+
+      case LBMETA_OPT__HDMV_FORCE_RETIMING:
+        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.forceRetiming, true);
+        break;
+
       default:
         LIBBLU_ERROR_RETURN(
           "Unexpected option '%" PRI_LBCS "', "
@@ -184,41 +200,16 @@ static int parseCodecNameMetaFile(
   );
 }
 
-static void applyTrackGlobalOptions(
+static void _applyTrackGlobalOptions(
   LibbluESSettings * dst,
-  LibbluMuxingSettings * muxSettings,
-  LibbluStreamCodingType codingType
+  LibbluMuxingSettings * muxSettings
 )
 {
-#define SET_FROM_GLB(es, set, opname)                                         \
-  LIBBLU_ES_SETTINGS_SET_OPTION(                                              \
-    es, opname, LIBBLU_MUX_SETTINGS_GLB_OPTION(set, opname)                   \
-  )
-
-  LIBBLU_ES_SETTINGS_RESET_OPTIONS(dst);
-  SET_FROM_GLB(dst, muxSettings, confHandle);
-  SET_FROM_GLB(dst, muxSettings, forcedScriptBuilding);
-  SET_FROM_GLB(dst, muxSettings, dvdMedia);
-
-  if (
-    codingType == STREAM_CODING_TYPE_AC3
-    || codingType == STREAM_CODING_TYPE_DTS
-  ) {
-    SET_FROM_GLB(dst, muxSettings, extractCore);
-  }
-
-  if (codingType == STREAM_CODING_TYPE_AVC) {
-    SET_FROM_GLB(dst, muxSettings, disableFixes);
-    SET_FROM_GLB(dst, muxSettings, fpsChange);
-    SET_FROM_GLB(dst, muxSettings, arChange);
-    SET_FROM_GLB(dst, muxSettings, levelChange);
-    SET_FROM_GLB(dst, muxSettings, discardSei);
-    SET_FROM_GLB(dst, muxSettings, disableHrdVerifier);
-    SET_FROM_GLB(dst, muxSettings, echoHrdCpb);
-    SET_FROM_GLB(dst, muxSettings, echoHrdDpb);
-  }
-
-#undef SET_FROM_GLB
+  memcpy(
+    &dst->options,
+    &muxSettings->options.globalSharedOptions,
+    sizeof(LibbluESSettingsOptions)
+  );
 }
 
 static int parseTrackMetaFile(
@@ -257,7 +248,7 @@ static int parseTrackMetaFile(
   }
 
   /* Global shared options */
-  applyTrackGlobalOptions(elemStream, dst, trackCodingType);
+  _applyTrackGlobalOptions(elemStream, dst);
 
   /* Options */
   for (optNode = track->options; NULL != optNode; optNode = optNode->next) {
@@ -339,6 +330,22 @@ static int parseTrackMetaFile(
 
       case LBMETA_OPT__ECHO_HRD_DPB:
         LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, echoHrdDpb, true);
+        break;
+
+      case LBMETA_OPT__HDMV_INITIAL_TIMESTAMP:
+        if (setHdmvInitialTimestampLibbluESSettings(elemStream, argument.u64) < 0)
+          LIBBLU_ERROR_RETURN(
+            "Invalid '%" PRI_LBCS "' option value, "
+            "value shall be between %" PRIu64 " and %" PRIu64 " "
+            "(inclusive).\n",
+            option.name,
+            LIBBLU_MIN_HDMV_INIT_TIMESTAMP,
+            LIBBLU_MAX_HDMV_INIT_TIMESTAMP
+          );
+        break;
+
+      case LBMETA_OPT__HDMV_FORCE_RETIMING:
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.forceRetiming, true);
         break;
 
       case LBMETA_OPT__ESMS:

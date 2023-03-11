@@ -26,7 +26,7 @@
  * out) storage.
  */
 typedef struct {
-  uint64_t * values;       /**< Timecode values array.                       */
+  int64_t * values;        /**< Timecode values array.                       */
   size_t allocatedValues;  /**< Allocation size of the array.                */
   size_t usedValues;       /**< Number of used (stored) values in array.     */
   size_t readedValues;     /**< Number of stored values readed.              */
@@ -76,7 +76,7 @@ int copyHdmvTimecodes(
  */
 int addHdmvTimecodes(
   HdmvTimecodes * tm,
-  uint64_t value
+  int64_t value
 );
 
 /** \~english
@@ -89,7 +89,7 @@ int addHdmvTimecodes(
  */
 static inline int getHdmvTimecodes(
   HdmvTimecodes * tm,
-  uint64_t * value
+  int64_t * value
 )
 {
   assert(NULL != tm);

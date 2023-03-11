@@ -193,6 +193,11 @@ static const struct {
     "HDMV bitstreams compliance checks"
   ),
   DECLARE_OPTION(
+    LIBBLU_DEBUG_HDMV_TS_COMPUTE,
+    "hdmv_ts_compute",
+    "HDMV bitstreams timestamps computation"
+  ),
+  DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_SEG_BUILDER,
     "hdmv_seg_builder",
     "HDMV bitstreams segments builder"
@@ -264,20 +269,21 @@ int enableDebugStatusString(
   const char * string
 )
 {
-  bool arrayMode = false;
-
-  if (*string == '\"') {
-    arrayMode = true;
-    string++;
-  }
-
   do {
     LibbluStatus status;
     char modeName[50];
     size_t i;
+    int ret;
 
-    sscanf(string, " %49[A-Za-z0-9_]s", modeName);
-    string += strlen(modeName);
+    while (isspace(*string) || ispunct(*string))
+      string++;
+    if (EOF == (ret = sscanf(string, "%49[A-Za-z0-9_]s", modeName)))
+      return -1;
+    if (!ret)
+      LIBBLU_ERROR_RETURN(
+        "Invalid character in debugging modes string '%s'.\n",
+        string
+      );
 
     status = LIBBLU_FATAL_ERROR;
     for (i = 0; i < ARRAY_SIZE(debuggingOptions); i++) {
@@ -290,7 +296,7 @@ int enableDebugStatusString(
     if (status <= LIBBLU_FATAL_ERROR)
       LIBBLU_ERROR_RETURN(
         "Unknown debugging mode '%s'.\n",
-        modeName
+        string
       );
 
     enabledStatus[status] = 1;
@@ -298,9 +304,8 @@ int enableDebugStatusString(
       memset(enabledStatus, 1, ARRAY_SIZE(enabledStatus));
     }
 
-    while ((arrayMode && isspace(*string)) || (ispunct(*string)))
-      string++;
-  } while ((!arrayMode || *string != '\"') && *string != '\0');
+    string += strlen(modeName);
+  } while (*string != '\0');
 
   return 0;
 }
@@ -329,7 +334,7 @@ void echoMessageVa(
   va_list args
 )
 {
-  if (LIBBLU_FATAL_ERROR <= status)
+  if (LIBBLU_WARNING <= status)
     echoMessageFdVa(stderr, status, format, args);
   else
     echoMessageFdVa(stdout, status, format, args);

@@ -73,20 +73,10 @@ LibbluESPesPacketPropertiesNodePtr createLibbluESPesPacketPropertiesNode(
   void
 );
 
-static inline void destroyLibbluESPesPacketPropertiesNode(
+void destroyLibbluESPesPacketPropertiesNode(
   LibbluESPesPacketPropertiesNodePtr node,
   bool recursive
-)
-{
-  if (NULL == node)
-    return;
-
-  if (recursive)
-    destroyLibbluESPesPacketPropertiesNode(node->next, true);
-
-  destroyEsmsCommandNode(node->commands, true);
-  free(node);
-}
+);
 
 LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   EsmsPesPacketNodePtr scriptNode,
@@ -126,13 +116,8 @@ static inline void initLibbluESPesPacketData(
   LibbluESPesPacketData * dst
 )
 {
-  assert(NULL != dst);
-
   *dst = (LibbluESPesPacketData) {
-    .data = NULL,
-    .dataOffset = 0,
-    .dataUsedSize = 0,
-    .dataAllocatedSize = 0,
+    0
   };
 }
 

@@ -73,6 +73,29 @@ IniFileNodePtr createSectionIniFileNode(
   return node;
 }
 
+void destroyIniFileNode(
+  IniFileNodePtr node
+)
+{
+  if (NULL == node)
+    return;
+
+  destroyIniFileNode(node->sibling);
+  free(node->name);
+
+  switch (node->type) {
+    case INI_ENTRY:
+      free(node->entryValue);
+      break;
+
+    case INI_SECTION:
+      destroyIniFileNode(node->sectionChild);
+      break;
+  }
+
+  free(node);
+}
+
 void attachSiblingIniFileNode(
   IniFileNodePtr dst,
   IniFileNodePtr sibling

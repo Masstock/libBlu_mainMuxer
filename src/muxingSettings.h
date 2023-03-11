@@ -48,18 +48,6 @@ static inline void defaultLibbluMuxingOptions(
   };
 }
 
-#define LIBBLU_DEFAULT_OUTPUT_TS_FILENAME  lbc_str("out.m2ts")
-
-#define LIBBLU_MIN_MUXING_RATE  500000
-#define LIBBLU_MAX_MUXING_RATE  120000000
-#define LIBBLU_DEFAULT_MUXING_RATE  48000000
-
-#define LIBBLU_MIN_INIT_PRES_TIME  SUB_CLOCK_90KHZ
-#define LIBBLU_MAX_INIT_PRES_TIME  ((uint64_t) SUB_CLOCK_90KHZ * 60 * 60 * 5000)
-#define LIBBLU_DEFAULT_INIT_PRES_TIME  ((uint64_t) 54000000 * 300)
-
-#define LIBBLU_DEFAULT_INIT_TSTD_DUR  0.9
-
 typedef struct {
   lbc * outputTsFilename;
 
@@ -87,6 +75,10 @@ typedef struct {
 
 #define LIBBLU_MUX_SETTINGS_GLB_OPTION(set, opname)                           \
   ((set)->options.globalSharedOptions.opname)
+
+#define LIBBLU_DEFAULT_OUTPUT_TS_FILENAME  lbc_str("out.m2ts")
+
+#define LIBBLU_DEFAULT_INIT_TSTD_DUR  0.9
 
 /** \~english
  * \brief Initiate #LibbluMuxingSettings structure.
@@ -144,6 +136,12 @@ static inline LibbluESSettings * getNewESLibbluMuxingSettings(
   return initLibbluESSettings(es);
 }
 
+#define LIBBLU_MIN_MUXING_RATE  500000
+
+#define LIBBLU_MAX_MUXING_RATE  120000000
+
+#define LIBBLU_DEFAULT_MUXING_RATE  48000000
+
 /** \~english
  * \brief Set the muxing target multiplex rate value.
  *
@@ -165,6 +163,12 @@ static inline int setTargetMuxRateLibbluMuxingSettings(
   dst->targetMuxingRate = value;
   return 0;
 }
+
+#define LIBBLU_MIN_INIT_PRES_TIME  SUB_CLOCK_90KHZ
+
+#define LIBBLU_MAX_INIT_PRES_TIME  ((uint64_t) SUB_CLOCK_90KHZ * 60 * 60 * 5000)
+
+#define LIBBLU_DEFAULT_INIT_PRES_TIME  ((uint64_t) 54000000 * 300)
 
 /** \~english
  * \brief Set the muxing initial presentation time value.
@@ -227,6 +231,22 @@ static inline int setLevelChangeLibbluMuxingSettings(
     return -1;
 
   LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, levelChange, idc);
+  return 0;
+}
+
+static inline int setHdmvInitialTimestampLibbluMuxingSettings(
+  LibbluMuxingSettings * dst,
+  uint64_t value
+)
+{
+#if 0 < LIBBLU_MIN_HDMV_INIT_TIMESTAMP
+  if (value < LIBBLU_MIN_HDMV_INIT_TIMESTAMP)
+    return -1;
+#endif
+  if (LIBBLU_MAX_HDMV_INIT_TIMESTAMP < value)
+    return -1;
+
+  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.initialTimestamp, value);
   return 0;
 }
 

@@ -7,7 +7,7 @@ CC :=  gcc
 LEX := flex
 YACC := bison
 
-CFLAGS := -std=c99 -Wall -Wextra
+CFLAGS := -std=c99 -Wall -Wextra -Winline
 LDLIBS := -lm
 
 EXEC := mainMuxer
@@ -75,6 +75,7 @@ SOURCE_FILES =																\
 	codecsUtilities.o														\
 	dtcpSettings.o															\
 	elementaryStream.o														\
+	elementaryStreamOptions.o												\
 	elementaryStreamProperties.o											\
 	elementaryStreamPesProperties.o											\
 	main.o																	\
@@ -112,6 +113,7 @@ SOURCE_FILES =																\
 	codec/hdmv/common/hdmv_check.o											\
 	codec/hdmv/common/hdmv_common.o											\
 	codec/hdmv/common/hdmv_context.o										\
+	codec/hdmv/common/hdmv_data.o											\
 	codec/hdmv/common/hdmv_palette_def.o									\
 	codec/hdmv/common/hdmv_palette_gen.o									\
 	codec/hdmv/common/hdmv_parser.o											\

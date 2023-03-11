@@ -16,11 +16,9 @@ int writeTpExtraHeader(
   uint8_t extraHeader[TP_EXTRA_HEADER_SIZE];
   size_t offset = 0;
 
-  uint32_t ats;
-
   static const uint8_t copyPermInd = 0x0;
 
-  ats = pcr & 0x3FFFFFFF;
+  uint32_t ats = pcr & 0x3FFFFFFF;
 
   /* [u2 copyPermissionIndicator] [u30 arrivalTimeStamp] */
   WB_ARRAY(extraHeader, offset, (copyPermInd << 6) | (ats >> 24));
@@ -38,74 +36,63 @@ int writeTpExtraHeader(
 static void _prepareESTransportPacketMainHeader(
   TPHeaderParameters * dst,
   const LibbluStreamPtr stream,
-  bool pcrInjectionRequirement
+  bool pcrInjectReq
 )
 {
-  size_t pesPacketRemainingData;
-  bool payloadPresence, payloadStart, adaptationFieldPresence;
+  size_t remDataSize = remainingPesDataLibbluES(stream->es);
 
-  pesPacketRemainingData = remainingPesDataLibbluES(stream->es);
-  assert(0 < pesPacketRemainingData);
+  assert(0 < remDataSize);
 
-  payloadPresence = (0 < pesPacketRemainingData);
-  payloadStart = (payloadPresence && isPayloadUnitStartLibbluES(stream->es));
+  bool payloadPresence = true; // (0 < remDataSize)
+  bool payloadStart = (payloadPresence && isPayloadUnitStartLibbluES(stream->es));
+  bool adaptFieldPres = (remDataSize < TP_PAYLOAD_SIZE || pcrInjectReq);
 
-  adaptationFieldPresence =
-    pesPacketRemainingData < (TP_SIZE - TP_HEADER_SIZE)
-    || pcrInjectionRequirement
-  ;
+  *dst = (TPHeaderParameters) {
+    .transportErrorIndicator = false,
+    .payloadUnitStartIndicator = payloadStart,
+    .transportPriority = false,
+    .pid = stream->pid,
+    .transportScramblingControl = 0x00,
+    .adaptationFieldControl = (adaptFieldPres << 1) | payloadPresence,
+    .continuityCounter = stream->packetNb & 0xF
+  };
+}
 
-  dst->transportErrorIndicator = false;
-  dst->payloadUnitStartIndicator = payloadStart;
-  dst->transportPriority = false;
-
-  dst->pid = stream->pid;
-  dst->transportScramblingControl = 0x00;
-  dst->adaptationFieldControl =
-    (adaptationFieldPresence << 1)
-    | payloadPresence
-  ;
-  dst->continuityCounter = stream->packetNb & 0xF;
+/** \~english
+ * \brief Return the number of bytes remaining in the current system table.
+ *
+ * \param stream System Stream handle.
+ * \return size_t Number of remaining bytes in the system packet current table.
+ */
+static size_t _remainingTableDataLibbluSystemStream(
+  const LibbluStreamPtr stream
+)
+{
+  return stream->sys.dataLength - stream->sys.dataOffset;
 }
 
 static void _prepareSysTransportPacketMainHeader(
   TPHeaderParameters * dst,
   const LibbluStreamPtr stream,
-  bool pcrInjectionRequirement
+  bool pcrInjectReq
 )
 {
-  size_t tableRemainingData;
-  bool payloadPresence, payloadStart, adaptationFieldPresence;
+  size_t remDataSize = _remainingTableDataLibbluSystemStream(stream);
 
-  tableRemainingData = remainingTableDataLibbluSystemStream(stream->sys);
+  bool payloadPresence = (0 < remDataSize);
+  bool payloadStart = (payloadPresence && 0x0 == stream->sys.dataOffset);
+  bool adaptFieldPres = (remDataSize < TP_PAYLOAD_SIZE || pcrInjectReq);
+  bool useContCounter = stream->sys.useContinuityCounter;
 
-  payloadPresence = (0 < tableRemainingData);
-  payloadStart = (
-    payloadPresence
-    && isPayloadUnitStartLibbluSystemStream(stream->sys)
-  );
-
-  adaptationFieldPresence =
-    tableRemainingData < (TP_SIZE - TP_HEADER_SIZE)
-    || pcrInjectionRequirement
-  ;
-
-  dst->transportErrorIndicator = false;
-  dst->payloadUnitStartIndicator = payloadStart;
-  dst->transportPriority = false;
-
-  dst->pid = stream->pid;
-  dst->transportScramblingControl = 0x00;
-  dst->adaptationFieldControl =
-    (adaptationFieldPresence << 1)
-    | payloadPresence
-  ;
-  dst->continuityCounter =
-    (stream->sys.useContinuityCounter) ?
-      stream->packetNb & 0xF
-    :
-      0
-  ;
+  *dst = (TPHeaderParameters) {
+    .transportErrorIndicator = false,
+    .payloadUnitStartIndicator = payloadStart,
+    .transportPriority = false,
+    .pid = stream->pid,
+    .transportScramblingControl = 0x00,
+    .adaptationFieldControl = (adaptFieldPres << 1) | payloadPresence,
+    .continuityCounter = (useContCounter) ? stream->packetNb & 0xF : 0
+  };
 }
 
 static void _prepareAdaptationField(
@@ -115,52 +102,39 @@ static void _prepareAdaptationField(
   uint64_t pcrValue
 )
 {
-  bool pcrPresence;
-  size_t remainingPayload, adaptationFieldSize;
+  AdaptationFieldParameters param = {
+    .pcrFlag = ((stream->type == TYPE_PCR) || pcrInjectionRequirement),
+    .pcr = pcrValue
+  };
 
-  pcrPresence = ((stream->type == TYPE_PCR) || pcrInjectionRequirement);
-
-  dst->writeOnlyLength = false;
-
-  dst->discontinuityIndicator = false;
-  dst->randomAccessIndicator = false;
-  dst->elementaryStreamPriorityIndicator = false;
-  dst->pcrFlag = pcrPresence;
-  dst->opcrFlag = false;
-  dst->splicingPointFlag = false;
-  dst->transportPrivateDataFlag = false;
-  dst->adaptationFieldExtensionFlag = false;
-
-  if (dst->pcrFlag)
-    dst->pcr = pcrValue;
-
+  size_t remainingPayload;
   if (isESLibbluStream(stream))
     remainingPayload = remainingPesDataLibbluES(stream->es);
   else
-    remainingPayload = remainingTableDataLibbluSystemStream(stream->sys);
+    remainingPayload = _remainingTableDataLibbluSystemStream(stream);
+  assert(remainingPayload <= TP_PAYLOAD_SIZE);
 
-  dst->stuffingBytesLen = 0;
-  adaptationFieldSize = computeRequiredSizeAdaptationField(*dst);
+  size_t adaptationFieldSize = computeRequiredSizeAdaptationField(param);
+
   if (!adaptationFieldSize) {
+    /* No adaptation field required */
     switch (remainingPayload) {
-      case TP_SIZE - TP_HEADER_SIZE:
+      case TP_PAYLOAD_SIZE: // Payload size match exactly TS packet one.
         break;
 
-      case TP_SIZE - TP_HEADER_SIZE - 1:
-        dst->writeOnlyLength = true;
+      case TP_PAYLOAD_SIZE - 1: // Only one stuffing byte required.
+        param.writeOnlyLength = true;
         break;
 
-      default:
-        dst->stuffingBytesLen =
-          TP_SIZE - TP_HEADER_SIZE - remainingPayload - 2
-        ;
+      default: // Add stuffing bytes to pad
+        param.stuffingBytesLen = TP_PAYLOAD_SIZE - remainingPayload - 2;
     }
   }
   else {
-    dst->stuffingBytesLen =
-      TP_SIZE - TP_HEADER_SIZE - adaptationFieldSize - remainingPayload
-    ;
+    param.stuffingBytesLen = TP_PAYLOAD_SIZE - adaptationFieldSize - remainingPayload;
   }
+
+  *dst = param;
 }
 
 void prepareTPHeader(
@@ -175,13 +149,14 @@ void prepareTPHeader(
   else
     _prepareSysTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
 
-  if (dst->adaptationFieldControl & 0x2)
+  if (dst->adaptationFieldControl & 0x2) {
     _prepareAdaptationField(
       &dst->adaptationField,
       stream,
       pcrInjectionRequirement,
       pcrValue
     );
+  }
 }
 
 static size_t _insertAdaptationField(
@@ -450,8 +425,10 @@ static size_t _insertPayload(
 
     /* Reset the table writing offset if its end is reached
     (and mark as fully supplied at least one time) */
-    if (!remainingTableDataLibbluSystemStream(stream->sys))
-      resetTableWritingOffLibbluSystemStream(sys);
+    if (!_remainingTableDataLibbluSystemStream(stream)) {
+      stream->sys.dataOffset = 0;
+      stream->sys.firstFullTableSupplied = true;
+    }
   }
 
   return offset;
@@ -466,7 +443,6 @@ int writeTransportPacket(
 )
 {
   uint8_t tp[TP_SIZE];
-  size_t hdrSize, pldSize;
 
   if (header.adaptationFieldControl == 0x00)
     LIBBLU_ERROR_RETURN(
@@ -475,13 +451,16 @@ int writeTransportPacket(
     );
 
   /* transport_packet header */
-  hdrSize = _insertPacketHeader(tp, 0, header);
+  size_t hdrSize = _insertPacketHeader(tp, 0, header);
+
   assert(hdrSize <= TP_SIZE);
   assert(hdrSize == computeSizeTPHeader(header));
 
   /* transport_packet data_byte payload */
-  pldSize = TP_SIZE - hdrSize;
+  size_t pldSize = TP_SIZE - hdrSize;
+
   assert(payloadPresenceTPHeader(header) ^ !pldSize);
+
   if (0 < pldSize) {
     if (!payloadPresenceTPHeader(header))
       LIBBLU_ERROR_RETURN(
@@ -491,8 +470,9 @@ int writeTransportPacket(
 
     _insertPayload(tp, hdrSize, stream, pldSize);
   } else {
-    if (!isESLibbluStream(stream))
-      markAsSuppliedLibbluSystemStream(&stream->sys);
+    if (!isESLibbluStream(stream)) {
+      stream->sys.firstFullTableSupplied = true;
+    }
   }
 
   /* Write generated transport packet */

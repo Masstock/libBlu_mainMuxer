@@ -215,9 +215,9 @@ typedef struct {
 
   uint16_t pid;
 
-  uint8_t transportScramblingControl:2;
-  uint8_t adaptationFieldControl:2;
-  uint8_t continuityCounter:4;
+  uint8_t transportScramblingControl;
+  uint8_t adaptationFieldControl;
+  uint8_t continuityCounter;
 
   AdaptationFieldParameters adaptationField;
 } TPHeaderParameters;

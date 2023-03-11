@@ -7,7 +7,94 @@
 
 #include "elementaryStream.h"
 
-static int genFilepath(
+/* ### ES settings definition : ############################################ */
+
+int setFpsChangeLibbluESSettings(
+  LibbluESSettings * dst,
+  const lbc * expr
+)
+{
+  HdmvFrameRateCode idc;
+
+  if (parseFpsChange(expr, &idc) < 0)
+    return -1;
+
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, fpsChange, idc);
+  return 0;
+}
+
+int setArChangeLibbluESSettings(
+  LibbluESSettings * dst,
+  const lbc * expr
+)
+{
+  LibbluAspectRatioMod values;
+
+  if (parseArChange(expr, &values) < 0)
+    return -1;
+
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, arChange, values);
+  return 0;
+}
+
+int setLevelChangeLibbluESSettings(
+  LibbluESSettings * dst,
+  const lbc * expr
+)
+{
+  uint8_t idc;
+
+  if (parseLevelChange(expr, &idc) < 0)
+    return -1;
+
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, levelChange, idc);
+  return 0;
+}
+
+int setPbrFilepathLibbluESSettings(
+  LibbluESSettings * dst,
+  const lbc * expr,
+  const lbc * metaFilepath
+)
+{
+  int ret;
+  lbc path[PATH_BUFSIZE];
+  lbc * pathDup;
+
+  if (!lbc_cwk_path_is_absolute(expr))
+    ret = lb_get_relative_fp_from_anchor(path, PATH_BUFSIZE, expr, metaFilepath);
+  else
+    ret = lbc_snprintf(path, PATH_BUFSIZE * sizeof(lbc), "%s", expr);
+  if (ret < 0)
+    return -1;
+
+  if (lbc_access_fp(path, "r") < 0)
+    return -1;
+
+  if (NULL == (pathDup = lbc_strdup(path)))
+    return -1;
+
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, pbrFilepath, pathDup);
+  return 0;
+}
+
+int setHdmvInitialTimestampLibbluESSettings(
+  LibbluESSettings * dst,
+  uint64_t value
+)
+{
+#if 0 < LIBBLU_MIN_HDMV_INIT_TIMESTAMP
+  if (value < LIBBLU_MIN_HDMV_INIT_TIMESTAMP)
+    return -1;
+#endif
+  if (LIBBLU_MAX_HDMV_INIT_TIMESTAMP < value)
+    return -1;
+
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, hdmv.initialTimestamp, value);
+  return 0;
+}
+
+static int _generateFilepath(
   lbc * path,
   size_t size,
   const lbc * filepath,
@@ -40,7 +127,7 @@ int setMainESFilepathLibbluESSettings(
   assert(NULL != dst);
   assert(NULL != filepath);
 
-  if (genFilepath(path, PATH_BUFSIZE, filepath, anchorFilepath) < 0)
+  if (_generateFilepath(path, PATH_BUFSIZE, filepath, anchorFilepath) < 0)
     goto free_return;
 
   if (lb_gen_absolute_fp(&dst->filepath, path) < 0)
@@ -66,7 +153,7 @@ int setScriptFilepathLibbluESSettings(
   assert(NULL != dst);
   assert(NULL != filepath);
 
-  if (genFilepath(path, PATH_BUFSIZE, filepath, anchorFilepath) < 0)
+  if (_generateFilepath(path, PATH_BUFSIZE, filepath, anchorFilepath) < 0)
     goto free_return;
 
   if (lb_gen_absolute_fp(&dst->scriptFilepath, path) < 0)
@@ -344,7 +431,7 @@ int prepareLibbluES(
   if (openAllEsmsESSourceFiles(&es->sourceFiles) < 0)
     return -1;
 
-  if (!isInitializedLibbluESFormatUtilities(utilities)) {
+  if (!utilities.initialized) {
     /* No script generation done, use script content */
     /* Init format utilities according to script stream coding type. */
     if (initLibbluESFormatUtilities(&utilities, es->prop.codingType) < 0)

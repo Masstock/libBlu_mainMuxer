@@ -1,0 +1,6 @@
+MUXOPT --start-time=1048560
+V_MPEG2, "00022.track_4113.m2v"
+A_AC3, "00022.track_4352.ac3"
+M_HDMV/PGS, "00022.track_4608.sup"
+M_HDMV/IGS, "00022.track_5120.mnu" --hdmv-initial-timestamp=1048560 --force-esms --hdmv-force-retiming
+M_HDMV/IGS, "00022.track_5121.mnu" --hdmv-initial-timestamp=1048560 # --hdmv-force-retiming

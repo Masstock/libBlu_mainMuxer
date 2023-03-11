@@ -21,8 +21,8 @@ typedef struct {
   StreamType type;  /**< Type of the stream.                                 */
 
   union {
-    LibbluES es;  /**< Elementary Stream linked parameters.    */
-    LibbluSystemStream sys;     /**< Systeam Stream linked parameters.       */
+    LibbluES es;             /**< Elementary Stream linked parameters.       */
+    LibbluSystemStream sys;  /**< Systeam Stream linked parameters.          */
   };
 
   uint16_t pid;  /**< Stream associated PID.                                 */
@@ -31,53 +31,21 @@ typedef struct {
     for continuity_counter field in transport packets.                       */
 } LibbluStream, *LibbluStreamPtr;
 
-static inline bool isESLibbluStream(
-  const LibbluStreamPtr stream
-)
-{
-  return isEsStreamType(stream->type);
-}
-
-static inline void setPIDLibbluStream(
-  LibbluStreamPtr stream,
-  uint16_t pid
-)
-{
-  assert(NULL != stream);
-
-  stream->pid = pid;
-}
-
-LibbluStreamPtr createElementaryLibbluStream(
-  LibbluESSettings * settings
-);
-
-LibbluStreamPtr createPATSystemLibbluStream(
-  PatParameters param,
-  uint16_t pid
-);
-
-LibbluStreamPtr createPMTSystemLibbluStream(
-  PmtParameters param,
-  uint16_t pid
-);
-
-LibbluStreamPtr createPCRSystemLibbluStream(
-  uint16_t pid
-);
-
-LibbluStreamPtr createSITSystemLibbluStream(
-  SitParameters param,
-  uint16_t pid
-);
-
-LibbluStreamPtr createNULLSystemLibbluStream(
+LibbluStreamPtr createLibbluStream(
+  StreamType type,
   uint16_t pid
 );
 
 void destroyLibbluStream(
   LibbluStreamPtr stream
 );
+
+static inline bool isESLibbluStream(
+  const LibbluStreamPtr stream
+)
+{
+  return isEsStreamType(stream->type);
+}
 
 int requestESPIDLibbluStream(
   LibbluPIDValues * values,

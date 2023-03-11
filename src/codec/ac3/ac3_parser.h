@@ -28,7 +28,7 @@
 
 #include "ac3_error.h"
 
-#define USE_CRC 1
+#define USE_CRC 0
 #define TRUE_HD_SHOW_DETAILS_DISABLED_PARAM 0
 
 /* AC3 : */

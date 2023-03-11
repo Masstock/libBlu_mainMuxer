@@ -1,0 +1,6 @@
+MUXOPT --start-time=54000000 --disable-tstd
+V_MPEG4/ISO/AVC, "00005.track_4113.264"
+A_LPCM, "00005.track_4352.wav"
+A_LPCM, "00005.track_4353.wav"
+M_HDMV/PGS, "00005.track_4608.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00005.track_4609.sup" --force-esms --hdmv-force-retiming

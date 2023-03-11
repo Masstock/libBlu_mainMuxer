@@ -35,48 +35,36 @@
 #define H264_HRD_DISABLE_C_3_2  false
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
-  const H264CurrentProgressParam * curState,
-  const LibbluESSettingsOptions * options,
+  H264CurrentProgressParam currentState,
+  LibbluESSettingsOptions options,
   H264SPSDataParameters sps
 )
 {
-  assert(NULL != curState);
 
-  if (curState->stillPictureTolerance)
-    return false; /* Disabled for still pictures */
+  if (currentState.stillPictureTolerance) // TODO: Check still pictures.
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of still pictures.\n");
+
+  if (options.discardSei)
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI discarding.\n");
+  if (options.forceRebuildSei)
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI rebuilding.\n");
 
   if (!sps.vui_parameters_present_flag)
-    return false; /* Missing VUI parameters */
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing VUI parameters.\n");
   if (!sps.vui_parameters.nal_hrd_parameters_present_flag)
-    return false; /* Missing NAL HRD parameters */
-  if (sps.vui_parameters.low_delay_hrd_flag)
-    return false; /* Unsupported low-delay */ // TODO: Low Delay not supported
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing NAL HRD parameters.\n");
+  if (sps.vui_parameters.low_delay_hrd_flag)  // TODO: Low Delay not supported
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of Low Delay.\n");
   if (!sps.vui_parameters.timing_info_present_flag)
-    return false; /* Missing timing_info */
-
-  if (options->discardSei) {
-    LIBBLU_INFO(
-      H264_HRD_VERIFIER_PREFIX
-      "Compliance tests disabled by SEI discarding.\n"
-    );
-    return false; /* Disabled */
-  }
-
-  if (options->forceRebuildSei) {
-    LIBBLU_INFO(
-      H264_HRD_VERIFIER_PREFIX
-      "Compliance tests disabled by SEI rebuilding.\n"
-    );
-    return false; /* Disabled */
-  }
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing timing info in VUI parameters.\n");
 
   return true; /* Available */
 }
 
 typedef enum {
-  H264_NOT_USED_AS_REFERENCE        = 0x0,
-  H264_USED_AS_SHORT_TERM_REFERENCE = 0x1,
-  H264_USED_AS_LONG_TERM_REFERENCE  = 0x2
+  H264_NOT_USED_AS_REFERENCE         = 0x0,
+  H264_USED_AS_SHORT_TERM_REFERENCE  = 0x1,
+  H264_USED_AS_LONG_TERM_REFERENCE   = 0x2
 } H264DpbHrdRefUsage;
 
 typedef struct {
@@ -105,8 +93,8 @@ typedef struct {
   H264DpbHrdPicInfos picInfos;
 } H264CpbHrdAU;
 
-#define H264_MAX_AU_IN_CPB                       1024 /* pow(2) ! */
-#define H264_AU_CPB_MOD_MASK (H264_MAX_AU_IN_CPB - 1)
+#define H264_MAX_AU_IN_CPB  1024 /* pow(2) ! */
+#define H264_AU_CPB_MOD_MASK  (H264_MAX_AU_IN_CPB - 1)
 
 typedef struct {
   unsigned AUIdx; /* For debug output. */
@@ -143,8 +131,8 @@ static inline void defaultH264HrdVerifierOptions(
   };
 }
 
-#define H264_MAX_DPB_SIZE                          32 /* pow(2) ! */
-#define H264_DPB_MOD_MASK     (H264_MAX_DPB_SIZE - 1)
+#define H264_MAX_DPB_SIZE  32 /* pow(2) ! */
+#define H264_DPB_MOD_MASK  (H264_MAX_DPB_SIZE - 1)
 
 typedef struct {
   double second; /* c = time_scale * 90000. */
@@ -203,7 +191,7 @@ typedef struct {
 } H264HrdVerifierContext, *H264HrdVerifierContextPtr;
 
 H264HrdVerifierContextPtr createH264HrdVerifierContext(
-  const LibbluESSettingsOptions * options,
+  LibbluESSettingsOptions options,
   const H264SPSDataParameters * spsData,
   const H264ConstraintsParam * constraints
 );

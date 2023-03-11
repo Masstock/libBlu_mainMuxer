@@ -21,12 +21,18 @@
 #ifndef __LIBBLU_MUXER__CODECS__H262__PARSER_H__
 #define __LIBBLU_MUXER__CODECS__H262__PARSER_H__
 
+#include "h262_data.h"
 #include "h262_error.h"
 
 #include "../../esms/scriptCreation.h"
 #include "../../util.h"
 #include "../common/constantCheckFunctionsMacros.h"
 #include "../common/esParsingSettings.h"
+
+unsigned getH262MaxBr(
+  uint8_t profileIDC,
+  uint8_t levelIDC
+);
 
 /* Sections Headers codes : */
 #define START_CODE_PREFIX                            0x000001
@@ -38,19 +44,6 @@
 #define SEQUENCE_END_CODE                            0x000001B7
 #define GROUP_START_CODE                             0x000001B8
 #define SLICE_START_CODE                             0x00000101
-
-/* Extension start codes IDs : */
-#define SEQUENCE_EXTENSION                                  0x1
-#define SEQUENCE_DISPLAY_EXTENSION                          0x2
-#define QUAND_MATRIX_EXTENSION                              0x3
-#define COPYRIGHT_EXTENSION                                 0x4
-#define SEQUENCE_SCALABLE_EXTENSION                         0x5
-#define PICTURE_DISPLAY_EXTENSION                           0x7
-#define PICTURE_CODING_EXTENSION                            0x8
-#define PICTURE_SPATIAL_SCALABLE_EXTENSION                  0x9
-#define PICTURE_TEMPORAL_SCALABLE_EXTENSION                 0xA
-#define CAMERA_PARAMETERS_EXTENSION                         0xB
-#define ITU_T_EXTENSION                                     0xC
 
 /* Video format values : */
 #define FORMAT_COMPONENT                                    0x0
@@ -270,13 +263,6 @@ typedef struct {
   bool load_non_intra_quantiser_matrix;
   uint8_t non_intra_quantiser_matrix[64];
 } H262SequenceHeaderParameters;
-
-static inline bool applyMPEG1ConstraintsH262SequenceHeaderParameters(
-  const H262SequenceHeaderParameters * param
-)
-{
-  return param->constrained_parameters_flag;
-}
 
 typedef enum {
   H262_PROFILE_ID_RES                 = 0x0,
@@ -603,6 +589,20 @@ typedef struct {
 } H262PictureCodingExtensionParameters;
 
 typedef struct {
+  bool load_intra_quantiser_matrix;
+  uint8_t intra_quantiser_matrix[64];
+
+  bool load_non_intra_quantiser_matrix;
+  uint8_t non_intra_quantiser_matrix[64];
+
+  bool load_chroma_intra_quantiser_matrix;
+  uint8_t chroma_intra_quantiser_matrix[64];
+
+  bool load_chroma_non_intra_quantiser_matrix;
+  uint8_t chroma_non_intra_quantiser_matrix[64];
+} H262QuantMatrixExtensionParameters;
+
+typedef struct {
   bool copyrightFlag;
   uint8_t copyrightIdentifier;
   bool originalOrCopy;
@@ -624,7 +624,8 @@ typedef struct {
 
   /* Place holder for sequence_scalable_extension() */
 
-  /* Place holder for quant_matrix_extension() */
+  bool quantMatrixPresence;
+  H262QuantMatrixExtensionParameters quantMatrix;
 
   bool copyrightPresence;
   H262CopyrightExtensionParameters copyright;
@@ -639,11 +640,6 @@ typedef struct {
 
   /* Place holder for ITU-T_extension() */
 } H262ExtensionParameters;
-
-unsigned getH262MaxBr(
-  uint8_t profileIDC,
-  uint8_t levelIDC
-);
 
 int analyzeH262(
   LibbluESParsingSettings * settings

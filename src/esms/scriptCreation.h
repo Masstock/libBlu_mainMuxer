@@ -197,8 +197,8 @@ int updateEsmsHeader(
  */
 int appendDirEsms(
   EsmsFileHeaderPtr script,
-  const uint8_t dirId,
-  const uint64_t dirOffset
+  uint8_t dirId,
+  uint64_t dirOffset
 );
 
 /** \~english

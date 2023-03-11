@@ -45,13 +45,6 @@ static inline void cleanLibbluESFormatUtilities(
   };
 }
 
-static inline bool isInitializedLibbluESFormatUtilities(
-  LibbluESFormatUtilities utilities
-)
-{
-  return utilities.initialized;
-}
-
 int initLibbluESFormatUtilities(
   LibbluESFormatUtilities * dst,
   LibbluStreamCodingType codingType
@@ -63,17 +56,5 @@ int generateScriptES(
   const lbc * outputScriptFilepath,
   LibbluESSettingsOptions options
 );
-
-#if 0
-static inline int preparePesHeaderParam(
-  LibbluESFormatUtilities utilities,
-  PesPacketHeaderParam * dst,
-  LibbluESPesPacketProperties pesPacketProp,
-  LibbluStreamCodingType codingType
-)
-{
-  return utilities.preparePesHeader(dst, pesPacketProp, codingType);
-}
-#endif
 
 #endif

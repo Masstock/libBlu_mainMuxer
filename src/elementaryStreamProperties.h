@@ -81,28 +81,10 @@ static inline size_t sizeofLibbluESFmtSpecPropType(
   return typeAllocationSizes[type];
 }
 
-static inline int initLibbluESFmtSpecProp(
+int initLibbluESFmtSpecProp(
   LibbluESFmtSpecProp * dst,
   LibbluESFmtSpecPropType type
-)
-{
-  LibbluESFmtSpecProp prop = {0};
-
-  assert(NULL != dst);
-
-  if (type != FMT_SPEC_INFOS_NONE) {
-    size_t propSize;
-
-    if (0 == (propSize = sizeofLibbluESFmtSpecPropType(type)))
-      LIBBLU_ERROR_RETURN("Unknown ES Format properties type %u.\n", type);
-
-    if (NULL == (prop.sharedPtr = malloc(propSize)))
-      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-  }
-
-  *dst = prop;
-  return 0;
-}
+);
 
 typedef enum {
   HDMV_VIDEO_FORMAT_RES    = 0x0,
@@ -116,44 +98,11 @@ typedef enum {
   HDMV_VIDEO_FORMAT_2160P  = 0x8
 } HdmvVideoFormat;
 
-static inline HdmvVideoFormat getHdmvVideoFormat(
+HdmvVideoFormat getHdmvVideoFormat(
   unsigned width,
   unsigned height,
   bool isInterlaced
-)
-{
-  unsigned i;
-
-  static const struct {
-    HdmvVideoFormat fmt;
-    unsigned width;
-    unsigned height;
-    bool interlaced;
-  } configs[] = {
-    { HDMV_VIDEO_FORMAT_480I,  720,  480, 1},
-    { HDMV_VIDEO_FORMAT_576I,  720,  576, 1},
-    { HDMV_VIDEO_FORMAT_480P,  720,  480, 0},
-    {HDMV_VIDEO_FORMAT_1080I, 1440, 1080, 1},
-    {HDMV_VIDEO_FORMAT_1080I, 1920, 1080, 1},
-    { HDMV_VIDEO_FORMAT_720P, 1280,  720, 0},
-    {HDMV_VIDEO_FORMAT_1080P, 1440, 1080, 0},
-    {HDMV_VIDEO_FORMAT_1080P, 1920, 1080, 0},
-    { HDMV_VIDEO_FORMAT_576P,  720,  576, 1},
-    {HDMV_VIDEO_FORMAT_2160P, 3840, 2160, 0}
-  };
-
-  for (i = 0; i < ARRAY_SIZE(configs); i++) {
-    if (
-      width == configs[i].width
-      && height == configs[i].height
-      && isInterlaced == configs[i].interlaced
-    ) {
-      return configs[i].fmt;
-    }
-  }
-
-  return HDMV_VIDEO_FORMAT_RES;
-}
+);
 
 /** \~english
  * \brief HDMV frame-rate codes.
@@ -176,25 +125,9 @@ typedef enum {
  * \return HdmvFrameRateCode If value is part of HDMV allowed frame-rate values,
  * assigned code is returned. Otherwise, a negative value is returned.
  */
-static inline HdmvFrameRateCode getHdmvFrameRateCode(
+HdmvFrameRateCode getHdmvFrameRateCode(
   float frameRate
-)
-{
-  if (FLOAT_COMPARE(frameRate, 24000.0f / 1001.0f))
-    return FRAME_RATE_CODE_23976;
-  if (FLOAT_COMPARE(frameRate, 24.0f))
-    return FRAME_RATE_CODE_24;
-  if (FLOAT_COMPARE(frameRate, 25.0f))
-    return FRAME_RATE_CODE_25;
-  if (FLOAT_COMPARE(frameRate, 30000.0f / 1001.0f))
-    return FRAME_RATE_CODE_29970;
-  if (FLOAT_COMPARE(frameRate, 50.0f))
-    return FRAME_RATE_CODE_50;
-  if (FLOAT_COMPARE(frameRate, 50000.0f / 1001.0f))
-    return FRAME_RATE_CODE_59940;
-
-  return FRAME_RATE_CODE_UNSPC;
-}
+);
 
 /** \~english
  * \brief Return the frame-rate value represented by given HDMV code as a
@@ -204,28 +137,9 @@ static inline HdmvFrameRateCode getHdmvFrameRateCode(
  * \return float If valid, double precision floating point frame-rate value
  * is returned. Otherwise, a negative value is returned.
  */
-static inline double frameRateCodeToDouble(
-  const HdmvFrameRateCode code
-)
-{
-  double val;
-
-  static const double frameRates[] = {
-    -1.0, /* < Reserved */
-    24000.0 / 1001.0,
-    24.0,
-    25.0,
-    30000.0 / 1001.0,
-    -1.0, /* < Reserved */
-    50.0,
-    50000.0 / 1001.0
-  };
-
-  val = -1.0;
-  if (code < ARRAY_SIZE(frameRates))
-    val = frameRates[code];
-  return val;
-}
+double frameRateCodeToDouble(
+  HdmvFrameRateCode code
+);
 
 /** \~english
  * \brief Return the frame-rate value represented by given HDMV code.
@@ -235,7 +149,7 @@ static inline double frameRateCodeToDouble(
  * Otherwise, a negative value is returned.
  */
 static inline float frameRateCodeToFloat(
-  const HdmvFrameRateCode code
+  HdmvFrameRateCode code
 )
 {
   return (float) frameRateCodeToDouble(code);

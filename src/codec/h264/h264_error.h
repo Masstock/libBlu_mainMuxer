@@ -39,6 +39,12 @@
 
 /* ### H.264 HDR Verifier : ################################################ */
 
+#define LIBBLU_H264_HRDV_INFO_BRETURN(format, ...)                            \
+  do {                                                                        \
+    LIBBLU_INFO(LIBBLU_H264_HRDV_PREFIX format, ##__VA_ARGS__);               \
+    return false;                                                             \
+  } while (0)
+
 #define LIBBLU_H264_HRDV_WARNING(format, ...)                                 \
   LIBBLU_WARNING(LIBBLU_H264_HRDV_PREFIX format, ##__VA_ARGS__)
 

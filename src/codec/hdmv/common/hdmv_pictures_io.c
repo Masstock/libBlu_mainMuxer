@@ -10,33 +10,33 @@
 
 /* ######################################################################### */
 
-HdmvPictureFormat identifyFormatHdmvPictureLibraries(
-  uint8_t magic[HDMV_PIC_SIGNATURE_SIZE]
+#define HDMV_PIC_SIGNATURE_SIZE  8
+
+typedef enum {
+  HDMV_PIC_FORMAT_UNK  = -1,
+  HDMV_PIC_FORMAT_PNG
+} HdmvPictureFormat;
+
+static HdmvPictureFormat _identifyFormatHdmvPictureLibraries(
+  uint8_t magic[static HDMV_PIC_SIGNATURE_SIZE]
 )
 {
   size_t i;
 
-  struct {
+  static const struct {
     uint8_t value[HDMV_PIC_SIGNATURE_SIZE];  /**< Signature value. */
-    HdmvPictureFormat fmt;  /**< Associated format. */
-    unsigned char size;  /**< Size of the used signature value. */
+    unsigned size;                           /**< Size of the used signature value. */
+    HdmvPictureFormat format;                /**< Associated format. */
   } signatures[] = {
-#define DECLARE(f, s, v)  {.size = (s), .value = v, .fmt = (f)}
-#define V(...) __VA_ARGS__  /* This is declared to protect '{' array char */
-    /* ### Supported formats : */
-
-    DECLARE(HDMV_PIC_FORMAT_PNG, HDMV_LIBPNG_SIG_SIZE, HDMV_LIBPNG_SIG)
-
-#undef DECLARE
-#undef V
+    {HDMV_LIBPNG_SIG, HDMV_LIBPNG_SIG_SIZE, HDMV_PIC_FORMAT_PNG} // PNG
   };
 
   for (i = 0; i < ARRAY_SIZE(signatures); i++) {
     if (0 == memcmp(signatures[i].value, magic, signatures[i].size))
-      return signatures[i].fmt;
+      return signatures[i].format;
   }
 
-  return -1;
+  return HDMV_PIC_FORMAT_UNK;
 }
 
 /* ######################################################################### */
@@ -57,7 +57,7 @@ HdmvPicturePtr openHdmvPicture(
 {
   HdmvPicturePtr pic;
 
-  uint8_t fileSignature[HDMV_PIC_SIGNATURE_SIZE];
+  uint8_t signature[HDMV_PIC_SIGNATURE_SIZE];
   FILE * file;
 
   assert(NULL != filepath);
@@ -66,19 +66,17 @@ HdmvPicturePtr openHdmvPicture(
     ERROR_FRETURN("Unable to open picture");
 
   /* Read file signature (first n bytes) */
-  if (!RA_FILE(file, fileSignature, HDMV_PIC_SIGNATURE_SIZE))
+  if (!RA_FILE(file, signature, HDMV_PIC_SIGNATURE_SIZE))
     ERROR_FRETURN("Unable to read picture");
 
   /* Use the signature to identify used format */
-  switch (identifyFormatHdmvPictureLibraries(fileSignature)) {
-    case HDMV_PIC_FORMAT_PNG: /* PNG */
+  switch (_identifyFormatHdmvPictureLibraries(signature)) {
+    case HDMV_PIC_FORMAT_PNG:
       if (!isLoadedHdmvLibpngHandle(&libs->libpng)) {
-        /* Load the libpng library if required */
         const lbc * libFilepath = lookupIniFile(conf, "LIBRARIES.LIBPNG");
         if (loadHdmvLibpngHandle(&libs->libpng, libFilepath) < 0)
           goto free_return;
       }
-
       pic = openPngHdmvPicture(&libs->libpng, filepath, file);
       break;
 

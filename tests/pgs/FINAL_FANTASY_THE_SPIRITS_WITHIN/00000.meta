@@ -1,0 +1,13 @@
+MUXOPT
+A_LPCM, "00000.track_4352.wav"
+M_HDMV/PGS, "00000.track_4608.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4609.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4610.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4611.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4612.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4613.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4614.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4615.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4616.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4617.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00000.track_4618.sup" --force-esms --hdmv-force-retiming

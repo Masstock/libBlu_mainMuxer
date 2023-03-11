@@ -5,23 +5,20 @@
 
 #include "hdmv_common.h"
 
-int checkHdmvSequence(
-  HdmvSequencePtr sequence
-);
-
-int checkHdmvDisplaySet(
-  HdmvDisplaySet * ds,
+int checkAndBuildDisplaySetHdmvEpochState(
+  HdmvParsingOptions options,
   HdmvStreamType type,
-  unsigned displaySetNb
+  HdmvEpochState * epoch,
+  unsigned dsIdx
 );
 
-int checkObjectsBufferingHdmvDisplaySet(
-  HdmvDisplaySet * ds,
+int checkObjectsBufferingHdmvEpochState(
+  HdmvEpochState * epoch,
   HdmvStreamType type
 );
 
-int checkDuplicatedHdmvDisplaySet(
-  HdmvDisplaySet * ds,
+int checkDuplicatedDSHdmvEpochState(
+  HdmvEpochState * ds,
   unsigned lastDSIdx
 );
 

@@ -5,6 +5,8 @@
 
 #include "../../util.h"
 
+/* ### META File option : ################################################## */
+
 typedef struct LibbluMetaFileOption {
   struct LibbluMetaFileOption * next;
 
@@ -17,18 +19,9 @@ LibbluMetaFileOption * createLibbluMetaFileOption(
   const lbc * arg
 );
 
-static inline void destroyLibbluMetaFileOption(
+void destroyLibbluMetaFileOption(
   LibbluMetaFileOption * option
-)
-{
-  if (NULL == option)
-    return;
-
-  destroyLibbluMetaFileOption(option->next);
-  free(option->name);
-  free(option->arg);
-  free(option);
-}
+);
 
 /* ### META File track : ################################################### */
 
@@ -46,19 +39,9 @@ LibbluMetaFileTrack * createLibbluMetaFileTrack(
   const lbc * filepath
 );
 
-static inline void destroyLibbluMetaFileTrack(
+void destroyLibbluMetaFileTrack(
   LibbluMetaFileTrack * track
-)
-{
-  if (NULL == track)
-    return;
-
-  destroyLibbluMetaFileTrack(track->next);
-  free(track->codec);
-  free(track->filepath);
-  destroyLibbluMetaFileOption(track->options);
-  free(track);
-}
+);
 
 /* ### META File structure : ############################################### */
 
@@ -74,17 +57,9 @@ LibbluMetaFileStructPtr createLibbluMetaFileStruct(
   void
 );
 
-static inline void destroyLibbluMetaFileStruct(
+void destroyLibbluMetaFileStruct(
   LibbluMetaFileStructPtr meta
-)
-{
-  if (NULL == meta)
-    return;
-
-  destroyLibbluMetaFileOption(meta->commonOptions);
-  destroyLibbluMetaFileTrack(meta->tracks);
-  free(meta);
-}
+);
 
 LibbluMetaFileStructPtr parseMetaFileStructure(
   FILE * input

@@ -15,17 +15,18 @@ int loadHdmvLibpngHandle(
 {
   LibbluLibraryHandlePtr lib;
 
-  if (isLoadedHdmvLibpngHandle(handle))
-    return 0; /* Already loaded */
+  assert(!isLoadedHdmvLibpngHandle(handle));
 
   if (NULL == path || *path == '\0')
     path = lbc_str(HDMV_DEFAULT_LIBPNG_PATH);
 
   if (NULL == (lib = loadLibbluLibrary(path)))
-    return -1;
+    LIBBLU_HDMV_LIBPNG_ERROR_RETURN("Unable to load the libpng.\n");
   handle->lib = lib;
 
-#define RESOLVE_SYM(h, n)  RESOLVE_SYM_LB_LIB(h, STR(n), handle->n, return -1)
+#define RESOLVE_SYM(h, n)  \
+  RESOLVE_SYM_LB_LIB(h, STR(n), handle->n,  \
+    LIBBLU_HDMV_LIBPNG_ERROR_RETURN("Unable to load " STR(n) " symbol from the libpng.\n"))
   RESOLVE_SYM(lib, png_create_info_struct);
   RESOLVE_SYM(lib, png_create_read_struct);
   RESOLVE_SYM(lib, png_destroy_read_struct);
@@ -95,7 +96,7 @@ free_return:
     errno                                                                     \
   )
 
-static int readIHDRPngHdmvPicture(
+static int _readIHDRPngHdmvPicture(
   const HdmvLibpngHandle * libpng,
   HdmvLibpngPictureInfos * png
 )
@@ -118,7 +119,7 @@ static int readIHDRPngHdmvPicture(
   return (ret) ? 0 : -1;
 }
 
-static int readInfosPngHdmvPicture(
+static int _readInfosPngHdmvPicture(
   const HdmvLibpngHandle * libpng,
   HdmvLibpngPictureInfos * png
 )
@@ -127,7 +128,7 @@ static int readInfosPngHdmvPicture(
   libpng->png_read_info(png->reader, png->info);
 
   /* Parse the IHDR chunk */
-  if (readIHDRPngHdmvPicture(libpng, png) < 0)
+  if (_readIHDRPngHdmvPicture(libpng, png) < 0)
     return -1;
 
 #define P LIBBLU_HDMV_LIBPNG_DEBUG
@@ -144,34 +145,7 @@ static int readInfosPngHdmvPicture(
   return 0;
 }
 
-int checkHdmvLibpngPictureProp(
-  HdmvLibpngPictureProp prop
-)
-{
-  bool valid = true;
-
-  if (prop.width < HDMV_PIC_MIN_WIDTH) {
-    LIBBLU_HDMV_LIBPNG_ERROR("Input picture width is below 8 px minimum.");
-    valid = false;
-  }
-  if (HDMV_PIC_MAX_WIDTH < prop.width) {
-    LIBBLU_HDMV_LIBPNG_ERROR("Input picture width exceed 2048 px limit.");
-    valid = false;
-  }
-
-  if (prop.height < HDMV_PIC_MIN_HEIGHT) {
-    LIBBLU_HDMV_LIBPNG_ERROR("Input picture height is below 8 px minimum.");
-    valid = false;
-  }
-  if (HDMV_PIC_MAX_HEIGHT < prop.height) {
-    LIBBLU_HDMV_LIBPNG_ERROR("Input picture height exceed 2048 px limit.");
-    valid = false;
-  }
-
-  return (valid) ? 0 : -1;
-}
-
-static void setReadingSettingsPngHdmvPicture(
+static void _setReadingSettingsPngHdmvPicture(
   const HdmvLibpngHandle * libpng,
   HdmvLibpngPictureInfos * png
 )
@@ -206,7 +180,7 @@ static void setReadingSettingsPngHdmvPicture(
   libpng->png_read_update_info(png->reader, png->info); /* Apply */
 }
 
-static int initReadingPngHdmvPicture(
+static int _initReadingPngHdmvPicture(
   const HdmvLibpngHandle * libpng,
   HdmvLibpngPictureInfos * png,
   const lbc * filepath,
@@ -221,44 +195,52 @@ static int initReadingPngHdmvPicture(
 
   /* Read and store informations */
   LIBBLU_HDMV_LIBPNG_DEBUG("Reading input file informations.\n");
-  if (readInfosPngHdmvPicture(libpng, png) < 0)
+  if (_readInfosPngHdmvPicture(libpng, png) < 0)
     ERROR_RETURN("Unable to parse image informations");
 
-  /* Check dimensions */
-  LIBBLU_HDMV_LIBPNG_DEBUG("Check picture compatibility.\n");
-  if (checkHdmvLibpngPictureProp(png->prop) < 0)
-    ERROR_RETURN("Invalid image properties");
-
-  setReadingSettingsPngHdmvPicture(libpng, png);
+  _setReadingSettingsPngHdmvPicture(libpng, png);
 
   return 0;
 }
 
-static HdmvPicturePtr readPngHdmvPicture(
+static int _readRowsPngHdmvPicture(
   const HdmvLibpngHandle * libpng,
-  const HdmvLibpngPictureInfos png
+  HdmvLibpngPictureInfos png,
+  HdmvPicturePtr pic
+)
+{
+  unsigned width, height;
+  png_byte ** rows;
+
+  getDimensionsHdmvPicture(pic, &width, &height);
+  uint32_t * rgba = getRgbaHandleHdmvPicture(pic);
+
+  if (NULL == (rows = (png_byte **) malloc(height * sizeof(png_byte *))))
+    LIBBLU_HDMV_LIBPNG_ERROR_RETURN("Memory allocation error.\n");
+  for (unsigned i = 0; i < height; i++)
+    rows[i] = (png_byte *) &rgba[i * width];
+
+  libpng->png_read_image(png.reader, rows);
+  free(rows);
+
+  return 0;
+}
+
+static HdmvPicturePtr _readPngHdmvPicture(
+  const HdmvLibpngHandle * libpng,
+  HdmvLibpngPictureInfos png
 )
 {
   HdmvPicturePtr pic;
-  png_byte ** rows;
-  uint32_t * rgba;
 
-  unsigned i, width, height;
 
-  pic = createHdmvPicture(0x0, png.prop.width, png.prop.height);
-  if (NULL == pic)
+  unsigned width = png.prop.width;
+  unsigned height = png.prop.height;
+
+  if (NULL == (pic = createHdmvPicture(0x0, width, height)))
     return NULL;
-
-  if (NULL == (rgba = getRgbaHandleHdmvPicture(pic)))
+  if (_readRowsPngHdmvPicture(libpng, png, pic) < 0)
     goto free_return;
-  getDimensionsHdmvPicture(pic, &width, &height);
-
-  if (NULL == (rows = (png_byte **) malloc(height * sizeof(png_byte *))))
-    LIBBLU_HDMV_LIBPNG_ERROR_NRETURN("Memory allocation error.\n");
-  for (i = 0; i < height; i++)
-    rows[i] = (png_byte *) (rgba + (i * width));
-  libpng->png_read_image(png.reader, rows);
-  free(rows);
 
   LIBBLU_HDMV_LIBPNG_DEBUG("Completing file reading.\n");
   libpng->png_read_end(png.reader, NULL);
@@ -290,11 +272,11 @@ HdmvPicturePtr openPngHdmvPicture(
     goto free_return; /* On error, goto free_return. */
 
   /* Initialize PNG file reading and decoding */
-  if (initReadingPngHdmvPicture(libpng, &png, filepath, file) < 0)
+  if (_initReadingPngHdmvPicture(libpng, &png, filepath, file) < 0)
     goto free_return;
 
   /* Read picture data (in case of error, a NULL pointer is returned) */
-  pic = readPngHdmvPicture(libpng, png);
+  pic = _readPngHdmvPicture(libpng, png);
 
   cleanHdmvLibpngPictureInfos(libpng, png);
   return pic;

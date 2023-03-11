@@ -77,6 +77,22 @@
     ##__VA_ARGS__                                                             \
   )
 
+/* ### HDMV Timestamps compute : ########################################### */
+
+#define LIBBLU_HDMV_TS_COMPUTE_NAME  LIBBLU_HDMV_KEYWORD "/TsCompute"
+#define LIBBLU_HDMV_TS_COMPUTE_PREFIX LIBBLU_HDMV_TS_COMPUTE_NAME ": "
+
+#define LIBBLU_HDMV_TSC_DEBUG(format, ...)                                    \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_HDMV_TS_COMPUTE,                                             \
+    LIBBLU_HDMV_TS_COMPUTE_NAME,                                              \
+    format,                                                                   \
+    ##__VA_ARGS__                                                             \
+  )
+
+#define LIBBLU_HDMV_TSC_WARNING(format, ...)                                  \
+  LIBBLU_WARNING(LIBBLU_HDMV_TS_COMPUTE_PREFIX format, ##__VA_ARGS__)
+
 /* ### IGS Parser : ######################################################## */
 
 #define LIBBLU_HDMV_IGS_NAME  LIBBLU_HDMV_KEYWORD "/IGS Parser"
@@ -391,6 +407,9 @@
 
 #define LIBBLU_HDMV_CK_ERROR_NRETURN(format, ...)                             \
   LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_CK_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_CK_WARNING(format, ...)                                   \
+  LIBBLU_WARNING(LIBBLU_HDMV_CK_PREFIX format, ##__VA_ARGS__)
 
 #define LIBBLU_HDMV_CK_DEBUG(format, ...)                                     \
   LIBBLU_DEBUG(                                                               \

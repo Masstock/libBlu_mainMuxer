@@ -164,10 +164,6 @@ typedef struct {
   int filter_method;
 } HdmvLibpngPictureProp;
 
-int checkHdmvLibpngPictureProp(
-  HdmvLibpngPictureProp prop
-);
-
 static inline const char * color_typeHdmvLibpngStr(
   int color_type
 )

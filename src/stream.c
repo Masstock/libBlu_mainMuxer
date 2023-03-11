@@ -7,7 +7,7 @@
 
 #include "stream.h"
 
-static LibbluStreamPtr createLibbluStream(
+LibbluStreamPtr createLibbluStream(
   StreamType type,
   uint16_t pid
 )
@@ -23,69 +23,6 @@ static LibbluStreamPtr createLibbluStream(
 
   return stream;
 }
-
-LibbluStreamPtr createElementaryLibbluStream(
-  LibbluESSettings * settings
-)
-{
-  LibbluStreamPtr stream;
-
-  if (NULL == (stream = createLibbluStream(TYPE_ES, 0x0000)))
-    return NULL;
-  initLibbluES(&stream->es, settings);
-
-  return stream;
-}
-
-#define DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN(sysName, paramName)               \
-LibbluStreamPtr create##sysName##SystemLibbluStream(                          \
-  paramName param,                                                            \
-  uint16_t pid                                                                \
-)                                                                             \
-{                                                                             \
-  LibbluStreamPtr stream;                                                     \
-                                                                              \
-  if (NULL == (stream = createLibbluStream(TYPE_##sysName, pid)))             \
-    return NULL;                                                              \
-                                                                              \
-  if (prepare##sysName##SystemStream(&stream->sys, param) < 0)                \
-    goto free_return;                                                         \
-                                                                              \
-  return stream;                                                              \
-                                                                              \
-free_return:                                                                  \
-  destroyLibbluStream(stream);                                                \
-  return NULL;                                                                \
-}
-
-#define DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN_NP(sysName)                       \
-LibbluStreamPtr create##sysName##SystemLibbluStream(                          \
-  uint16_t pid                                                                \
-)                                                                             \
-{                                                                             \
-  LibbluStreamPtr stream;                                                     \
-                                                                              \
-  if (NULL == (stream = createLibbluStream(TYPE_##sysName, pid)))             \
-    return NULL;                                                              \
-                                                                              \
-  if (prepare##sysName##SystemStream(&stream->sys) < 0)                       \
-    goto free_return;                                                         \
-                                                                              \
-  return stream;                                                              \
-                                                                              \
-free_return:                                                                  \
-  destroyLibbluStream(stream);                                                \
-  return NULL;                                                                \
-}
-
-DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN(PAT, PatParameters)
-DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN(PMT, PmtParameters)
-DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN_NP(PCR)
-DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN(SIT, SitParameters)
-DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN_NP(NULL)
-
-#undef DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN
-#undef DEF_CREATE_SYSTEM_LIBBLU_STREAM_FUN_NP
 
 void destroyLibbluStream(
   LibbluStreamPtr stream

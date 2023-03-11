@@ -286,8 +286,10 @@ static int32_t _computePicOrderCntType0(
   lstPic->pic_order_cnt_lsb = slice->pic_order_cnt_lsb;
 
   /* fprintf(
-    stderr, "PicOrderCnt: %d, BottomFieldOrderCnt: %d, TopFieldOrderCnt: %d, PicOrderCntMsb: %d, pic_order_cnt_lsb: %d\n",
+    stderr, "isIdrPic: %d, PicOrderCnt: %d, MaxPicOrderCntLsb: %d, BottomFieldOrderCnt: %d, TopFieldOrderCnt: %d, PicOrderCntMsb: %d, pic_order_cnt_lsb: %d\n",
+    slice->isIdrPic,
     PicOrderCnt,
+    MaxPicOrderCntLsb,
     BottomFieldOrderCnt,
     TopFieldOrderCnt,
     PicOrderCntMsb,
@@ -295,17 +297,6 @@ static int32_t _computePicOrderCntType0(
   ); */
 
   return PicOrderCnt;
-}
-
-static void _updateLastPicProperties(
-  H264LastPictureProperties * dst,
-  const H264SliceHeaderParameters slice_header,
-  uint32_t PicOrderCnt
-)
-{
-  dst->presenceOfMemManCtrlOp5 = slice_header.presenceOfMemManCtrlOp5;
-  dst->isBottomField = slice_header.bottom_field_flag;
-  dst->PicOrderCnt = PicOrderCnt;
 }
 
 static int32_t calcCurPicOrderCnt(
@@ -369,7 +360,10 @@ static int _computeAuPicOrderCnt(
   LibbluESSettingsOptions options
 )
 {
-  int64_t PicOrderCnt;
+  int64_t PicOrderCnt, DivPicOrderCnt;
+
+  H264SliceHeaderParameters slice_header;
+  H264LastPictureProperties * lastPicProp;
 
   assert(NULL != handle);
 
@@ -393,15 +387,16 @@ static int _computeAuPicOrderCnt(
     fprintf(stderr, "DISABLE HALF\n");
   }
 
-  _updateLastPicProperties(
-    &handle->curProgParam.lstPic,
-    handle->slice.header,
-    PicOrderCnt
-  );
+  slice_header = handle->slice.header;
 
-  handle->curProgParam.PicOrderCnt =
-    PicOrderCnt >> handle->curProgParam.halfPicOrderCnt
-  ;
+  DivPicOrderCnt = PicOrderCnt >> handle->curProgParam.halfPicOrderCnt;
+
+  lastPicProp = &handle->curProgParam.lstPic;
+  lastPicProp->presenceOfMemManCtrlOp5 = slice_header.presenceOfMemManCtrlOp5;
+  lastPicProp->isBottomField = slice_header.bottom_field_flag;
+  lastPicProp->PicOrderCnt = PicOrderCnt;
+
+  handle->curProgParam.PicOrderCnt = DivPicOrderCnt;
 
   return 0;
 }
@@ -547,6 +542,28 @@ static void setEsmsPtsRef(
   );
 }
 
+static int64_t _computeStreamPicOrderCnt(
+  H264ParametersHandlerPtr handle
+)
+{
+  H264CurrentProgressParam * cp = &handle->curProgParam;
+  int64_t StreamPicOrderCnt;
+
+  if (handle->slice.header.isIdrPic && 0 < cp->LastMaxStreamPicOrderCnt) {
+    cp->MaxStreamPicOrderCnt = cp->LastMaxStreamPicOrderCnt + 1;
+    cp->LastMaxStreamPicOrderCnt = 0;
+  }
+
+  StreamPicOrderCnt = cp->PicOrderCnt + cp->MaxStreamPicOrderCnt;
+
+  cp->LastMaxStreamPicOrderCnt = MAX(
+    cp->LastMaxStreamPicOrderCnt,
+    StreamPicOrderCnt
+  );
+
+  return StreamPicOrderCnt;
+}
+
 static int _processCompleteAccessUnit(
   H264ParametersHandlerPtr handle,
   LibbluESSettingsOptions options
@@ -563,6 +580,7 @@ static int _processCompleteAccessUnit(
   unsigned auNalUnitCellIdx;
 
   int32_t ptsDiffShift;
+  int64_t StreamPicOrderCnt;
   int64_t pts, dts;
 
   LibbluESH264SpecProperties * param;
@@ -697,14 +715,15 @@ static int _processCompleteAccessUnit(
     handle->curProgParam.initializedParam = true;
   }
 
+  StreamPicOrderCnt = _computeStreamPicOrderCnt(handle);
+
   ptsDiffShift =
     handle->curProgParam.decPicNbCnt
-    - handle->curProgParam.PicOrderCnt
+    - StreamPicOrderCnt
     - handle->curProgParam.initDecPicNbCntShift
   ;
 
-  if ((int32_t) sps->MaxPicOrderCntLsb / 4 < ptsDiffShift)
-    ptsDiffShift -= sps->MaxPicOrderCntLsb / 2;
+  // fprintf(stderr, "decPicNbCnt: %d, StreamPicOrderCnt: %lld, ptsDiffShift: %d\n", handle->curProgParam.decPicNbCnt, StreamPicOrderCnt, ptsDiffShift);
 
   if (0 < ptsDiffShift) {
     if (options.secondPass)
@@ -721,29 +740,28 @@ static int _processCompleteAccessUnit(
   dts = handle->curProgParam.lstPic.dts + handle->curProgParam.lstPic.duration;
   pts = dts - ptsDiffShift * handle->curProgParam.frameDuration;
 
-  /* fprintf(
-    stderr, "%d %d %d\n",
-    handle->curProgParam.decPicNbCnt,
-    handle->curProgParam.PicOrderCnt,
-    ptsDiffShift
-  ); */
-
   LIBBLU_H264_DEBUG_AU_PROCESSING(" -> PTS: %" PRId64 "\n", pts);
   LIBBLU_H264_DEBUG_AU_PROCESSING(" -> DTS: %" PRId64 "\n", dts);
-  LIBBLU_H264_DEBUG_AU_PROCESSING("%" PRId32 "\n", handle->curProgParam.PicOrderCnt);
+  LIBBLU_H264_DEBUG_AU_PROCESSING(" -> StreamPicOrderCnt: %" PRId32 "\n", StreamPicOrderCnt);
 
   handle->curProgParam.lstPic.duration = _computeDtsIncrement(handle);
   handle->curProgParam.lstPic.dts  = dts;
+  handle->curProgParam.decPicNbCnt++;
 
-  handle->curProgParam.decPicNbCnt = (handle->curProgParam.decPicNbCnt + 1) % handle->sequenceParametersSet.data.MaxPicOrderCntLsb;
-  if (!handle->curProgParam.decPicNbCnt)
-    handle->curProgParam.decPicNbCnt = handle->sequenceParametersSet.data.MaxPicOrderCntLsb / 2;
+  /* fprintf(
+    stderr, "%u %d %d %d %s %d\n",
+    sps->MaxPicOrderCntLsb,
+    handle->curProgParam.decPicNbCnt,
+    handle->curProgParam.PicOrderCnt,
+    ptsDiffShift,
+    H264SliceTypeValueStr(handle->slice.header.slice_type),
+    pts != dts
+  ); */
 
   ret = initEsmsVideoPesFrame(
     handle->esms,
     handle->slice.header.slice_type,
-    is_I_H264SliceTypeValue(handle->slice.header.slice_type)
-    || is_P_H264SliceTypeValue(handle->slice.header.slice_type),
+    pts != dts,
     pts, dts
   );
   if (ret < 0)
@@ -769,12 +787,6 @@ static int _processCompleteAccessUnit(
     ;
 
     if (auNalUnitCell->replace) {
-      assert(
-        NULL != handle->curProgParam.curFrameNalUnits[
-          auNalUnitCellIdx
-        ].replacementParam
-      );
-
       switch (auNalUnitCell->nal_unit_type) {
 #if 0
         case NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION:
@@ -804,13 +816,13 @@ static int _processCompleteAccessUnit(
           writtenBytes = appendH264SequenceParametersSet(
             handle,
             curInsertingOffset,
-            (H264SPSDataParameters *) auNalUnitCell->replacementParam
+            &auNalUnitCell->replacementParameters.sps
           );
           break;
 
         default:
           LIBBLU_H264_ERROR_RETURN(
-            "Unknown replacement NAL unit type code: 0x%" PRIx8 ".\n",
+            "Unknown replacementParameters NAL unit type code: 0x%" PRIx8 ".\n",
             auNalUnitCell->nal_unit_type
           );
       }
@@ -820,11 +832,6 @@ static int _processCompleteAccessUnit(
 
       /* TODO */
       curInsertingOffset += writtenBytes /* written bytes */;
-      free(
-        handle->curProgParam.curFrameNalUnits[
-          auNalUnitCellIdx
-        ].replacementParam
-      );
     }
     else {
       assert(curInsertingOffset <= 0xFFFFFFFF);
@@ -878,75 +885,146 @@ static int _processCompleteAccessUnit(
   return 0;
 }
 
-static int _processAccessUnit(
+/* static int _initHr */
+
+static bool _areEnoughDataToInitHrdVerifier(
+  const H264ParametersHandlerPtr handle
+)
+{
+
+  if (!handle->sequenceParametersSetGopValid)
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing valid SPS.\n");
+
+  if (!handle->slicePresent)
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing slice header.\n");
+
+  if (!handle->sei.picTimingValid)
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing Picture Timing SEI message.\n");
+
+  if (!handle->sei.bufferingPeriodGopValid)
+    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing Buffering Period SEI message.\n");
+
+  return true;
+}
+
+static bool _areSupportedParametersToInitHrdVerifier(
+  const H264ParametersHandlerPtr handle,
+  LibbluESSettingsOptions options
+)
+{
+  return checkH264CpbHrdVerifierAvailablity(
+    handle->curProgParam,
+    options,
+    handle->sequenceParametersSet.data
+  );
+}
+
+static int _checkInitializationHrdVerifier(
   H264ParametersHandlerPtr handle,
+  H264HrdVerifierContextPtr * hrdVerifierCtx,
   LibbluESParsingSettings * settings
 )
 {
+  H264HrdVerifierContextPtr ctx;
+
+  /* Check if enough data is present to process HRD Verifier */
+  if (!_areEnoughDataToInitHrdVerifier(handle))
+    goto disable_hrd_verifier;
+
+  /* Check context parameter support */
+  if (!_areSupportedParametersToInitHrdVerifier(handle, settings->options))
+    goto disable_hrd_verifier;
+
+  /* Initialize HRD Verifier context */
+  ctx = createH264HrdVerifierContext(
+    settings->options,
+    &handle->sequenceParametersSet.data,
+    &handle->constraints
+  );
+  if (NULL == ctx)
+    return -1;
+
+  *hrdVerifierCtx = ctx;
+  return 0;
+
+disable_hrd_verifier:
+  settings->options.disableHrdVerifier = true;
+  return 0;
+}
+
+static int _processHrdVerifierAccessUnit(
+  H264ParametersHandlerPtr handle,
+  H264HrdVerifierContextPtr hrdVerifierCtx
+)
+{
+  size_t accessUnitSize;
   int ret;
 
-  /* Check HRD Verifier */
-  if (
-    inUseHrdVerifierH264ParametersHandler(handle)
-    && !handle->enoughDataToUseHrdVerifier
-  ) {
-    bool enoughData = true;
+  accessUnitSize =
+    handle->curProgParam.curFrameLength
+    + hrdVerifierCtx->nbProcessedBytes
+  ;
 
-    if (!handle->sequenceParametersSetGopValid)
-      enoughData = false;
+  ret = processAUH264HrdContext(
+    hrdVerifierCtx,
+    &handle->sequenceParametersSet.data,
+    &handle->slice.header,
+    &handle->sei.picTiming,
+    &handle->sei.bufferingPeriod,
+    &handle->curProgParam,
+    &handle->constraints,
+    handle->sei.bufferingPeriodValid,
+    accessUnitSize * 8
+  );
+  if (ret < 0)
+    return -1;
 
-    if (!handle->slicePresent)
-      enoughData = false;
+  hrdVerifierCtx->nbProcessedBytes += accessUnitSize;
+  return 0;
+}
 
-    if (!handle->sei.picTimingValid)
-      enoughData = false;
-
-    if (!handle->sei.bufferingPeriodGopValid)
-      enoughData = false;
-
-    if (!enoughData) {
-      LIBBLU_H264_INFO(
-        "Not enough data to process HRD verifier, cancellation of its use.\n"
-      );
-      destroyH264HrdVerifierContext(handle->hrdVerifier);
-      handle->hrdVerifier = NULL;
-      settings->options.disableHrdVerifier = true;
-    }
-  }
-
-  if (inUseHrdVerifierH264ParametersHandler(handle)) {
-    size_t hrdAuLength =
-      handle->curProgParam.curFrameLength
-      - handle->hrdVerifier->nbProcessedBytes
-    ;
-
-    ret = processAUH264HrdContext(
-      handle->hrdVerifier,
-      &handle->sequenceParametersSet.data,
-      &handle->slice.header,
-      &handle->sei.picTiming,
-      &handle->sei.bufferingPeriod,
-      &handle->curProgParam,
-      &handle->constraints,
-      handle->sei.bufferingPeriodValid,
-      hrdAuLength * 8
-    );
-    if (ret < 0)
+static int _checkAndProcessHrdVerifierAccessUnit(
+  H264ParametersHandlerPtr handle,
+  H264HrdVerifierContextPtr * hrdVerCtxPtr,
+  LibbluESParsingSettings * settings
+)
+{
+  if (NULL == *hrdVerCtxPtr) {
+    /* Check availability and initialize HRD Verifier */
+    if (_checkInitializationHrdVerifier(handle, hrdVerCtxPtr, settings) < 0)
       return -1;
-
-    handle->hrdVerifier->nbProcessedBytes += hrdAuLength;
+    if (settings->options.disableHrdVerifier)
+      return 0; // Unable to initialize, disabled HRD Verifier.
   }
 
-  if (handle->slice.header.isIdrPic)
-    handle->curProgParam.decPicNbCnt = 0;
+  assert(NULL != *hrdVerCtxPtr);
+
+  return _processHrdVerifierAccessUnit(handle, *hrdVerCtxPtr);
+}
+
+static int _processAccessUnit(
+  H264ParametersHandlerPtr handle,
+  H264HrdVerifierContextPtr * hrdVerifierCtxPtr,
+  LibbluESParsingSettings * settings
+)
+{
+
+  /* Check HRD Verifier */
+  if (!settings->options.disableHrdVerifier) {
+    if (_checkAndProcessHrdVerifierAccessUnit(handle, hrdVerifierCtxPtr, settings) < 0)
+      return -1;
+  }
+
+  /* if (handle->slice.header.isIdrPic)
+    handle->curProgParam.decPicNbCnt = 0; */
 
   /* Processing PES frame cutting */
   if (_completePicturePresent(handle)) {
     if (_processCompleteAccessUnit(handle, settings->options) < 0)
       return -1;
 
-    if (inUseHrdVerifierH264ParametersHandler(handle))
-      handle->hrdVerifier->nbProcessedBytes = 0;
+    if (!settings->options.disableHrdVerifier)
+      (*hrdVerifierCtxPtr)->nbProcessedBytes = 0;
 
     if (
       handle->curProgParam.restartRequired
@@ -3897,11 +3975,12 @@ int decodeH264SliceLayerWithoutPartitioning(
     "Checking if Coded Slice VCL NALU is the first unit of a new "
     "primary coded picture.\n"
   );
-  ret = H264_FRST_VCL_NALU_PCP_RET_TRUE;
+
   /**
    * NOTE: If no Coded Slice VCL NALU is present before, this NALU is necessary
    * the start of a new primary coded picture.
    */
+  ret = H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
   if (handle->slicePresent) {
     ret = _detectFirstVclNalUnitOfPrimCodedPicture(
@@ -4042,6 +4121,8 @@ int analyzeH264(
 {
   H264ParametersHandlerPtr handle;
 
+  H264HrdVerifierContextPtr hrdVerCtx = NULL;
+
   unsigned long duration;
   bool seiSection; /* Used to know when inserting SEI custom NALU. */
 
@@ -4106,7 +4187,7 @@ int analyzeH264(
       LIBBLU_H264_DEBUG_AU_PROCESSING(
         "Detect the start of a new Access Unit.\n"
       );
-      if (_processAccessUnit(handle, settings) < 0)
+      if (_processAccessUnit(handle, &hrdVerCtx, settings) < 0)
         goto free_return;
     }
 
@@ -4212,14 +4293,6 @@ int analyzeH264(
 
         if (patchH264SequenceParametersSet(handle, settings->options) < 0)
           goto free_return;
-
-        if (
-          !settings->options.disableHrdVerifier
-          && !inUseHrdVerifierH264ParametersHandler(handle)
-        ) {
-          if (initIfRequiredH264CpbHrdVerifier(handle, &settings->options) < 0)
-            goto free_return;
-        }
         break;
 
       case NAL_UNIT_TYPE_PIC_PARAMETER_SET: /* 8 - PPS */
@@ -4310,6 +4383,7 @@ int analyzeH264(
 
     /* Quick exit. */
     destroyH264ParametersHandler(handle);
+    destroyH264HrdVerifierContext(hrdVerCtx);
     return 0;
   }
 
@@ -4358,11 +4432,13 @@ int analyzeH264(
   if (completeH264ParametersHandler(handle, settings) < 0)
     goto free_return;
   destroyH264ParametersHandler(handle);
+  destroyH264HrdVerifierContext(hrdVerCtx);
 
   return 0;
 
 free_return:
   destroyH264ParametersHandler(handle);
+  destroyH264HrdVerifierContext(hrdVerCtx);
 
   return -1;
 }

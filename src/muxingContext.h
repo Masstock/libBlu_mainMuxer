@@ -74,7 +74,9 @@ typedef struct {
   double tpStcDuration;    /**< TS packet transmission duration,
     (= 188 * byteStcDuration). It is the time required for one TP to be
     transmitted at mux-rate in MAIN_CLOCK_27MHZ ticks.                       */
-  uint64_t tpStcIncrementation;  /**< floor(tpStcDuration) */
+  uint64_t tpStcDuration_floor;  /**< floor(tpStcDuration) */
+  uint64_t tpStcDuration_ceil;  /**< floor(tpStcDuration) */
+
   uint64_t referentialStc; /* Referential initial STC value in #MAIN_CLOCK_27MHZ ticks. */
   uint64_t stdBufDelay;  /**< STD buffering delay, virtual time between
     muxer and demuxer STCs. Initial STC value can be retrived with formula
@@ -130,34 +132,6 @@ static inline unsigned nbESLibbluMuxingContext(
 }
 
 /** \~english
- * \brief Return if the MPEG-TS T-STD / BDAV-STD buffering model is in use.
- *
- * \param ctx Muxer working context.
- * \return true The buffering model is active and must be used to monitor
- * buffering accuracy and compliance of generated transport stream.
- * \return false No buffering model is currently in use. Multiplexing is done
- * regardless of buffering considerations.
- */
-static inline bool isEnabledTStdModelLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx
-)
-{
-  return !isVoidBufModelNode(ctx->tStdModel);
-}
-
-static inline bool pcrInjectionRequired(
-  LibbluMuxingContextPtr ctx,
-  uint16_t pid
-)
-{
-  return
-    ctx->pcrParam.carriedByES
-    && ctx->pcrParam.injectionRequired
-    && ctx->pcrParam.esCarryingPID == pid
-  ;
-}
-
-/** \~english
  * \brief Return true if there is remaining Elementary Stream transport packets
  * to mux.
  *
@@ -171,44 +145,6 @@ static inline bool dataRemainingLibbluMuxingContext(
 )
 {
   return (0 < ctx->elementaryStreamsHeap->usedSize);
-}
-
-static inline void updateCurrentStcLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx,
-  const double value
-)
-{
-  ctx->currentStc = value;
-  ctx->currentStcTs = (uint64_t) MAX(0, value);
-}
-
-static inline void increaseCurrentStcLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx
-)
-{
-  updateCurrentStcLibbluMuxingContext(
-    ctx,
-    ctx->currentStc + ctx->tpStcDuration
-  );
-}
-
-static inline int retriveAssociatedESUtilities(
-  const LibbluMuxingContextPtr ctx,
-  LibbluStreamPtr stream,
-  LibbluESFormatUtilities * utils
-)
-{
-  unsigned i;
-
-  for (i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
-    if (ctx->elementaryStreams[i] == stream) {
-      if (NULL != utils)
-        *utils = ctx->elementaryStreamsUtilities[i];
-      return 0;
-    }
-  }
-
-  return -1;
 }
 
 /** \~english

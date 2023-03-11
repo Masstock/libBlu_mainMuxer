@@ -7,8 +7,10 @@
  * \brief HDMV bitstreams data structures.
  *
  * \xrefitem references "References" "References list"
- *  [1] Patent US 2009/0185789 A1
- *  [2] Patent US No. 8,638,861 B2
+ *  [1] Patent US 8,849,102 B2\n // IGS semantics
+ *  [2] Patent US 8,638,861 B2\n // PGS semantics
+ *  [3] Patent US 7,634,739 B2\n // IGS timings
+ *  [4] Patent US 7,680,394 B2\n // PGS timings
  */
 
 /** \~english
@@ -27,27 +29,6 @@
 #define IGS_MNU_WORD             0x4947 /* "IG" */
 #define IGS_SUP_WORD             0x5047 /* "PG" */
 
-#define IGS_MAX_NB_SEG_ICS       1
-#define IGS_MAX_NB_SEG_PDS       256
-#define IGS_MAX_NB_SEG_ODS       4096
-#define IGS_MAX_NB_SEG_END       1
-
-#define PGS_MAX_NB_SEG_PCS       8
-#define PGS_MAX_NB_SEG_WDS       1
-#define PGS_MAX_NB_SEG_PDS       8
-#define PGS_MAX_NB_SEG_ODS       64
-#define PGS_MAX_NB_SEG_END       1
-
-#define HDMV_MAX_NB_WDS_WINDOWS  255
-#define HDMV_MAX_NB_ICS_COMPOS   1   /* TODO: Support more compositions */
-#define HDMV_MAX_NB_ICS_WINDOWS  255
-#define HDMV_MAX_NB_ICS_EFFECTS  255
-#define HDMV_MAX_NB_ICS_COMP_OBJ 255
-#define HDMV_MAX_NB_ICS_BOGS     255
-#define HDMV_MAX_NB_ICS_BUTTONS  255
-
-#define HDMV_MAX_OBJ_DATA_LEN    0xFFFFFF
-
 /** \~english
  * \brief Transport Buffer removing data rate (in bits/sec).
  *
@@ -59,8 +40,8 @@
 /* ### HDMV Stream type : ################################################## */
 
 typedef enum {
-  HDMV_STREAM_TYPE_IGS,
-  HDMV_STREAM_TYPE_PGS
+  HDMV_STREAM_TYPE_IGS  = 0,
+  HDMV_STREAM_TYPE_PGS  = 1
 } HdmvStreamType;
 
 static inline const char * HdmvStreamTypeStr(
@@ -159,71 +140,14 @@ static inline const char * HdmvSegmentTypeStr(
   return "Unknown type segment";
 }
 
-static inline bool isValidHdmvSegmentType(
+bool isValidHdmvSegmentType(
   uint8_t type
-)
-{
-  unsigned i;
+);
 
-  static const uint8_t types[] = {
-    HDMV_SEGMENT_TYPE_PDS,
-    HDMV_SEGMENT_TYPE_ODS,
-    HDMV_SEGMENT_TYPE_PCS,
-    HDMV_SEGMENT_TYPE_WDS,
-    HDMV_SEGMENT_TYPE_ICS,
-    HDMV_SEGMENT_TYPE_END
-  };
-
-  for (i = 0; i < ARRAY_SIZE(types); i++) {
-    if (types[i] == type)
-      return true;
-  }
-
-  return false;
-}
-
-static inline HdmvSegmentType checkHdmvSegmentType(
+HdmvSegmentType checkHdmvSegmentType(
   uint8_t type,
   HdmvStreamType streamType
-)
-{
-  unsigned i;
-
-  static const struct {
-    HdmvSegmentType type;
-    uint8_t streamTypesMask;
-  } values[] = {
-#define D_(t, m)  {.type = (t), .streamTypesMask = (m)}
-    D_(HDMV_SEGMENT_TYPE_PDS, HDMV_STREAM_TYPE_MASK_COMMON),
-    D_(HDMV_SEGMENT_TYPE_ODS, HDMV_STREAM_TYPE_MASK_COMMON),
-    D_(HDMV_SEGMENT_TYPE_PCS, HDMV_STREAM_TYPE_MASK_PGS),
-    D_(HDMV_SEGMENT_TYPE_WDS, HDMV_STREAM_TYPE_MASK_PGS),
-    D_(HDMV_SEGMENT_TYPE_ICS, HDMV_STREAM_TYPE_MASK_IGS),
-    D_(HDMV_SEGMENT_TYPE_END, HDMV_STREAM_TYPE_MASK_COMMON)
-#undef D_
-  };
-
-  for (i = 0; i < ARRAY_SIZE(values); i++) {
-    if (values[i].type == type) {
-      if (HDMV_STREAM_TYPE_MASK(streamType) & values[i].streamTypesMask)
-        return values[i].type;
-
-      LIBBLU_HDMV_COM_ERROR(
-        "Unexpected segment type %s (0x%02X) for a %s stream.\n",
-        HdmvSegmentTypeStr(type),
-        type,
-        HdmvStreamTypeStr(streamType)
-      );
-      return HDMV_SEGMENT_TYPE_ERROR;
-    }
-  }
-
-  LIBBLU_HDMV_COM_ERROR(
-    "Unknown segment type 0x%02X.\n",
-    type
-  );
-  return HDMV_SEGMENT_TYPE_ERROR;
-}
+);
 
 /* ###### HDMV Common structures : ######################################### */
 /* ######### Video Descriptor : ############################################ */
@@ -235,14 +159,14 @@ typedef struct HdmvVideoDescriptorParameters {
 } HdmvVDParameters;
 
 static inline bool areIdenticalHdmvVDParameters(
-  const HdmvVDParameters * first,
-  const HdmvVDParameters * second
+  HdmvVDParameters first,
+  HdmvVDParameters second
 )
 {
   return START_CHECK
-    EQUAL(->video_width)
-    EQUAL(->video_height)
-    EQUAL(->frame_rate)
+    EQUAL(.video_width)
+    EQUAL(.video_height)
+    EQUAL(.frame_rate)
   END_CHECK;
 }
 
@@ -262,13 +186,13 @@ static inline bool areIdenticalHdmvVDParameters(
 /* ######### Composition Descriptor : ###################################### */
 
 typedef enum {
-  HDMV_COMPO_STATE_NORMAL            = 0x0,
-  HDMV_COMPO_STATE_ACQUISITION_START = 0x1,
-  HDMV_COMPO_STATE_EPOCH_START       = 0x2,
-  HDMV_COMPO_STATE_EPOCH_CONTINUE    = 0x3,
+  HDMV_COMPO_STATE_NORMAL             = 0x0,
+  HDMV_COMPO_STATE_ACQUISITION_START  = 0x1,
+  HDMV_COMPO_STATE_EPOCH_START        = 0x2,
+  HDMV_COMPO_STATE_EPOCH_CONTINUE     = 0x3,
 } HdmvCompositionState;
 
-static inline const char * hdmvCompositionStateStr(
+static inline const char * HdmvCompositionStateStr(
   HdmvCompositionState composition_state
 )
 {
@@ -288,24 +212,6 @@ typedef struct HdmvCompositionDescriptorParameters {
   uint16_t composition_number;
   HdmvCompositionState composition_state;
 } HdmvCDParameters;
-
-static inline bool isNewEpochHdmvCDParameters(
-  const HdmvCDParameters * param
-)
-{
-  return (HDMV_COMPO_STATE_EPOCH_START == param->composition_state);
-}
-
-static inline bool areIdenticalHdmvCDParameters(
-  const HdmvCDParameters * first,
-  const HdmvCDParameters * second
-)
-{
-  return START_CHECK
-    EQUAL(->composition_number)
-    EQUAL(->composition_state)
-  END_CHECK;
-}
 
 /** \~english
  * \brief Size required by composition_descriptor() structure in bytes.
@@ -539,6 +445,8 @@ typedef struct {
 /* ###### HDMV Windows Definition Segment : ################################ */
 /* ######### Windows Definition : ########################################## */
 
+#define HDMV_MAX_NB_WDS_WINDOWS  255
+
 typedef struct HdmvWindowDefinitionParameters {
   uint8_t number_of_windows;
 
@@ -555,6 +463,8 @@ typedef struct {
 
 /* ###### HDMV Interactive Composition Segment : ########################### */
 /* ######### Effect Info : ################################################# */
+
+#define HDMV_MAX_NB_ICS_COMP_OBJ  255
 
 typedef struct {
   uint32_t effect_duration:24;
@@ -607,6 +517,14 @@ static inline size_t computeSizeHdmvEffectInfo(
 }
 
 /* ######### Effect Sequence : ############################################# */
+
+#define HDMV_MAX_NB_ICS_WINDOWS  255
+
+#define HDMV_MAX_ALLOWED_NB_ICS_WINDOWS  2
+
+#define HDMV_MAX_NB_ICS_EFFECTS  255
+
+#define HDMV_MAX_ALLOWED_NB_ICS_EFFECTS  128
 
 typedef struct {
   unsigned number_of_windows;
@@ -775,6 +693,11 @@ typedef struct {
 
   unsigned number_of_navigation_commands;
   HdmvNavigationCommand * navigation_commands;
+
+  uint16_t max_initial_width;  /**< Button normal and selected states objects
+    maximum width. Computed at check. */
+  uint16_t max_initial_height;  /**< Buttons normal and selected states objects
+    maximum height. Computed at check. */
 } HdmvButtonParam;
 
 static inline void initHdmvButtonParam(
@@ -840,6 +763,8 @@ static inline size_t computeSizeHdmvButton(
 
 /* ######### Button Overlap Group : ######################################## */
 
+#define HDMV_MAX_NB_ICS_BUTTONS  255
+
 typedef struct {
   uint16_t default_valid_button_id_ref;
 
@@ -888,6 +813,8 @@ static inline size_t computeSizeHdmvButtonOverlapGroup(
 
 /* ######### Page : ######################################################## */
 
+#define HDMV_MAX_NB_ICS_BOGS  255
+
 typedef struct {
   uint8_t page_id;
   uint8_t page_version_number;
@@ -903,7 +830,7 @@ typedef struct {
 
   uint8_t palette_id_ref;
 
-  unsigned number_of_BOGs;
+  uint8_t number_of_BOGs;
   HdmvButtonOverlapGroupParameters * bogs[HDMV_MAX_NB_ICS_BOGS];
 } HdmvPageParameters;
 
@@ -961,14 +888,42 @@ static inline size_t computeSizeHdmvPage(
 /* ######### Interactive Composition : ##################################### */
 
 typedef enum {
-  HDMV_STREAM_MODEL_OOM          = 0x0,  /**< Solely constitute the AV clip. */
-  HDMV_STREAM_MODEL_MULTIPLEXED  = 0x1   /**< Muxed in AV stream.            */
+  HDMV_STREAM_MODEL_MULTIPLEXED  = 0x0,  /**< Muxed in AV stream.            */
+  HDMV_STREAM_MODEL_OOM          = 0x1   /**< Solely constitute the AV clip. */
 } HdmvStreamModel;
 
+static inline const char * HdmvStreamModelStr(
+  HdmvStreamModel stream_model
+)
+{
+  static const char * strings[] = {
+    "Multiplexed stream",
+    "Out of Mux stream"
+  };
+
+  if (stream_model < ARRAY_SIZE(strings))
+    return strings[stream_model];
+  return "Unknown";
+}
+
 typedef enum {
-  HDMV_UI_MODEL_POP_UP  = 0x0,
-  HDMV_UI_MODEL_NORMAL  = 0x1
+  HDMV_UI_MODEL_NORMAL  = 0x0,  /**< Always-on screen menu interface type.   */
+  HDMV_UI_MODEL_POP_UP  = 0x1   /**< Pop-Up menu interface type.             */
 } HdmvUserInterfaceModel;
+
+static inline const char * HdmvUserInterfaceModelStr(
+  HdmvUserInterfaceModel user_interface_model
+)
+{
+  static const char * strings[] = {
+    "Normal",
+    "Pop-Up"
+  };
+
+  if (user_interface_model < ARRAY_SIZE(strings))
+    return strings[user_interface_model];
+  return "Unknown";
+}
 
 #define HDMV_MAX_NB_ICS_PAGES  255
 
@@ -988,6 +943,11 @@ typedef struct HdmvInteractiveCompositionParameters {
   HdmvPageParameters * pages[HDMV_MAX_NB_ICS_PAGES];
 } HdmvICParameters;
 
+int updateHdmvICParameters(
+  HdmvICParameters * dst,
+  HdmvICParameters src
+);
+
 /** \~english
  * \brief Computes and return size required by
  * interactive_composition() structure.
@@ -997,15 +957,13 @@ typedef struct HdmvInteractiveCompositionParameters {
  *
  * Used to define how many bytes are required to store generated
  * interactive_composition().
- * If a NULL pointer is supplied, an assertion error is raised
- * (or return zero if assert are disabled).
  *
  * Composed of:
  *  - u24 : interactive_composition_length;
  *  - b1  : stream_model;
  *  - b1  : user_interface_model;
  *  - v6  : reserved;
- *  if (stream_model == OoM)
+ *  if (stream_model == 0b0)
  *    - v7  : reserved;
  *    - u33 : composition_time_out_pts;
  *    - v7  : reserved;
@@ -1015,7 +973,7 @@ typedef struct HdmvInteractiveCompositionParameters {
  *  for (i = 0; i < number_of_pages; i++)
  *    - vn  : Page(i).
  *
- * => 8 + (stream_model == OoM ? 10 : 0) + Page()s bytes.
+ * => 8 + (stream_model == 0b0 ? 10 : 0) + Page()s bytes.
  */
 static inline size_t computeSizeHdmvInteractiveComposition(
   const HdmvICParameters * param
@@ -1027,7 +985,7 @@ static inline size_t computeSizeHdmvInteractiveComposition(
   assert(NULL != param);
 
   size = 8;
-  if (param->stream_model == HDMV_STREAM_MODEL_OOM)
+  if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED)
     size += 10;
   for (i = 0; i < param->number_of_pages; i++)
     size += computeSizeHdmvPage(param->pages[i]);
@@ -1075,30 +1033,6 @@ static inline bool constantHdmvPDParameters(
     EQUAL(.palette_id)
     EQUAL(.palette_version_number)
   END_CHECK;
-}
-
-static inline int checkUpdateHdmvPDParameters(
-  HdmvPDParameters old,
-  HdmvPDParameters nw
-)
-{
-  if (old.palette_id != nw.palette_id)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
-      "Invalid updated PDS, 'palette_id' mismatch (0x%02X / 0x%02X).\n",
-      old.palette_id,
-      nw.palette_id
-    );
-
-  if (((old.palette_version_number + 1) & 0xFF) != nw.palette_version_number)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
-      "Invalid updated PDS, "
-      "'palette_version_number' is not incremented correctly "
-      "(old: 0x%02X / new: 0x%02X).\n",
-      old.palette_version_number,
-      nw.palette_version_number
-    );
-
-  return 0;
 }
 
 /** \~english
@@ -1201,24 +1135,10 @@ static inline bool constantHdmvPdsSegmentParameters(
   END_CHECK;
 }
 
-static inline int updateHdmvPdsSegmentParameters(
+int updateHdmvPdsSegmentParameters(
   HdmvPdsSegmentParameters * dst,
   HdmvPdsSegmentParameters src
-)
-{
-  unsigned i;
-
-  if (checkUpdateHdmvPDParameters(dst->palette_descriptor, src.palette_descriptor) < 0)
-    return -1;
-
-  for (i = 0; i < src.number_of_palette_entries; i++) {
-    if (src.palette_entries[i].updated)
-      dst->palette_entries[i] = src.palette_entries[i];
-  }
-  dst->palette_descriptor = src.palette_descriptor;
-
-  return 0;
-}
+);
 
 /* ###### HDMV Object Definition Segment : ################################# */
 /* ######### Object Descriptor : ########################################### */
@@ -1227,32 +1147,6 @@ typedef struct HdmvObjectDescriptorParameters {
   uint16_t object_id;
   uint8_t object_version_number;
 } HdmvODescParameters;
-
-static inline int checkUpdateHdmvODescParameters(
-  HdmvODescParameters old,
-  HdmvODescParameters nw
-)
-{
-  if (old.object_id != nw.object_id)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
-      "Invalid updated ODS, 'object_id' mismatch (0x%02X / 0x%02X).\n",
-      old.object_id,
-      nw.object_id
-    );
-
-  if (old.object_version_number == nw.object_version_number)
-    return 1; /* The new object shall be identical to the previous one. */
-  else if (((old.object_version_number + 1) & 0xFF) != nw.object_version_number)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
-      "Invalid updated ODS, "
-      "'object_version_number' is not incremented correctly "
-      "(old: 0x%02X / new: 0x%02X).\n",
-      old.object_version_number,
-      nw.object_version_number
-    );
-
-  return 0;
-}
 
 /** \~english
  * \brief Size required by Object_descritor() structure in bytes.
@@ -1289,44 +1183,10 @@ static inline void setHdmvObjectDataParameters(
   };
 }
 
-static inline int updateHdmvObjectDataParameters(
+int updateHdmvObjectDataParameters(
   HdmvODParameters * dst,
   HdmvODParameters src
-)
-{
-  int ret;
-
-  ret = checkUpdateHdmvODescParameters(
-    dst->object_descriptor,
-    src.object_descriptor
-  );
-  if (ret < 0)
-    return -1;
-
-  if (0 < ret) {
-    /* The object coded data size shall be identical */
-    if (dst->object_data_length != src.object_data_length)
-      LIBBLU_HDMV_COM_ERROR_RETURN(
-        "Invalid updated ODS, object_data_length of ODS sharing same "
-        "version shall remain identical (old: %zu / new :%zu).\n",
-        dst->object_data_length,
-        src.object_data_length
-      );
-  }
-
-  if (dst->object_width != src.object_width || dst->object_height != src.object_height)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
-      "Invalid updated ODS, "
-      "picture dimensions mismatch (%ux%u / %ux%u).\n",
-      dst->object_width,
-      dst->object_height,
-      src.object_width,
-      src.object_height
-    );
-
-  *dst = src;
-  return 0;
-}
+);
 
 /** \~english
  * \brief

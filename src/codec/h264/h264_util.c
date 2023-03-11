@@ -8,6 +8,192 @@
 
 #include "h264_util.h"
 
+void updateH264LevelLimits(
+  H264ParametersHandlerPtr param,
+  uint8_t level_idc
+)
+{
+  assert(NULL != param);
+
+  param->constraints.MaxMBPS = getH264MaxMBPS(level_idc);
+  param->constraints.MaxFS = getH264MaxFS(level_idc);
+  param->constraints.MaxDpbMbs = getH264MaxDpbMbs(level_idc);
+  param->constraints.MaxBR = getH264MaxBR(level_idc);
+  param->constraints.MaxCPB = getH264MaxCPB(level_idc);
+  param->constraints.MaxVmvR = getH264MaxVmvR(level_idc);
+  param->constraints.MinCR = getH264MinCR(level_idc);
+  param->constraints.MaxMvsPer2Mb = getH264MaxMvsPer2Mb(level_idc);
+
+  param->constraints.SliceRate = getH264SliceRate(level_idc);
+  param->constraints.MinLumaBiPredSize = getH264MinLumaBiPredSize(level_idc);
+  param->constraints.direct_8x8_inference_flag = getH264direct_8x8_inference_flag(level_idc);
+  param->constraints.frame_mbs_only_flag = getH264frame_mbs_only_flag(level_idc);
+  param->constraints.MaxSubMbRectSize = getH264MaxSubMbRectSize(level_idc);
+}
+
+void updateH264ProfileLimits(
+  H264ParametersHandlerPtr param,
+  H264ProfileIdcValue profile_idc,
+  H264ContraintFlags constraintsFlags,
+  bool applyBdavConstraints
+)
+{
+  H264ConstraintsParam * constraintsParam;
+
+  assert(NULL != param);
+
+  constraintsParam = &param->constraints;
+
+  constraintsParam->cpbBrVclFactor = getH264cpbBrVclFactor(profile_idc);
+  constraintsParam->cpbBrNalFactor = getH264cpbBrNalFactor(profile_idc);
+  constraintsParam->restrEntropyCodingMode = H264_ENTROPY_CODING_MODE_UNRESTRICTED;
+
+  switch (profile_idc) {
+    case H264_PROFILE_BASELINE:
+      /* A.2.1 Baseline profile constraints */
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IP;
+      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
+      constraintsParam->restrictedFrameMbsOnlyFlag = true;
+      constraintsParam->forbiddenWeightedPredModesUse = true;
+      constraintsParam->restrEntropyCodingMode =
+        H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
+      constraintsParam->maxAllowedNumSliceGroups = 8;
+      constraintsParam->forbiddenPPSExtensionParameters = true;
+      constraintsParam->maxAllowedLevelPrefix = 15;
+      constraintsParam->restrictedPcmSampleValues = true;
+
+      if (constraintsFlags.set1) {
+        /* A.2.1.1 Constrained Baseline profile constraints */
+        constraintsParam->forbiddenArbitrarySliceOrder = true;
+       constraintsParam->maxAllowedNumSliceGroups = 1;
+        constraintsParam->forbiddenRedundantPictures = true;
+      }
+      break;
+
+    case H264_PROFILE_MAIN:
+      /* A.2.2 Main profile constraints */
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
+      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
+      constraintsParam->forbiddenArbitrarySliceOrder = true;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
+      constraintsParam->forbiddenPPSExtensionParameters = true;
+      constraintsParam->forbiddenRedundantPictures = true;
+      constraintsParam->maxAllowedLevelPrefix = 15;
+      constraintsParam->restrictedPcmSampleValues = true;
+      break;
+
+    case H264_PROFILE_EXTENDED:
+      /* A.2.3 Extended profile constraints */
+      constraintsParam->forcedDirect8x8InferenceFlag = true;
+      constraintsParam->restrEntropyCodingMode =
+        H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
+      constraintsParam->maxAllowedNumSliceGroups = 8;
+      constraintsParam->forbiddenPPSExtensionParameters = true;
+      constraintsParam->maxAllowedLevelPrefix = 15;
+      constraintsParam->restrictedPcmSampleValues = true;
+      break;
+
+    case H264_PROFILE_HIGH:
+      /* A.2.4 High profile constraints */
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
+      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
+      constraintsParam->forbiddenArbitrarySliceOrder = true;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
+      constraintsParam->forbiddenRedundantPictures = true;
+      constraintsParam->restrictedChromaFormatIdc =
+        (applyBdavConstraints) ?
+          H264_420_CHROMA_FORMAT_IDC
+          : H264_MONO_420_CHROMA_FORMAT_IDC
+      ;
+      constraintsParam->maxAllowedBitDepthMinus8 = 0;
+      constraintsParam->forbiddenQpprimeYZeroTransformBypass = true;
+
+      if (constraintsFlags.set4) {
+        /* A.2.4.1 Progressive High profile constraints */
+        constraintsParam->restrictedFrameMbsOnlyFlag = true;
+
+        if (constraintsFlags.set5) {
+          /* A.2.4.2 Constrained High profile constraints */
+          constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IP;
+        }
+      }
+      break;
+
+    case H264_PROFILE_HIGH_10:
+      /* A.2.5 High 10 profile constraints */
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
+      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
+      constraintsParam->forbiddenArbitrarySliceOrder = true;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
+      constraintsParam->forbiddenRedundantPictures = true;
+      constraintsParam->restrictedChromaFormatIdc =
+        H264_MONO_420_CHROMA_FORMAT_IDC;
+      constraintsParam->maxAllowedBitDepthMinus8 = 0;
+      constraintsParam->forbiddenQpprimeYZeroTransformBypass = true;
+
+      if (constraintsFlags.set4) {
+        /* A.2.5.1 Progressive High 10 profile constraints */
+        constraintsParam->restrictedFrameMbsOnlyFlag = true;
+      }
+      if (constraintsFlags.set3) {
+        /* A.2.8 High 10 Intra profile constraints */
+        constraintsParam->idrPicturesOnly = true;
+      }
+      break;
+
+    case H264_PROFILE_HIGH_422:
+      /* A.2.6 High 4:2:2 profile constraints */
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
+      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
+      constraintsParam->forbiddenArbitrarySliceOrder = true;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
+      constraintsParam->forbiddenRedundantPictures = true;
+      constraintsParam->restrictedChromaFormatIdc =
+        H264_MONO_TO_422_CHROMA_FORMAT_IDC;
+      constraintsParam->maxAllowedBitDepthMinus8 = 2;
+      constraintsParam->forbiddenQpprimeYZeroTransformBypass = true;
+
+      if (constraintsFlags.set3) {
+        /* A.2.9 High 10 Intra profile constraints */
+        constraintsParam->idrPicturesOnly = true;
+      }
+      break;
+
+    case H264_PROFILE_HIGH_444_PREDICTIVE:
+    case H264_PROFILE_CAVLC_444_INTRA:
+      /* A.2.7 High 4:4:4 Predictive profile constraints */
+      constraintsParam->allowedSliceTypes = H264_PRIM_PIC_TYPE_IPB;
+      constraintsParam->forbiddenSliceDataPartitionLayersNal = true;
+      constraintsParam->forbiddenArbitrarySliceOrder = true;
+      constraintsParam->maxAllowedNumSliceGroups = 1;
+      constraintsParam->forbiddenRedundantPictures = true;
+      constraintsParam->maxAllowedBitDepthMinus8 = 6;
+
+      if (
+        constraintsFlags.set3
+        || profile_idc == H264_PROFILE_CAVLC_444_INTRA
+      ) {
+        /* A.2.10 High 4:4:4 Intra profile constraints */
+        constraintsParam->idrPicturesOnly = true;
+
+        if (profile_idc == H264_PROFILE_CAVLC_444_INTRA) {
+          /* A.2.11 CAVLC 4:4:4 Intra profile constraints */
+          constraintsParam->restrEntropyCodingMode =
+            H264_ENTROPY_CODING_MODE_CAVLC_ONLY;
+        }
+      }
+      break;
+
+    default:
+      LIBBLU_WARNING(
+        "Profile-specific constraints for the bitstream's "
+        "profile_idc are not yet implemented.\n"
+        " -> Some parameters may not be supported and/or bitstream "
+        "may be wrongly indicated as Rec. ITU-T H.264 compliant.\n"
+      );
+  }
+}
+
 /* ### H.264 Context : ##################################################### */
 
 static int initInputFileH264ParametersHandle(
@@ -125,28 +311,8 @@ void destroyH264ParametersHandler(
 
   for (i = 0; i < H264_MAX_PPS; i++)
     free(handle->picParametersSet[i]);
-
-#if 0
-  if (
-    handle->slicePresent
-    && handle->slice.header.decRefPicMarkingPresent
-  ) {
-    /* Free memory_management_control_operation storage structures : */
-    if (
-      !handle->slice.header.dec_ref_pic_marking.IdrPicFlag
-      && handle->slice.header.dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag
-    )
-      closeH264MemoryManagementControlOperations(
-        handle->slice.header.dec_ref_pic_marking.MemMngmntCtrlOp
-      );
-  }
-#endif
-
   free(handle->curProgParam.curFrameNalUnits);
-  for (i = 0; i < handle->modNalLst.nbSequenceParametersSet; i++)
-    free(handle->modNalLst.sequenceParametersSets[i].linkedParam);
   free(handle->modNalLst.sequenceParametersSets);
-  destroyH264HrdVerifierContext(handle->hrdVerifier);
   free(handle);
 }
 
@@ -178,43 +344,6 @@ int updatePPSH264Parameters(
     param,
     sizeof(H264PicParametersSetParameters)
   );
-
-  return 0;
-}
-
-int initIfRequiredH264CpbHrdVerifier(
-  H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions * options
-)
-{
-  H264HrdVerifierContextPtr ctx;
-  bool available;
-
-  assert(NULL == handle->hrdVerifier);
-  assert(NULL != options);
-
-  available = checkH264CpbHrdVerifierAvailablity(
-    &handle->curProgParam,
-    options,
-    handle->sequenceParametersSet.data
-  );
-
-  if (!available) {
-    /* Missing fields/unsupported configuration, disable HRD Verifier */
-    options->disableHrdVerifier = true;
-    return 0;
-  }
-
-  /* If HRD verifier can be initialized, try to do so. */
-  ctx = createH264HrdVerifierContext(
-    options,
-    &handle->sequenceParametersSet.data,
-    &handle->constraints
-  );
-  if (NULL == ctx)
-    return -1;
-
-  handle->hrdVerifier = ctx;
 
   return 0;
 }
@@ -288,23 +417,11 @@ H264NalByteArrayHandlerPtr createH264NalByteArrayHandler(
 {
   H264NalByteArrayHandlerPtr baHandler;
 
-  baHandler = (H264NalByteArrayHandlerPtr) malloc(
-    sizeof(H264NalByteArrayHandler)
-  );
+  baHandler = (H264NalByteArrayHandlerPtr) malloc(sizeof(H264NalByteArrayHandler));
   if (NULL == baHandler)
     LIBBLU_H264_ERROR_NRETURN("Memory allocation error.\n");
 
-  baHandler->arraySize = 0;
-  baHandler->array = NULL;
-
-  baHandler->writingPointer = NULL;
-  baHandler->endPointer = NULL;
-
-  baHandler->curByte = 0x00;
-  baHandler->rbspZone = false;
-
-  baHandler->curNbBits = 0;
-  baHandler->nbZeroBytes = 0;
+  *baHandler = (H264NalByteArrayHandler) {0};
 
   /* Write NAL header : */
   if (writeH264NalHeader(baHandler, headerParam) < 0)
@@ -369,7 +486,7 @@ H264AUNalUnitPtr createNewNalCell(
   return cell;
 }
 
-H264AUNalUnitPtr recoverCurNalCell(
+static H264AUNalUnitPtr _retrieveCurrentNalCell(
   H264ParametersHandlerPtr handle
 )
 {
@@ -380,39 +497,23 @@ H264AUNalUnitPtr recoverCurNalCell(
       "No NAL unit cell in process for current Access Unit.\n"
     );
 
-  return
-    handle->curProgParam.curFrameNalUnits
-    + handle->curProgParam.curFrameNbNalUnits
-  ;
+  return &handle->curProgParam.curFrameNalUnits[
+    handle->curProgParam.curFrameNbNalUnits
+  ];
 }
 
 int replaceCurNalCell(
   H264ParametersHandlerPtr handle,
-  void * newParam,
-  size_t newParamSize
+  H264AUNalUnitReplacementData newParam
 )
 {
   H264AUNalUnit * nalUnit;
-  void * data;
 
   assert(NULL != handle);
-  assert(NULL != newParam);
 
-  if (!handle->curProgParam.inProcessNalUnitCell)
-    LIBBLU_H264_ERROR_RETURN(
-      "No NAL unit cell in process for current Access Unit.\n"
-    );
-
-  if (NULL == (data = malloc(newParamSize)))
-    LIBBLU_H264_ERROR_RETURN("Memory allocation error.\n");
-  memcpy(data, newParam, newParamSize);
-
-  nalUnit =
-    handle->curProgParam.curFrameNalUnits
-    + handle->curProgParam.curFrameNbNalUnits
-  ;
+  nalUnit = _retrieveCurrentNalCell(handle);
   nalUnit->replace = true;
-  nalUnit->replacementParam = data;
+  nalUnit->replacementParameters = newParam;
 
   return 0;
 }
@@ -421,20 +522,12 @@ int discardCurNalCell(
   H264ParametersHandlerPtr handle
 )
 {
-  H264AUNalUnit * nalUnit;
-
   assert(NULL != handle);
 
   if (!handle->curProgParam.inProcessNalUnitCell)
     LIBBLU_H264_ERROR_RETURN(
       "No NAL unit cell in process for current Access Unit.\n"
     );
-
-  nalUnit =
-    handle->curProgParam.curFrameNalUnits
-    + handle->curProgParam.curFrameNbNalUnits
-  ;
-  free(nalUnit->replacementParam);
 
   handle->curProgParam.inProcessNalUnitCell = false;
   return 0;
@@ -448,25 +541,72 @@ int addNalCellToAccessUnit(
 
   assert(NULL != handle);
 
-  if (!handle->curProgParam.inProcessNalUnitCell)
-    LIBBLU_H264_ERROR_RETURN(
-      "No NAL unit cell in process for current Access Unit.\n"
-    );
-
-  handle->curProgParam.lstNaluType = getNalUnitType(handle);
-
-  nalUnit =
-    handle->curProgParam.curFrameNalUnits
-    + handle->curProgParam.curFrameNbNalUnits
-  ;
-
+  nalUnit = _retrieveCurrentNalCell(handle);
   nalUnit->length = tellPos(handle->file.inputFile) - nalUnit->startOffset;
 
+  handle->curProgParam.lstNaluType = getNalUnitType(handle);
   handle->curProgParam.curFrameLength += nalUnit->length;
   handle->curProgParam.curFrameNbNalUnits++;
   handle->curProgParam.inProcessNalUnitCell = false;
 
   return 0;
+}
+
+int reachNextNal(
+  H264ParametersHandlerPtr handle
+)
+{
+
+#if 0
+  uint32_t value;
+  size_t fieldLength;
+
+  while (
+    !isEof(handle->file.inputFile)
+    && (value = nextUint32(handle->file.inputFile)) != 0x00000001
+    && (value >> 8) != 0x000001
+  ) {
+    fieldLength = ((value >> 8) & 0x000003) ? 3 : 1;
+
+    if (skipBytes(handle->file.inputFile, fieldLength) < 0) {
+      if (isEof(handle->file.inputFile))
+        break;
+      return -1;
+    }
+  }
+
+  handle->file.packetInitialized = false;
+  return 0;
+#else
+  register uint32_t value;
+  int ret;
+
+  ret = 0;
+  while (
+    ret <= 0
+    && 0 < (value = nextUint32(handle->file.inputFile))
+  ) {
+    if (0x01 == (value & 0xFFFFFF))
+      break;
+    if (0x00 == (value & 0xFF))
+      ret = skipBytes(handle->file.inputFile, 1);
+    else
+      ret = skipBytes(handle->file.inputFile, 3);
+  }
+
+  handle->file.packetInitialized = false;
+
+#if 0
+  if (0 < nextUint8(handle->file.inputFile))
+    ret = skipBytes(handle->file.inputFile, 1);
+#else
+  while (0 < nextUint8(handle->file.inputFile)) {
+    if ((ret = skipBytes(handle->file.inputFile, 1)) < 0)
+      break;
+  }
+#endif
+  return ret;
+#endif
 }
 
 int writeH264NalByteArrayBit(
@@ -488,8 +628,8 @@ int writeH264NalByteArrayBit(
       uint8_t * newArray;
       size_t newSize;
 
-      newSize = GROW_ALLOCATION(baHandler->arraySize, 1024);
-      if (newSize < baHandler->arraySize)
+      newSize = GROW_ALLOCATION(baHandler->allocatedSize, 1024);
+      if (newSize < baHandler->allocatedSize)
         LIBBLU_H264_ERROR_RETURN("NALU byte array writer size overflow.\n");
 
       if (NULL == (newArray = (uint8_t *) realloc(baHandler->array, newSize)))
@@ -499,14 +639,24 @@ int writeH264NalByteArrayBit(
       if (NULL == baHandler->writingPointer) /* Init pointers. */
         baHandler->writingPointer = baHandler->endPointer = newArray;
 
-      baHandler->array       = newArray;
-      baHandler->arraySize   = newSize;
-      baHandler->endPointer += newSize;
+      baHandler->array          = newArray;
+      baHandler->allocatedSize  = newSize;
+      baHandler->endPointer    += newSize;
     }
 
-    if (baHandler->nbZeroBytes == 2 && baHandler->curByte <= 0x02) {
+    if (baHandler->nbZeroBytes == 2 && baHandler->curByte <= 0x03) {
+      /**
+       * More than two consecutive 0x00 rbsp_byte written, 0x000000, 0x000001
+       * or 0x000002 3-bytes forbidden pattern may happen at a byte-aligned
+       * position if current byte is 0x00, 0x01 or 0x02. Also if current byte
+       * is 0x03, might take 0x000003 pattern as an 'emulation_prevention_three
+       * _byte' preceded by two 0x00 bytes. Use rather 0x00000303 4-bytes
+       * pattern.
+       *  => Write 'emulation_prevention_three_byte'.
+       */
+
       /* More than two consecutive 0x00 rbsp_byte written,  */
-      /* 0x000000, 0x000001 or 0x000002 pattern may happen. */
+      /* 0x000000, 0x000001, 0x000002 or 0x000003 pattern may happen. */
       /* => Write emulation_prevention_three_byte           */
 
       /* [v8 emulation_prevention_three_byte] // 0x03 */

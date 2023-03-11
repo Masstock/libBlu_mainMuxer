@@ -55,41 +55,6 @@ static inline void cleanLibbluSystemStream(
   free(stream.data);
 }
 
-/** \~english
- * \brief Return the number of bytes remaining in the current system table.
- *
- * \param stream System Stream handle.
- * \return size_t Number of remaining bytes in the system packet current table.
- */
-static inline size_t remainingTableDataLibbluSystemStream(
-  LibbluSystemStream stream
-)
-{
-  return stream.dataLength - stream.dataOffset;
-}
-
-static inline bool isPayloadUnitStartLibbluSystemStream(
-  LibbluSystemStream stream
-)
-{
-  return 0 == stream.dataOffset;
-}
-
-static inline void resetTableWritingOffLibbluSystemStream(
-  LibbluSystemStream * stream
-)
-{
-  stream->dataOffset = 0;
-  stream->firstFullTableSupplied = true;
-}
-
-static inline void markAsSuppliedLibbluSystemStream(
-  LibbluSystemStream * stream
-)
-{
-  stream->firstFullTableSupplied = true;
-}
-
 /* ### Program Association Table (PAT) : ################################### */
 
 typedef struct programElement {
@@ -117,13 +82,10 @@ static inline void setDefaultPatParameters(
   uint8_t version
 )
 {
-  assert(NULL != dst);
-
   *dst = (PatParameters) {
     .transportStreamId = transportStreamId,
     .version = version,
-    .curNextIndicator = 1,
-    .usedPrograms = 0
+    .curNextIndicator = 1
   };
 }
 
@@ -131,7 +93,7 @@ static inline void cleanPatParameters(
   PatParameters param
 )
 {
-  (void) param;
+  (void) param; // No extra allocation currently.
 }
 
 /** \~english
@@ -202,9 +164,7 @@ static inline uint16_t sectionLengthPatParameters(
   PatParameters param
 )
 {
-  unsigned length;
-
-  length = 9 + param.usedPrograms * 4;
+  unsigned length = 9 + param.usedPrograms * 4;
 
   if (1021 < length)
     LIBBLU_ERROR_ZRETURN(
@@ -471,9 +431,7 @@ static inline void cleanPmtProgramElement(
   PmtProgramElement elem
 )
 {
-  unsigned i;
-
-  for (i = 0; i < elem.usedDescriptors; i++)
+  for (unsigned i = 0; i < elem.usedDescriptors; i++)
     cleanDescriptor(elem.descriptors[i]);
 }
 
@@ -481,10 +439,9 @@ static inline unsigned esInfoLengthPmtProgramElement(
   PmtProgramElement elem
 )
 {
-  unsigned i, len;
 
-  len = 0;
-  for (i = 0; i < elem.usedDescriptors; i++) {
+  unsigned len = 0;
+  for (unsigned i = 0; i < elem.usedDescriptors; i++) {
     /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
     len += 2 + elem.descriptors[i].usedSize;
   }
@@ -511,13 +468,9 @@ static inline void setDefaultPmtParameters(
   uint16_t pcrPID
 )
 {
-  assert(NULL != dst);
-
   *dst = (PmtParameters) {
     .programNumber = programNumber,
-    .pcrPID = pcrPID,
-    .usedDescriptors = 0,
-    .usedElements = 0
+    .pcrPID = pcrPID
   };
 }
 
@@ -525,12 +478,9 @@ static inline void cleanPmtParameters(
   PmtParameters param
 )
 {
-  unsigned i;
-
-  for (i = 0; i < param.usedDescriptors; i++)
+  for (unsigned i = 0; i < param.usedDescriptors; i++)
     cleanDescriptor(param.descriptors[i]);
-
-  for (i = 0; i < param.usedElements; i++)
+  for (unsigned i = 0; i < param.usedElements; i++)
     cleanPmtProgramElement(param.elements[i]);
 }
 
@@ -538,10 +488,9 @@ static inline unsigned programInfoLengthPmtParameters(
   PmtParameters param
 )
 {
-  unsigned len, i;
 
-  len = 0;
-  for (i = 0; i < param.usedDescriptors; i++) {
+  unsigned len = 0;
+  for (unsigned i = 0; i < param.usedDescriptors; i++) {
     /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
     len += 2 + param.descriptors[i].usedSize;
   }
@@ -593,10 +542,9 @@ static inline uint16_t sectionLengthPmtParameters(
   PmtParameters param
 )
 {
-  unsigned i, length;
 
-  length = 13 + programInfoLengthPmtParameters(param);
-  for (i = 0; i < param.usedElements; i++)
+  unsigned length = 13 + programInfoLengthPmtParameters(param);
+  for (unsigned i = 0; i < param.usedElements; i++)
     length += 5 + esInfoLengthPmtProgramElement(param.elements[i]);
 
   if (1021 < length)
@@ -642,9 +590,7 @@ static inline void cleanSitService(
   SitService serv
 )
 {
-  unsigned i;
-
-  for (i = 0; i < serv.usedDescriptors; i++)
+  for (unsigned i = 0; i < serv.usedDescriptors; i++)
     cleanDescriptor(serv.descriptors[i]);
 }
 
@@ -652,10 +598,9 @@ static inline unsigned serviceLoopLengthSitParameters(
   SitService param
 )
 {
-  unsigned len, i;
 
-  len = 0;
-  for (i = 0; i < param.usedDescriptors; i++) {
+  unsigned len = 0;
+  for (unsigned i = 0; i < param.usedDescriptors; i++) {
     /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
     len += 2 + param.descriptors[i].usedSize;
   }
@@ -678,11 +623,8 @@ static inline void setDefaultSitParameters(
   SitParameters * dst
 )
 {
-  assert(NULL != dst);
-
   *dst = (SitParameters) {
-    .usedDescriptors = 0,
-    .usedServices = 0
+    0
   };
 }
 
@@ -690,11 +632,9 @@ static inline void cleanSitParameters(
   SitParameters param
 )
 {
-  unsigned i;
-
-  for (i = 0; i < param.usedDescriptors; i++)
+  for (unsigned i = 0; i < param.usedDescriptors; i++)
     cleanDescriptor(param.descriptors[i]);
-  for (i = 0; i < param.usedServices; i++)
+  for (unsigned i = 0; i < param.usedServices; i++)
     cleanSitService(param.services[i]);
 }
 
@@ -702,10 +642,9 @@ static inline unsigned transmissionInfoLoopLengthSitParameters(
   SitParameters param
 )
 {
-  unsigned len, i;
 
-  len = 0;
-  for (i = 0; i < param.usedDescriptors; i++) {
+  unsigned len = 0;
+  for (unsigned i = 0; i < param.usedDescriptors; i++) {
     /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
     len += 2 + param.descriptors[i].usedSize;
   }
@@ -715,7 +654,7 @@ static inline unsigned transmissionInfoLoopLengthSitParameters(
 
 int prepareSITParam(
   SitParameters * dst,
-  uint32_t muxingRate,
+  uint64_t muxingRate,
   uint16_t programNumber
 );
 
@@ -749,10 +688,9 @@ static inline uint16_t sectionLengthSitParameters(
   SitParameters param
 )
 {
-  unsigned i, length;
 
-  length = 11 + transmissionInfoLoopLengthSitParameters(param);
-  for (i = 0; i < param.usedServices; i++)
+  unsigned length = 11 + transmissionInfoLoopLengthSitParameters(param);
+  for (unsigned i = 0; i < param.usedServices; i++)
     length += 4 + serviceLoopLengthSitParameters(param.services[i]);
 
   if (4093 < length)

@@ -1,0 +1,6 @@
+MUXOPT
+A_DTS, "00800.track_4352.dts"
+A_DTS, "00800.track_4353.dts"
+M_HDMV/PGS, "00800.track_4608.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00800.track_4609.sup" --force-esms --hdmv-force-retiming
+M_HDMV/PGS, "00800.track_4610.sup" --force-esms --hdmv-force-retiming

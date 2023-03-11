@@ -105,6 +105,8 @@ static inline HdmvPicturePtr getRefPictureIgsCompilerComposition(
 
 /* ######################################################################### */
 
+#define HDMV_MAX_NB_ICS_COMPOS  1   /* TODO: Support more compositions */
+
 typedef struct {
   HdmvVDParameters commonVideoDescriptor;
   uint64_t commonUopMask;

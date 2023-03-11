@@ -5,6 +5,24 @@
  * \version 0.5
  *
  * \brief Errors feedback module.
+ *
+ * Macros naming radical convention:
+ *  - DEBUG : Debugging message, printed on stderr if enabled.
+ *  - INFO : Informational message, printed on stdout.
+ *  - WARNING : Warning message, printed on stderr.
+ *  - ERROR : Fatal error message, printed on stderr.
+ * Suffix convention:
+ *  - NO_HEADER or NH : Without message category prefix between square
+ *    brackets.
+ *  - EXIT : Terminate program immediately after printing.
+ *  - RETURN : Print the message and use instruction 'return -1'.
+ *  - BRETURN : Print the message and use instruction 'return false'.
+ *  - ZRETURN : Print the message and use instruction 'return 0'.
+ *  - NRETURN : Print the message and use instruction 'return NULL'.
+ *  - GRETURN : Print the message and use instruction 'goto <label>' with
+ *    supplied label.
+ *  - FRETURN : Print the message and use instruction 'goto free_return'.
+ *  - VRETURN : Print the message and use instruction 'return'.
  */
 
 #ifndef __LIBBLU_MUXER__UTIL__ERROR_CODES_H__
@@ -167,6 +185,7 @@ typedef enum {
   LIBBLU_DEBUG_HDMV_COMMON,
   LIBBLU_DEBUG_HDMV_PARSER,
   LIBBLU_DEBUG_HDMV_CHECKS,
+  LIBBLU_DEBUG_HDMV_TS_COMPUTE,
   LIBBLU_DEBUG_HDMV_SEG_BUILDER,
   LIBBLU_DEBUG_HDMV_QUANTIZER,
   LIBBLU_DEBUG_HDMV_PAL,

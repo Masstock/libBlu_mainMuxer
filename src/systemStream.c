@@ -874,27 +874,25 @@ static inline Descriptor * getNewDescriptorSitService(
   return desc;
 }
 
-static inline Descriptor * getNewDescriptorSitParameters(
+static inline Descriptor * _getNewDescriptorSitParameters(
   SitParameters * param
 )
 {
   if (SIT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS <= param->usedDescriptors)
     return NULL;
-  return param->descriptors + param->usedDescriptors++;
+  return &param->descriptors[param->usedDescriptors++];
 }
 
-static inline SitService * getNewServiceSitParameters(
+static inline SitService * _getNewServiceSitParameters(
   SitParameters * param,
   uint16_t serviceId,
   uint8_t runningStatus
 )
 {
-  SitService * prog;
-
   if (SIT_MAX_NB_ALLOWED_SERVICES <= param->usedServices)
     LIBBLU_ERROR_NRETURN("Too many program indexes in SIT parameters.\n");
 
-  prog = param->services + param->usedServices++;
+  SitService * prog = &param->services[param->usedServices++];
   prog->serviceId = serviceId;
   prog->runningStatus = runningStatus;
   prog->usedDescriptors = 0;
@@ -904,13 +902,10 @@ static inline SitService * getNewServiceSitParameters(
 
 int prepareSITParam(
   SitParameters * dst,
-  uint32_t muxingRate,
+  uint64_t muxingRate,
   uint16_t programNumber
 )
 {
-  int ret;
-
-  DescriptorParameters descParam;
   Descriptor * desc;
 
   assert(NULL != dst);
@@ -918,21 +913,22 @@ int prepareSITParam(
   setDefaultSitParameters(dst);
 
   /* Partial Transport Stream descriptor */
-  descParam.partialTSDescriptor = (PartialTSDescriptorParameters) {
-    .peakRate = muxingRate / 400,
-      /* e.g. muxingRate = 48 Mb/s = 48000000 b/s */
-    .minimumOverallSmoothingRate = 0x3FFFFF,
-    .maximumOverallSmoothingBuffer = 0x3FFF
+  DescriptorParameters descParam = {
+    .partialTSDescriptor = {
+      .peakRate = muxingRate / 400, // e.g. muxingRate = 48 Mb/s = 48000000 b/s
+      .minimumOverallSmoothingRate = 0x3FFFFF,
+      .maximumOverallSmoothingBuffer = 0x3FFF
+    }
   };
 
-  if (NULL == (desc = getNewDescriptorSitParameters(dst)))
+  if (NULL == (desc = _getNewDescriptorSitParameters(dst)))
     LIBBLU_ERROR_RETURN(
       "Too many SIT program descriptors defined (%u < %u).\n",
       PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS,
       dst->usedDescriptors
     );
 
-  ret = prepareDescriptor(
+  int ret = prepareDescriptor(
     desc,
     DESC_TAG_PARTIAL_TS_DESCRIPTOR,
     descParam,
@@ -942,7 +938,7 @@ int prepareSITParam(
     return -1;
 
   /* Program */
-  if (NULL == getNewServiceSitParameters(dst, programNumber, 0x0))
+  if (NULL == _getNewServiceSitParameters(dst, programNumber, 0x0))
     LIBBLU_ERROR_RETURN(
       "Too many SIT programs defined (%u < %u).\n",
       PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS,

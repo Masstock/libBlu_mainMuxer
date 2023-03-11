@@ -886,8 +886,6 @@ static inline const char * H264WeightedBipredIdcStr(
   return "Unknown";
 }
 
-#define H264_MAX_SLICE_GROUPS  8
-
 typedef struct {
   H264SliceGroupMapTypeValue slice_group_map_type;
 
@@ -996,7 +994,7 @@ static inline const char * H264PicStructValueStr(
   return "Unknown";
 }
 
-#define H264_PIC_STRUCT_MAX_NUM_CLOCK_TS 3
+#define H264_PIC_STRUCT_MAX_NUM_CLOCK_TS  3
 
 typedef enum {
   H264_CT_TYPE_PROGRESSIVE = 0,
@@ -1144,8 +1142,8 @@ typedef struct {
 #define H264_MAX_SUPPORTED_RBSP_SEI_MESSAGES 3
 
 typedef struct {
-  unsigned messagesNb;
   H264SeiMessageParameters messages[H264_MAX_SUPPORTED_RBSP_SEI_MESSAGES];
+  unsigned messagesNb;
 } H264SeiRbspParameters;
 
 typedef struct {
@@ -1325,7 +1323,7 @@ static inline const char * H264ColourPlaneIdValueStr(
   return "Unknown";
 }
 
-#define H264_MAX_ALLOWED_MOD_OF_PIC_NUMS_IDC 32
+#define H264_MAX_ALLOWED_MOD_OF_PIC_NUMS_IDC  32
 
 typedef enum {
   H264_MOD_OF_PIC_IDC_SUBSTRACT_ABS_DIFF = 0,
@@ -1587,14 +1585,25 @@ typedef struct {
   /* H264SliceDataParameters sliceData; */
 } H264SliceLayerWithoutPartitioningParameters;
 
+typedef union {
+  H264SPSDataParameters sps;
+} H264AUNalUnitReplacementData;
+
+static inline H264AUNalUnitReplacementData ofSpsH264AUNalUnitReplacementData(
+  H264SPSDataParameters sps
+)
+{
+  return (H264AUNalUnitReplacementData) {.sps = sps};
+}
+
 typedef struct {
   H264NalUnitTypeValue nal_unit_type;
 
   int64_t startOffset;
   int64_t length;
 
+  H264AUNalUnitReplacementData replacementParameters;
   bool replace;
-  void * replacementParam; /* Type defined by 'nalUnitType' */
 } H264AUNalUnit, *H264AUNalUnitPtr;
 
 typedef struct {
@@ -1715,6 +1724,11 @@ typedef struct {
   unsigned consecutiveBPicNb;
 } H264ConstraintsParam;
 
+unsigned getH264BrNal(
+  H264ConstraintsParam constraints,
+  H264ProfileIdcValue profile_idc
+);
+
 /** \~english
  * \brief Last picture properties.
  *
@@ -1767,12 +1781,15 @@ typedef struct {
 
   bool reachVclNaluOfaPrimCodedPic;  /**< Is the first VCL NALU of the current Access Unit reached. Used to determine start of a new access unit and completion of the previous one. */
 
-  int32_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
+  int64_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
 
   bool halfPicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
   int32_t initDecPicNbCntShift;  /**< Initial picture decoding delay in pictures units. */
 
   int32_t PicOrderCnt; /**< PicOrderCnt of current picture. */
+
+  int64_t LastMaxStreamPicOrderCnt;
+  int64_t MaxStreamPicOrderCnt;
 
   H264NalUnitTypeValue lstNaluType;  /**< Last parsed NALU nal_unit_type. */
   H264LastPictureProperties lstPic;  /**< Last picture values.           */
@@ -1811,11 +1828,24 @@ typedef struct {
 } H264CurrentProgressParam;
 
 typedef struct {
+#if 0
   void * linkedParam; /* Type defined by list name */
 
   size_t length;
   unsigned dataSectionIdx;
+#else
+  H264AUNalUnitReplacementData linkedParam;
+  unsigned dataSectionIdx;
+  size_t dataSectionSize;
+#endif
 } H264ModifiedNalUnit;
+
+static inline H264SPSDataParameters spsH264ModifiedNalUnit(
+  H264ModifiedNalUnit unit
+)
+{
+  return unit.linkedParam.sps;
+}
 
 typedef struct {
   H264ModifiedNalUnit * sequenceParametersSets;
@@ -1824,10 +1854,6 @@ typedef struct {
   bool patchBufferingPeriodSeiPresent;
   H264ModifiedNalUnit bufferingPeriodSeiMsg;
 } H264ModifiedNalUnitsList;
-
-typedef struct {
-  bool notFirstSyntaxElement;
-} H264CabacParsingContext;
 
 /* Spec data functions : */
 unsigned getH264MaxMBPS(

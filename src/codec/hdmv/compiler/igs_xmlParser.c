@@ -138,6 +138,13 @@ void echoDebugIgsXmlFile(
   va_end(args);
 }
 
+static unsigned lastParsedNodeLineIgsCompilerContext(
+  const IgsCompilerContextPtr ctx
+)
+{
+  return ctx->xmlCtx->lastParsedNodeLine;
+}
+
 #if 0
 #define IGS_COMPILER_DEFAULT_OBJ_ALLOC 16
 
@@ -335,7 +342,7 @@ int parseCommonSettingsIgsXmlFile(
         "value shall be an integer value in string format "
         "(\"1920\", \"1440\", \"1280\" or \"720\", not %u) (line %u).\n",
         value,
-        XML_CTX(ctx)->lastParsedNodeLine
+        lastParsedNodeLineIgsCompilerContext(ctx)
       );
     }
 
@@ -368,7 +375,7 @@ int parseCommonSettingsIgsXmlFile(
         "Height argument value shall be an integer value in string format "
         "(\"1080\", \"720\", \"480\" or \"576\", not %u) (line %u).\n",
         value,
-        XML_CTX(ctx)->lastParsedNodeLine
+        lastParsedNodeLineIgsCompilerContext(ctx)
       );
     }
 
@@ -395,7 +402,7 @@ int parseCommonSettingsIgsXmlFile(
         "Frame argument value shall be in string format "
         "(\"23.976\", \"24\", \"25\", \"29.970\", \"50\", \"59.94\") "
         "(line %u, %f).\n",
-        XML_CTX(ctx)->lastParsedNodeLine,
+        lastParsedNodeLineIgsCompilerContext(ctx),
         frameRate
       );
     }
@@ -525,8 +532,8 @@ int parseCompositionParametersIgsXmlFile(
   size_t i;
 
   static const xmlChar * streamModels[] = {
-    (xmlChar *) IGS_COMPILER_XML_STREAM_MODEL_OOM,
-    (xmlChar *) IGS_COMPILER_XML_STREAM_MODEL_MULTIPLEXED
+    (xmlChar *) IGS_COMPILER_XML_STREAM_MODEL_MULTIPLEXED,
+    (xmlChar *) IGS_COMPILER_XML_STREAM_MODEL_OOM
   };
   static const xmlChar * uiModels[] = {
     (xmlChar *) IGS_COMPILER_XML_UI_MODEL_POP_UP,
@@ -557,7 +564,7 @@ int parseCompositionParametersIgsXmlFile(
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
       "Unknown stream model 'stream' argument in composition parameters's "
       "model node in input XML file (line %u).\n",
-      XML_CTX(ctx)->lastParsedNodeLine
+      lastParsedNodeLineIgsCompilerContext(ctx)
     );
 
   LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
@@ -585,7 +592,7 @@ int parseCompositionParametersIgsXmlFile(
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
       "Unknown user interface model 'user_interface' argument in composition "
       "parameters's model node in input XML file (line %u).\n",
-      XML_CTX(ctx)->lastParsedNodeLine
+      lastParsedNodeLineIgsCompilerContext(ctx)
     );
 
   LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(
@@ -595,10 +602,10 @@ int parseCompositionParametersIgsXmlFile(
   );
   freeXmlCharPtr(&string);
 
-  if (param->stream_model == HDMV_STREAM_MODEL_OOM) {
+  if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
     uint64_t value;
 
-    /* Out of Mux specific parameters */
+    /* In Mux specific parameters */
     GET_UINT64(
       &value, 0,
       "Expect a positive or zero value for 'composition' option of section "
@@ -611,7 +618,7 @@ int parseCompositionParametersIgsXmlFile(
         "'composition' option of section 'time_out_pts' value exceed maximum "
         "value 0x1FFFFFFFF or 8,589,934,591 ticks with %u (line %u).\n",
         value,
-        XML_CTX(ctx)->lastParsedNodeLine
+        lastParsedNodeLineIgsCompilerContext(ctx)
       );
 
     param->oomRelatedParam.composition_time_out_pts = value & 0x1FFFFFFFF;
@@ -633,7 +640,7 @@ int parseCompositionParametersIgsXmlFile(
         "'selection' option of section 'time_out_pts' value exceed maximum "
         "value of 0x1FFFFFFFF or 8,589,934,591 ticks with %u (line %u).\n",
         value,
-        XML_CTX(ctx)->lastParsedNodeLine
+        lastParsedNodeLineIgsCompilerContext(ctx)
       );
 
     param->oomRelatedParam.selection_time_out_pts = value & 0x1FFFFFFFF;
@@ -701,7 +708,7 @@ HdmvPicturePtr parseImgIgsXmlFile(
     printNbObjectsFromExprErrorIgsXmlFile(0, "//@path");
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(
       "Missing required 'path' argument on img in input XML file (line %u).\n",
-      XML_CTX(ctx)->lastParsedNodeLine
+      lastParsedNodeLineIgsCompilerContext(ctx)
     );
   }
 
@@ -744,12 +751,12 @@ HdmvPicturePtr parseImgIgsXmlFile(
   if ((0 < width && width < 8) || (0 < height && height < 8))
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_NRETURN(
       "Image object dimensions cannot be smaller than 8x8 pixels (line %u).\n",
-      XML_CTX(ctx)->lastParsedNodeLine
+      lastParsedNodeLineIgsCompilerContext(ctx)
     );
 
   LIBBLU_HDMV_IGS_COMPL_XML_INFO(
     "Loading picture '%" PRI_LBCS "' (line %u).\n",
-    imgPath, XML_CTX(ctx)->lastParsedNodeLine
+    imgPath, lastParsedNodeLineIgsCompilerContext(ctx)
   );
 
   if (NULL == (pic = openHdmvPicture(&ctx->imgLibs, imgPath, ctx->conf)))
@@ -800,7 +807,7 @@ HdmvPicturePtr parseRefImgIgsXmlFile(
   if (NULL == pic) {
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR(
       "No reference picture called '%" PRI_LBCS "' exits (line: %u).\n",
-      name, XML_CTX(ctx)->lastParsedNodeLine
+      name, lastParsedNodeLineIgsCompilerContext(ctx)
     );
 
     free(name);
@@ -871,7 +878,7 @@ static int parseReferencePictureIndexerIgsXmlFile(
   if (NULL == name)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(
       "Missing reference image 'name' field (line: %u).\n",
-      XML_CTX(ctx)->lastParsedNodeLine
+      lastParsedNodeLineIgsCompilerContext(ctx)
     );
 
   LIBBLU_HDMV_IGS_COMPL_XML_DEBUG("   Adding image to references indexer...\n");
@@ -965,7 +972,7 @@ int parsePageBogIgsXmlFile(
       "Number of buttons in BOG %d at line %u in input XML file is invalid "
       "(%d, shall be between 0-255).\n",
       index,
-      XML_CTX(ctx)->lastParsedNodeLine,
+      lastParsedNodeLineIgsCompilerContext(ctx),
       nbButtons
     );
 
@@ -979,7 +986,7 @@ int parsePageBogIgsXmlFile(
     );
     LIBBLU_HDMV_IGS_COMPL_XML_WARNING(
       "BOG %d at line %u is empty.\n",
-      index, XML_CTX(ctx)->lastParsedNodeLine
+      index, lastParsedNodeLineIgsCompilerContext(ctx)
     );
   }
 
@@ -1026,7 +1033,7 @@ int parsePageBogIgsXmlFile(
       LIBBLU_HDMV_IGS_COMPL_XML_ERROR(
         "BOG's button ids order broken (duplicated values or broken order) "
         "(line: %u).\n",
-        XML_CTX(ctx)->lastParsedNodeLine
+        lastParsedNodeLineIgsCompilerContext(ctx)
       );
       LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
         " -> Buttons' ids shall strictly grows "
@@ -1502,7 +1509,7 @@ int parsePageBogIgsXmlFile(
         "Number of buttons in BOG %d at line %u in input XML file is invalid "
         "(%d, shall be between 0-255).\n",
         index,
-        XML_CTX(ctx)->lastParsedNodeLine,
+        lastParsedNodeLineIgsCompilerContext(ctx),
         nbButtons
       );
 

@@ -104,7 +104,9 @@ write_error:
 }
 
 int appendDirEsms(
-  EsmsFileHeaderPtr script, const uint8_t dirId, const uint64_t dirOffset
+  EsmsFileHeaderPtr script,
+  uint8_t dirId,
+  uint64_t dirOffset
 )
 {
   unsigned dirIdx;
@@ -159,21 +161,23 @@ int appendSourceFileEsms(
   unsigned * newFileIdx
 )
 {
-  int ret;
-
-  uint8_t crcBuf[CRC32_USED_BYTES];
   BitstreamReaderPtr input;
 
   if (NULL == (input = createBitstreamReader(filename, READ_BUFFER_LEN)))
     return -1;
-  if (readBytes(input, crcBuf, CRC32_USED_BYTES) < 0)
+
+  int64_t inputSize = remainingSize(input);
+  size_t crcSize = MIN((size_t) inputSize, CRC32_USED_BYTES);
+  uint8_t crcBuf[CRC32_USED_BYTES];
+
+  if (readBytes(input, crcBuf, crcSize) < 0)
     goto free_return;
 
-  ret = appendSourceFileEsmsWithCrc(
+  int ret = appendSourceFileEsmsWithCrc(
     script,
     filename,
-    CRC32_USED_BYTES,
-    lb_compute_crc32(crcBuf, 0, CRC32_USED_BYTES),
+    crcSize,
+    lb_compute_crc32(crcBuf, 0, crcSize),
     newFileIdx
   );
 
@@ -371,7 +375,8 @@ int writeEsmsEsPropertiesSection(
 }
 
 int writeEsmsPesCuttingHeader(
-  BitstreamWriterPtr esmsFile, EsmsFileHeaderPtr script
+  BitstreamWriterPtr esmsFile,
+  EsmsFileHeaderPtr script
 )
 {
   assert(NULL != esmsFile);
@@ -979,10 +984,26 @@ int writeEsmsDataBlocksDefSection(
   return 0;
 }
 
-int addEsmsFileEnd(BitstreamWriterPtr esmsFile, EsmsFileHeaderPtr script)
+int addEsmsFileEnd(
+  BitstreamWriterPtr esmsFile,
+  EsmsFileHeaderPtr script
+)
 {
+
+#define APPEND_DIR(id)  appendDirEsms(script, id, tellWritingPos(esmsFile))
+
+  /* Complete ESMS PES Cutting section. */
+  if (script->commandsPipeline.nbFrames == 0) {
+    /* Init section if never initialized */
+    if (writeEsmsPesCuttingHeader(esmsFile, script) < 0)
+      return -1;
+  }
+  /* [u8 endMarker] // ESMS PES Cutting section loop end marker. */
+  if (writeByte(esmsFile, ESMS_SCRIPT_END_MARKER) < 0)
+    return -1;
+
   /* ES Properties */
-  if (appendDirEsms(script, ESMS_DIRECTORY_ID_ES_PROP, tellWritingPos(esmsFile)) < 0)
+  if (APPEND_DIR(ESMS_DIRECTORY_ID_ES_PROP) < 0)
     return -1;
 
   if (writeEsmsEsPropertiesSection(esmsFile, script) < 0)
@@ -990,11 +1011,7 @@ int addEsmsFileEnd(BitstreamWriterPtr esmsFile, EsmsFileHeaderPtr script)
 
   if (0 < nbUsedEntriesEsmsDataBlocks(script->dataBlocks)) {
     /* Data blocks definition */
-    if (
-      appendDirEsms(
-        script, ESMS_DIRECTORY_ID_ES_DATA_BLK_DEF, tellWritingPos(esmsFile)
-      ) < 0
-    )
+    if (APPEND_DIR(ESMS_DIRECTORY_ID_ES_DATA_BLK_DEF) < 0)
       return -1;
 
     if (writeEsmsDataBlocksDefSection(esmsFile, script) < 0)
@@ -1002,15 +1019,14 @@ int addEsmsFileEnd(BitstreamWriterPtr esmsFile, EsmsFileHeaderPtr script)
   }
 
   /* Codec specific parameters */
-  if (
-    appendDirEsms(
-      script, ESMS_DIRECTORY_ID_ES_FMT_PROP, tellWritingPos(esmsFile)
-    ) < 0
-  )
+  if (APPEND_DIR(ESMS_DIRECTORY_ID_ES_FMT_PROP) < 0)
     return -1;
 
   if (writeEsmsEsCodecSpecParametersSection(esmsFile, script) < 0)
     return -1;
+
+#undef APPEND_DIR
+
   return 0;
 }
 

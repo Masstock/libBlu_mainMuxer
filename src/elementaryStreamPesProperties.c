@@ -310,6 +310,21 @@ LibbluESPesPacketPropertiesNodePtr createLibbluESPesPacketPropertiesNode(
   return node;
 }
 
+void destroyLibbluESPesPacketPropertiesNode(
+  LibbluESPesPacketPropertiesNodePtr node,
+  bool recursive
+)
+{
+  if (NULL == node)
+    return;
+
+  if (recursive)
+    destroyLibbluESPesPacketPropertiesNode(node->next, true);
+
+  destroyEsmsCommandNode(node->commands, true);
+  free(node);
+}
+
 LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   EsmsPesPacketNodePtr scriptNode,
   uint64_t refPcr,

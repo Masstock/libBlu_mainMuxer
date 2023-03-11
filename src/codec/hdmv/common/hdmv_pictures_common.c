@@ -12,18 +12,32 @@
 
 /* ### HDMV Picture infos : ################################################ */
 
-static bool checkPictureDimensions(
+static int _checkPictureDimensions(
   unsigned width,
   unsigned height
 )
 {
-  if (!width || !height)
-    return true;
-  if (width < HDMV_PIC_MIN_WIDTH || HDMV_PIC_MAX_WIDTH < width)
-    LIBBLU_HDMV_PIC_ERROR_BRETURN("Invalid width %u.\n", width);
-  if (height < HDMV_PIC_MIN_HEIGHT || HDMV_PIC_MAX_HEIGHT < height)
-    LIBBLU_HDMV_PIC_ERROR_BRETURN("Invalid height %u.\n", height);
-  return true;
+  bool valid = true;
+
+  if (width < HDMV_PIC_MIN_WIDTH) {
+    LIBBLU_HDMV_PIC_ERROR("Picture width is below 8 px minimum.");
+    valid = false;
+  }
+  if (HDMV_PIC_MAX_WIDTH < width) {
+    LIBBLU_HDMV_PIC_ERROR("Picture width exceed 2048 px limit.");
+    valid = false;
+  }
+
+  if (height < HDMV_PIC_MIN_HEIGHT) {
+    LIBBLU_HDMV_PIC_ERROR("Picture height is below 8 px minimum.");
+    valid = false;
+  }
+  if (HDMV_PIC_MAX_HEIGHT < height) {
+    LIBBLU_HDMV_PIC_ERROR("Picture height exceed 2048 px limit.");
+    valid = false;
+  }
+
+  return (valid) ? 0 : -1;
 }
 
 /* ### HDMV Picture : ###################################################### */
@@ -33,11 +47,6 @@ static int allocateRgba(
   size_t size
 )
 {
-  if (!size) {
-    *dst = NULL;
-    return 0;
-  }
-
   if (NULL == (*dst = (uint32_t *) realloc(*dst, size * sizeof(uint32_t))))
     LIBBLU_HDMV_PIC_ERROR_RETURN("Memory allocation error.\n");
   return 0;
@@ -48,11 +57,6 @@ static int allocatePal(
   size_t size
 )
 {
-  if (!size) {
-    *dst = NULL;
-    return 0;
-  }
-
   if (NULL == (*dst = (uint8_t *) realloc(*dst, size)))
     LIBBLU_HDMV_PIC_ERROR_RETURN("Memory allocation error.\n");
   return 0;
@@ -71,11 +75,6 @@ static int allocateRle(
   size_t size
 )
 {
-  if (!size) {
-    *dst = NULL;
-    return 0;
-  }
-
   if (NULL == (*dst = (uint8_t *) malloc(size)))
     LIBBLU_HDMV_PIC_ERROR_RETURN("Memory allocation error.\n");
   return 0;
@@ -92,7 +91,7 @@ HdmvPicturePtr createHdmvPicture(
   HdmvPicturePtr pic;
   size_t picSize, rleSize;
 
-  if (!checkPictureDimensions(width, height))
+  if (_checkPictureDimensions(width, height) < 0)
     return NULL;
   rleSize = maxRleSize(width, height);
   picSize = width * height;
@@ -759,7 +758,7 @@ int setSizeHdmvPicture(
 {
   size_t picSize, rleSize;
 
-  if (!checkPictureDimensions(width, height))
+  if (_checkPictureDimensions(width, height) < 0)
     return -1;
   rleSize = maxRleSize(width, height);
   picSize = width * height;

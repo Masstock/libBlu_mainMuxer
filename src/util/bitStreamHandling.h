@@ -80,18 +80,6 @@ typedef struct {
 } BitstreamHandler, *BitstreamWriterPtr, *BitstreamReaderPtr;
 
 /** \~english
- * \brief Generate a unique identifier for #BitstreamHandler structures.
- *
- * \return uint64_t Generated identifier.
- *
- * Uses a static incremented variable. Generated identifier can be used to
- * distinguish two different bitstream handlers.
- */
-uint64_t generatedBistreamIdentifier(
-  void
-);
-
-/** \~english
  * \brief Creates a bitstream reading handling structure on supplied file.
  *
  * \param inputFilename Bitstream linked file name.
@@ -132,19 +120,9 @@ static inline BitstreamReaderPtr createBitstreamReaderDefBuf(
  *
  * \param bitStream Reading bitstream object to free.
  */
-static inline void closeBitstreamReader(
+void closeBitstreamReader(
   BitstreamReaderPtr bitStream
-)
-{
-  if (NULL == bitStream)
-    return;
-
-  free(bitStream->byteArray);
-  if (NULL != bitStream->file)
-    fclose(bitStream->file);
-  free(bitStream->buffer);
-  free(bitStream);
-}
+);
 
 /** \~english
  * \brief Creates a bitstream writing handling structure on supplied file.
@@ -191,73 +169,16 @@ void closeBitstreamWriter(
   BitstreamWriterPtr bitStream
 );
 
-static inline int initCrc(
+int initCrc(
   CrcContext * crcCtx,
   CrcParam param,
   unsigned initialValue
-)
-{
-  assert(!crcCtx->crcInUse);
+);
 
-  if (initialValue > 0xFFFF || 32 < param.crcLength) {
-    LIBBLU_ERROR(
-      "CRC computation overflows "
-      "(inital value: %u / 65355, crc length: %u).\n",
-      initialValue, param.crcLength
-    );
-
-    LIBBLU_ERROR_RETURN(
-      "CRC computation buffer overflows.\n"
-    );
-  }
-
-  crcCtx->crcInUse = true;
-  crcCtx->crcBuffer = initialValue;
-  crcCtx->crcParam = param;
-
-  return 0;
-}
-
-static inline void applyCrc(
+void applyCrc(
   CrcContext * crcCtx,
   uint8_t byte
-)
-{
-  uint32_t crcModulo, crcMask;
-  uint8_t i;
-
-  assert(crcCtx->crcInUse);
-
-  crcMask = (crcModulo = (uint32_t) 1 << crcCtx->crcParam.crcLength) - 1;
-
-  if (crcCtx->crcParam.crcLookupTable != NO_CRC_TABLE) {
-    /* Applying CRC look-up table */
-    crcCtx->crcBuffer =
-      ((crcCtx->crcBuffer << 8) & crcMask) ^
-      getCrcTableValue(
-        byte ^ (uint8_t) ((crcCtx->crcBuffer & crcMask) >> 8),
-        crcCtx->crcParam.crcLookupTable
-      )
-    ;
-
-    return;
-  }
-
-  /* Manual CRC Operation : */
-  for (i = 0; i < 8; i++) {
-    if (crcCtx->crcParam.crcBigByteOrder)
-      crcCtx->crcBuffer = (crcCtx->crcBuffer << 1) ^ (
-        ((uint32_t) byte >> (7 - i)) & 1
-      );
-    else
-      crcCtx->crcBuffer = (crcCtx->crcBuffer << 1) ^ (
-        (((uint32_t) byte >> (7 - i)) & 1) << crcCtx->crcParam.crcLength
-      );
-
-    if (crcModulo <= crcCtx->crcBuffer)
-      crcCtx->crcBuffer ^= crcCtx->crcParam.crcPoly;
-  }
-}
+);
 
 static inline int endCrc(
   CrcContext * crcCtx,
@@ -272,65 +193,13 @@ static inline int endCrc(
   return 0;
 }
 
-static inline int fillBitstreamReader(
-  BitstreamReaderPtr bs
+static inline int64_t remainingSize(
+  const BitstreamReaderPtr bitStream
 )
 {
-  size_t readedSize;
+  assert(NULL != bitStream);
 
-  if (bs->byteArrayOff < bs->byteArraySize)
-    return 0;
-
-  readedSize = fread(bs->byteArray, 1, bs->byteArraySize, bs->file);
-
-  if (bs->byteArraySize != readedSize) {
-    if (ferror(bs->file))
-      LIBBLU_ERROR_RETURN(
-        "Error happen during input file reading, %s (errno: %d).\n",
-        strerror(errno),
-        errno
-      );
-
-    LIBBLU_DEBUG_COM(
-      "Unable to completly fill input buffer, reducing its size "
-      "(old: %zu, new: %zu, EOF: %s).\n",
-      bs->byteArraySize,
-      readedSize,
-      BOOL_INFO(feof(bs->file))
-    );
-
-    /* Not enouth data to fill entire read buffer,
-    updating buffer virtual length. */
-    bs->byteArraySize = readedSize;
-  }
-  bs->fileOffset = bs->fileOffset + readedSize;
-  bs->byteArrayOff = 0;
-
-  return 0;
-}
-
-static inline int flushBitstreamWriter(
-  BitstreamWriterPtr bs
-)
-{
-  size_t readedSize;
-
-  if (bs->byteArrayOff == 0)
-    return 0; /* Empty writing buffer */
-
-  readedSize = fwrite(bs->byteArray, 1, bs->byteArrayOff, bs->file);
-
-  if (bs->byteArrayOff != readedSize)
-    LIBBLU_ERROR_RETURN(
-      "Error happen during output file writing, %s (errno: %d).\n",
-      strerror(errno),
-      errno
-    );
-
-  bs->fileOffset += bs->byteArrayOff;
-  bs->byteArrayOff = 0;
-
-  return 0;
+  return bitStream->fileSize - bitStream->fileOffset;
 }
 
 static inline int isEof(
@@ -436,117 +305,11 @@ static inline int seekPos(
   return 0;
 }
 
-static inline int nextBytes(
+int nextBytes(
   BitstreamReaderPtr bitStream,
   uint8_t * data,
   size_t dataLen
-)
-{
-  size_t shiftingSteps;
-  size_t readedDataLen;
-
-  if (isEof(bitStream)) /* End of file */
-    return -1;
-
-  if (bitStream->byteArraySize < bitStream->byteArrayOff + dataLen) {
-    /* If asked bytes are out of the current reading buffer,
-    perform shifting in buffer. */
-
-#if 1
-    shiftingSteps = MIN(
-      bitStream->byteArraySize - bitStream->byteArrayOff,
-      bitStream->byteArrayOff
-    );
-
-    memmove(
-      bitStream->byteArray,
-      bitStream->byteArray + bitStream->byteArrayOff,
-      shiftingSteps
-    );
-    bitStream->byteArrayOff = 0;
-
-    readedDataLen = fread(
-      bitStream->byteArray + shiftingSteps,
-      sizeof(uint8_t),
-      bitStream->byteArraySize - shiftingSteps,
-      bitStream->file
-    );
-
-    if (readedDataLen != bitStream->byteArraySize - shiftingSteps) {
-      bitStream->byteArraySize = shiftingSteps + readedDataLen;
-
-      if (ferror(bitStream->file)) {
-        LIBBLU_ERROR_RETURN(
-          "Input file reading error, %s (errno: %d).\n",
-          strerror(errno),
-          errno
-        );
-      }
-
-      if (readedDataLen + shiftingSteps < dataLen) {
-        /* LIBBLU_ERROR_RETURN(
-          "Unable to read next bytes, prematurate end of file reached.\n"
-        ); */
-        return -1;
-      }
-    }
-    bitStream->fileOffset += readedDataLen;
-
-#else
-    size_t i;
-
-    shiftingSteps = (
-      bitStream->byteArrayOff + dataLen
-    ) - bitStream->byteArraySize;
-
-    if (shiftingSteps > bitStream->byteArrayOff) {
-      LIBBLU_ERROR_RETURN(
-        "Not enougth data in reading buffer to perform shifting.\n"
-      );
-    }
-
-    bitStream->byteArrayOff -= shiftingSteps;
-    for (
-      i = bitStream->byteArrayOff;
-      i < bitStream->byteArraySize - shiftingSteps;
-      i++
-    ) {
-      bitStream->byteArray[i] = bitStream->byteArray[i + shiftingSteps];
-    }
-
-    if (shiftingSteps != 0) {
-      readedDataLen = fread(
-        bitStream->byteArray + i,
-        sizeof(uint8_t),
-        shiftingSteps,
-        bitStream->file
-      );
-
-      if (readedDataLen != shiftingSteps) {
-        bitStream->byteArrayOff = bitStream->byteArraySize;
-
-        if (ferror(bitStream->file)) {
-          perror("Reading error");
-          LIBBLU_ERROR_RETURN(
-            "Input file reading error.\n"
-          );
-        }
-
-        LIBBLU_ERROR_RETURN(
-          "Unable to read next bytes, prematurate end of file reached.\n"
-        );
-      }
-
-      bitStream->fileOffset += readedDataLen;
-    }
-#endif
-  }
-
-  if (NULL != data)
-    memcpy(data, bitStream->byteArray + bitStream->byteArrayOff, dataLen);
-
-  return 0;
-}
+);
 
 static inline uint64_t nextUint64(
   BitstreamReaderPtr bitStream
@@ -636,130 +399,16 @@ static inline bool nextBit(
   return (data >> bitStream->bitCount) & 0x1;
 }
 
-static inline int readBit(
+int readBit(
   BitstreamReaderPtr bitStream,
   bool * bit
-)
-{
-  uint8_t byte;
-  bool b;
+);
 
-  if (nextBytes(bitStream, &byte, 1) < 0)
-    return -1;
-
-  b = (byte >> (--bitStream->bitCount)) & 0x1;
-  if (NULL != bit)
-    *bit = b;
-
-  if (bitStream->bitCount == 0) {
-    /* Applying CRC calculation if in use : */
-    if (IN_USE_BITSTREAM_CRC(bitStream))
-      applyCrc(&bitStream->crcCtx, byte);
-
-    /* A complete byte as been readed, jumping to next one. */
-    bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
-    bitStream->bitCount = 8; /* Reset the number of bits remaining in the current byte. */
-
-    /* If reading offset goes outside of the reading buffer,
-    buffering a new section of readed file. */
-    if (bitStream->byteArraySize <= bitStream->byteArrayOff) {
-      if (fillBitstreamReader(bitStream) < 0)
-        return -1; /* Error happen during low level file reading for buffering. */
-    }
-  }
-
-  return 0;
-}
-
-#if USE_ALTER_BIT_READING
-static inline int readBits(
+int readBits(
   BitstreamReaderPtr bitStream,
   uint32_t * value,
   size_t size
-)
-{
-  uint8_t byte;
-  unsigned readedBitsNb;
-
-  static const unsigned bitmask[9] = {
-    0x0, 0x1, 0x3, 0x7, 0xF,
-    0x1F, 0x3F, 0x7F, 0xFF
-  };
-
-  assert(size <= 32); /* Can't read more than 32 bits using readBits() */
-
-  if (size == 0) {
-    if (NULL != value)
-      *value = 0;
-    return 0;
-  }
-
-  readedBitsNb = MIN(size, bitStream->bitCount);
-  bitStream->bitCount -= readedBitsNb;
-
-  if (nextBytes(bitStream, &byte, 1) < 0)
-    LIBBLU_ERROR_RETURN("Prematurate end of file.\n");
-
-  if (NULL != value)
-    *value = (byte >> bitStream->bitCount) & bitmask[readedBitsNb];
-
-  if (bitStream->bitCount <= 0) {
-    /* Applying CRC calculation if in use : */
-    if (IN_USE_BITSTREAM_CRC(bitStream))
-      applyCrc(&bitStream->crcCtx, byte);
-
-    /* A complete byte as been readed, jumping to next one. */
-    bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
-    bitStream->bitCount = 8; /* Reset the number of bits remaining in the current byte. */
-
-    /* If reading offset goes outside of the reading buffer, buffering a new section of readed file. */
-    if (!isEof(bitStream) && bitStream->byteArraySize <= bitStream->byteArrayOff) {
-      if (fillBitstreamReader(bitStream) < 0)
-        return -1;
-    }
-
-    size -= readedBitsNb;
-    if (0 < size) {
-      /* Reading recursively extra bits in following byte if needed : */
-      uint32_t recursiveValue;
-
-      if (readBits(bitStream, &recursiveValue, size) < 0)
-        return -1;
-      *value = (*value << size) | recursiveValue;
-    }
-  }
-
-  return 0;
-}
-
-#else
-
-static inline int readBits(
-  BitstreamReaderPtr bitStream,
-  uint32_t * value,
-  size_t size
-)
-{
-  bool bit;
-
-  assert(0 < size);
-  assert(size <= 32); /* Can't read more than 32 bits using readBits() */
-
-  if (NULL != value)
-    *value = 0;
-
-  while (length--) {
-    if (readBit(bitStream, &bit) < 0)
-      return -1;
-
-    if (NULL != value)
-      *value = (*value << 1) + ((uint8_t) bit);
-  }
-
-  return 0;
-}
-
-#endif
+);
 
 static inline int readBits64(
   BitstreamReaderPtr bitStream,
@@ -804,179 +453,43 @@ static inline int skipBits(
   return 0;
 }
 
-static inline int readByte(
+int readByte(
   BitstreamReaderPtr bitStream,
   uint8_t * data
-)
-{
-  uint8_t byte;
+);
 
-  assert(NULL != bitStream);
-  assert(NULL != data);
-
-  if (bitStream->bitCount != 8) {
-    uint32_t value;
-
-    if (readBits(bitStream, &value, 8) < 0)
-      return -1;
-
-    *data = value;
-    return 0;
-  }
-
-  if (bitStream->byteArraySize <= bitStream->byteArrayOff) {
-    /* If the end of the reading buffer has been reached,
-    buffering a new file section. */
-    if (fillBitstreamReader(bitStream) < 0)
-      return -1;
-  }
-
-  byte = bitStream->byteArray[bitStream->byteArrayOff++];
-  *data = byte;
-
-  /* Applying CRC calculation if in use : */
-  if (IN_USE_BITSTREAM_CRC(bitStream))
-    applyCrc(&bitStream->crcCtx, byte);
-  return 0;
-}
-
-static inline int readBytes(
+int readBytes(
   BitstreamReaderPtr bs,
   uint8_t * data,
   size_t size
-)
-{
-#if 0
-  size_t i;
+);
 
-  for (i = 0; i < size; i++) {
-    if (readByte(bs, data++) < 0)
-      return -1;
-  }
-#else
-  size_t off = 0;
-
-  while (0 < size) {
-    size_t availableSize = bs->byteArraySize - bs->byteArrayOff;
-
-    if (availableSize < size) {
-      memcpy(data + off, bs->byteArray + bs->byteArrayOff, availableSize);
-
-      off += availableSize;
-      bs->byteArrayOff += availableSize;
-      size -= availableSize;
-
-      if (fillBitstreamReader(bs) < 0)
-        return -1;
-    }
-    else {
-      memcpy(data + off, bs->byteArray + bs->byteArrayOff, size);
-      bs->byteArrayOff += size;
-      break;
-    }
-  }
-
-  /* Applying CRC calculation if in use : */
-  if (IN_USE_BITSTREAM_CRC(bs)) {
-    for (off = 0; off < size; off++)
-      applyCrc(&bs->crcCtx, data[off]);
-  }
-
-#endif
-
-  return 0;
-}
-
-static inline int readValueBigEndian(
+int readValueBigEndian(
   BitstreamReaderPtr bitStream,
   const size_t length,
   uint32_t * value
-)
-{
-  size_t idx;
-  uint32_t v;
-  uint8_t byte;
+);
 
-  assert(0 < length && length <= 4);
-
-  v = 0;
-  byte = 0;
-  for (idx = 0; idx < length; idx++) {
-    if (readByte(bitStream, &byte) < 0)
-      return -1;
-    v |= (uint32_t) (byte << (8 * (length - idx - 1)));
-  }
-
-  if (NULL != value)
-    *value = v;
-
-  return 0;
-}
-
-static inline int readValue64BigEndian(
+int readValue64BigEndian(
   BitstreamReaderPtr bitStream,
   const size_t length,
   uint64_t * value
-)
-{
-  size_t idx;
-  uint64_t v;
-  uint8_t byte;
+);
 
-  assert(0 < length && length <= 8);
-
-  v = 0;
-  for (idx = 0; idx < length; idx++) {
-    if (readByte(bitStream, &byte) < 0)
-      return -1;
-    v |= ((uint64_t) byte << (8 * (length - idx - 1)));
-  }
-
-  if (NULL != value)
-    *value = v;
-
-  return 0;
-}
-
-static inline int readValue64LittleEndian(
+int readValue64LittleEndian(
   BitstreamReaderPtr bitStream,
-  const size_t length,
+  size_t length,
   uint64_t * value
-)
-{
-  size_t idx;
-  uint64_t v;
-  uint8_t byte;
-
-  assert(0 < length && length <= 4);
-
-  v = 0;
-  for (idx = 0; idx < length; idx++) {
-    if (readByte(bitStream, &byte) < 0)
-      return -1;
-    v |= (uint64_t) (byte << (8 * idx));
-  }
-
-  if (NULL != value)
-    *value = v;
-
-  return 0;
-}
+);
 
 static inline int skipBytes(
-  BitstreamReaderPtr bitStream,
-  size_t length
+  BitstreamReaderPtr bs,
+  size_t size
 )
 {
+  uint8_t vlArray[size];
 
-  while (0 < (length--)) {
-    uint8_t ignored;
-
-    if (readByte(bitStream, &ignored) < 0)
-      return -1;
-  }
-
-  return 0;
+  return readBytes(bs, vlArray, size);
 }
 
 static inline int paddingByte(
@@ -1007,75 +520,16 @@ static inline int paddingBoundary(
   return skipBits(bitStream, paddingSize);
 }
 
-static inline int writeByte(
+int writeByte(
   BitstreamWriterPtr bitStream,
   uint8_t data
-)
-{
-  if (bitStream->byteArraySize <= bitStream->byteArrayOff) {
-    if (flushBitstreamWriter(bitStream) < 0)
-      return -1;
-  }
+);
 
-  bitStream->byteArray[bitStream->byteArrayOff++] = data;
-  bitStream->fileSize++;
-
-  return 0;
-}
-
-static inline int writeBytes(
+int writeBytes(
   BitstreamWriterPtr bs,
   const uint8_t * data,
   size_t size
-)
-{
-#if 0
-  size_t i;
-
-  assert(NULL != bs);
-  assert(NULL != data);
-
-  for (i = 0; i < size; i++) {
-    if (bs->byteArraySize <= bs->byteArrayOff) {
-      if (flushBitstreamWriter(bs) < 0)
-        return -1;
-    }
-
-    bs->byteArray[bs->byteArrayOff++] = data[i];
-    bs->fileSize++;
-  }
-#else
-  size_t off = 0;
-  size_t totalSize = size;
-
-  assert(NULL != bs);
-  assert(NULL != data);
-
-  while (0 < size) {
-    size_t availableSize = bs->byteArraySize - bs->byteArrayOff;
-
-    if (availableSize < size) {
-      memcpy(bs->byteArray + bs->byteArrayOff, data + off, availableSize);
-
-      off += availableSize;
-      bs->byteArrayOff += availableSize;
-      size -= availableSize;
-
-      if (flushBitstreamWriter(bs) < 0)
-        return -1;
-    }
-    else {
-      memcpy(bs->byteArray + bs->byteArrayOff, data + off, size);
-      bs->byteArrayOff += size;
-      break;
-    }
-  }
-
-  bs->fileSize += totalSize;
-#endif
-
-  return 0;
-}
+);
 
 static inline int writeUint64(
   BitstreamWriterPtr bitStream,

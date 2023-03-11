@@ -26,10 +26,10 @@
 
 #define MAX_NB_STREAMS                                                       32
 
-#define PAT_DELAY                                                   50  * 27000
-#define PMT_DELAY                                                   50  * 27000
-#define SIT_DELAY                                                   500 * 27000
-#define PCR_DELAY                                                   50  * 27000
+#define PAT_DELAY  (50 * 27000)
+#define PMT_DELAY  (50 * 27000)
+#define SIT_DELAY  (500 * 27000)
+#define PCR_DELAY  (50  * 27000)
 
 /* UI Parameters :                                                           */
 #define PROGRESSION_BAR_LATENCY 200
@@ -98,6 +98,8 @@
  * \brief MPEG-TS packet TS header length in bytes.
  */
 #define TP_HEADER_SIZE  4
+
+#define TP_PAYLOAD_SIZE  (TP_SIZE - TP_HEADER_SIZE)
 
 /** \~english
  * \brief BDAV TP_extra_header length in bytes.

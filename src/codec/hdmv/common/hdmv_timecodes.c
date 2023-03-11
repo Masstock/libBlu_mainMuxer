@@ -12,15 +12,15 @@ int copyHdmvTimecodes(
   HdmvTimecodes tm
 )
 {
-  uint64_t * array = NULL;
+  int64_t * array = NULL;
 
   assert(NULL != dst);
 
   if (0 < tm.usedValues) {
     /* Copy array */
-    if (NULL == (array = (uint64_t *) malloc(tm.allocatedValues * sizeof(uint64_t))))
+    if (NULL == (array = (int64_t *) malloc(tm.allocatedValues * sizeof(int64_t))))
       LIBBLU_HDMV_TC_ERROR_RETURN("Memory allocation error.\n");
-    memcpy(array, tm.values, tm.usedValues * sizeof(uint64_t));
+    memcpy(array, tm.values, tm.usedValues * sizeof(int64_t));
   }
 
   *dst = (HdmvTimecodes) {
@@ -37,17 +37,17 @@ int _incrementAllocationHdmvTimecodes(
 )
 {
   size_t newSize;
-  uint64_t * newArray;
+  int64_t * newArray;
 
   newSize = GROW_ALLOCATION(
     tm->allocatedValues,
     HDMV_TIMECODES_DEFAULT_NB_VALUES
   );
 
-  if (lb_mul_overflow(newSize, sizeof(uint64_t)))
+  if (lb_mul_overflow(newSize, sizeof(int64_t)))
     LIBBLU_HDMV_TC_ERROR_RETURN("Too many timecode values, overflow.\n");
 
-  newArray = (uint64_t *) realloc(tm->values, newSize * sizeof(uint64_t));
+  newArray = (int64_t *) realloc(tm->values, newSize * sizeof(int64_t));
   if (NULL == newArray)
     LIBBLU_HDMV_TC_ERROR_RETURN("Memory allocation error.\n");
 
@@ -59,7 +59,7 @@ int _incrementAllocationHdmvTimecodes(
 
 int addHdmvTimecodes(
   HdmvTimecodes * tm,
-  uint64_t value
+  int64_t value
 )
 {
   if (tm->allocatedValues <= tm->usedValues) {

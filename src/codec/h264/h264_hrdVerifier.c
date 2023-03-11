@@ -22,24 +22,24 @@
 
 static int _initH264HrdVerifierDebug(
   H264HrdVerifierDebug * dst,
-  const LibbluESSettingsOptions * options
+  LibbluESSettingsOptions options
 )
 {
-  bool useFileOutput = (NULL != options->echoHrdLogFilepath);
+  bool useFileOutput = (NULL != options.echoHrdLogFilepath);
 
   *dst = (H264HrdVerifierDebug) {
-    .cpb = options->echoHrdCpb,
-    .dpb = options->echoHrdDpb,
+    .cpb = options.echoHrdCpb,
+    .dpb = options.echoHrdDpb,
     .fileOutput = useFileOutput
   };
 
   /* Debug: */
   if (useFileOutput) {
     /* Open debug output file: */
-    if (NULL == (dst->fd = lbc_fopen(options->echoHrdLogFilepath, "w")))
+    if (NULL == (dst->fd = lbc_fopen(options.echoHrdLogFilepath, "w")))
       LIBBLU_H264_HRDV_ERROR_RETURN(
         "Unable to open debugging output file '%s', %s (errno %d).\n",
-        options->echoHrdLogFilepath,
+        options.echoHrdLogFilepath,
         strerror(errno),
         errno
       );
@@ -58,12 +58,12 @@ static void _cleanH264HrdVerifierDebug(
 
 static int _initH264HrdVerifierOptions(
   H264HrdVerifierOptions * dst,
-  const LibbluESSettingsOptions * options
+  LibbluESSettingsOptions options
 )
 {
   lbc * string;
 
-  string = lookupIniFile(options->confHandle, "HRD.CRASHONERROR");
+  string = lookupIniFile(options.confHandle, "HRD.CRASHONERROR");
   if (NULL != string) {
     bool value;
 
@@ -114,7 +114,7 @@ static int _checkInitConstaints(
     /* Rec. ITU-T H.264 A.3.1.j) */
     /* Rec. ITU-T H.264 A.3.3.g) */
     if (constraints->MaxBR * constraints->cpbBrNalFactor < BitRate) {
-      char * name, * coeff;
+      const char * name, * coeff;
 
       if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
         name = "A.3.1.j)", coeff = "1200";
@@ -144,7 +144,7 @@ static int _checkInitConstaints(
 
 
     if (constraints->MaxCPB * constraints->cpbBrNalFactor < CpbSize) {
-      char * name, * coeff;
+      const char * name, * coeff;
 
       if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
         name = "A.3.1.j)", coeff = "1200";
@@ -181,7 +181,7 @@ static int _checkInitConstaints(
       assert(0 < constraints->cpbBrVclFactor);
 
       if (constraints->MaxBR * constraints->cpbBrVclFactor < BitRate) {
-        char * name, * coeff;
+        const char * name, * coeff;
 
         if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
           name = "A.3.1.i)", coeff = "1000";
@@ -200,7 +200,7 @@ static int _checkInitConstaints(
       }
 
       if (constraints->MaxCPB * constraints->cpbBrVclFactor < CpbSize) {
-        char * name, * coeff;
+        const char * name, * coeff;
 
         if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
           name = "A.3.1.i)", coeff = "1000";
@@ -263,7 +263,7 @@ static unsigned _computeMaxDpbFrames(
 }
 
 H264HrdVerifierContextPtr createH264HrdVerifierContext(
-  const LibbluESSettingsOptions * options,
+  LibbluESSettingsOptions options,
   const H264SPSDataParameters * sps,
   const H264ConstraintsParam * constraints
 )
@@ -1179,21 +1179,18 @@ static int _checkH264CpbHrdConformanceTests(
   H264HrdBufferingPeriodParameters * AUNalHrdParam,
   H264SPSDataParameters * AUSpsData,
   H264SliceHeaderParameters * AUSliceHeader,
-  uint64_t Tr_n, unsigned AUNbSlices
+  uint64_t Tr_n,
+  unsigned AUNbSlices
 )
 {
   /* Rec. ITU-T H.264 - Annex C.3 Bitstream conformance */
 
   uint64_t initial_cpb_removal_delay;
-  /* uint64_t Tf_nMinusOne, Tr_nMinusOne; */
-
- /*  double delta_tg90; */
   unsigned maxMBPS; /* H.264 Table A-1 linked to level_idc. */
   double fR; /* H.264 C.3.4. A.3.1/2.a) */
   double minCpbRemovalDelay; /* H.264 C.3.4. A.3.1/2.a) Max(PicSizeInMbs ÷ MaxMBPS, fR) result */
   size_t maxAULength;
   unsigned sliceRate; /* H.264 A.3.3.a) */
-  unsigned maxNbSlices; /* H.264 A.3.3.a) */
 
   assert(NULL != ctx);
   assert(NULL != AUNalHrdParam);
@@ -1205,8 +1202,10 @@ static int _checkH264CpbHrdConformanceTests(
 
   if (60 <= AUSpsData->level_idc && AUSpsData->level_idc <= 62)
     fR = 1.0 / 300.0;
+  else if (!AUSliceHeader->field_pic_flag)
+    fR = 1.0 / 172.0;
   else
-    fR = (AUSliceHeader->field_pic_flag) ? 1.0 / 344.0 : 1.0 / 172.0;
+    fR = 1.0 / 344.0;
 
   if (0 < ctx->nbProcessedAU) {
     uint64_t Tf_nMinusOne = ctx->clockTime;
@@ -1222,33 +1221,46 @@ static int _checkH264CpbHrdConformanceTests(
       )
     ) {
       /* C-15/C-16 equation check. */
+      double delta_tg90, ceil_delta_tg90;
       /* No check if new buffering period introduce different buffering from
         last period. */
 
       /* H.264 C-14 equation. */
-      double delta_tg90 =
+      delta_tg90 =
         _convertTimeH264HrdVerifierContext(ctx, Tr_n - Tf_nMinusOne)
         * H264_90KHZ_CLOCK
       ;
+      ceil_delta_tg90  = ceil(delta_tg90);
 
       /* H.264 C-15/C-16 ceil equation conformance : */
-      if (ceil(delta_tg90) < initial_cpb_removal_delay)
+      if (ceil_delta_tg90 < initial_cpb_removal_delay) {
+        const char * equation = (ctx->cbr) ? "C-16" : "C-15";
+
         LIBBLU_H264_HRDV_ERROR_RETURN(
           "Rec. ITU-T H.264 %s equation is not satisfied "
-          "(delta_tg90 = %.0f < initial_cpb_removal_delay = %" PRIu64 ").\n",
-          (ctx->cbr) ? "C-16" : "C-15",
-          ceil(delta_tg90),
+          "(ceil(delta_tg90) = %.0f "
+          "< initial_cpb_removal_delay = %" PRIu64 ").\n",
+          equation,
+          ceil_delta_tg90,
           initial_cpb_removal_delay
         );
+      }
 
       /* H.264 C-16 floor equation conformance : */
-      if (ctx->cbr && initial_cpb_removal_delay < floor(delta_tg90))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Rec. ITU-T H.264 C-16 equation is not satisfied "
-          "(initial_cpb_removal_delay = %" PRIu64 " < delta_tg90 = %.0f).\n",
-          initial_cpb_removal_delay, floor(delta_tg90)
-        );
+      if (ctx->cbr) {
+        double floor_delta_tg90 = floor(delta_tg90);
+
+        if (initial_cpb_removal_delay < floor_delta_tg90)
+          LIBBLU_H264_HRDV_ERROR_RETURN(
+            "Rec. ITU-T H.264 C-16 equation is not satisfied "
+            "(initial_cpb_removal_delay = %" PRIu64 " "
+            "< floor(delta_tg90) = %.0f).\n",
+            initial_cpb_removal_delay,
+            floor_delta_tg90
+          );
+      }
     }
+
 
     /* NOTE: A.3.1, A.3.2 and A.3.3 conformance verifications are undue by C.3.4 constraint. */
 
@@ -1264,14 +1276,35 @@ static int _checkH264CpbHrdConformanceTests(
       fR
     );
 
-    if ((double) (Tr_n - Tr_nMinusOne) < minCpbRemovalDelay * ctx->second)
-      LIBBLU_H264_HRDV_ERROR_RETURN(
+    if ((double) (Tr_n - Tr_nMinusOne) < minCpbRemovalDelay * ctx->second) {
+      const char * name;
+      double timestamp;
+
+      if (H264_PROFILE_IS_HIGH(AUSpsData->profile_idc))
+        name = "A.3.2.a)";
+      else
+        name = "A.3.1.a)";
+
+      timestamp = _convertTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne);
+
+      if (ctx->options.abortOnError) {
+        LIBBLU_H264_HRDV_ERROR_RETURN(
+          "Rec. ITU-T H.264 %s constraint is not satisfied "
+          "(t_r,n(n) - t_t(n-1) = %f < Max(PicSizeInMbs / MaxMBPS, fR) = %f).\n",
+          name,
+          timestamp,
+          minCpbRemovalDelay
+        );
+      }
+
+      LIBBLU_H264_HRDV_WARNING(
         "Rec. ITU-T H.264 %s constraint is not satisfied "
         "(t_r,n(n) - t_t(n-1) = %f < Max(PicSizeInMbs / MaxMBPS, fR) = %f).\n",
-        (H264_PROFILE_IS_HIGH(AUSpsData->profile_idc)) ? "4.3.2.a)" : "4.3.1.a)",
-        _convertTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne),
+        name,
+        timestamp,
         minCpbRemovalDelay
       );
+    }
 
     /* H.264 A.3.1.d) and A.3.3.j) */
     if (
@@ -1316,31 +1349,40 @@ static int _checkH264CpbHrdConformanceTests(
       || AUSpsData->profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
       || AUSpsData->profile_idc == H264_PROFILE_CAVLC_444_INTRA
     ) {
+      double duration, maxNbSlices;
+
       if (0 == (maxMBPS = constraints->MaxMBPS))
         LIBBLU_H264_HRDV_ERROR_RETURN(
           "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
-          ctx->nMinusOneAUParameters.level_idc
+          AUSpsData->level_idc
         );
 
       if (0 == (sliceRate = constraints->SliceRate))
         LIBBLU_H264_HRDV_ERROR_RETURN(
           "Unable to find a SliceRate value for level_idc = 0x%" PRIx8 ".\n",
-          ctx->nMinusOneAUParameters.level_idc
+          AUSpsData->level_idc
         );
 
-      maxNbSlices = (unsigned) (
-        (double) maxMBPS
-        * _convertTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne)
-        / (double) sliceRate
-      );
+      duration = _convertTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne);
+      maxNbSlices = duration * maxMBPS / sliceRate;
 
-      if (maxNbSlices < AUNbSlices)
-        LIBBLU_H264_HRDV_ERROR_RETURN(
+      if (floor(maxNbSlices) < (double) AUNbSlices) {
+        if (ctx->options.abortOnError) {
+          LIBBLU_H264_HRDV_ERROR_RETURN(
+            "Rec. ITU-T H.264 A.3.3.b) constraint is not satisfied "
+            "(maxNbSlices = %f < nbSlices = %u).\n",
+            maxNbSlices,
+            AUNbSlices
+          );
+        }
+
+        LIBBLU_H264_HRDV_WARNING(
           "Rec. ITU-T H.264 A.3.3.b) constraint is not satisfied "
-          "(maxNbSlices = %u < nbSlices = %u).\n",
+          "(maxNbSlices = %f < nbSlices = %u).\n",
           maxNbSlices,
           AUNbSlices
         );
+      }
     }
   }
   else {
@@ -1388,6 +1430,8 @@ static int _checkH264CpbHrdConformanceTests(
       || AUSpsData->profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
       || AUSpsData->profile_idc == H264_PROFILE_CAVLC_444_INTRA
     ) {
+      unsigned maxNbSlices;
+
       if (0 == (maxMBPS = constraints->MaxMBPS))
         LIBBLU_H264_HRDV_ERROR_RETURN(
           "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
@@ -1570,9 +1614,13 @@ int processAUH264HrdContext(
     _checkH264CpbHrdConformanceTests(
       constraints,
       ctx,
-      AUlength, isNewBufferingPeriod,
-      nal_hrd_parameters, spsData, sliceHeader,
-      Tr_n, curState->nbSlicesInPic
+      AUlength,
+      isNewBufferingPeriod,
+      nal_hrd_parameters,
+      spsData,
+      sliceHeader,
+      Tr_n,
+      curState->nbSlicesInPic
     ) < 0
   )
     return -1;

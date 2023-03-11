@@ -5,9 +5,6 @@
  * \version 0.5
  *
  * \brief
- *
- * \xrefitem references "References" "References list"
- *  [1] Rec. ITU-R BR.601-7 (03/2011)\n
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__PALETTE_DEF_H__
@@ -25,7 +22,7 @@
 typedef enum {
   HDMV_PAL_CM_DISABLED,
 
-  HDMV_PAL_CM_BT_601,
+  HDMV_PAL_CM_BT_601,  /**< Rec. ITU-R BR.601-7 (03/2011) */
   HDMV_PAL_CM_BT_709,
   HDMV_PAL_CM_BT_2020
 } HdmvPaletteColorMatrix;
