@@ -295,14 +295,15 @@ static void printHelp(
   P("                                                                       ");
   P("  --disable-hrd-verif Disable Rec. ITU-T H.264 integrated HRD Verifier.");
   P("                                                                       ");
-  P("  --echo-hrd-cpb      Enable display of Rec. ITU-T H.264 HRD CPB       ");
-  P("                      buffering model on terminal. This option is      ");
-  P("                      overwritten by --disable-hrd-verifier.           ");
-  P("                                                                       ");
-  P("  --echo-hrd-dpb      Enable display of Rec. ITU-T H.264 HRD DPB       ");
-  P("                      buffering model on terminal. This option is      ");
-  P("                      overwritten by --disable-hrd-verifier.           ");
-  P("                                                                       ");
+  // P("  --echo-hrd-cpb      Enable display of Rec. ITU-T H.264 HRD CPB       ");
+  // P("                      buffering model on terminal. This option is      ");
+  // P("                      overwritten by --disable-hrd-verifier.           ");
+  // P("                                                                       ");
+  // P("  --echo-hrd-dpb      Enable display of Rec. ITU-T H.264 HRD DPB       ");
+  // P("                      buffering model on terminal. This option is      ");
+  // P("                      overwritten by --disable-hrd-verifier.           ");
+  // P("                                                                       ");
+  // TODO
   P(" = Debugging options : =============================================== ");
   P("                                                                       ");
   P(" Enabling debugging mode allows to show various informations about     ");
@@ -485,8 +486,6 @@ int main(
 #endif
 
   lbc_printf(PROG_INFOS " (" PROG_ARCH ")\n\n");
-
-  /* defineDebugVerboseLevel(1); */
 
 #if defined(ARCH_WIN32)
 #  define ARG_VAL  argv_wchar[optind-1]

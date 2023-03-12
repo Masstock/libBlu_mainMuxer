@@ -92,7 +92,7 @@ int mainMux(
   bool debugMode;
 
   LIBBLU_DEBUG_COM("Verbose output activated.\n");
-  debugMode = isDebugEnabled() /* || true */;
+  debugMode = isDebugEnabledLibbbluStatus() /* || true */;
 
   if (NULL == (ctx = createLibbluMuxingContext(settings)))
     goto free_return;

@@ -14,7 +14,6 @@
 #define __LIBBLU_MUXER__UTIL__XML_PARSING_H__
 
 #include "common.h"
-#include "messages.h"
 
 /** \~english
  * \brief libXML boolean true macro.

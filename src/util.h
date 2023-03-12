@@ -13,7 +13,6 @@
 #include "util/common.h"
 #include "util/macros.h"
 #include "util/errorCodes.h"
-#include "util/messages.h"
 #include "util/crcLookupTables.h"
 #include "util/hashTables.h"
 #include "util/circularBuffer.h"

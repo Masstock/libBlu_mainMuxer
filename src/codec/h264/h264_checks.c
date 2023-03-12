@@ -3394,9 +3394,6 @@ int checkH264SliceHeaderCompliance(
       "bitstream's profile conformance.\n"
     );
 
-  /* if (param.isIdrPic)
-    handle->curProgParam.idrPresent = true; */
-
   LIBBLU_H264_DEBUG_SLICE(
     "   Address of the first macroblock in slice "
     "(first_mb_in_slice): %" PRIu32 " (0x%" PRIx32 ").\n",

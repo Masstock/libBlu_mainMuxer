@@ -20,7 +20,6 @@
 #include "crcLookupTables.h"
 #include "common.h"
 #include "macros.h"
-#include "messages.h"
 #include "errorCodes.h"
 
 // #define DISABLE_WRITE_BUFFER

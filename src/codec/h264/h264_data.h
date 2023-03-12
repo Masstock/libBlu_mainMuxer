@@ -386,8 +386,8 @@ typedef struct {
 } H264SeqScalingMatrix;
 
 typedef struct {
-  uint64_t BitRate;
-  uint64_t CpbSize;
+  int64_t BitRate;
+  int64_t CpbSize;
   bool cbr_flag;
 
   uint32_t bit_rate_value_minus1;
@@ -411,7 +411,7 @@ typedef struct {
   uint8_t time_offset_length;
 } H264HrdParameters;
 
-static inline uint64_t BitRateH264HrdParameters(
+static inline int64_t BitRateH264HrdParameters(
   H264HrdParameters hrd_parameters,
   unsigned SchedSelIdx
 )
@@ -421,7 +421,7 @@ static inline uint64_t BitRateH264HrdParameters(
   return hrd_parameters.schedSel[SchedSelIdx].BitRate;
 }
 
-static inline uint64_t CpbSizeH264HrdParameters(
+static inline int64_t CpbSizeH264HrdParameters(
   H264HrdParameters hrd_parameters,
   unsigned SchedSelIdx
 )
@@ -431,7 +431,7 @@ static inline uint64_t CpbSizeH264HrdParameters(
   return hrd_parameters.schedSel[SchedSelIdx].CpbSize;
 }
 
-static inline uint64_t cbr_flagH264HrdParameters(
+static inline bool cbr_flagH264HrdParameters(
   H264HrdParameters hrd_parameters,
   unsigned SchedSelIdx
 )
@@ -1754,6 +1754,7 @@ typedef struct {
 } H264LastPictureProperties;
 
 #define H264_PICTURES_BEFORE_RESTART  20
+#define H264_AU_DEFAULT_NB_NALUS  8
 
 typedef struct {
   bool initializedParam;  /**< Are bit-stream parameters initialized. */
@@ -1784,9 +1785,9 @@ typedef struct {
   int64_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
 
   bool halfPicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
-  int32_t initDecPicNbCntShift;  /**< Initial picture decoding delay in pictures units. */
+  int64_t initDecPicNbCntShift;  /**< Initial picture decoding delay in pictures units. */
 
-  int32_t PicOrderCnt; /**< PicOrderCnt of current picture. */
+  int64_t PicOrderCnt; /**< PicOrderCnt of current picture. */
 
   int64_t LastMaxStreamPicOrderCnt;
   int64_t MaxStreamPicOrderCnt;
@@ -1820,11 +1821,14 @@ typedef struct {
   bool discardUselessAccessUnitDelimiter;
   bool discardUselessSequenceParameterSet;
 
-  size_t curFrameLength; /* in bytes */
-  unsigned curFrameNbNalUnits;
-  unsigned allocatedNalUnitsCells;
-  bool inProcessNalUnitCell;
-  H264AUNalUnit * curFrameNalUnits;
+  struct {
+    H264AUNalUnit * nalus;
+    unsigned nbAllocatedNalus;
+    unsigned nbUsedNalus;
+    bool inProcessNalu;
+
+    int64_t size; // In bytes.
+  } curAccessUnit;
 } H264CurrentProgressParam;
 
 typedef struct {

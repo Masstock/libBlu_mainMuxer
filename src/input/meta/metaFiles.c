@@ -114,14 +114,6 @@ static int _parseHeaderMetaFile(
         LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, disableHrdVerifier, true);
         break;
 
-      case LBMETA_OPT__ECHO_HRD_CPB:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, echoHrdCpb, true);
-        break;
-
-      case LBMETA_OPT__ECHO_HRD_DPB:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, echoHrdDpb, true);
-        break;
-
       case LBMETA_OPT__HDMV_INITIAL_TIMESTAMP:
         if (setHdmvInitialTimestampLibbluMuxingSettings(dst, argument.u64) < 0)
           LIBBLU_ERROR_RETURN(
@@ -324,13 +316,13 @@ static int parseTrackMetaFile(
         LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, disableHrdVerifier, true);
         break;
 
-      case LBMETA_OPT__ECHO_HRD_CPB:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, echoHrdCpb, true);
+      case LBMETA_OPT__HRD_CPB_STATS: {
+        lbc * filename = lbc_strdup(argument.str);
+        if (NULL == filename)
+          LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdCpbStatsFilepath, filename);
         break;
-
-      case LBMETA_OPT__ECHO_HRD_DPB:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, echoHrdDpb, true);
-        break;
+      }
 
       case LBMETA_OPT__HDMV_INITIAL_TIMESTAMP:
         if (setHdmvInitialTimestampLibbluESSettings(elemStream, argument.u64) < 0)

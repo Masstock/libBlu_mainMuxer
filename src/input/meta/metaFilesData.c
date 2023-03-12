@@ -58,9 +58,7 @@ static const LibbluMetaOption options[] = {
     (STREAM_CODING_TYPE_AVC)),
   D_(LBMETA_OPT__DISABLE_HRD_VERIF, "disable-hrd-verif", LBMETA_OPTARG_NO_ARG,
     (STREAM_CODING_TYPE_AVC)),
-  D_(     LBMETA_OPT__ECHO_HRD_CPB,      "echo-hrd-cpb", LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(     LBMETA_OPT__ECHO_HRD_DPB,      "echo-hrd-dpb", LBMETA_OPTARG_NO_ARG,
+  D_(    LBMETA_OPT__HRD_CPB_STATS,     "hrd-cpb-stats", LBMETA_OPTARG_STRING,
     (STREAM_CODING_TYPE_AVC)),
 
   D_(     LBMETA_OPT__HDMV_INITIAL_TIMESTAMP,        "hdmv-initial-timestamp",

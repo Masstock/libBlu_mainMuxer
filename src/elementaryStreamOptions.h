@@ -39,7 +39,7 @@ typedef struct {
     bool secondPass;  /**< Is the second parsing attempt. */
     bool halfPicOrderCnt;  /**< Divide by two the computed PicOrderCnt of
       each picture. This option is automatically triggered.                  */
-    int32_t initDecPicNbCntShift;  /**< Initial decoding timestamp shifting
+    int64_t initDecPicNbCntShift;  /**< Initial decoding timestamp shifting
       in pictures units (1 / frame-rate). This option is automatically
       adjusted.                                                              */
 
@@ -48,10 +48,9 @@ typedef struct {
     uint8_t levelChange;
     bool forceRebuildSei;
     bool discardSei;
+
     bool disableHrdVerifier;
-    bool echoHrdCpb;
-    bool echoHrdDpb;
-    lbc * echoHrdLogFilepath;
+    lbc * hrdCpbStatsFilepath;
   };  /**< Video codecs related options.                                     */
 
   struct {

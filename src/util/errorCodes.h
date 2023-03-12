@@ -211,6 +211,10 @@ int enableDebugStatusString(
   const char * string
 );
 
+bool isDebugEnabledLibbbluStatus(
+  void
+);
+
 bool isEnabledLibbbluStatus(
   LibbluStatus status
 );

@@ -311,7 +311,7 @@ void destroyH264ParametersHandler(
 
   for (i = 0; i < H264_MAX_PPS; i++)
     free(handle->picParametersSet[i]);
-  free(handle->curProgParam.curFrameNalUnits);
+  free(handle->curProgParam.curAccessUnit.nalus);
   free(handle->modNalLst.sequenceParametersSets);
   free(handle);
 }
@@ -445,43 +445,37 @@ H264AUNalUnitPtr createNewNalCell(
   H264NalUnitTypeValue nal_unit_type
 )
 {
-  H264AUNalUnit * newList;
-  H264AUNalUnitPtr cell;
-
-  unsigned usedNalNb;
-  unsigned allocatedNalNb;
-
   assert(NULL != handle);
+  assert(!handle->curProgParam.curAccessUnit.inProcessNalu);
 
-  usedNalNb = handle->curProgParam.curFrameNbNalUnits;
-  allocatedNalNb = handle->curProgParam.allocatedNalUnitsCells;
+  unsigned nbAllocatedNalus = handle->curProgParam.curAccessUnit.nbAllocatedNalus;
+  unsigned nbUsedNalus = handle->curProgParam.curAccessUnit.nbUsedNalus;
 
-  if (allocatedNalNb < (usedNalNb + 1)) {
-    if (0 < (usedNalNb - allocatedNalNb))
-      LIBBLU_H264_ERROR_NRETURN(
-        "Presence of ghost cell(s) in current Access Unit NALs list.\n"
-      );
-
+  if (nbAllocatedNalus <= nbUsedNalus) {
     /* Need reallocation to add new cell(s) to current Access Unit NALs list */
-    newList = (H264AUNalUnit *) realloc(
-      handle->curProgParam.curFrameNalUnits,
-      (usedNalNb + 1) * sizeof(H264AUNalUnit)
-    );
-    if (NULL == newList) {
-      /* Error happen during realloc, free list and return error */
-      LIBBLU_H264_ERROR_NRETURN("Memory allocation error.\n");
-    }
+    size_t newSize = GROW_ALLOCATION(nbAllocatedNalus, H264_AU_DEFAULT_NB_NALUS);
 
-    handle->curProgParam.allocatedNalUnitsCells = allocatedNalNb + 1;
-    handle->curProgParam.curFrameNalUnits = newList; /* Update new list */
+    if (lb_mul_overflow(newSize, sizeof(H264AUNalUnit)))
+      LIBBLU_H264_ERROR_NRETURN("Nb AU allocated NALUs overflow.\n");
+
+    H264AUNalUnit * newList = (H264AUNalUnit *) realloc(
+      handle->curProgParam.curAccessUnit.nalus,
+      newSize * sizeof(H264AUNalUnit)
+    );
+    if (NULL == newList)
+      LIBBLU_H264_ERROR_NRETURN("Memory allocation error.\n");
+
+    handle->curProgParam.curAccessUnit.nalus = newList;
+    handle->curProgParam.curAccessUnit.nbAllocatedNalus = newSize;
   }
 
-  cell = &handle->curProgParam.curFrameNalUnits[usedNalNb];
-  *cell = (H264AUNalUnit) {
-    .nal_unit_type = nal_unit_type
-  };
+  H264AUNalUnitPtr cell = &handle->curProgParam.curAccessUnit.nalus[nbUsedNalus];
+  cell->nal_unit_type = nal_unit_type;
+  cell->startOffset = 0;
+  cell->length = 0;
+  cell->replace = false;
 
-  handle->curProgParam.inProcessNalUnitCell = true;
+  handle->curProgParam.curAccessUnit.inProcessNalu = true;
 
   return cell;
 }
@@ -492,13 +486,13 @@ static H264AUNalUnitPtr _retrieveCurrentNalCell(
 {
   assert(NULL != handle);
 
-  if (!handle->curProgParam.inProcessNalUnitCell)
+  if (!handle->curProgParam.curAccessUnit.inProcessNalu)
     LIBBLU_H264_ERROR_NRETURN(
       "No NAL unit cell in process for current Access Unit.\n"
     );
 
-  return &handle->curProgParam.curFrameNalUnits[
-    handle->curProgParam.curFrameNbNalUnits
+  return &handle->curProgParam.curAccessUnit.nalus[
+    handle->curProgParam.curAccessUnit.nbUsedNalus
   ];
 }
 
@@ -524,12 +518,12 @@ int discardCurNalCell(
 {
   assert(NULL != handle);
 
-  if (!handle->curProgParam.inProcessNalUnitCell)
+  if (!handle->curProgParam.curAccessUnit.inProcessNalu)
     LIBBLU_H264_ERROR_RETURN(
       "No NAL unit cell in process for current Access Unit.\n"
     );
 
-  handle->curProgParam.inProcessNalUnitCell = false;
+  handle->curProgParam.curAccessUnit.inProcessNalu = false;
   return 0;
 }
 
@@ -537,17 +531,25 @@ int addNalCellToAccessUnit(
   H264ParametersHandlerPtr handle
 )
 {
-  H264AUNalUnit * nalUnit;
-
   assert(NULL != handle);
 
-  nalUnit = _retrieveCurrentNalCell(handle);
+  H264AUNalUnit * nalUnit = _retrieveCurrentNalCell(handle);
   nalUnit->length = tellPos(handle->file.inputFile) - nalUnit->startOffset;
 
   handle->curProgParam.lstNaluType = getNalUnitType(handle);
-  handle->curProgParam.curFrameLength += nalUnit->length;
-  handle->curProgParam.curFrameNbNalUnits++;
-  handle->curProgParam.inProcessNalUnitCell = false;
+
+  handle->curProgParam.curAccessUnit.nbUsedNalus++;
+  handle->curProgParam.curAccessUnit.inProcessNalu = false;
+
+  if (
+    (getNalUnitType(handle) == NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET
+    || getNalUnitType(handle) == NAL_UNIT_TYPE_PIC_PARAMETER_SET)
+    && 0 == handle->curProgParam.nbPics
+  ) {
+    /* StreamEye fix */
+    handle->curProgParam.curAccessUnit.size += nalUnit->length;
+  }
+  handle->curProgParam.curAccessUnit.size += nalUnit->length;
 
   return 0;
 }

@@ -6,6 +6,8 @@
  *
  * \brief H.264 video (AVC) bitstreams Hypothetical Reference Decoder conformance
  * verification module.
+ *
+ * \bug Issues with interlaced streams.
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__H264__HRD_VERIFIER_H__
@@ -29,8 +31,6 @@
 #define H264_DPB_HRD_MSG_PREFIX  H264_DPB_HRD_MSG_NAME  lbc_str(": ")
 
 #define H264_90KHZ_CLOCK  SUB_CLOCK_90KHZ
-
-#define ELECARD_STREAMEYE_COMPARISON  false
 
 #define H264_HRD_DISABLE_C_3_2  false
 
@@ -86,7 +86,7 @@ typedef struct {
 typedef struct {
   unsigned AUIdx; /* For debug output. */
 
-  size_t length; /* In bits. */
+  int64_t size; /* In bits. */
 
   uint64_t removalTime; /* t_r in c ticks. */
 
@@ -111,11 +111,7 @@ typedef struct {
 } H264DpbHrdPic;
 
 typedef struct {
-  bool cpb;
-  bool dpb;
-  bool fileOutput;
-
-  FILE * fd;
+  FILE * cpbFd;
 } H264HrdVerifierDebug;
 
 typedef struct {
@@ -142,12 +138,12 @@ typedef struct {
 
   double bitrate; /* In bits per c tick. */
   bool cbr; /* true: CRB stream, false: VBR stream. */
-  uint64_t cpbSize; /* In bits. */
+  int64_t cpbSize; /* In bits. */
   unsigned dpbSize; /* In frames. */
 
   uint64_t clockTime; /* Current time on t_c Hz clock */
 
-  uint64_t cpbBitsOccupancy; /* Current CPB state in bits. */
+  int64_t cpbBitsOccupancy; /* Current CPB state in bits. */
 
   /* Access Units currently in CPB: */
   H264CpbHrdAU AUInCpb[H264_MAX_AU_IN_CPB]; /* Circular buffer list (FIFO). */
@@ -170,7 +166,7 @@ typedef struct {
   uint64_t nominalRemovalTimeFirstAU; /* t_r(n_b) */
   uint64_t removalTimeAU; /* Current AU CPB removal time in #MAIN_CLOCK_27MHZ ticks */
   uint64_t outputTimeAU; /* Current AU DPB removal time in #MAIN_CLOCK_27MHZ ticks */
-  size_t nbProcessedBytes;
+  int64_t pesNbAlreadyProcessedBytes;
 
   int maxLongTermFrameIdx;
 
@@ -231,14 +227,14 @@ void echoDebugH264HrdVerifierContext(
 
 int processAUH264HrdContext(
   H264HrdVerifierContextPtr ctx,
-  H264SPSDataParameters * spsData,
-  H264SliceHeaderParameters * sliceHeader,
-  H264SeiPicTiming * picTimingSei,
-  H264SeiBufferingPeriod * bufPeriodSei,
   H264CurrentProgressParam * curState,
-  H264ConstraintsParam * constraints,
-  bool isNewBufferingPeriod,
-  size_t AUlength
+  const H264SPSDataParameters * spsData,
+  const H264SliceHeaderParameters * sliceHeader,
+  const H264SeiPicTiming * picTimingSei,
+  const H264SeiBufferingPeriod * bufPeriodSei,
+  const H264ConstraintsParam * constraints,
+  const bool isNewBufferingPeriod,
+  const int64_t accessUnitSize
 );
 
 #endif

@@ -264,6 +264,7 @@ static const struct {
 static char enabledStatus[LIBBLU_NB_STATUS] = {
   0
 };
+static bool enabledDebug = false;
 
 int enableDebugStatusString(
   const char * string
@@ -299,6 +300,7 @@ int enableDebugStatusString(
         string
       );
 
+    enabledDebug = true;
     enabledStatus[status] = 1;
     if (status == LIBBLU_DEBUG_GLB) {
       memset(enabledStatus, 1, ARRAY_SIZE(enabledStatus));
@@ -308,6 +310,13 @@ int enableDebugStatusString(
   } while (*string != '\0');
 
   return 0;
+}
+
+bool isDebugEnabledLibbbluStatus(
+  void
+)
+{
+  return enabledDebug;
 }
 
 bool isEnabledLibbbluStatus(

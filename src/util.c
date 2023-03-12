@@ -77,7 +77,7 @@ void printFileParsingProgressionBar(BitstreamReaderPtr bitStream)
   static unsigned oldPercentage = 100;
   static uint64_t refBitStreamId = 0;
 
-  if (isDebugEnabled())
+  if (isDebugEnabledLibbbluStatus())
     return; /* Don't print progress bar in debug mode for readability. */
 
   assert(NULL != bitStream);

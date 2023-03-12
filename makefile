@@ -64,7 +64,6 @@ SOURCE_FILES =																\
 	libs/cwalk/src/cwalk.o													\
 	libs/cwalk/src/cwalk_wchar.o											\
 	util/common.o															\
-	util/messages.o															\
 	util/errorCodes.o														\
 	util/crcLookupTables.o													\
 	util/hashTables.o														\

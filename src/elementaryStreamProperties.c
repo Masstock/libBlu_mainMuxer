@@ -217,6 +217,9 @@ CheckVideoConfigurationRet checkPrimVideoConfiguration(
       DISPLAY_MODE_INTERLACED
     },
     {
+      DISPLAY_MODE_PROGRESSIVE,
+      DISPLAY_MODE_PROGRESSIVE,
+      DISPLAY_MODE_PROGRESSIVE,
       DISPLAY_MODE_PROGRESSIVE
     },
     {
