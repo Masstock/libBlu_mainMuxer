@@ -110,12 +110,11 @@ static inline void triggerSegfault(
 
 #  define lbc_strlen  wcslen
 
-#  define lbc_fopen(f, m)                                                     \
-  _wfopen(f, lbc_str(m))
 #  define lbc_fgets  fgetws
+#  define lbc_fopen(f, m)  _wfopen(f, lbc_str(m))
+#  define lbc_strcspn  wcscspn
 #  define lbc_strdup  lb_wstr_dup
 #  define lbc_strndup  lb_wstrn_dup
-#  define lbc_strcspn  wcscspn
 
 #  define lbc_atob  lb_watob
 
@@ -123,25 +122,26 @@ static inline void triggerSegfault(
 #  define lbc_equaln  lb_wstrn_equal
 #  define lbc_strcmp  wcscmp
 #  define lbc_strcpy  wcscpy
-#  define lbc_strncpy  wcsncpy
 #  define lbc_strncat  lb_wstrncat
+#  define lbc_strncpy  wcsncpy
 
+#  define lbc_access_fp(f, m)  lb_waccess_fp(f, lbc_str(m))
 #  define lbc_chdir  _wchdir
-#  define lbc_getwd  lb_wget_wd
-#  define lbc_access_fp(f, m)                                                 \
-  lb_waccess_fp(f, lbc_str(m))
+#  define lbc_getcwd  lb_wget_cwd
 
 #  define lbc_fnv1aStrHash wfnv1aStrHash
 
-#  define lbc_cwk_path_is_absolute  cwkw_path_is_absolute
-#  define lbc_cwk_path_get_dirname  cwkw_path_get_dirname
 #  define lbc_cwk_path_get_absolute  cwkw_path_get_absolute
 #  define lbc_cwk_path_get_basename  cwkw_path_get_basename
+#  define lbc_cwk_path_get_dirname  cwkw_path_get_dirname
 #  define lbc_cwk_path_get_extension  cwkw_path_get_extension
-#  define lbc_cwk_path_style  cwkw_path_style
-#  define lbc_cwk_path_guess_style  cwkw_path_guess_style
+#  define lbc_cwk_path_get_relative  cwkw_path_get_relative
 #  define lbc_cwk_path_get_style  cwkw_path_get_style
+#  define lbc_cwk_path_guess_style  cwkw_path_guess_style
+#  define lbc_cwk_path_is_absolute  cwkw_path_is_absolute
+#  define lbc_cwk_path_join  cwkw_path_join
 #  define lbc_cwk_path_set_style  cwkw_path_set_style
+#  define lbc_cwk_path_style  cwkw_path_style
 
 #  define PRI_LBC  "lc"
 #  define PRI_LBCS  "ls"
@@ -163,47 +163,49 @@ static inline void triggerSegfault(
 #  define lbc_sscanf  sscanf
 #  define lbc_fgets  fgets
 
-#  define lbc_putchar  putchar
-#  define lbc_puts  puts
+#  define lbc_asprintf  lb_asprintf
+#  define lbc_deb_printf  printf
 #  define lbc_fprintf  fprintf
 #  define lbc_printf  printf
+#  define lbc_putchar  putchar
+#  define lbc_puts  puts
 #  define lbc_snprintf  snprintf
-#  define lbc_asprintf  lb_asprintf
 #  define lbc_vfprintf vfprintf
-#  define lbc_deb_printf  printf
 
 #  define lbc_strlen  strlen
 
-#  define lbc_fopen  fopen
 #  define lbc_fgets  fgets
+#  define lbc_fopen  fopen
+#  define lbc_strcspn  strcspn
 #  define lbc_strdup  lb_str_dup
 #  define lbc_strndup  lb_strn_dup
-#  define lbc_strcspn  strcspn
 
 #  define lbc_equal  lb_str_equal
 #  define lbc_equaln  lb_strn_equal
 #  define lbc_strcmp  strcmp
 #  define lbc_strcpy  strcpy
-#  define lbc_strncpy  strncpy
 #  define lbc_strncat  lb_strncat
+#  define lbc_strncpy  strncpy
 
 #  define lbc_atob  lb_atob
 
-#  define lbc_chdir  chdir
-#  define lbc_getwd  lb_get_wd
 #  define lbc_access_fp  lb_access_fp
+#  define lbc_chdir  chdir
+#  define lbc_getcwd  lb_get_cwd
 
 #  define lbc_fnv1aStrHash fnv1aStrHash
 
-#  define lbc_cwk_path_is_absolute  cwk_path_is_absolute
-#  define lbc_cwk_path_get_dirname  cwk_path_get_dirname
 #  define lbc_cwk_path_get_absolute  cwk_path_get_absolute
 #  define lbc_cwk_path_get_basename  cwk_path_get_basename
+#  define lbc_cwk_path_get_dirname  cwk_path_get_dirname
 #  define lbc_cwk_path_get_extension  cwk_path_get_extension
-#  define lbc_cwk_path_style  cwk_path_style
-#  define lbc_cwk_path_guess_style  cwk_path_guess_style
+#  define lbc_cwk_path_get_relative  cwk_path_get_relative
 #  define lbc_cwk_path_get_style  cwk_path_get_style
+#  define lbc_cwk_path_guess_style  cwk_path_guess_style
+#  define lbc_cwk_path_is_absolute  cwk_path_is_absolute
+#  define lbc_cwk_path_join  cwk_path_join
 #  define lbc_cwk_path_set_style  cwk_path_set_style
+#  define lbc_cwk_path_style  cwk_path_style
 
 #  define PRI_LBC  "c"
 #  define PRI_LBCS  "s"

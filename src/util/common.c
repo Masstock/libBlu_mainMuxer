@@ -374,7 +374,7 @@ free_return:
 #include <string.h>
 #include <unistd.h>
 
-int lb_get_wd(
+int lb_get_cwd(
   char * buf,
   size_t size
 )
@@ -397,7 +397,7 @@ int lb_get_wd(
 
 #elif defined(ARCH_WIN32)
 
-int lb_get_wd(
+int lb_get_cwd(
   char * buf,
   size_t size
 )
@@ -427,7 +427,7 @@ int lb_get_wd(
   return 0;
 }
 
-int lb_wget_wd(
+int lb_wget_cwd(
   wchar_t * buf,
   size_t size
 )
@@ -458,7 +458,7 @@ int lb_wget_wd(
 }
 
 #else
-#  error No portable implementation of lb_get_wd() for this system.
+#  error No portable implementation of lb_get_cwd() for this system.
 #endif
 
 int lb_get_relative_fp_from_anchor(
@@ -495,49 +495,66 @@ int lb_get_relative_fp_from_anchor(
   );
 }
 
+int lb_gen_anchor_absolute_fp(
+  lbc ** dst,
+  const lbc * base,
+  const lbc * path
+)
+{
+  size_t dirsize;
+  lbc_cwk_path_get_dirname(base, &dirsize);
+
+  lbc * relative;
+  if (!lbc_cwk_path_is_absolute(path) && 0 < dirsize) {
+    lbc * dir = calloc(dirsize + 1, sizeof(lbc));
+    if (NULL == dir)
+      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+    memcpy(dir, base, dirsize * sizeof(lbc));
+
+    size_t size = lbc_cwk_path_join(dir, path, NULL, 0);
+    if (0 == size)
+      LIBBLU_ERROR_RETURN("Unexpected zero sized path.\n");
+
+    relative = malloc(++size * sizeof(lbc));
+    if (NULL == relative)
+      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
+    lbc_cwk_path_join(dir, path, relative, size);
+    free(dir);
+  }
+  else {
+    if (NULL == (relative = lbc_strdup(path)))
+      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+  }
+
+  int ret = lb_gen_absolute_fp(dst, relative);
+  free(relative);
+
+  return ret;
+}
+
 int lb_gen_absolute_fp(
   lbc ** dst,
   const lbc * path
 )
 {
-  lbc absolutePath[PATH_BUFSIZE];
-  size_t absolutePathSize;
-
   assert(NULL != dst);
   assert(NULL != path);
 
-  if (lbc_cwk_path_is_absolute(path)) {
-    int ret;
+  lbc cwd[PATH_BUFSIZE];
+  if (lbc_getcwd(cwd, PATH_BUFSIZE) < 0)
+    return -1;
 
-    /* The path is already an absolute path */
-    ret = lbc_snprintf(
-      absolutePath, PATH_BUFSIZE, "%" PRI_LBCS, path
-    );
-    if (ret < 0)
-      LIBBLU_ERROR_RETURN("Too long absolute filepath.\n");
-    absolutePathSize = (size_t) ret;
-  }
-  else {
-    /* The path is relative and shall be converted to absolute */
-    lbc workingDirectory[PATH_BUFSIZE];
+  size_t size = lbc_cwk_path_get_absolute(cwd, path, NULL, 0);
+  if (0 == size)
+    LIBBLU_ERROR_RETURN("Unexpected zero sized filepath.\n");
 
-    /* Get the working directory as base */
-    if (lbc_getwd(workingDirectory, PATH_BUFSIZE) < 0)
-      return -1;
-
-    absolutePathSize = lbc_cwk_path_get_absolute(
-      workingDirectory,
-      path,
-      absolutePath,
-      PATH_BUFSIZE
-    );
-  }
-
-  if (PATH_BUFSIZE <= absolutePathSize)
-    LIBBLU_ERROR_RETURN("Too long absolute filepath.\n");
-
-  /* Duplicate the result from stack to heap */
-  if (NULL == (*dst = lbc_strdup(absolutePath)))
+  lbc * abs_path = malloc(++size * sizeof(lbc));
+  if (NULL == abs_path)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
+  lbc_cwk_path_get_absolute(cwd, path, abs_path, size);
+
+  *dst = abs_path;
   return 0;
 }

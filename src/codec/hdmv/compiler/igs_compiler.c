@@ -173,7 +173,7 @@ int updateIgsCompilerWorkingDirectory(
 )
 {
   /* Save current working directory */
-  if (lbc_getwd(ctx->initialWorkingDir, PATH_BUFSIZE) < 0)
+  if (lbc_getcwd(ctx->initialWorkingDir, PATH_BUFSIZE) < 0)
     return -1;
   ECHO_DEBUG("  Saved path: '%" PRI_LBCS "'.\n", ctx->initialWorkingDir);
 

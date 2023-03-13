@@ -51,33 +51,6 @@ int setLevelChangeLibbluESSettings(
   return 0;
 }
 
-int setPbrFilepathLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr,
-  const lbc * metaFilepath
-)
-{
-  int ret;
-  lbc path[PATH_BUFSIZE];
-  lbc * pathDup;
-
-  if (!lbc_cwk_path_is_absolute(expr))
-    ret = lb_get_relative_fp_from_anchor(path, PATH_BUFSIZE, expr, metaFilepath);
-  else
-    ret = lbc_snprintf(path, PATH_BUFSIZE * sizeof(lbc), "%s", expr);
-  if (ret < 0)
-    return -1;
-
-  if (lbc_access_fp(path, "r") < 0)
-    return -1;
-
-  if (NULL == (pathDup = lbc_strdup(path)))
-    return -1;
-
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, pbrFilepath, pathDup);
-  return 0;
-}
-
 int setHdmvInitialTimestampLibbluESSettings(
   LibbluESSettings * dst,
   uint64_t value
@@ -94,52 +67,16 @@ int setHdmvInitialTimestampLibbluESSettings(
   return 0;
 }
 
-static int _generateFilepath(
-  lbc * path,
-  size_t size,
-  const lbc * filepath,
-  const lbc * anchorFilepath
-)
-{
-  if (lbc_cwk_path_is_absolute(filepath)) {
-    if (lbc_snprintf(path, size, "%s", filepath) < 0)
-      LIBBLU_ERROR(
-        "Source filepath is invalid, %s (errno: %d).\n",
-        strerror(errno), errno
-      );
-  }
-  else {
-    if (lb_get_relative_fp_from_anchor(path, size, filepath, anchorFilepath) < 0)
-      return -1;
-  }
-
-  return 0;
-}
-
 int setMainESFilepathLibbluESSettings(
   LibbluESSettings * dst,
   const lbc * filepath,
   const lbc * anchorFilepath
 )
 {
-  lbc path[PATH_BUFSIZE];
-
   assert(NULL != dst);
   assert(NULL != filepath);
 
-  if (_generateFilepath(path, PATH_BUFSIZE, filepath, anchorFilepath) < 0)
-    goto free_return;
-
-  if (lb_gen_absolute_fp(&dst->filepath, path) < 0)
-    goto free_return;
-
-  return 0;
-
-free_return:
-  LIBBLU_ERROR_RETURN(
-    "Unable to set main ES filepath '%" PRI_LBCS "'.\n",
-    filepath
-  );
+  return lb_gen_anchor_absolute_fp(&dst->filepath, anchorFilepath, filepath);
 }
 
 int setScriptFilepathLibbluESSettings(
@@ -148,24 +85,10 @@ int setScriptFilepathLibbluESSettings(
   const lbc * anchorFilepath
 )
 {
-  lbc path[PATH_BUFSIZE];
-
   assert(NULL != dst);
   assert(NULL != filepath);
 
-  if (_generateFilepath(path, PATH_BUFSIZE, filepath, anchorFilepath) < 0)
-    goto free_return;
-
-  if (lb_gen_absolute_fp(&dst->scriptFilepath, path) < 0)
-    goto free_return;
-
-  return 0;
-
-free_return:
-  LIBBLU_ERROR_RETURN(
-    "Unable to set script filepath '%" PRI_LBCS "'.\n",
-    filepath
-  );
+  return lb_gen_anchor_absolute_fp(&dst->scriptFilepath, anchorFilepath, filepath);
 }
 
 static int checkScriptFileLibbluES(

@@ -51,6 +51,7 @@ typedef struct {
 
     bool disableHrdVerifier;
     lbc * hrdCpbStatsFilepath;
+    lbc * hrdDpbStatsFilepath;
   };  /**< Video codecs related options.                                     */
 
   struct {

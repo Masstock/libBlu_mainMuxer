@@ -112,6 +112,7 @@ typedef struct {
 
 typedef struct {
   FILE * cpbFd;
+  FILE * dpbFd;
 } H264HrdVerifierDebug;
 
 typedef struct {

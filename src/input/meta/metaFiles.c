@@ -267,16 +267,13 @@ static int parseTrackMetaFile(
         LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, extractCore, true);
         break;
 
-      case LBMETA_OPT__PBR_FILE:
-        if (setPbrFilepathLibbluESSettings(elemStream, argument.str, metaFilepath) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "unable to access path '%" PRI_LBCS "', path is too long or file "
-            "does not exists.\n",
-            option.name,
-            argument.str
-          );
+      case LBMETA_OPT__PBR_FILE: {
+        lbc * path;
+        if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
+          return -1;
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, pbrFilepath, path);
         break;
+      }
 
       case LBMETA_OPT__SET_FPS:
         if (setFpsChangeLibbluESSettings(elemStream, argument.str) < 0)
@@ -317,10 +314,18 @@ static int parseTrackMetaFile(
         break;
 
       case LBMETA_OPT__HRD_CPB_STATS: {
-        lbc * filename = lbc_strdup(argument.str);
-        if (NULL == filename)
-          LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdCpbStatsFilepath, filename);
+        lbc * path;
+        if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
+          return -1;
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdCpbStatsFilepath, path);
+        break;
+      }
+
+      case LBMETA_OPT__HRD_DPB_STATS: {
+        lbc * path;
+        if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
+          return -1;
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdDpbStatsFilepath, path);
         break;
       }
 

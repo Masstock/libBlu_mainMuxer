@@ -33,6 +33,21 @@ static int _outputCpbStatisticsHeader(
   return 0;
 }
 
+static int _outputDpbStatisticsHeader(
+  FILE * fd
+)
+{
+  // if (lbc_fprintf(fd, "initial time;;duration;fullness;\n") < 0)
+  //   LIBBLU_H264_HRDV_ERROR_RETURN(
+  //     "Unable to write to CPB statistics file, %s (errno: %d).\n",
+  //     strerror(errno),
+  //     errno
+  //   );
+
+  // TODO
+  return 0;
+}
+
 static int _initH264HrdVerifierDebug(
   H264HrdVerifierDebug * dst,
   LibbluESSettingsOptions options
@@ -55,6 +70,21 @@ static int _initH264HrdVerifierDebug(
       return -1;
   }
 
+  /* DPB stats */
+  if (NULL != options.hrdDpbStatsFilepath) {
+    /* Open debug output file: */
+    if (NULL == (dst->dpbFd = lbc_fopen(options.hrdDpbStatsFilepath, "w")))
+      LIBBLU_H264_HRDV_ERROR_RETURN(
+        "Unable to open DPB statistics output file '%s', %s (errno %d).\n",
+        options.hrdDpbStatsFilepath,
+        strerror(errno),
+        errno
+      );
+
+    if (_outputDpbStatisticsHeader(dst->dpbFd) < 0)
+      return -1;
+  }
+
   return 0;
 }
 
@@ -64,6 +94,8 @@ static void _cleanH264HrdVerifierDebug(
 {
   if (NULL != debug.cpbFd)
     fclose(debug.cpbFd);
+  if (NULL != debug.dpbFd)
+    fclose(debug.dpbFd);
 }
 
 static int _initH264HrdVerifierOptions(

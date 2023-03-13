@@ -103,12 +103,6 @@ int setLevelChangeLibbluESSettings(
   const lbc * expr
 );
 
-int setPbrFilepathLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr,
-  const lbc * metaFilepath
-);
-
 #define LIBBLU_MIN_HDMV_INIT_TIMESTAMP  0
 
 #define LIBBLU_MAX_HDMV_INIT_TIMESTAMP  0x7FFFFFFF

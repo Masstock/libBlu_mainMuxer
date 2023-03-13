@@ -60,6 +60,8 @@ static const LibbluMetaOption options[] = {
     (STREAM_CODING_TYPE_AVC)),
   D_(    LBMETA_OPT__HRD_CPB_STATS,     "hrd-cpb-stats", LBMETA_OPTARG_STRING,
     (STREAM_CODING_TYPE_AVC)),
+  D_(    LBMETA_OPT__HRD_DPB_STATS,     "hrd-dpb-stats", LBMETA_OPTARG_STRING,
+    (STREAM_CODING_TYPE_AVC)),
 
   D_(     LBMETA_OPT__HDMV_INITIAL_TIMESTAMP,        "hdmv-initial-timestamp",
     LBMETA_OPTARG_UINT64, (STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)),

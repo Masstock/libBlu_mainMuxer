@@ -537,13 +537,13 @@ static inline uint32_t lb_compute_crc32(
  *
  * Based on [1].
  */
-int lb_get_wd(
+int lb_get_cwd(
   char * buf,
   size_t size
 );
 
 #if defined(ARCH_WIN32)
-int lb_wget_wd(
+int lb_wget_cwd(
   wchar_t * buf,
   size_t size
 );
@@ -567,6 +567,12 @@ int lb_get_relative_fp_from_anchor(
   size_t size,
   const lbc * filepath,
   const lbc * anchor
+);
+
+int lb_gen_anchor_absolute_fp(
+  lbc ** dst,
+  const lbc * base,
+  const lbc * path
 );
 
 int lb_gen_absolute_fp(
