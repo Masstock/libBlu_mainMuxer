@@ -87,6 +87,29 @@
 #define LIBBLU_ERROR_VRETURN(format, ...)                                     \
   __LIBBLU_ERROR_INSTR_(return, format, ##__VA_ARGS__)
 
+typedef enum {
+  LIBBLU_EXPLODE_COMPLIANCE,
+  LIBBLU_EXPLODE_BD_COMPLIANCE,
+  LIBBLU_EXPLODE_STD_COMPLIANCE,
+  LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE
+} LibbluExplodeLevel;
+
+int isDisabledExplodeLevel(
+  LibbluExplodeLevel level
+);
+
+#define __LIBBLU_FAIL_INSTR_(instr, level, format, ...)                       \
+  do {                                                                        \
+    if (!isDisabledExplodeLevel(level)) {                                     \
+      LIBBLU_ERROR(format, ##__VA_ARGS__);                                    \
+      instr;                                                                  \
+    }                                                                         \
+    LIBBLU_WARNING(format, ##__VA_ARGS__);                                    \
+  } while (0)
+
+#define LIBBLU_FAIL_RETURN(level, format, ...)                                \
+  __LIBBLU_FAIL_INSTR_(return -1, level, format, ##__VA_ARGS__)
+
 /** \~english
  * \brief Error printing and goto 'free_return' label macro.
  *
@@ -98,37 +121,6 @@
 
 #define LIBBLU_ERROR_BRETURN(format, ...)                                     \
   __LIBBLU_ERROR_INSTR_(return false, format, ##__VA_ARGS__);
-
-typedef struct {
-  bool debugDtsParsingCore;
-  bool debugDtsParsingExtSS;
-  bool debugDtsParsingXll;
-  bool debugDtsOperations;
-} LibbluEnabledStatus;
-
-#define LIBBLU_ENABLE_DTS_PARSING_DEBUG(status)                               \
-  (                                                                           \
-    (status).debugDtsParsingCore                                              \
-    = (status).debugDtsParsingExtSS                                           \
-    = (status).debugDtsParsingXll                                             \
-    = true                                                                    \
-  )
-
-#define LIBBLU_ENABLE_DTS_OPERATIONS_DEBUG(status)                            \
-  (                                                                           \
-    (status).debugDtsOperations                                               \
-    = true                                                                    \
-  )
-
-#define LIBBLU_ENABLE_PARSING_DEBUG(status)                                   \
-  {                                                                           \
-    LIBBLU_ENABLE_DTS_PARSING_DEBUG(status);                                  \
-  }
-
-#define LIBBLU_ENABLE_OPERATIONS_DEBUG(status)                                \
-  {                                                                           \
-    LIBBLU_ENABLE_DTS_OPERATIONS_DEBUG(status);                               \
-  }
 
 typedef enum {
   LIBBLU_INFO,

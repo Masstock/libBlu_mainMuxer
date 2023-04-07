@@ -60,6 +60,20 @@
 #define LIBBLU_H264_HRDV_ERROR_FRETURN(format, ...)                           \
   LIBBLU_ERROR_FRETURN(LIBBLU_H264_HRDV_PREFIX format, ##__VA_ARGS__)
 
+#define LIBBLU_H264_HRDV_FAIL_RETURN(format, ...)                             \
+  LIBBLU_FAIL_RETURN(                                                         \
+    LIBBLU_EXPLODE_STD_COMPLIANCE,                                            \
+    LIBBLU_H264_HRDV_PREFIX format,                                           \
+    ##__VA_ARGS__                                                             \
+  )
+
+#define LIBBLU_H264_HRDV_BD_FAIL_RETURN(format, ...)                          \
+  LIBBLU_FAIL_RETURN(                                                         \
+    LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE,                                       \
+    LIBBLU_H264_HRDV_PREFIX format,                                           \
+    ##__VA_ARGS__                                                             \
+  )
+
 #define LIBBLU_H264_READING_FAIL_RETURN()                                     \
   LIBBLU_ERROR_RETURN(                                                        \
     LIBBLU_H264_PREFIX "Reading failed at %s:%s():%u.\n",                     \

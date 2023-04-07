@@ -84,14 +84,14 @@ static int _checkUpdateHdmvICParameters(
 )
 {
   if (oldest.stream_model != newest.stream_model)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated ICS, "
       "compositions 'stream_model' shall remain the same accross "
       "the bitstream.\n"
     );
 
   if (oldest.user_interface_model != newest.user_interface_model)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated ICS, "
       "compositions 'user_interface_model' shall remain the same accross "
       "the bitstream.\n"
@@ -137,7 +137,7 @@ int updateHdmvICParameters(
         newPage->page_version_number
         != ((oldPage->page_version_number + 1) & 0xFF)
       ) {
-        LIBBLU_HDMV_COM_ERROR_RETURN(
+        LIBBLU_HDMV_FAIL_RETURN(
           "Invalid updated ICS, "
           "'page_version_number' is not equal or incremented correctly "
           "(old: 0x%02X / new: 0x%02X).\n",
@@ -159,7 +159,7 @@ int updateHdmvICParameters(
 
       // Check page_version_number:
       if (newPage->page_version_number != 0x0)
-        LIBBLU_HDMV_COM_ERROR_RETURN(
+        LIBBLU_HDMV_FAIL_RETURN(
           "Invalid updated ICS, "
           "update introduced pages shall have 'page_version_number' fixed "
           "to 0x0 ('page_id': %u, value: %u).\n",
@@ -186,7 +186,7 @@ static int _checkUpdateHdmvPDParameters(
   bool shallBeIdentical, isUpdate;
 
   if (old.palette_id != nw.palette_id)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated PDS, 'palette_id' mismatch (0x%02X / 0x%02X).\n",
       old.palette_id,
       nw.palette_id
@@ -196,7 +196,7 @@ static int _checkUpdateHdmvPDParameters(
   isUpdate = ((old.palette_version_number + 1) == nw.palette_version_number);
 
   if (!shallBeIdentical && !isUpdate) {
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated PDS, "
       "'palette_version_number' is not equal or incremented correctly "
       "(old: 0x%02X / new: 0x%02X).\n",
@@ -227,7 +227,7 @@ int updateHdmvPdsSegmentParameters(
 
   if (shallBeIdentical) {
     if (dst->number_of_palette_entries != src.number_of_palette_entries)
-      LIBBLU_HDMV_COM_ERROR_RETURN(
+      LIBBLU_HDMV_FAIL_RETURN(
         "Invalid updated PDS, "
         "palettes sharing same 'palette_id' and 'palette_version_number' "
         "shall have the same amount of entries.\n"
@@ -235,7 +235,7 @@ int updateHdmvPdsSegmentParameters(
 
     for (i = 0; i < src.number_of_palette_entries; i++) {
       if (!constantHdmvPaletteEntryParameters(dst->palette_entries[i], src.palette_entries[i]))
-        LIBBLU_HDMV_COM_ERROR_RETURN(
+        LIBBLU_HDMV_FAIL_RETURN(
         "Invalid updated PDS, "
         "palettes sharing same 'palette_id' and 'palette_version_number' "
         "entries shall be identical.\n"
@@ -263,7 +263,7 @@ static int _checkUpdateHdmvODescParameters(
 )
 {
   if (old.object_id != nw.object_id)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated ODS, 'object_id' mismatch (0x%02X / 0x%02X).\n",
       old.object_id,
       nw.object_id
@@ -272,7 +272,7 @@ static int _checkUpdateHdmvODescParameters(
   if (old.object_version_number == nw.object_version_number)
     return 1; /* The new object shall be identical to the previous one. */
   else if (((old.object_version_number + 1) & 0xFF) != nw.object_version_number)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated ODS, "
       "'object_version_number' is not incremented correctly "
       "(old: 0x%02X / new: 0x%02X).\n",
@@ -302,7 +302,7 @@ int updateHdmvObjectDataParameters(
   if (0 < ret) {
     /* The object coded data size shall be identical */
     if (dst->object_data_length != src.object_data_length)
-      LIBBLU_HDMV_COM_ERROR_RETURN(
+      LIBBLU_HDMV_FAIL_RETURN(
         "Invalid updated ODS, object_data_length of ODS sharing same "
         "version shall remain identical (old: %zu / new :%zu).\n",
         dst->object_data_length,
@@ -311,7 +311,7 @@ int updateHdmvObjectDataParameters(
   }
 
   if (dst->object_width != src.object_width || dst->object_height != src.object_height)
-    LIBBLU_HDMV_COM_ERROR_RETURN(
+    LIBBLU_HDMV_FAIL_RETURN(
       "Invalid updated ODS, "
       "picture dimensions mismatch (%ux%u / %ux%u).\n",
       dst->object_width,

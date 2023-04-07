@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -7,6 +8,62 @@
 #include <assert.h>
 
 #include "errorCodes.h"
+#include "../ini/iniHandler.h"
+
+static struct {
+  const LibbluExplodeLevel level;
+  const char * name;
+  bool disabled;
+} explodeLevels[] = {
+#define DECLARE_LEVEL(l, n)  {.level = l, .name = n}
+
+  DECLARE_LEVEL(LIBBLU_EXPLODE_COMPLIANCE, "COMPLIANCE"),
+  DECLARE_LEVEL(LIBBLU_EXPLODE_BD_COMPLIANCE, "BDCOMPLIANCE"),
+  DECLARE_LEVEL(LIBBLU_EXPLODE_STD_COMPLIANCE, "STDCOMPLIANCE"),
+  DECLARE_LEVEL(LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE, "BDAVSTDCOMPLIANCE"),
+
+#undef DECLARE_LEVEL
+};
+
+int isDisabledExplodeLevel(
+  LibbluExplodeLevel level
+)
+{
+  for (size_t i = 0; i < ARRAY_SIZE(explodeLevels); i++) {
+    if (explodeLevels[i].level == level)
+      return explodeLevels[i].disabled;
+  }
+  return false;
+}
+
+int readSettingsExplodeLevels(
+  IniFileContextPtr handle
+)
+{
+  if (NULL == handle)
+    return 0;
+
+  for (size_t i = 0; i < ARRAY_SIZE(explodeLevels); i++) {
+    char optionPath[1024];
+    snprintf(optionPath, 1024, "DISABLEDERRORS.%s", explodeLevels[i].name);
+
+    lbc * string = lookupIniFile(handle, optionPath);
+    if (NULL != string) {
+      bool value;
+
+      if (lbc_atob(&value, string) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid boolean value setting '%s' in section "
+          "[DisabledErrors] of INI file.\n",
+          explodeLevels[i].name
+        );
+      explodeLevels[i].disabled = value;
+    }
+  }
+
+  return 0;
+}
+
 
 static const struct {
   LibbluStatus opt;

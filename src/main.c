@@ -19,6 +19,15 @@
 #  include <shellapi.h>
 #endif
 
+#if !defined(DISABLE_INI)
+
+/* From errorCodes.h */
+extern int readSettingsExplodeLevels(
+  IniFileContextPtr handle
+);
+
+#endif
+
 #include <locale.h>
 
 static void printHelp(
@@ -568,6 +577,9 @@ int main(
     if (parseIniFile(&confFile, confFilepath) < 0)
       return -1;
   }
+
+  if (readSettingsExplodeLevels(confFile) < 0)
+    return -1;
 #endif
 
   if (NULL == inputInstructionsFilepath)

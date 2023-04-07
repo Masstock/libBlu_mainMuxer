@@ -60,6 +60,7 @@ typedef struct {
   HdmvEpochState epoch;  /**< Current Epoch Display Set (DS). */
   HdmvContextSegmentTypesCounter nbSequences;  /**< Number of sequences in epoch. */
   bool duplicatedDS;  /**< Current DS shall be a strict copy of previous one. */
+  unsigned lastParsedCompositionNumber;
 
   unsigned sequencesNbLimitPerEpoch[HDMV_NB_SEGMENT_TYPES];
   unsigned sequencesNbLimitPerDS[HDMV_NB_SEGMENT_TYPES];

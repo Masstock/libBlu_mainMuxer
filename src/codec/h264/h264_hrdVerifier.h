@@ -8,6 +8,7 @@
  * verification module.
  *
  * \bug Issues with interlaced streams.
+ * \todo Complete rework of DPB management.
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__H264__HRD_VERIFIER_H__
@@ -31,8 +32,6 @@
 #define H264_DPB_HRD_MSG_PREFIX  H264_DPB_HRD_MSG_NAME  lbc_str(": ")
 
 #define H264_90KHZ_CLOCK  SUB_CLOCK_90KHZ
-
-#define H264_HRD_DISABLE_C_3_2  false
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
   H264CurrentProgressParam currentState,
@@ -115,6 +114,7 @@ typedef struct {
   FILE * dpbFd;
 } H264HrdVerifierDebug;
 
+#if 0
 typedef struct {
   bool abortOnError;
 } H264HrdVerifierOptions;
@@ -127,6 +127,7 @@ static inline void defaultH264HrdVerifierOptions(
     .abortOnError = false
   };
 }
+#endif
 
 #define H264_MAX_DPB_SIZE  32 /* pow(2) ! */
 #define H264_DPB_MOD_MASK  (H264_MAX_DPB_SIZE - 1)
@@ -184,7 +185,7 @@ typedef struct {
   } nMinusOneAUParameters;
 
   H264HrdVerifierDebug debug;
-  H264HrdVerifierOptions options;
+  // H264HrdVerifierOptions options;
 } H264HrdVerifierContext, *H264HrdVerifierContextPtr;
 
 H264HrdVerifierContextPtr createH264HrdVerifierContext(

@@ -27,6 +27,9 @@
 #define LIBBLU_HDMV_COM_ERROR_BRETURN(format, ...)                            \
   LIBBLU_ERROR_BRETURN(LIBBLU_HDMV_COM_PREFIX format, ##__VA_ARGS__)
 
+#define LIBBLU_HDMV_FAIL_RETURN(format, ...)                                  \
+  LIBBLU_FAIL_RETURN(LIBBLU_EXPLODE_COMPLIANCE, format, ##__VA_ARGS__)
+
 #define LIBBLU_HDMV_COM_DEBUG(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_HDMV_COMMON,                                                 \

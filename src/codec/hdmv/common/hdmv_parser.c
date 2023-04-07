@@ -281,14 +281,21 @@ static int _parseHdmvPdsSegment(
     return -1;
 
   if (_computeNumberOfPaletteEntries(&param.number_of_palette_entries, segment.length) < 0)
-    return -1;
+    goto free_return;
 
   if (0 < param.number_of_palette_entries) {
     LIBBLU_HDMV_PAL_DEBUG("  Palette_entries():\n");
 
+#if 1
+    LIBBLU_HDMV_PAL_DEBUG(
+      "   => %u entrie(s).\n",
+      param.number_of_palette_entries
+    );
+#endif
+
     for (unsigned i = 0; i < param.number_of_palette_entries; i++) {
       if (_parseHdmvPaletteEntry(ctx, param.palette_entries, i) < 0)
-        return -1;
+        goto free_return;
     }
   }
 
@@ -300,16 +307,23 @@ static int _parseHdmvPdsSegment(
     HDMV_SEQUENCE_LOC_UNIQUE
   );
   if (NULL == sequence)
-    return -1;
+    goto free_return;
   sequence->data.pd = param;
 
   if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_PDS_IDX) < 0)
-    return -1;
+    goto free_return;
 
   /* Increment counters of PDS segments/sequences */
   incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_PDS_IDX);
 
   return 0;
+
+free_return:
+  LIBBLU_HDMV_PARSER_ERROR_RETURN(
+    " Error in PDS with 'palette_id' == %u ('composition_number' == %u).\n",
+    param.palette_descriptor.palette_id,
+    ctx->lastParsedCompositionNumber
+  );
 }
 
 /* ### Object Definition Segments : ######################################## */
@@ -492,28 +506,35 @@ static int _parseHdmvOdsSegment(
     location
   );
   if (NULL == sequence)
-    return -1;
+    goto free_return;
 
   /* Object_data_fragment() */
   if (_parseHdmvObjectDataFragment(ctx, segment, sequence) < 0)
-    return -1;
+    goto free_return;
 
   if (isLastSegmentHdmvSequenceLocation(location)) {
     /* Decode complete object data. */
 
     /* Object_data() */
     if (_decodeHdmvObjectData(sequence, param.object_descriptor) < 0)
-      return -1;
+      goto free_return;
 
     /* Mark sequence as decoded/completed. */
     if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_ODS_IDX) < 0)
-      return -1;
+      goto free_return;
   }
 
   /* Increment counters of ODS segments */
   incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_ODS_IDX);
 
   return 0;
+
+free_return:
+  LIBBLU_HDMV_PARSER_ERROR_RETURN(
+    " Error in ODS with 'object_id' == %u ('composition_number' == %u).\n",
+    param.object_descriptor.object_id,
+    ctx->lastParsedCompositionNumber
+  );
 }
 
 /* ### Presentation Composition Segments : ################################# */
@@ -605,6 +626,8 @@ static int _parseHdmvCompositionDescriptor(
     "  reserved: 0x%02X.\n",
     value & 0x3F
   );
+
+  ctx->lastParsedCompositionNumber = param->composition_number;
 
   return 0;
 }
@@ -828,11 +851,11 @@ static int _parseHdmvPcsSegment(
 
   // TODO: Is Epoch Continue shall avoid initialization of a new DS?
   if (initEpochHdmvContext(ctx, param.composition_descriptor, param.video_descriptor) < 0)
-    return -1;
+    goto free_return;
 
   /* Presentation_composition() */
   if (_parseHdmvPresentationComposition(ctx, &param.presentation_composition) < 0)
-    return -1;
+    goto free_return;
 
   /* Add parsed segment as a sequence in PCS sequences list. */
   sequence = addSegToSeqDisplaySetHdmvContext(
@@ -842,16 +865,22 @@ static int _parseHdmvPcsSegment(
     HDMV_SEQUENCE_LOC_UNIQUE
   );
   if (NULL == sequence)
-    return -1;
+    goto free_return;
   sequence->data.pc = param.presentation_composition;
 
   if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_PCS_IDX) < 0)
-    return -1;
+    goto free_return;
 
   /* Increment counters of PCS segments */
   incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_PCS_IDX);
 
   return 0;
+
+free_return:
+  LIBBLU_HDMV_PARSER_ERROR_RETURN(
+    " Error in PCS with 'composition_number' == %u.\n",
+    param.composition_descriptor.composition_number
+  );
 }
 
 /* ### Window Definition Segments : ######################################## */
@@ -981,7 +1010,7 @@ static int _parseHdmvWdsSegment(
 
   /* Window_definition() */
   if (_parseHdmvWindowsDefinition(ctx, &param) < 0)
-    return -1;
+    goto free_return;
 
   /* Add parsed segment as a sequence in WDS sequences list. */
   sequence = addSegToSeqDisplaySetHdmvContext(
@@ -991,16 +1020,22 @@ static int _parseHdmvWdsSegment(
     HDMV_SEQUENCE_LOC_UNIQUE
   );
   if (NULL == sequence)
-    return -1;
+    goto free_return;
   sequence->data.wd = param;
 
   if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_WDS_IDX) < 0)
-    return -1;
+    goto free_return;
 
   /* Increment counters of WDS segments */
   incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_WDS_IDX);
 
   return 0;
+
+free_return:
+  LIBBLU_HDMV_PARSER_ERROR_RETURN(
+    " Error in WDS ('composition_number' == %u).\n",
+    ctx->lastParsedCompositionNumber
+  );
 }
 
 /* ### Interactive Composition Segments : ################################## */
@@ -2148,7 +2183,7 @@ static int _parseHdmvIcsSegment(
   if (location & HDMV_SEQUENCE_LOC_START) {
     // TODO: Is Epoch Continue shall avoid initialization of a new DS?
     if (initEpochHdmvContext(ctx, param.composition_descriptor, param.video_descriptor) < 0)
-      return -1;
+      goto free_return;
   }
 
   /* Add parsed segment as a sequence in ICS sequences list. */
@@ -2159,28 +2194,34 @@ static int _parseHdmvIcsSegment(
     location
   );
   if (NULL == sequence)
-    return -1;
+    goto free_return;
 
   /* Interactive_composition_data_fragment() */
   if (_parseHdmvInteractiveCompositionDataFragment(ctx, segment, sequence) < 0)
-    return -1;
+    goto free_return;
 
   if (isLastSegmentHdmvSequenceLocation(location)) {
     /* Decode complete interactive composition data. */
 
     /* Interactive_composition() */
     if (_decodeHdmvInteractiveCompositionData(ctx, sequence) < 0)
-      return -1;
+      goto free_return;
 
     /* Mark sequence as completed/decoded. */
     if (completeSeqDisplaySetHdmvContext(ctx, HDMV_SEGMENT_TYPE_ICS_IDX) < 0)
-      return -1;
+      goto free_return;
   }
 
   /* Increment counter of ICS segments */
   incrementSegmentsNbHdmvContext(ctx, HDMV_SEGMENT_TYPE_ICS_IDX);
 
   return 0;
+
+free_return:
+  LIBBLU_HDMV_PARSER_ERROR_RETURN(
+    " Error in ICS with 'composition_number' == %u.\n",
+    param.composition_descriptor.composition_number
+  );
 }
 
 /* ### END segments : ###################################################### */
