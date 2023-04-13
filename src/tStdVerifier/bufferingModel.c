@@ -318,15 +318,6 @@ static int _computeBufferDataOutput(
 
   switch (buf->header.type) {
     case LEAKING_BUFFER:
-      /* LIBBLU_DEBUG_COM(
-        "Compute data output from buffer %s with %" PRIu64 " ticks elapsed "
-        "(removal bitrate: %" PRIu64 " bps %f bptick).\n",
-        bufferNameBufModelBuffer(buf),
-        timestamp - buf->header.lastUpdate,
-        ((BufModelLeakingBufferPtr) buf)->removalBitratePerSec,
-        ((BufModelLeakingBufferPtr) buf)->removalBitrate
-      ); */
-
       dataBandwidth = _computeLeakingBufferDataBandwidth(
         (BufModelLeakingBufferPtr) buf,
         fillingLevel,
@@ -390,29 +381,27 @@ static int _computeBufferDataOutput(
   return ret;
 }
 
-#if 0
-
-static uint64_t _computeLeakingBufferFlushingDuration(
+static uint64_t _computeLeakingBufferDelayForBufferDataOutput(
   BufModelLeakingBufferPtr buf,
-  size_t inputData
+  size_t requestedOutput
 )
 {
-  return ceil(inputData / buf->removalBitrate);
+  assert(NULL != buf);
+
+  return requestedOutput / buf->removalBitrate;
 }
 
-static uint64_t _computeRemovalBufferFlushingDuration(
+static uint64_t _computeRemovalBufferDelayForBufferDataOutput(
   BufModelRemovalBufferPtr buf,
-  uint64_t timestamp,
-  size_t inputData
+  size_t requestedOutput,
+  uint64_t timestamp
 )
 {
-  uint64_t minDuration;
-  size_t nbFrames, frameIdx;
   BufModelBufferFrame * frame;
+  uint64_t delay = 0;
 
-  minDuration = 0;
-  nbFrames = getNbEntriesCircularBuffer(buf->header.storedFrames);
-  for (frameIdx = 0; frameIdx < nbFrames && 0 < inputData; frameIdx++) {
+  size_t nbFrames = getNbEntriesCircularBuffer(buf->header.storedFrames);
+  for (size_t frameIdx = 0; frameIdx < nbFrames; frameIdx++) {
     frame = (BufModelBufferFrame *) getEntryCircularBuffer(
       buf->header.storedFrames, frameIdx
     );
@@ -421,49 +410,41 @@ static uint64_t _computeRemovalBufferFlushingDuration(
         "Unable to extract frame, broken circular buffer.\n"
       );
 
-    inputData -= MIN(inputData, frame->headerSize + frame->dataSize);
-    if (timestamp < frame->removalTimestamp)
-      minDuration = frame->removalTimestamp - timestamp;
+    if (!requestedOutput)
+      break;
+    delay = frame->removalTimestamp - timestamp;
+    requestedOutput -= MIN(requestedOutput, frame->dataSize);
   }
 
-  return minDuration;
+  return delay;
 }
 
-static uint64_t _computeMinFlushingDurationBufModelBuffer(
+static uint64_t _computeDelayForBufferDataOutput(
   BufModelBufferPtr buf,
-  uint64_t timestamp,
-  size_t inputData
+  size_t requestedOutput,
+  uint64_t timestamp
 )
 {
-  uint64_t requiredDuration;
-
   switch (buf->header.type) {
     case LEAKING_BUFFER:
-      requiredDuration = _computeLeakingBufferFlushingDuration(
+      return _computeLeakingBufferDelayForBufferDataOutput(
         (BufModelLeakingBufferPtr) buf,
-        inputData
+        requestedOutput
       );
-      break;
 
     case TIME_REMOVAL_BUFFER:
-      requiredDuration = _computeRemovalBufferFlushingDuration(
+      return _computeRemovalBufferDelayForBufferDataOutput(
         (BufModelRemovalBufferPtr) buf,
-        timestamp,
-        inputData
+        requestedOutput,
+        timestamp
       );
-      break;
 
     default:
-      requiredDuration = 0;
-      LIBBLU_ERROR_RETURN(
-        "Unable to update buffer model, unknown buffer type."
-      );
+      break;
   }
 
-  return requiredDuration;
+  return 0;
 }
-
-#endif
 
 static bool _checkBufModelNode(
   BufModelOptions options,
@@ -471,7 +452,9 @@ static bool _checkBufModelNode(
   uint64_t timestamp,
   size_t inputData,
   uint64_t fillingBitrate,
-  void * streamContext
+  void * streamContext,
+  size_t totalInputData,
+  uint64_t * delay
 );
 
 /** \~english
@@ -494,7 +477,9 @@ static bool _checkBufModelBuffer(
   uint64_t timestamp,
   size_t inputData,
   uint64_t fillingBitrate,
-  void * streamContext
+  void * streamContext,
+  size_t totalInputData,
+  uint64_t * delay
 )
 {
   size_t fillingLevel, inputDataBandwidth, outputDataBandwidth;
@@ -533,7 +518,9 @@ static bool _checkBufModelBuffer(
     timestamp,
     outputDataBandwidth,
     fillingBitrate,
-    streamContext
+    streamContext,
+    totalInputData,
+    delay
   );
   if (!outputCheck)
     return false;
@@ -543,7 +530,7 @@ static bool _checkBufModelBuffer(
     || (fillingLevel - outputDataBandwidth) <= buf->header.param.bufferSize
   );
 
-  if (!notFullBuffer)
+  if (!notFullBuffer) {
     LIBBLU_T_STD_VERIF_TEST_DEBUG(
       "Full buffer (%zu - %zu = %zu < %zu bits).\n",
       fillingLevel,
@@ -552,15 +539,20 @@ static bool _checkBufModelBuffer(
       buf->header.param.bufferSize
     );
 
-#if 0
-  if (!ret && NULL != minimalRequiredFlushingTime) {
-    /* Compute hypothetical required flushing duration. */
-    *minimalRequiredFlushingTime = _computeMinFlushingDurationBufModelBuffer(
-      buf, timestamp,
-      (fillingLevel - outputDataBandwidth) - buf->header.param.bufferSize
-    );
+    if (!buf->header.param.instantFilling) {
+      /** Speed trick:
+       * Compute delay to empty whole buffer rather than only required space
+       * for heading buffers.
+       */
+      *delay = _computeDelayForBufferDataOutput(
+        buf,
+        fillingLevel,
+        timestamp
+      );
+    }
+    else
+      *delay = _computeDelayForBufferDataOutput(buf, totalInputData, timestamp);
   }
-#endif
 
   return notFullBuffer;
 }
@@ -1409,7 +1401,9 @@ static bool _checkBufModelFilter(
   uint64_t timestamp,
   size_t inputData,
   uint64_t fillingBitrate,
-  void * streamContext
+  void * streamContext,
+  size_t totalInputData,
+  uint64_t * delay
 )
 {
   unsigned destIndex;
@@ -1458,7 +1452,9 @@ static bool _checkBufModelFilter(
       timestamp,
       (i == destIndex) ? inputData : 0,
       fillingBitrate,
-      streamContext
+      streamContext,
+      totalInputData,
+      delay
     );
 
     if (!ret)
@@ -1473,7 +1469,9 @@ static bool _checkBufModelFilter(
     timestamp,
     inputData,
     fillingBitrate,
-    streamContext
+    streamContext,
+    totalInputData,
+    delay
   );
 #endif
 }
@@ -1583,7 +1581,9 @@ static bool _checkBufModelNode(
   uint64_t timestamp,
   size_t inputData,
   uint64_t fillingBitrate,
-  void * streamContext
+  void * streamContext,
+  size_t totalInputData,
+  uint64_t * delay
 )
 {
   switch (node.type) {
@@ -1597,7 +1597,9 @@ static bool _checkBufModelNode(
         timestamp,
         inputData,
         fillingBitrate,
-        streamContext
+        streamContext,
+        totalInputData,
+        delay
       );
 
     case NODE_FILTER:
@@ -1607,7 +1609,9 @@ static bool _checkBufModelNode(
         timestamp,
         inputData,
         fillingBitrate,
-        streamContext
+        streamContext,
+        totalInputData,
+        delay
       );
   }
 
@@ -1620,7 +1624,8 @@ int checkBufModel(
   uint64_t timestamp,
   size_t inputData,
   uint64_t fillingBitrate,
-  void * streamContext
+  void * streamContext,
+  uint64_t * delay
 )
 {
   return _checkBufModelNode(
@@ -1629,7 +1634,9 @@ int checkBufModel(
     timestamp,
     inputData,
     fillingBitrate,
-    streamContext
+    streamContext,
+    inputData,
+    delay
   );
 }
 

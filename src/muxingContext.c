@@ -838,28 +838,32 @@ static bool _checkPcrInjection(
  * \param ctx Muxer working context.
  * \param stream Studied model branch associated stream.
  * \param size Data amount in bytes.
- * \return true The specified amount of data will produce overflow if
- * transmitted.
- * \return false The specified amount of data can be delivered without
- * overflow.
+ * \return
  *
  * the given 'stream' object is used by the modelizer to determine the flow
  * of the given bytes.
  */
-static bool _checkBufferingModelAvailability(
+static uint64_t _checkBufferingModelAvailability(
   LibbluMuxingContextPtr ctx,
   LibbluStreamPtr stream,
   size_t size
 )
 {
-  return checkBufModel(
+  uint64_t delay = 0;
+
+  int ret = checkBufModel(
     ctx->settings.options.bufModelOptions,
     ctx->tStdModel,
     ctx->currentStcTs,
     size * 8,
     ctx->settings.targetMuxingRate,
-    stream
+    stream,
+    &delay
   );
+
+  if (ret)
+    return 0;
+  return delay + 1;
 }
 
 static int _putDataToBufferingModel(
@@ -985,9 +989,9 @@ static int _muxNextSystemStreamPacket(
 
       if (isTStdManagedStream) {
         /* Inject the packet only if it does not overflow. */
-        injectedPacket = _checkBufferingModelAvailability(
+        injectedPacket = (0 == _checkBufferingModelAvailability(
           ctx, tpStream, TP_SIZE
-        );
+        ));
       }
     }
 
@@ -1111,21 +1115,21 @@ static int _muxNextESPacket(
 
       prepareTPHeader(&tpHeader, stream, pcrInjection, pcrValue);
 
-      if (!_checkBufferingModelAvailability(ctx, stream, TP_SIZE)) {
+      uint64_t delay = _checkBufferingModelAvailability(ctx, stream, TP_SIZE);
+      if (0 < delay) {
         /* ES tp insertion leads to overflow, increase its timestamp and try
         with another ES. */
 
         LIBBLU_T_STD_VERIF_TEST_DEBUG(
-          "Skipping injection PID 0x%04" PRIX16 " at %" PRIi64 ".\n",
+          "Skipping injection PID 0x%04" PRIX16 " at %" PRIu64 ".\n",
           stream->pid,
           ctx->currentStcTs
         );
 
-#if 1
+#if 0
         incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
 #else
-        tpTimeData.tsPt += ctx->tpStcDuration_floor;
-        /* tpTimeData.tsPt = ctx->currentStcTs + ctx->tpStcDuration_floor; */
+        tpTimeData.tsPt += delay;
 #endif
 
         if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, stream) < 0)

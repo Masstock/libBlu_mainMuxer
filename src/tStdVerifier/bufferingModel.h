@@ -762,6 +762,7 @@ int addNodeToBufModelFilterNode(
  * \param inputData Optionnal input data in bits.
  * \param fillingBitrate Input data filling bitrate.
  * \param streamContext Input data stream context.
+ * \param delay TODO
  * \return true Input data can fill given buffering model without error.
  * \return false Input data cannot fill given buffering model, leading buffer
  * overflow or other error.
@@ -772,7 +773,8 @@ int checkBufModel(
   uint64_t timestamp,
   size_t inputData,
   uint64_t fillingBitrate,
-  void * streamContext
+  void * streamContext,
+  uint64_t * delay
 );
 
 /** \~english
