@@ -9,7 +9,10 @@
 
 #include "ac3_parser.h"
 
-static size_t frmsizecodToNominalBitrate(
+#define USE_CRC  false
+#define TRUE_HD_SHOW_DETAILS_DISABLED_PARAM  false
+
+static size_t _frmsizecodToNominalBitrate(
   uint8_t code
 )
 {
@@ -25,7 +28,7 @@ static size_t frmsizecodToNominalBitrate(
   return 0;
 }
 
-static uint8_t getSyncFrameBsid(
+static uint8_t _getSyncFrameBsid(
   BitstreamReaderPtr ac3Input
 )
 {
@@ -35,15 +38,11 @@ static uint8_t getSyncFrameBsid(
   return (value >> 19) & 0x1F;
 }
 
-static int checkAc3SyncInfoCompliance(
+static int _checkAc3SyncInfoCompliance(
   const Ac3SyncInfoParameters * param
 )
 {
   assert(NULL != param);
-
-
-  LIBBLU_AC3_DEBUG(" Synchronization Information, syncinfo()\n");
-  LIBBLU_AC3_DEBUG("  Sync Word (syncword): 0x0B77.\n");
 
   LIBBLU_AC3_DEBUG(
     "  CRC1 (crc1): 0x%" PRIX16 " (Checked after parsing).\n",
@@ -51,7 +50,7 @@ static int checkAc3SyncInfoCompliance(
   );
 
   LIBBLU_AC3_DEBUG(
-    "  Sample Rate code (fscod): 0x%" PRIx8 ".\n",
+    "  Sample Rate Code (fscod): 0x%" PRIx8 ".\n",
     param->fscod
   );
   LIBBLU_AC3_DEBUG(
@@ -59,20 +58,14 @@ static int checkAc3SyncInfoCompliance(
     Ac3FscodStr(param->fscod, false)
   );
 
-  if (!param->sampleRate)
+  if (0x0 == param->sampleRate)
     LIBBLU_AC3_ERROR_RETURN(
       "Reserved value in use (fscod == 0x%" PRIX8 ").\n",
       param->fscod
     );
 
-  if (48000 != param->sampleRate)
-    LIBBLU_AC3_ERROR_RETURN(
-      "Unallowed sample rate value %u Hz, expect 48000 Hz.\n",
-      param->sampleRate
-    );
-
   LIBBLU_AC3_DEBUG(
-    "  Frame length (frmsizecod): "
+    "  Frame Size Code (frmsizecod): "
     "%zu words (%zu bytes, %zu kbps, 0x%" PRIx8 ").\n",
     param->frameSize / AC3_WORD_SIZE,
     param->frameSize,
@@ -80,48 +73,45 @@ static int checkAc3SyncInfoCompliance(
     param->frmsizecod
   );
 
-  if (!param->bitrate)
+  if (0x0 == param->bitrate)
     LIBBLU_AC3_ERROR_RETURN(
       "Reserved value in use (frmsizecod == 0x%" PRIX8 ").\n",
-      param->fscod
-    );
-
-  if (param->bitrate < MINIMAL_ALLOWED_BITRATE)
-    LIBBLU_AC3_ERROR_RETURN(
-      "Bit-rate is lower than 96 kbps, %u kbps.\n",
-      param->bitrate
+      param->frmsizecod
     );
 
   return 0;
 }
 
-static bool constantAc3SyncInfoCheck(
+static bool _constantAc3SyncInfoCheck(
   const Ac3SyncInfoParameters * first,
   const Ac3SyncInfoParameters * second
 )
 {
-  return
-    first->fscod == second->fscod
-    && first->frmsizecod == second->frmsizecod
-  ;
+  return CHECK(
+    EQUAL(->fscod)
+    EQUAL(->frmsizecod)
+  );
 }
 
-static int decodeAc3SyncInfo(
+static int _decodeAc3SyncInfo(
   BitstreamReaderPtr ac3Input,
   Ac3SyncFrameParameters * param,
   bool useCrcCheck
 )
 {
   /* For (bsid <= 0x8) syntax */
+  Ac3SyncInfoParameters syncInfoParam;
   uint32_t value;
 
-  Ac3SyncInfoParameters readedParam = {0};
-
-  static const CrcParam crcParam = AC3_CRC_PARAMS;
+  LIBBLU_AC3_DEBUG(" Synchronization Information, syncinfo()\n");
 
   /* [v16 syncword] // 0x0B77 */
   if (readValueBigEndian(ac3Input, 2, &value) < 0)
     return -1;
+  LIBBLU_AC3_DEBUG(
+    "  Sync Word (syncword): 0x%04" PRIX32 ".\n",
+    value
+  );
 
   if (AC3_SYNCWORD != value)
     LIBBLU_AC3_ERROR_RETURN(
@@ -131,59 +121,72 @@ static int decodeAc3SyncInfo(
 
   /* Init the CRC check if requested */
   if (useCrcCheck) {
-    if (initCrc(BITSTREAM_CRC_CTX(ac3Input), crcParam, 0) < 0)
+    if (initCrc(BITSTREAM_CRC_CTX(ac3Input), AC3_CRC_PARAMS, 0) < 0)
       return -1;
   }
 
   /* [v16 crc1] */
   if (readValueBigEndian(ac3Input, 2, &value) < 0)
     return -1;
-  readedParam.crc1 = value;
+  syncInfoParam.crc1 = value;
 
   /* [u2 fscod] */
   if (readBits(ac3Input, &value, 2) < 0)
     return -1;
-  readedParam.fscod = value;
-  readedParam.sampleRate = sampleRateAc3Fscod(value);
+  syncInfoParam.fscod = value;
 
   /* [u6 frmsizecod] */
   if (readBits(ac3Input, &value, 6) < 0)
     return -1;
-  readedParam.frmsizecod = value;
+  syncInfoParam.frmsizecod = value;
 
-  {
-    size_t bitrate = frmsizecodToNominalBitrate(value);
-
-    readedParam.bitrate = bitrate;
-    readedParam.frameSize = bitrate * 2 * AC3_WORD_SIZE;
-  }
+  syncInfoParam.sampleRate = sampleRateAc3Fscod(syncInfoParam.fscod);
+  size_t bitrate = _frmsizecodToNominalBitrate(syncInfoParam.frmsizecod);
+  syncInfoParam.bitrate = bitrate;
+  syncInfoParam.frameSize = bitrate * 2 * AC3_WORD_SIZE;
 
   if (!param->checkMode) {
     /* Compliance checks */
-    if (checkAc3SyncInfoCompliance(&readedParam) < 0)
+    if (_checkAc3SyncInfoCompliance(&syncInfoParam) < 0)
       return -1;
 
-    param->syncInfo = readedParam;
+    if (48000 != syncInfoParam.sampleRate)
+      LIBBLU_AC3_ERROR_RETURN(
+        "Forbidden sample rate value %u Hz, expect 48000 Hz.\n",
+        syncInfoParam.sampleRate
+      );
+
+    if (syncInfoParam.bitrate < BDAV_AC3_MINIMAL_BITRATE)
+      LIBBLU_AC3_ERROR_RETURN(
+        "Bit-rate is lower than 96 kbps, %u kbps.\n",
+        syncInfoParam.bitrate
+      );
+
+    param->syncInfo = syncInfoParam;
   }
   else {
     /* Consistency check */
-    if (!constantAc3SyncInfoCheck(&readedParam, &param->syncInfo))
+    if (!_constantAc3SyncInfoCheck(&syncInfoParam, &param->syncInfo))
       LIBBLU_AC3_ERROR_RETURN("syncinfo() values are not constant.\n");
   }
 
   return 0;
 }
 
-static int decodeEac3SyncInfo(
+static int _decodeEac3SyncInfo(
   BitstreamReaderPtr ac3Input
 )
 {
   /* For (bsid == 16) syntax */
   uint32_t value;
 
-  /* [v16 Syncword] // 0x0B77 */
+  LIBBLU_AC3_DEBUG(" Synchronization Information, syncinfo()\n");
+
+  /* [v16 syncword] // 0x0B77 */
   if (readValueBigEndian(ac3Input, 2, &value) < 0)
     return -1;
+
+  LIBBLU_AC3_DEBUG("  Sync Word (syncword): 0x%04" PRIX16 ".\n", value);
 
   if (AC3_SYNCWORD != value)
     LIBBLU_AC3_ERROR_RETURN(
@@ -194,7 +197,7 @@ static int decodeEac3SyncInfo(
   return 0;
 }
 
-static int decodeAc3Addbsi(
+static int _decodeAc3Addbsi(
   BitstreamReaderPtr ac3Input,
   Ac3Addbsi * param
 )
@@ -233,7 +236,7 @@ static int decodeAc3Addbsi(
   return 0;
 }
 
-static int checkAc3AddbsiCompliance(
+static int _checkAc3AddbsiCompliance(
   const Ac3Addbsi * param
 )
 {
@@ -281,7 +284,7 @@ static int checkAc3AddbsiCompliance(
   return 0;
 }
 
-static int checkAc3AlternateBitStreamInfoCompliance(
+static int _checkAc3AlternateBitStreamInfoCompliance(
   const Ac3BitStreamInfoParameters * param
 )
 {
@@ -707,7 +710,7 @@ int checkAc3BitStreamInfoCompliance(
   if (param->bsid == 6) {
     /* Alternate Bit Stream Syntax */
     /* ETSI TS 102 366 V1.4.1 - Annex D */
-    if (checkAc3AlternateBitStreamInfoCompliance(param) < 0)
+    if (_checkAc3AlternateBitStreamInfoCompliance(param) < 0)
       return -1;
   }
   else {
@@ -781,24 +784,24 @@ int checkAc3BitStreamInfoCompliance(
   );
 
   if (param->addbsie) {
-    if (checkAc3AddbsiCompliance(&param->addbsi) < 0)
+    if (_checkAc3AddbsiCompliance(&param->addbsi) < 0)
       return -1;
   }
 
   return 0;
 }
 
-static bool constantAc3BitStreamInfoCheck(
+static bool _constantAc3BitStreamInfoCheck(
   const Ac3BitStreamInfoParameters * first,
   const Ac3BitStreamInfoParameters * second
 )
 {
-  return
-    first->bsid == second->bsid
-    && first->bsmod == second->bsmod
-    && first->acmod == second->acmod
-    && first->lfeon == second->lfeon
-  ;
+  return CHECK(
+    EQUAL(->bsid)
+    EQUAL(->bsmod)
+    EQUAL(->acmod)
+    EQUAL(->lfeon)
+  );
 }
 
 int decodeAc3BitStreamInfo(
@@ -809,274 +812,274 @@ int decodeAc3BitStreamInfo(
   /* For (bsid <= 0x8) syntax */
   uint32_t value;
 
-  Ac3BitStreamInfoParameters readedParam = {0};
+  Ac3BitStreamInfoParameters bsiParam = {0};
 
   /* [u5 bsid] */
   if (readBits(ac3Input, &value, 5) < 0)
     return -1;
-  readedParam.bsid = value;
+  bsiParam.bsid = value;
 
-  if (8 < readedParam.bsid)
+  if (8 < bsiParam.bsid)
     LIBBLU_AC3_ERROR_RETURN(
       "Unexpected or unsupported Bit Stream Identifier "
       "(bsid == %" PRIu8 ").\n",
-      readedParam.bsid
+      bsiParam.bsid
     );
 
   /* [u3 bsmod] */
   if (readBits(ac3Input, &value, 3) < 0)
     return -1;
-  readedParam.bsmod = value;
+  bsiParam.bsmod = value;
 
   /* [u3 acmod] */
   if (readBits(ac3Input, &value, 3) < 0)
     return -1;
-  readedParam.acmod = value;
+  bsiParam.acmod = value;
 
-  if (threeFrontChannelsPresentAc3Acmod(readedParam.acmod)) {
+  if (threeFrontChannelsPresentAc3Acmod(bsiParam.acmod)) {
     /* If 3 front channels present. */
 
     /* [u2 cmixlevel] */
     if (readBits(ac3Input, &value, 2) < 0)
       return -1;
-    readedParam.cmixlev = value;
+    bsiParam.cmixlev = value;
   }
 
-  if (isSurroundAc3Acmod(readedParam.acmod)) {
+  if (isSurroundAc3Acmod(bsiParam.acmod)) {
     /* If surround channel(s) present. */
 
     /* [u2 surmixlev] */
     if (readBits(ac3Input, &value, 2) < 0)
       return -1;
-    readedParam.surmixlev = value;
+    bsiParam.surmixlev = value;
   }
 
-  if (readedParam.acmod == AC3_ACMOD_L_R) {
+  if (bsiParam.acmod == AC3_ACMOD_L_R) {
     /* If Stereo 2/0 (L, R) */
 
     /* [u2 dsurmod] */
     if (readBits(ac3Input, &value, 2) < 0)
       return -1;
-    readedParam.dsurmod = value;
+    bsiParam.dsurmod = value;
   }
 
   /* [b1 lfeon] */
   if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-  readedParam.lfeon = value;
+  bsiParam.lfeon = value;
 
-  readedParam.nbChannels = nbChannelsAc3Acmod(
-    readedParam.acmod,
-    readedParam.lfeon
+  bsiParam.nbChannels = nbChannelsAc3Acmod(
+    bsiParam.acmod,
+    bsiParam.lfeon
   );
 
   /* [u5 dialnorm] */
   if (readBits(ac3Input, &value, 5) < 0)
     return -1;
-  readedParam.dialnorm = value;
+  bsiParam.dialnorm = value;
 
   /* [b1 compre] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.compre = value;
+  bsiParam.compre = value;
 
-  if (readedParam.compre) {
+  if (bsiParam.compre) {
     /* [u8 compr] */
     if (readBits(ac3Input, &value, 8) < 0)
       return -1;
-    readedParam.compr = value;
+    bsiParam.compr = value;
   }
 
   /* [b1 langcode] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.langcode = value;
+  bsiParam.langcode = value;
 
-  if (readedParam.langcode) {
+  if (bsiParam.langcode) {
     /* [u8 langcod] */
     if (readBits(ac3Input, &value, 8) < 0)
       return -1;
-    readedParam.langcod = value;
+    bsiParam.langcod = value;
   }
 
   /* [b1 audprodie] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.audprodie = value;
+  bsiParam.audprodie = value;
 
-  if (readedParam.audprodie) {
+  if (bsiParam.audprodie) {
     /* [u5 mixlevel] */
     if (readBits(ac3Input, &value, 5) < 0)
       return -1;
-    readedParam.audioProdInfo.mixlevel = value;
+    bsiParam.audioProdInfo.mixlevel = value;
 
     /* [u2 roomtyp] */
     if (readBits(ac3Input, &value, 2) < 0)
       return -1;
-    readedParam.audioProdInfo.roomtyp = value;
+    bsiParam.audioProdInfo.roomtyp = value;
   }
 
-  if (readedParam.acmod == AC3_ACMOD_CH1_CH2) {
+  if (bsiParam.acmod == AC3_ACMOD_CH1_CH2) {
     /* If 1+1 duplicated mono, require parameters for the second mono builded channel. */
 
     /* [u5 dialnorm2] */
     if (readBits(ac3Input, &value, 5) < 0)
       return -1;
-    readedParam.dualMonoParam.dialnorm2 = value;
+    bsiParam.dualMonoParam.dialnorm2 = value;
 
     /* [b1 compr2e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.dualMonoParam.compr2e = value;
+    bsiParam.dualMonoParam.compr2e = value;
 
-    if (readedParam.dualMonoParam.compr2e) {
+    if (bsiParam.dualMonoParam.compr2e) {
       /* [u8 compr2] */
       if (readBits(ac3Input, &value, 8) < 0)
         return -1;
-      readedParam.dualMonoParam.compr2 = value;
+      bsiParam.dualMonoParam.compr2 = value;
     }
 
     /* [b1 langcod2e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.dualMonoParam.langcod2e = value;
+    bsiParam.dualMonoParam.langcod2e = value;
 
-    if (readedParam.dualMonoParam.langcod2e) {
+    if (bsiParam.dualMonoParam.langcod2e) {
       /* [u8 langcod2] */
       if (readBits(ac3Input, &value, 8) < 0)
         return -1;
-      readedParam.dualMonoParam.langcod2 = value;
+      bsiParam.dualMonoParam.langcod2 = value;
     }
 
     /* [b1 audprodi2e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.dualMonoParam.audprodi2e = value;
+    bsiParam.dualMonoParam.audprodi2e = value;
 
-    if (readedParam.dualMonoParam.audprodi2e) {
+    if (bsiParam.dualMonoParam.audprodi2e) {
       /* [u5 mixlevel2] */
       if (readBits(ac3Input, &value, 5) < 0)
         return -1;
-      readedParam.dualMonoParam.audioProdInfo.mixlevel2 = value;
+      bsiParam.dualMonoParam.audioProdInfo.mixlevel2 = value;
 
       /* [u2 roomtyp2] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.dualMonoParam.audioProdInfo.roomtyp2 = value;
+      bsiParam.dualMonoParam.audioProdInfo.roomtyp2 = value;
     }
   }
 
   /* [b1 copyrightb] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.copyrightb = value;
+  bsiParam.copyrightb = value;
 
   /* [b1 origbs] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.origbs = value;
+  bsiParam.origbs = value;
 
-  if (readedParam.bsid == 0x6) {
+  if (bsiParam.bsid == 0x6) {
     /* Alternate Bit Stream Syntax */
     /* ETSI TS 102 366 V1.4.1 - Annex D */
 
     /* [b1 xbsi1e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.xbsi1e = value;
+    bsiParam.xbsi1e = value;
 
-    if (readedParam.xbsi1e) {
+    if (bsiParam.xbsi1e) {
       /* [u2 dmixmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.xbsi1.dmixmod = value;
+      bsiParam.xbsi1.dmixmod = value;
 
       /* [u3 ltrtcmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.xbsi1.ltrtcmixlev = value;
+      bsiParam.xbsi1.ltrtcmixlev = value;
 
       /* [u3 ltrtsurmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.xbsi1.ltrtsurmixlev = value;
+      bsiParam.xbsi1.ltrtsurmixlev = value;
 
       /* [u3 lorocmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.xbsi1.lorocmixlev = value;
+      bsiParam.xbsi1.lorocmixlev = value;
 
       /* [u3 lorosurmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.xbsi1.lorosurmixlev = value;
+      bsiParam.xbsi1.lorosurmixlev = value;
     }
 
     /* [b1 xbsi2e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.xbsi2e = value;
+    bsiParam.xbsi2e = value;
 
-    if (readedParam.xbsi2e) {
+    if (bsiParam.xbsi2e) {
       /* [u2 dsurexmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.xbsi2.dsurexmod = value;
+      bsiParam.xbsi2.dsurexmod = value;
 
       /* [u2 dheadphonmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.xbsi2.dheadphonmod = value;
+      bsiParam.xbsi2.dheadphonmod = value;
 
       /* [b1 adconvtyp] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.xbsi2.adconvtyp = value;
+      bsiParam.xbsi2.adconvtyp = value;
 
       /* [u8 xbsi2] */
       if (readBits(ac3Input, &value, 8) < 0)
         return -1;
-      readedParam.xbsi2.xbsi2 = value;
+      bsiParam.xbsi2.xbsi2 = value;
 
       /* [b1 encinfo] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.xbsi2.encinfo = value;
+      bsiParam.xbsi2.encinfo = value;
     }
   }
   else {
     /* [b1 timecod1e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.timecod1e = value;
+    bsiParam.timecod1e = value;
 
-    if (readedParam.timecod1e) {
+    if (bsiParam.timecod1e) {
       /* [u16 timecod1] */
       if (readBits(ac3Input, &value, 16) < 0)
         return -1;
-      readedParam.timecod1 = value;
+      bsiParam.timecod1 = value;
     }
 
     /* [b1 timecod2e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.timecod2e = value;
+    bsiParam.timecod2e = value;
 
-    if (readedParam.timecod2e) {
+    if (bsiParam.timecod2e) {
       /* [u16 timecod2] */
       if (readBits(ac3Input, &value, 16) < 0)
         return -1;
-      readedParam.timecod2 = value;
+      bsiParam.timecod2 = value;
     }
   }
 
   /* [b1 addbsie] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.addbsie = value;
+  bsiParam.addbsie = value;
 
-  if (readedParam.addbsie) {
-    if (decodeAc3Addbsi(ac3Input, &readedParam.addbsi) < 0)
+  if (bsiParam.addbsie) {
+    if (_decodeAc3Addbsi(ac3Input, &bsiParam.addbsi) < 0)
       return -1;
   }
 
@@ -1086,14 +1089,14 @@ int decodeAc3BitStreamInfo(
   if (!param->checkMode) {
     /* Compliance checks */
 
-    if (checkAc3BitStreamInfoCompliance(&readedParam) < 0)
+    if (checkAc3BitStreamInfoCompliance(&bsiParam) < 0)
       return -1;
 
-    param->bitstreamInfo = readedParam;
+    param->bitstreamInfo = bsiParam;
   }
   else {
     /* Consistency check */
-    if (!constantAc3BitStreamInfoCheck(&readedParam, &param->bitstreamInfo))
+    if (!_constantAc3BitStreamInfoCheck(&bsiParam, &param->bitstreamInfo))
       LIBBLU_AC3_ERROR_RETURN(
         "Bit Stream Information contains forbidden non-constant values.\n"
       );
@@ -1140,13 +1143,10 @@ void buildStrReprEac3Chanmap(
   }
 }
 
-static int checkEac3BitStreamInfoCompliance(
+static int _checkEac3BitStreamInfoCompliance(
   const Eac3BitStreamInfoParameters * param
 )
 {
-
-  LIBBLU_AC3_DEBUG(" Synchronization Information, syncinfo()\n");
-  LIBBLU_AC3_DEBUG("  Sync Word (syncword): 0x0B77.\n");
 
   LIBBLU_AC3_DEBUG(" Bit stream information, bsi()\n");
 
@@ -1736,38 +1736,38 @@ static int checkEac3BitStreamInfoCompliance(
   );
 
   if (param->addbsie) {
-    if (checkAc3AddbsiCompliance(&param->addbsi) < 0)
+    if (_checkAc3AddbsiCompliance(&param->addbsi) < 0)
       return -1;
   }
 
   return 0; /* OK */
 }
 
-static bool constantEac3BitStreamInfoCheck(
+static bool _constantEac3BitStreamInfoCheck(
   const Eac3BitStreamInfoParameters * first,
   const Eac3BitStreamInfoParameters * second
 )
 {
-  return
-    first->strmtyp == second->strmtyp
-    && first->substreamid == second->substreamid
-    && first->frmsiz == second->frmsiz
-    && first->fscod == second->fscod
-    && first->fscod2 == second->fscod2
-    && first->numblkscod == second->numblkscod
-    && first->acmod == second->acmod
-    && first->lfeon == second->lfeon
-    && first->bsid == second->bsid
-    && first->chanmape == second->chanmape
-    && first->chanmap == second->chanmap
-    && first->mixmdate == second->mixmdate
-    && first->convsync == second->convsync
-    && first->blkid == second->blkid
-    && first->frmsizecod == second->frmsizecod
-  ;
+  return CHECK(
+    EQUAL(->strmtyp)
+    EQUAL(->substreamid)
+    EQUAL(->frmsiz)
+    EQUAL(->fscod)
+    EQUAL(->fscod2)
+    EQUAL(->numblkscod)
+    EQUAL(->acmod)
+    EQUAL(->lfeon)
+    EQUAL(->bsid)
+    EQUAL(->chanmape)
+    EQUAL(->chanmap)
+    EQUAL(->mixmdate)
+    EQUAL(->convsync)
+    EQUAL(->blkid)
+    EQUAL(->frmsizecod)
+  );
 }
 
-static int decodeEac3BitStreamInfo(
+static int _decodeEac3BitStreamInfo(
   BitstreamReaderPtr ac3Input,
   Ac3SyncFrameParameters * param
 )
@@ -1775,257 +1775,257 @@ static int decodeEac3BitStreamInfo(
   /* For (bsid == 0x10) syntax */
   uint32_t value;
 
-  Eac3BitStreamInfoParameters readedParam = {0};
+  Eac3BitStreamInfoParameters bsiParam = {0};
 
   /* [u2 strmtyp] */
   if (readBits(ac3Input, &value, 2) < 0)
     return -1;
-  readedParam.strmtyp = value;
+  bsiParam.strmtyp = value;
 
   /* [u3 substreamid] */
   if (readBits(ac3Input, &value, 3) < 0)
     return -1;
-  readedParam.substreamid = value;
+  bsiParam.substreamid = value;
 
   /* [u11 frmsiz] */
   if (readBits(ac3Input, &value, 11) < 0)
     return -1;
-  readedParam.frmsiz = value;
-  readedParam.frameSize = (value + 1) * AC3_WORD_SIZE;
+  bsiParam.frmsiz = value;
+  bsiParam.frameSize = (value + 1) * AC3_WORD_SIZE;
 
   /* [u2 fscod] */
   if (readBits(ac3Input, &value, 2) < 0)
     return -1;
-  readedParam.fscod = value;
-  readedParam.sampleRate = sampleRateAc3Fscod(value);
+  bsiParam.fscod = value;
+  bsiParam.sampleRate = sampleRateAc3Fscod(value);
 
-  if (readedParam.fscod == 0x3) {
+  if (bsiParam.fscod == 0x3) {
     /* [u2 fscod2] */
     if (readBits(ac3Input, &value, 2) < 0)
       return -1;
-    readedParam.fscod2 = value;
-    readedParam.sampleRate = sampleRateEac3Fscod2(value);
+    bsiParam.fscod2 = value;
+    bsiParam.sampleRate = sampleRateEac3Fscod2(value);
 
-    readedParam.numblkscod = EAC3_NUMBLKSCOD_6_BLOCKS;
+    bsiParam.numblkscod = EAC3_NUMBLKSCOD_6_BLOCKS;
   }
   else {
     /* [u2 numblkscod] */
     if (readBits(ac3Input, &value, 2) < 0)
       return -1;
-    readedParam.numblkscod = value;
+    bsiParam.numblkscod = value;
   }
 
   /* Converting numblkscod to Number of Blocks in Sync Frame. */
-  readedParam.numBlksPerSync = nbBlocksEac3Numblkscod(readedParam.numblkscod);
+  bsiParam.numBlksPerSync = nbBlocksEac3Numblkscod(bsiParam.numblkscod);
 
   /* [u3 acmod] */
   if (readBits(ac3Input, &value, 3) < 0)
     return -1;
-  readedParam.acmod = value;
+  bsiParam.acmod = value;
 
   /* [b1 lfeon] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.lfeon = value;
+  bsiParam.lfeon = value;
 
-  readedParam.nbChannels = nbChannelsAc3Acmod(
-    readedParam.acmod,
-    readedParam.lfeon
+  bsiParam.nbChannels = nbChannelsAc3Acmod(
+    bsiParam.acmod,
+    bsiParam.lfeon
   );
 
   /* [u5 bsid] // 0x10/16 in this syntax */
   if (readBits(ac3Input, &value, 5) < 0)
     return -1;
-  readedParam.bsid = value;
+  bsiParam.bsid = value;
 
-  if (readedParam.bsid <= 10 || 16 < readedParam.bsid)
+  if (bsiParam.bsid <= 10 || 16 < bsiParam.bsid)
     LIBBLU_AC3_ERROR_RETURN(
       "Unexpected or unsupported Bit Stream Identifier "
       "(bsid == %" PRIu8 ", parser expect 16).\n",
-      readedParam.bsid
+      bsiParam.bsid
     );
 
   /* [u5 dialnorm] */
   if (readBits(ac3Input, &value, 5) < 0)
     return -1;
-  readedParam.dialnorm = value;
+  bsiParam.dialnorm = value;
 
   /* [b1 compre] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.compre = value;
+  bsiParam.compre = value;
 
-  if (readedParam.compre) {
+  if (bsiParam.compre) {
     /* [u8 compr] */
     if (readBits(ac3Input, &value, 8) < 0)
       return -1;
-    readedParam.compr = value;
+    bsiParam.compr = value;
   }
 
-  if (readedParam.acmod == 0x0) {
+  if (bsiParam.acmod == 0x0) {
     /* If 1+1 duplicated mono, require parameters for the second mono builded channel. */
 
     /* [u5 dialnorm2] */
     if (readBits(ac3Input, &value, 5) < 0)
       return -1;
-    readedParam.dualMonoParam.dialnorm2 = value;
+    bsiParam.dualMonoParam.dialnorm2 = value;
 
     /* [b1 compr2e] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.dualMonoParam.compr2e = value;
+    bsiParam.dualMonoParam.compr2e = value;
 
-    if (readedParam.dualMonoParam.compr2e) {
+    if (bsiParam.dualMonoParam.compr2e) {
       /* [u8 compr2] */
       if (readBits(ac3Input, &value, 8) < 0)
         return -1;
-      readedParam.dualMonoParam.compr2 = value;
+      bsiParam.dualMonoParam.compr2 = value;
     }
   }
 
-  if (readedParam.strmtyp == 0x1) {
+  if (bsiParam.strmtyp == 0x1) {
     /* [b1 chanmape] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.chanmape = value;
+    bsiParam.chanmape = value;
 
-    if (readedParam.chanmape) {
+    if (bsiParam.chanmape) {
       /* [u16 chanmap] */
       if (readBits(ac3Input, &value, 16) < 0)
         return -1;
-      readedParam.chanmap = value;
-      readedParam.nbChannelsFromMap = nbChannelsEac3Chanmap(value);
+      bsiParam.chanmap = value;
+      bsiParam.nbChannelsFromMap = nbChannelsEac3Chanmap(value);
     }
   }
 
   /* [b1 mixmdate] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.mixmdate = value;
+  bsiParam.mixmdate = value;
 
-  if (readedParam.mixmdate) {
+  if (bsiParam.mixmdate) {
     /* Mixing meta-data */
     /* Not checked. */
 
-    if (0x2 < readedParam.acmod) {
+    if (0x2 < bsiParam.acmod) {
       /* More than two channels. */
 
       /* [u2 dmixmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.Mixdata.dmixmod = value;
+      bsiParam.Mixdata.dmixmod = value;
     }
 
-    if ((readedParam.acmod & 0x1) && (0x2 < readedParam.acmod)) {
+    if ((bsiParam.acmod & 0x1) && (0x2 < bsiParam.acmod)) {
       /* Three front channels present. */
 
       /* [u3 ltrtcmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.Mixdata.ltrtcmixlev = value;
+      bsiParam.Mixdata.ltrtcmixlev = value;
 
       /* [u3 lorocmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.Mixdata.lorocmixlev = value;
+      bsiParam.Mixdata.lorocmixlev = value;
     }
 
-    if (readedParam.acmod & 0x4) {
+    if (bsiParam.acmod & 0x4) {
       /* Surround channels present. */
 
       /* [u3 ltrtsurmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.Mixdata.ltrtsurmixlev = value;
+      bsiParam.Mixdata.ltrtsurmixlev = value;
 
       /* [u3 lorosurmixlev] */
       if (readBits(ac3Input, &value, 3) < 0)
         return -1;
-      readedParam.Mixdata.lorosurmixlev = value;
+      bsiParam.Mixdata.lorosurmixlev = value;
     }
 
-    if (readedParam.lfeon) {
+    if (bsiParam.lfeon) {
       /* [b1 lfemixlevcode] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.Mixdata.lfemixlevcode = value;
+      bsiParam.Mixdata.lfemixlevcode = value;
 
       if (value) {
         /* [u5 lfemixlevcod] */
         if (readBits(ac3Input, &value, 5) < 0)
           return -1;
-        readedParam.Mixdata.lfemixlevcod = value;
+        bsiParam.Mixdata.lfemixlevcod = value;
       }
     }
 
-    if (readedParam.strmtyp == 0x0) {
+    if (bsiParam.strmtyp == 0x0) {
       /* [b1 pgmscle] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.Mixdata.pgmscle = value;
+      bsiParam.Mixdata.pgmscle = value;
 
       if (value) {
         /* [u6 pgmscl] */
         if (readBits(ac3Input, &value, 6) < 0)
           return -1;
-        readedParam.Mixdata.pgmscl = value;
+        bsiParam.Mixdata.pgmscl = value;
       }
 
-      if (readedParam.acmod == 0x0) {
+      if (bsiParam.acmod == 0x0) {
         /* [b1 pgmscl2e] */
         if (readBits(ac3Input, &value, 1) < 0)
           return -1;
-        readedParam.Mixdata.pgmscl2e = value;
+        bsiParam.Mixdata.pgmscl2e = value;
 
         if (value) {
           /* [u6 pgmscl2] */
           if (readBits(ac3Input, &value, 6) < 0)
             return -1;
-          readedParam.Mixdata.pgmscl2 = value;
+          bsiParam.Mixdata.pgmscl2 = value;
         }
       }
 
       /* [b1 extpgmscle] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.Mixdata.extpgmscle = value;
+      bsiParam.Mixdata.extpgmscle = value;
 
-      if (readedParam.Mixdata.extpgmscle) {
+      if (bsiParam.Mixdata.extpgmscle) {
         /* [u6 extpgmscl] */
         if (readBits(ac3Input, &value, 6) < 0)
           return -1;
-        readedParam.Mixdata.extpgmscl = value;
+        bsiParam.Mixdata.extpgmscl = value;
       }
 
       /* [u2 mixdef] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.Mixdata.mixdef = value;
+      bsiParam.Mixdata.mixdef = value;
 
-      if (readedParam.Mixdata.mixdef == 0x1) {
+      if (bsiParam.Mixdata.mixdef == 0x1) {
         /* [b1 premixcmpsel] */
         if (readBits(ac3Input, &value, 1) < 0)
           return -1;
-        readedParam.Mixdata.premixcmpsel = value;
+        bsiParam.Mixdata.premixcmpsel = value;
 
         /* [b1 drcsrc] */
         if (readBits(ac3Input, &value, 1) < 0)
           return -1;
-        readedParam.Mixdata.drcsrc = value;
+        bsiParam.Mixdata.drcsrc = value;
 
         /* [u3 premixcmpscl] */
         if (readBits(ac3Input, &value, 3) < 0)
           return -1;
-        readedParam.Mixdata.premixcmpscl = value;
+        bsiParam.Mixdata.premixcmpscl = value;
       }
 
-      else if (readedParam.Mixdata.mixdef == 0x2) {
+      else if (bsiParam.Mixdata.mixdef == 0x2) {
         /* [v12 mixdata] */
         if (skipBits(ac3Input, 12) < 0)
           return -1;
       }
 
-      else if (readedParam.Mixdata.mixdef == 0x3) {
+      else if (bsiParam.Mixdata.mixdef == 0x3) {
         /* [u5 mixdeflen] */
         if (readBits(ac3Input, &value, 5) < 0)
           return -1;
@@ -2035,7 +2035,7 @@ static int decodeEac3BitStreamInfo(
           return -1;
       }
 
-      if (readedParam.acmod < 0x2) {
+      if (bsiParam.acmod < 0x2) {
         /* Mono or Dual-Mono */
 
         /* [b1 paninfoe] */
@@ -2049,7 +2049,7 @@ static int decodeEac3BitStreamInfo(
             return -1;
         }
 
-        if (readedParam.acmod == 0x0) {
+        if (bsiParam.acmod == 0x0) {
           /* Dual-Mono */
 
           /* [b1 paninfo2e] */
@@ -2070,7 +2070,7 @@ static int decodeEac3BitStreamInfo(
         return -1;
 
       if (value) {
-        if (readedParam.numblkscod == 0x0) {
+        if (bsiParam.numblkscod == 0x0) {
           /* [u5 blkmixcfginfo[0]] */
           if (skipBits(ac3Input, 5) < 0)
             return -1;
@@ -2078,7 +2078,7 @@ static int decodeEac3BitStreamInfo(
         else {
           unsigned i;
 
-          for (i = 0; i < readedParam.numBlksPerSync; i++) {
+          for (i = 0; i < bsiParam.numBlksPerSync; i++) {
             /* [b1 blkmixcfginfoe] */
             if (readBits(ac3Input, &value, 1) < 0)
               return -1;
@@ -2097,134 +2097,134 @@ static int decodeEac3BitStreamInfo(
   /* [b1 infomdate] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.infomdate = value;
+  bsiParam.infomdate = value;
 
-  if (readedParam.infomdate) {
+  if (bsiParam.infomdate) {
     /* [u3 bsmod] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.InformationalMetadata.bsmod = value;
+    bsiParam.InformationalMetadata.bsmod = value;
 
     /* [b1 copyrightb] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.InformationalMetadata.copyrightb = value;
+    bsiParam.InformationalMetadata.copyrightb = value;
 
     /* [b1 origbs] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.InformationalMetadata.origbs = value;
+    bsiParam.InformationalMetadata.origbs = value;
 
-    if (readedParam.acmod == 0x2) {
+    if (bsiParam.acmod == 0x2) {
       /* If Stereo 2.0 */
 
       /* [u2 dsurmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.InformationalMetadata.dsurmod = value;
+      bsiParam.InformationalMetadata.dsurmod = value;
 
       /* [u2 dheadphonmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.InformationalMetadata.dheadphonmod = value;
+      bsiParam.InformationalMetadata.dheadphonmod = value;
     }
 
-    if (0x6 <= readedParam.acmod) {
+    if (0x6 <= bsiParam.acmod) {
       /* If Both Surround channels present (2/2, 3/2 modes) */
       /* [u2 dsurexmod] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.InformationalMetadata.dsurexmod = value;
+      bsiParam.InformationalMetadata.dsurexmod = value;
     }
 
     /* [b1 audprodie] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.InformationalMetadata.audprodie = value;
+    bsiParam.InformationalMetadata.audprodie = value;
 
-    if (readedParam.InformationalMetadata.audprodie) {
+    if (bsiParam.InformationalMetadata.audprodie) {
       /* [u5 mixlevel] */
       if (readBits(ac3Input, &value, 5) < 0)
         return -1;
-      readedParam.InformationalMetadata.audioProdInfo.mixlevel = value;
+      bsiParam.InformationalMetadata.audioProdInfo.mixlevel = value;
 
       /* [u2 roomtyp] */
       if (readBits(ac3Input, &value, 2) < 0)
         return -1;
-      readedParam.InformationalMetadata.audioProdInfo.roomtyp = value;
+      bsiParam.InformationalMetadata.audioProdInfo.roomtyp = value;
 
       /* [b1 adconvtyp] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.InformationalMetadata.audioProdInfo.adconvtyp = value;
+      bsiParam.InformationalMetadata.audioProdInfo.adconvtyp = value;
     }
 
-    if (readedParam.acmod == 0x0) {
+    if (bsiParam.acmod == 0x0) {
       /* If Dual-Mono mode */
 
       /* [b1 audprodi2e] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.InformationalMetadata.audprodi2e = value;
+      bsiParam.InformationalMetadata.audprodi2e = value;
 
-      if (readedParam.InformationalMetadata.audprodi2e) {
+      if (bsiParam.InformationalMetadata.audprodi2e) {
         /* [u5 mixlevel2] */
         if (readBits(ac3Input, &value, 5) < 0)
           return -1;
-        readedParam.InformationalMetadata.audioProdInfo2.mixlevel2 = value;
+        bsiParam.InformationalMetadata.audioProdInfo2.mixlevel2 = value;
 
         /* [u2 roomtyp2] */
         if (readBits(ac3Input, &value, 2) < 0)
           return -1;
-        readedParam.InformationalMetadata.audioProdInfo2.roomtyp2 = value;
+        bsiParam.InformationalMetadata.audioProdInfo2.roomtyp2 = value;
 
         /* [b1 adconvtyp2] */
         if (readBits(ac3Input, &value, 1) < 0)
           return -1;
-        readedParam.InformationalMetadata.audioProdInfo2.adconvtyp2 = value;
+        bsiParam.InformationalMetadata.audioProdInfo2.adconvtyp2 = value;
       }
     }
 
-    if (readedParam.fscod < 0x3) {
+    if (bsiParam.fscod < 0x3) {
       /* [b1 sourcefscod] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.InformationalMetadata.sourcefscod = value;
+      bsiParam.InformationalMetadata.sourcefscod = value;
     }
   }
 
-  if (readedParam.strmtyp == 0x0 && readedParam.numblkscod != 0x3) {
+  if (bsiParam.strmtyp == 0x0 && bsiParam.numblkscod != 0x3) {
     /* [b1 convsync] */
     if (readBits(ac3Input, &value, 1) < 0)
       return -1;
-    readedParam.convsync = value;
+    bsiParam.convsync = value;
   }
 
-  if (readedParam.strmtyp == 0x2) {
-    if (readedParam.numblkscod == 0x3)
-      readedParam.blkid = true;
+  if (bsiParam.strmtyp == 0x2) {
+    if (bsiParam.numblkscod == 0x3)
+      bsiParam.blkid = true;
     else {
       /* [b1 blkid] */
       if (readBits(ac3Input, &value, 1) < 0)
         return -1;
-      readedParam.blkid = value;
+      bsiParam.blkid = value;
     }
 
-    if (readedParam.blkid) {
+    if (bsiParam.blkid) {
       /* [u6 frmsizecod] */
       if (readBits(ac3Input, &value, 6) < 0)
         return -1;
-      readedParam.frmsizecod = value;
+      bsiParam.frmsizecod = value;
     }
   }
 
   /* [b1 addbsie] */
   if (readBits(ac3Input, &value, 1) < 0)
     return -1;
-  readedParam.addbsie = value;
+  bsiParam.addbsie = value;
 
-  if (readedParam.addbsie) {
-    if (decodeAc3Addbsi(ac3Input, &readedParam.addbsi) < 0)
+  if (bsiParam.addbsie) {
+    if (_decodeAc3Addbsi(ac3Input, &bsiParam.addbsi) < 0)
       return -1;
   }
 
@@ -2239,23 +2239,23 @@ static int decodeEac3BitStreamInfo(
         "Expect a AC-3 core syncframe before E-AC3 syncframe.\n"
       );
 
-    if (checkEac3BitStreamInfoCompliance(&readedParam) < 0)
+    if (_checkEac3BitStreamInfoCompliance(&bsiParam) < 0)
       return -1;
 
-    param->eac3BitstreamInfo = readedParam;
+    param->eac3BitstreamInfo = bsiParam;
     param->eac3Present = true;
     param->checkMode = false;
   }
   else {
     /* Consistency check */
-    if (!constantEac3BitStreamInfoCheck(&readedParam, &param->eac3BitstreamInfo))
+    if (!_constantEac3BitStreamInfoCheck(&bsiParam, &param->eac3BitstreamInfo))
       LIBBLU_AC3_ERROR_RETURN("bsi() values are not constant.\n");
   }
 
   return 0;
 }
 
-static int decodeAc3Sync(
+static int _decodeAc3Sync(
   BitstreamReaderPtr ac3Input,
   Ac3SyncFrameParameters * param,
   bool * isEac3Frame,
@@ -2264,12 +2264,10 @@ static int decodeAc3Sync(
 {
   uint8_t bsid;
 
-  static const CrcParam crcParam = AC3_CRC_PARAMS;
-
   uint64_t startFrameOff = tellPos(ac3Input);
 
   /* Get bsid to know correct syntax structure : */
-  bsid = getSyncFrameBsid(ac3Input);
+  bsid = _getSyncFrameBsid(ac3Input);
   LIBBLU_DEBUG_COM("# Identified bsid: 0x%" PRIx8 ".\n", bsid);
 
   if (bsid <= 8) {
@@ -2277,7 +2275,7 @@ static int decodeAc3Sync(
     LIBBLU_DEBUG_COM(" === AC3 Sync Frame ===\n");
 
     /* syncinfo() */
-    if (decodeAc3SyncInfo(ac3Input, param, useCrcCheck) < 0)
+    if (_decodeAc3SyncInfo(ac3Input, param, useCrcCheck) < 0)
       return -1;
 
     /* bsi() */
@@ -2304,7 +2302,7 @@ static int decodeAc3Sync(
         LIBBLU_AC3_ERROR_RETURN("CRC checksum error at the 5/8 of the frame.\n");
 
       /* Compute CRC for the remaining bytes */
-      if (initCrc(BITSTREAM_CRC_CTX(ac3Input), crcParam, 0) < 0)
+      if (initCrc(BITSTREAM_CRC_CTX(ac3Input), AC3_CRC_PARAMS, 0) < 0)
         return -1;
 
       if (skipBytes(ac3Input, secondPartSize) < 0)
@@ -2336,16 +2334,16 @@ static int decodeAc3Sync(
     LIBBLU_DEBUG_COM(" === E-AC3 Sync Frame ===\n");
 
     /* syncinfo() */
-    if (decodeEac3SyncInfo(ac3Input) < 0)
+    if (_decodeEac3SyncInfo(ac3Input) < 0)
       return -1;
 
     if (useCrcCheck) {
-      if (initCrc(BITSTREAM_CRC_CTX(ac3Input), crcParam, 0) < 0)
+      if (initCrc(BITSTREAM_CRC_CTX(ac3Input), AC3_CRC_PARAMS, 0) < 0)
         return -1;
     }
 
     /* bsi() */
-    if (decodeEac3BitStreamInfo(ac3Input, param) < 0)
+    if (_decodeEac3BitStreamInfo(ac3Input, param) < 0)
       return -1;
 
     /* Skipping remaining frame bytes */
@@ -2376,6 +2374,33 @@ static int decodeAc3Sync(
 
 /* ### MLP : ############################################################### */
 
+/** \~english
+ * \brief Return 'format_sync' field from 'major_sync_info()' if present.
+ *
+ * \param input
+ * \return uint32_t
+ */
+static uint32_t _getMlpMajorSyncFormatSyncWord(
+  BitstreamReaderPtr input
+)
+{
+  uint64_t value = nextUint64(input);
+
+  /* [v4 check_nibble] [u12 access_unit_length] [u16 input_timing] */
+  /* [v32 format_sync] */
+
+  return (value & 0xFFFFFFFF);
+}
+
+static bool _isPresentMlpMajorSyncFormatSyncWord(
+  BitstreamReaderPtr input
+)
+{
+  uint32_t format_sync = _getMlpMajorSyncFormatSyncWord(input) >> 8;
+
+  return (MLP_SYNCWORD_PREFIX == format_sync);
+}
+
 int unpackMlpMajorSyncFormatInfo(
   uint32_t value,
   MlpMajorSyncFormatInfo * param
@@ -2383,10 +2408,6 @@ int unpackMlpMajorSyncFormatInfo(
 {
   /* [u4 audio_sampling_frequency] */
   param->audio_sampling_frequency = (value >> 28) & 0xF;
-
-  param->sampleRate = sampleRateMlpAudioSamplingFrequency(
-    param->audio_sampling_frequency
-  );
 
   /* [v1 6ch_multichannel_type] */
   param->u6ch_multichannel_type = (value >> 27) & 0x1;
@@ -2422,6 +2443,18 @@ int unpackMlpMajorSyncFormatInfo(
 
   /* [u13 8ch_presentation_channel_assignment] */
   param->u8ch_presentation_channel_assignment = value & 0x1FFF;
+
+  param->sampleRate = sampleRateMlpAudioSamplingFrequency(
+    param->audio_sampling_frequency
+  );
+
+  param->u6ch_presentation_channel_nb = getNbChannels6ChPresentationAssignment(
+    param->u6ch_presentation_channel_assignment
+  );
+
+  param->u8ch_presentation_channel_nb = getNbChannels8ChPresentationAssignment(
+    param->u8ch_presentation_channel_assignment
+  );
 
   return 0;
 }
@@ -2639,12 +2672,8 @@ int decodeMlpMajorSyncInfo(
 )
 {
   uint32_t value;
-  int ret;
 
-  uint32_t formatInfo;
-  uint16_t crcResult;
-
-  CrcParam crcParam = TRUE_HD_MAJOR_SYNC_CRC_PARAMS;
+  CrcParam crcParam = TRUE_HD_MS_CRC_PARAMS;
 
   if (initCrc(BITSTREAM_CRC_CTX(ac3Input), crcParam, 0) < 0)
     return -1;
@@ -2673,7 +2702,8 @@ int decodeMlpMajorSyncInfo(
   }
 
   /* [v32 format_info] */
-  if (readBits(ac3Input, &formatInfo, 32) < 0)
+  uint32_t format_info;
+  if (readBits(ac3Input, &format_info, 32) < 0)
     return -1;
   /* Unpacking is delayed to flags field parsing */
 
@@ -2681,13 +2711,14 @@ int decodeMlpMajorSyncInfo(
   if (readBits(ac3Input, &value, 16) < 0)
     return -1;
 
-  if ((value & 0xFFFF) != TRUE_HD_SIGNATURE)
+  if (TRUE_HD_SIGNATURE != value) {
     LIBBLU_AC3_ERROR_RETURN(
       "Invalid MLP Major Sync signature word "
-      "(signature == 0x%04X, expect 0x%04X).\n",
-      value & 0xFFFF,
+      "(signature == 0x%04" PRIX32 ", expect 0x%04X).\n",
+      value,
       TRUE_HD_SIGNATURE
     );
+  }
 
   /** [v16 flags]
    * -> b1:  constantFifoBufDelay;
@@ -2704,10 +2735,7 @@ int decodeMlpMajorSyncInfo(
   param->formatInfoAlternative8chAssSyntax = (value >> 11) & 0x1;
 
   /* Unpack format_info field using flags */
-  ret = unpackMlpMajorSyncFormatInfo(
-    formatInfo,
-    &(param->format_info)
-  );
+  int ret = unpackMlpMajorSyncFormatInfo(format_info, &(param->format_info));
   if (ret < 0)
     return -1;
 
@@ -2724,10 +2752,6 @@ int decodeMlpMajorSyncInfo(
   if (readBits(ac3Input, &value, 15) < 0)
     return -1;
   param->peak_data_rate = value;
-
-  param->maxDataRate =
-    param->peak_data_rate * param->format_info.sampleRate / AC3_WORD_SIZE
-  ;
 
   /* [u4 substreams] */
   if (readBits(ac3Input, &value, 4) < 0)
@@ -2755,19 +2779,45 @@ int decodeMlpMajorSyncInfo(
 
   if (endCrc(BITSTREAM_CRC_CTX(ac3Input), &value) < 0)
     return -1;
-  crcResult = value & 0xFFFF;
+  uint16_t crc_result = (value & 0xFFFF);
 
   /* [u16 major_sync_info_CRC] */
   if (readBits(ac3Input, &value, 16) < 0)
     return -1;
   param->major_sync_info_CRC = value;
 
-  if (crcResult != param->major_sync_info_CRC)
+  if (crc_result != param->major_sync_info_CRC)
     LIBBLU_AC3_ERROR_RETURN(
       "Unexpected Major Sync CRC value result.\n"
     );
 
+  param->peakDataRate = DIV_ROUND_UP(
+    param->peak_data_rate * param->format_info.sampleRate,
+    16
+  );
+
   return 0;
+}
+
+/** \~english
+ * \brief
+ *
+ * \param buf
+ * \param value
+ * \param size Field size in bits, must be between 0-32 and a multiple of 4.
+ */
+static inline void _applyNibbleXorMlp(
+  uint8_t * buf,
+  uint32_t value,
+  size_t size
+)
+{
+  assert(NULL != buf);
+  assert(size <= 32 && 0 == (size % 4));
+
+  for (; 0 < size; size -= 4) {
+    *buf ^= (value >> (size - 4)) & 0xF;
+  }
 }
 
 /** \~english
@@ -2784,7 +2834,7 @@ int decodeMlpMajorSyncInfo(
     uint32_t _val;                                                            \
     if (readBits(f, &_val, s) < 0)                                            \
       e;                                                                      \
-    applyNibbleXorMlp(n, _val, s);                                            \
+    _applyNibbleXorMlp(n, _val, s);                                           \
     *(d) = _val;                                                              \
   } while (0)
 
@@ -2793,42 +2843,29 @@ int decodeMlpAccessUnit(
   MlpAccessUnitParameters * param
 )
 {
-  int i;
   uint32_t value;
-
-  uint8_t checkNibble = 0;
-
-  int64_t startOff, startSubOff;
 
   LIBBLU_AC3_DEBUG(" === MLP Access Unit ===\n");
 
-  startOff = tellPos(ac3Input);
+  int64_t startOff = tellPos(ac3Input);
+  uint8_t checkNibbleValue = 0x00;
 
   /* [v4 check_nibble] */
   READ_BITS_NIBBLE_MLP(
     &param->checkNibble, ac3Input, 4,
-    &checkNibble, return -1
+    &checkNibbleValue, return -1
   );
-  /* {
-    uint32_t value;
-
-    if (readBits(ac3Input, &value, 4) < 0)
-      return -1;
-    if (applyNibbleXorMlp(&checkNibble, value, 4) < 0)
-      return -1;
-    param->checkNibble = value;
-  } */
 
   /* [u12 access_unit_length] */
   READ_BITS_NIBBLE_MLP(
     &param->accessUnitLength, ac3Input, 12,
-    &checkNibble, return -1
+    &checkNibbleValue, return -1
   );
 
   /* [u16 input_timing] */
   READ_BITS_NIBBLE_MLP(
     &param->inputTiming, ac3Input, 16,
-    &checkNibble, return -1
+    &checkNibbleValue, return -1
   );
 
   /* Check if current frame contain Major Sync : */
@@ -2850,6 +2887,16 @@ int decodeMlpAccessUnit(
         No reference parameters where supplied (first frame in stream ?),
         making current frame Major Sync as new reference.
       */
+      // TODO: Check
+
+      if (BDAV_TRUE_HD_MAX_AUTHORIZED_BITRATE < majorSyncParam.peakDataRate) {
+        // TODO: Check and add to core sync frame bit-rate.
+      }
+
+      if (MLP_MAX_EXT_SS_NB < majorSyncParam.substreams) {
+        // TODO
+      }
+
       param->majorSync = majorSyncParam;
       param->containAtmos = atmosPresentMlpMajorSyncParameters(&majorSyncParam);
     }
@@ -2858,7 +2905,9 @@ int decodeMlpAccessUnit(
       if (!constantMlpMajorSyncCheck(&(param->majorSync), &majorSyncParam))
         LIBBLU_AC3_DEBUG("Major Sync values are not constant.\n");
     }
-  } else if (!param->checkMode) {
+  }
+#if 0 // This shall not be possible.
+  else if (!param->checkMode) {
     /*
       Error, current frame does not contain Major Sync, and no reference parameters have been supplied,
       meaning that the bistream is not a TrueHD bitsream and/or can't be used.
@@ -2867,8 +2916,9 @@ int decodeMlpAccessUnit(
       "Missing Major Sync.\n"
     );
   }
+#endif
 
-  /* TODO: Move sync header check here */
+  // TODO: Move sync header check here.
   {
     /* TEMP */
     LIBBLU_AC3_DEBUG(" access_unit()\n");
@@ -2880,12 +2930,12 @@ int decodeMlpAccessUnit(
     );
 
     LIBBLU_AC3_DEBUG(
-      "   access_unit_length: %" PRIu16 " words (0x%03" PRIX16 ").\n\n",
+      "   access_unit_length: %" PRIu16 " words (0x%03" PRIX16 ").\n",
       param->accessUnitLength,
       param->accessUnitLength
     );
     LIBBLU_AC3_DEBUG(
-      "    -> %u bytes.\n\n",
+      "    -> %u bytes.\n",
       param->accessUnitLength * AC3_WORD_SIZE
     );
 
@@ -2899,11 +2949,11 @@ int decodeMlpAccessUnit(
   /* extSubstream_directory */
   LIBBLU_DEBUG_COM("extSubstream directory:\n");
 
-  for (i = 0; i < param->majorSync.substreams; i++) {
+  for (unsigned i = 0; i < param->majorSync.substreams; i++) {
     LIBBLU_DEBUG_COM(" - extSubstream %d.\n", i);
 
     /* [b1 extra_extSubstream_word] [b1 restart_nonexistent] [b1 crc_present] [v1 reserved] */
-    READ_BITS_NIBBLE_MLP(&value, ac3Input, 4, &checkNibble, return -1);
+    READ_BITS_NIBBLE_MLP(&value, ac3Input, 4, &checkNibbleValue, return -1);
 
     param->extSubstreams[i].extra_extSubstream_word = value >> 3;
     param->extSubstreams[i].restart_nonexistent = (value >> 2) & 0x1;
@@ -2927,13 +2977,13 @@ int decodeMlpAccessUnit(
     }
 
     /* [u12 extSubstream_end_ptr] */
-    READ_BITS_NIBBLE_MLP(&value, ac3Input, 12, &checkNibble, return -1);
+    READ_BITS_NIBBLE_MLP(&value, ac3Input, 12, &checkNibbleValue, return -1);
 
     param->extSubstreams[i].extSubstream_end_ptr = value;
     LIBBLU_DEBUG_COM("    -> extSubstream end ptr: 0x04%" PRIx16 ".\n", param->extSubstreams[i].extSubstream_end_ptr);
 
     if (param->extSubstreams[i].extra_extSubstream_word) {
-      READ_BITS_NIBBLE_MLP(&value, ac3Input, 16, &checkNibble, return -1);
+      READ_BITS_NIBBLE_MLP(&value, ac3Input, 16, &checkNibbleValue, return -1);
       LIBBLU_DEBUG_COM("    -> drc_gain_update: 0x%" PRIx16 ".\n", (value >> 7) & 0x1FF);
       LIBBLU_DEBUG_COM("    -> drc_time_update: 0x%" PRIx16 ".\n", (value >> 4) & 0x7);
     }
@@ -2942,17 +2992,17 @@ int decodeMlpAccessUnit(
   /* Check nibble */
   LIBBLU_DEBUG_COM(
     "Ending nibble check: %s (0x%" PRIx8 ").\n",
-    (checkNibble == TRUE_HD_MINOR_SYNC_CHECK_NIBBLE_ENDVALUE) ? "OK" : "ERROR",
-    checkNibble
+    (checkNibbleValue == 0xF) ? "OK" : "ERROR",
+    checkNibbleValue
   );
 
-  if (checkNibble != TRUE_HD_MINOR_SYNC_CHECK_NIBBLE_ENDVALUE)
+  if (checkNibbleValue != 0xF)
     LIBBLU_AC3_ERROR_RETURN("Minor Sync check nibble value error.\n");
 
   /* extSubstreams */
-  startSubOff = 0;
+  int64_t startSubOff = 0;
   LIBBLU_DEBUG_COM("extSubstreams: (Start Offset: 0x%04" PRIx32 ")\n", startSubOff);
-  for (i = 0; i < param->majorSync.substreams; i++) {
+  for (unsigned i = 0; i < param->majorSync.substreams; i++) {
     LIBBLU_DEBUG_COM(
       " - extSubstream %d, start offset: 0x%04" PRIx32 ", end offset: 0x%04" PRIx32 ".\n",
       i, startSubOff, param->extSubstreams[i].extSubstream_end_ptr
@@ -2973,7 +3023,7 @@ int decodeMlpAccessUnit(
   return 0;
 }
 
-static bool isMlpExtension(
+static bool _isMlpExtension(
   const lbc * filename
 )
 {
@@ -3018,7 +3068,13 @@ int analyzeAc3(
 
   LibbluESAc3SpecProperties * param;
 
-  DolbyAudioStreamIds detectedStream = DOLBY_AUDIO_DEFAULT;
+  enum {
+    AC3_AUDIO           = STREAM_CODING_TYPE_AC3,
+    TRUE_HD_AUDIO       = STREAM_CODING_TYPE_TRUEHD,
+    EAC3_AUDIO          = STREAM_CODING_TYPE_EAC3,
+    EAC3_AUDIO_SEC      = STREAM_CODING_TYPE_EAC3_SEC, /* Not supported yet */
+    DOLBY_AUDIO_DEFAULT = 0xFF
+  } detectedStream = DOLBY_AUDIO_DEFAULT;
 
   Ac3SyncFrameParameters syncFrame = {0};
   MlpAccessUnitParameters accessUnit = {0};
@@ -3029,7 +3085,7 @@ int analyzeAc3(
     return -1;
 
   /* If not a TrueHD extension file, don't expect MLP-TrueHD frames. */
-  isMlpFile = isMlpExtension(settings->esFilepath);
+  isMlpFile = _isMlpExtension(settings->esFilepath);
 
   LIBBLU_DEBUG_COM("MLP/TrueHD content expected: %s.\n", (isMlpFile) ? "YES" : "NO");
 
@@ -3038,10 +3094,10 @@ int analyzeAc3(
     return -1;
 
   /* Open input file : */
-  if (NULL == (ac3Input = createBitstreamReader(settings->esFilepath, (size_t) READ_BUFFER_LEN)))
+  if (NULL == (ac3Input = createBitstreamReaderDefBuf(settings->esFilepath)))
     return -1;
 
-  if (NULL == (essOutput = createBitstreamWriter(settings->scriptFilepath, (size_t) WRITE_BUFFER_LEN)))
+  if (NULL == (essOutput = createBitstreamWriterDefBuf(settings->scriptFilepath)))
     return -1;
 
   if (writeEsmsHeader(essOutput) < 0)
@@ -3060,12 +3116,17 @@ int analyzeAc3(
       /* AC-3 Core Sync Frame */
       bool isEac3Frame = false;
 
-      if (decodeAc3Sync(ac3Input, &syncFrame, &isEac3Frame, USE_CRC) < 0)
+      if (_decodeAc3Sync(ac3Input, &syncFrame, &isEac3Frame, USE_CRC) < 0)
         return -1;
 
       if (!syncFrame.checkMode) {
         if (detectedStream == DOLBY_AUDIO_DEFAULT || detectedStream == AC3_AUDIO)
           detectedStream = (syncFrame.eac3Present) ? (extractCore ? AC3_AUDIO : EAC3_AUDIO) : AC3_AUDIO;
+
+        if (_isPresentMlpMajorSyncFormatSyncWord(ac3Input)) {
+          LIBBLU_DEBUG_COM("Detection of MLP major sync word.\n");
+          isMlpFile = true;
+        }
 
         syncFrame.checkMode = true; /* Set checking mode for following frames. */
       }
@@ -3117,8 +3178,8 @@ int analyzeAc3(
 
       if (!accessUnit.checkMode) {
         if (!extractCore) {
-          if (detectedStream == DOLBY_AUDIO_DEFAULT || detectedStream == AC3_AUDIO) /* Set stream as Dolby TrueHD */
-            detectedStream = TRUE_HD_AUDIO;
+          if (detectedStream == DOLBY_AUDIO_DEFAULT || detectedStream == AC3_AUDIO)
+            detectedStream = TRUE_HD_AUDIO; // Set stream as Dolby TrueHD.
           else
             LIBBLU_ERROR_RETURN(
               "Incompatible bitstream combination with MLP extension.\n"
@@ -3183,14 +3244,13 @@ int analyzeAc3(
 
   /* Register AC-3 infos : */
   param = ac3Infos->fmtSpecProp.ac3;
-  param->subSampleRate = syncFrame.syncInfo.fscod;
+  param->sample_rate_code = syncFrame.syncInfo.fscod;
   param->bsid = syncFrame.bitstreamInfo.bsid;
-  param->bitrateMode = BITRATE_MODE;
-  param->bitrateCode = syncFrame.syncInfo.frmsizecod >> 1;
-  param->surroundCode = syncFrame.bitstreamInfo.dsurmod;
+  param->bit_rate_code = syncFrame.syncInfo.frmsizecod >> 1;
+  param->surround_mode = syncFrame.bitstreamInfo.dsurmod;
   param->bsmod = syncFrame.bitstreamInfo.bsmod;
-  param->numChannels = syncFrame.bitstreamInfo.acmod;
-  param->fullSVC = FULL_SERVICE;
+  param->num_channels = syncFrame.bitstreamInfo.acmod;
+  param->full_svc = 0; // FIXME
 
   if (detectedStream == AC3_AUDIO || detectedStream == EAC3_AUDIO) {
     switch (syncFrame.bitstreamInfo.acmod) {

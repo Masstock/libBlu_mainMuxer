@@ -807,32 +807,18 @@ int writeAc3FmtSpecificInfos(
 {
   int ret;
 
-  /* [u3 subSampleRate] [u5 bsid] */
-  ret = writeByte(
-    esmsFile,
-    ((param->subSampleRate  &  0x7) << 5)
-    | ((param->bsid         & 0x1F)     )
-  );
+  /* [u3 sample_rate_code] [u5 bsid] */
+  ret = writeByte(esmsFile, (param->sample_rate_code << 5) | param->bsid);
   if (ret < 0)
     return -1;
 
-  /* [b1 bitrateMode] [u5 bitrateCode] [u2 surroundCode] */
-  ret = writeByte(
-    esmsFile,
-    ((param->bitrateMode    &  0x1) << 7)
-    | ((param->bitrateCode  & 0x1F) << 2)
-    | ((param->surroundCode &  0x3)     )
-  );
+  /* [u6 bit_rate_code] [u2 surround_mode] */
+  ret = writeByte(esmsFile, (param->bit_rate_code << 2) | param->surround_mode);
   if (ret < 0)
     return -1;
 
-  /* [u3 bsmod] [u4 numChannels] [b1 fullSVC] */
-  ret = writeByte(
-    esmsFile,
-    ((param->bitrateMode    &  0x7) << 5)
-    | ((param->numChannels  &  0xF) << 1)
-    | ((param->fullSVC      &  0x1)     )
-  );
+  /* [u3 bsmod] [u4 num_channels] [b1 full_svc] */
+  ret = writeByte(esmsFile, (param->bsmod << 5) | (param->num_channels << 1) | param->full_svc);
   if (ret < 0)
     return -1;
 

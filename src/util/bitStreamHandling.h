@@ -30,7 +30,7 @@
 typedef struct {
   unsigned crcLength;
   uint32_t crcPoly;
-  int crcLookupTable;
+  CrcTableId crcLookupTable;
   bool crcBigByteOrder;
 } CrcParam;
 

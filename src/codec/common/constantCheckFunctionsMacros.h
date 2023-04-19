@@ -6,14 +6,14 @@
  *
  * \brief Helping macros to write structures comparison functions.
  *
- * Checks are syntaxical structures starting with START_CHECK macro and closed
- * by END_CHECK macro building a expression equal to 1 if valid or 0 otherwise.
+ * Checks are syntaxical structures enclosed in #CHECK macro building a
+ * expression equal to 1 if valid or 0 otherwise.
  * Checks allow to compare two structures (of the same definition) named
  * first and second.
  *
  * Grammar:
  *
- * expression -> #START_CHECK instructions_list #END_CHECK\n
+ * expression -> #CHECK ( instructions_list )\n
  * instructions_list -> instruction instructions_list | &epsilon\n
  * instruction -> #EQUAL()\n
  * instruction -> #EXPR()\n
@@ -36,30 +36,26 @@
  * Test * first;
  * Test * second;
  *
- * bool result = START_CHECK
+ * bool result = CHECK(
  *   EQUAL(->infosPresent)
  *   START_COND(->infosPresent, true)
  *     EQUAL(->infos.size)
  *     EQUAL(->infos.cbr)
  *   END_COND
- * END_CHECK;
+ * );
  * \endcode
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__COMMON__CONSTANT_CHECK_FUN_MACROS_H__
 #define __LIBBLU_MUXER__CODECS__COMMON__CONSTANT_CHECK_FUN_MACROS_H__
 
-/** \~english
- * \brief Start a new Check expression.
- *
- */
-#define START_CHECK  (1
+#include "../../util/macros.h"
 
 /** \~english
- * \brief End the Check expression.
+ * \brief Encapsulates a check structure.
  *
  */
-#define END_CHECK  )
+#define CHECK(expr)  likely(1 expr)
 
 /** \~english
  * \brief Check if both structures members are equal.

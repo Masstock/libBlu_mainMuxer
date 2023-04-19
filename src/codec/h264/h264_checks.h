@@ -26,9 +26,9 @@ static inline bool constantH264AccessUnitDelimiterCheck(
   H264AccessUnitDelimiterParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.primary_pic_type)
-  END_CHECK;
+  );
 }
 
 /* ### Sequence Parameters Set (SPS) : ##################################### */
@@ -67,7 +67,7 @@ static inline bool constantH264PicParametersSetCheck(
   H264PicParametersSetParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.pic_parameter_set_id)
     EQUAL(.seq_parameter_set_id)
     EQUAL(.entropy_coding_mode_flag)
@@ -83,7 +83,7 @@ static inline bool constantH264PicParametersSetCheck(
     EQUAL(.constrained_intra_pred_flag)
     EQUAL(.redundant_pic_cnt_present_flag)
     EQUAL(.transform_8x8_mode_flag)
-  END_CHECK;
+  );
 }
 
 int checkH264PicParametersSetChangeCompliance(
@@ -133,12 +133,12 @@ static inline bool constantH264SeiRecoveryPointCheck(
   H264SeiRecoveryPoint second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.recovery_frame_cnt)
     EQUAL(.exact_match_flag)
     EQUAL(.broken_link_flag)
     EQUAL(.changing_slice_group_idc)
-  END_CHECK;
+  );
 }
 
 int checkH264SeiRecoveryPointChangeCompliance(

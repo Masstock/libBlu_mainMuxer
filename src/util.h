@@ -157,7 +157,7 @@ typedef struct {
 #if 0
 
 typedef struct {
-  uint8_t subSampleRate;
+  uint8_t fscod;
   uint8_t bsid;
   bool bitrateMode;
   uint8_t bitrateCode;

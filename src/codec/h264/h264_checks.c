@@ -1959,7 +1959,7 @@ static bool _constantH264ConstraintFlagsCheck(
   H264ContraintFlags second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.set0)
     EQUAL(.set1)
     EQUAL(.set2)
@@ -1967,7 +1967,7 @@ static bool _constantH264ConstraintFlagsCheck(
     EQUAL(.set4)
     EQUAL(.set5)
     EQUAL(.reservedFlags)
-  END_CHECK;
+  );
 }
 
 static bool _constantH264HrdParametersCheck(
@@ -1975,7 +1975,7 @@ static bool _constantH264HrdParametersCheck(
   H264HrdParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.cpb_cnt_minus1)
     EQUAL(.bit_rate_scale)
     EQUAL(.cpb_size_scale)
@@ -1990,7 +1990,7 @@ static bool _constantH264HrdParametersCheck(
         (first.cpb_cnt_minus1 + 1) * sizeof(H264SchedSel)
       )
     )
-  END_CHECK;
+  );
 }
 
 static bool _constantH264VuiColourDescriptionParametersCheck(
@@ -1998,11 +1998,11 @@ static bool _constantH264VuiColourDescriptionParametersCheck(
   H264VuiColourDescriptionParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.colour_primaries)
     EQUAL(.transfer_characteristics)
     EQUAL(.matrix_coefficients)
-  END_CHECK;
+  );
 }
 
 static bool _constantH264VuiVideoSeqBitstreamRestrictionsParametersCheck(
@@ -2010,7 +2010,7 @@ static bool _constantH264VuiVideoSeqBitstreamRestrictionsParametersCheck(
   H264VuiVideoSeqBsRestrParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.motion_vectors_over_pic_boundaries_flag)
     EQUAL(.max_bytes_per_pic_denom)
     EQUAL(.max_bits_per_mb_denom)
@@ -2018,7 +2018,7 @@ static bool _constantH264VuiVideoSeqBitstreamRestrictionsParametersCheck(
     EQUAL(.log2_max_mv_length_vertical)
     EQUAL(.max_num_reorder_frames)
     EQUAL(.max_dec_frame_buffering)
-  END_CHECK;
+  );
 }
 
 static bool _constantH264VuiParametersCheck(
@@ -2026,7 +2026,7 @@ static bool _constantH264VuiParametersCheck(
   H264VuiParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.aspect_ratio_info_present_flag)
     EQUAL(.aspect_ratio_idc)
     EQUAL(.sar_width)
@@ -2067,7 +2067,7 @@ static bool _constantH264VuiParametersCheck(
         _constantH264VuiVideoSeqBitstreamRestrictionsParametersCheck
       )
     END_COND
-  END_CHECK;
+  );
 }
 
 bool constantH264SequenceParametersSetCheck(
@@ -2075,7 +2075,7 @@ bool constantH264SequenceParametersSetCheck(
   H264SPSDataParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.profile_idc)
     SUB_FUN(.constraint_set_flags, _constantH264ConstraintFlagsCheck)
     EQUAL(.level_idc)
@@ -2129,7 +2129,7 @@ bool constantH264SequenceParametersSetCheck(
     START_COND(.vui_parameters_present_flag, true)
       SUB_FUN(.vui_parameters, _constantH264VuiParametersCheck)
     END_COND
-  END_CHECK;
+  );
 }
 
 int checkH264SequenceParametersSetChangeCompliance(
@@ -2137,7 +2137,7 @@ int checkH264SequenceParametersSetChangeCompliance(
   H264SPSDataParameters second
 )
 {
-  bool constantFields = START_CHECK
+  bool constantFields = CHECK(
     EQUAL(.profile_idc)
     SUB_FUN(.constraint_set_flags, _constantH264ConstraintFlagsCheck)
     EQUAL(.level_idc)
@@ -2180,7 +2180,7 @@ int checkH264SequenceParametersSetChangeCompliance(
     START_COND(.vui_parameters_present_flag, true)
       SUB_FUN(.vui_parameters, _constantH264VuiParametersCheck)
     END_COND
-  END_CHECK;
+  );
 
   if (!constantFields)
     return -1;

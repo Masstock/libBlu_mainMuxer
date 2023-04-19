@@ -21,14 +21,13 @@
  * Elementary Streams properties specific for AC-3 and derived formats.
  */
 typedef struct {
-  uint8_t subSampleRate;
-  uint8_t bsid;
-  bool bitrateMode;
-  uint8_t bitrateCode;
-  uint8_t surroundCode;
-  uint8_t bsmod;
-  uint8_t numChannels;
-  bool fullSVC;
+  uint8_t sample_rate_code;  /**< Sample Rate code.                          */
+  uint8_t bsid;              /**< Bit Stream Identification.                 */
+  uint8_t bit_rate_code;     /**< Bit rate code.                             */
+  uint8_t surround_mode;     /**< Surround mode.                             */
+  uint8_t bsmod;             /**< Bit Stream Mode.                           */
+  uint8_t num_channels;      /**< Number of channels.                        */
+  uint8_t full_svc;          /**< Full service.                              */
 } LibbluESAc3SpecProperties;
 
 /** \~english
@@ -110,12 +109,12 @@ HdmvVideoFormat getHdmvVideoFormat(
 typedef enum {
   FRAME_RATE_CODE_UNSPC  = 0x00,  /**< Special value 'unspecified'           */
 
-  FRAME_RATE_CODE_23976  = 0x01,  /**< 23.976                                */
+  FRAME_RATE_CODE_23976  = 0x01,  /**< 23.976 (24000/1001)                   */
   FRAME_RATE_CODE_24     = 0x02,  /**< 24                                    */
   FRAME_RATE_CODE_25     = 0x03,  /**< 25                                    */
-  FRAME_RATE_CODE_29970  = 0x04,  /**< 29.970                                */
+  FRAME_RATE_CODE_29970  = 0x04,  /**< 29.970 (30000/1001)                   */
   FRAME_RATE_CODE_50     = 0x06,  /**< 50                                    */
-  FRAME_RATE_CODE_59940  = 0x07   /**< 59.940                                */
+  FRAME_RATE_CODE_59940  = 0x07   /**< 59.940 (60000/1001)                   */
 } HdmvFrameRateCode;
 
 /** \~english

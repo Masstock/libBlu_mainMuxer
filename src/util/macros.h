@@ -64,6 +64,23 @@
 #  error "Unknown architecture"
 #endif
 
+#if defined(__GNUC__)
+/* Inspired from ffmpeg/linux kernel */
+#  define GCC_VERSION_AT_LEAST(x,y) (__GNUC__ > (x) || __GNUC__ == (x) && __GNUC_MINOR__ >= (y))
+#  define GCC_VERSION_AT_MOST(x,y)  (__GNUC__ < (x) || __GNUC__ == (x) && __GNUC_MINOR__ <= (y))
+
+#  if GCC_VERSION_AT_LEAST(2,96)
+#    define likely(x)  __builtin_expect((x) != 0, 1)
+#    define unlikely(x)  __builtin_expect((x) != 0, 0)
+#  else
+#    define likely(x)  (x)
+#    define unlikely(x)  (x)
+#  endif
+#else
+#  define likely(x)  (x)
+#  define unlikely(x)  (x)
+#endif
+
 /* Debugging macros: */
 #define TOC()  fprintf(stderr, "TOC\n");
 #define PING()  fprintf(stderr, "PING\n");

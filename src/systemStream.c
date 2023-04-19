@@ -294,23 +294,13 @@ int setAC3AudioDescriptorParameters(
   AC3AudioDescriptorParameters param = descParam.ac3AudioDescriptor;
 
   /* [u3 sample_rate_code] [u5 bsid] */
-  WB_DESC(dst, (param.sampleRateCode << 5) | (param.bsid & 0x1F));
+  WB_DESC(dst, (param.sample_rate_code << 5) | param.bsid);
 
   /* [u6 bit_rate_code] [u2 surround_mode] */
-  WB_DESC(
-    dst,
-    (param.bitRateMode << 7)
-    | ((param.bitRateCode << 2) & 0x7C)
-    | (param.surroundMode & 0x3)
-  );
+  WB_DESC(dst, (param.bit_rate_code << 2) | param.surround_mode);
 
   /* [u3 bsmod] [u4 num_channels] [b1 full_svc] */
-  WB_DESC(
-    dst,
-    (param.bsmod << 5)
-    | ((param.numChannels << 1) & 0x1E)
-    | param.fullSVC
-  );
+  WB_DESC(dst, (param.bsmod << 5) | (param.num_channels << 1) | param.full_svc);
 
   /* [v8 langcod] // deprecated (0xFF) */
   WB_DESC(dst, 0xFF);
@@ -548,14 +538,13 @@ static int prepareElementDescriptorsPMTParam(
     /* AC-3 Audio DescriptorPtr */
     descTag = DESC_TAG_AC3_AUDIO_DESCRIPTOR;
     descParam.ac3AudioDescriptor = (AC3AudioDescriptorParameters) {
-      .sampleRateCode = fmtSpecProp.ac3->subSampleRate,
-      .bsid = fmtSpecProp.ac3->bsid,
-      .bitRateMode = fmtSpecProp.ac3->bitrateMode,
-      .bitRateCode = fmtSpecProp.ac3->bitrateCode,
-      .surroundMode = fmtSpecProp.ac3->surroundCode,
-      .bsmod = fmtSpecProp.ac3->bsmod,
-      .numChannels = fmtSpecProp.ac3->numChannels,
-      .fullSVC = fmtSpecProp.ac3->fullSVC
+      .sample_rate_code = fmtSpecProp.ac3->sample_rate_code,
+      .bsid             = fmtSpecProp.ac3->bsid,
+      .bit_rate_code    = fmtSpecProp.ac3->bit_rate_code,
+      .surround_mode    = fmtSpecProp.ac3->surround_mode,
+      .bsmod            = fmtSpecProp.ac3->bsmod,
+      .num_channels     = fmtSpecProp.ac3->num_channels,
+      .full_svc         = fmtSpecProp.ac3->full_svc,
     };
     descSetFun = setAC3AudioDescriptorParameters;
   }

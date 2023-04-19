@@ -463,7 +463,7 @@ int constantSequenceHeaderCheck(
   const H262SequenceHeaderParameters * second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(->horizontal_size_value)
     EQUAL(->vertical_size_value)
     EQUAL(->aspect_ratio_information)
@@ -471,7 +471,7 @@ int constantSequenceHeaderCheck(
     EQUAL(->bit_rate_value)
     EQUAL(->vbv_buffer_size_value)
     EQUAL(->constrained_parameters_flag)
-  END_CHECK;
+  );
 }
 
 int decodeSequenceExtension(
@@ -911,7 +911,7 @@ int constantSequenceExtensionCheck(
   const H262SequenceExtensionParameters * second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(->profile_and_level_identifier.escapeBit)
     EQUAL(->profile_and_level_identifier.profileIdentification)
     EQUAL(->profile_and_level_identifier.levelIdentification)
@@ -924,7 +924,7 @@ int constantSequenceExtensionCheck(
     EQUAL(->low_delay)
     EQUAL(->frame_rate_extension_n)
     EQUAL(->frame_rate_extension_d)
-  END_CHECK;
+  );
 }
 
 int decodeSequenceDisplayExtension(

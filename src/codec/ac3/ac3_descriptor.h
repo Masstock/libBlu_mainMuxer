@@ -1,0 +1,6 @@
+
+
+#ifndef __LIBBLU_MUXER__CODECS__AC3__DESCRIPTOR_H__
+#define __LIBBLU_MUXER__CODECS__AC3__DESCRIPTOR_H__
+
+#endif

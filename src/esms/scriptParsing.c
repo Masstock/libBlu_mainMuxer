@@ -275,29 +275,26 @@ static int parseAc3AudioESFmyPropertiesEsms(
 {
   LibbluESAc3SpecProperties * prop = dst->ac3;
 
-  /* [u3 subSampleRate] */
-  READ_BIN_VALUE(script, 3, &prop->subSampleRate, return -1);
+  /* [u3 sample_rate_code] */
+  READ_BIN_VALUE(script, 3, &prop->sample_rate_code, return -1);
 
   /* [u5 bsid] */
   READ_BIN_VALUE(script, 5, &prop->bsid, return -1);
 
-  /* [b1 bitrateMode] */
-  READ_BIN_VALUE(script, 1, &prop->bitrateMode, return -1);
+  /* [u6 bit_rate_code] */
+  READ_BIN_VALUE(script, 6, &prop->bit_rate_code, return -1);
 
-  /* [u5 bitrateCode] */
-  READ_BIN_VALUE(script, 5, &prop->bitrateCode, return -1);
-
-  /* [u2 surroundCode] */
-  READ_BIN_VALUE(script, 2, &prop->surroundCode, return -1);
+  /* [u2 surround_mode] */
+  READ_BIN_VALUE(script, 2, &prop->surround_mode, return -1);
 
   /* [u3 bsmod] */
   READ_BIN_VALUE(script, 3, &prop->bsmod, return -1);
 
-  /* [u4 numChannels] */
-  READ_BIN_VALUE(script, 4, &prop->numChannels, return -1);
+  /* [u4 num_channels] */
+  READ_BIN_VALUE(script, 4, &prop->num_channels, return -1);
 
-  /* [b1 fullSVC] */
-  READ_BIN_VALUE(script, 1, &prop->fullSVC, return -1);
+  /* [b1 full_svc] */
+  READ_BIN_VALUE(script, 1, &prop->full_svc, return -1);
 
   return 0;
 }

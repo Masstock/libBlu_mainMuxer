@@ -61,54 +61,26 @@ endif
 ###############################################################################
 
 SOURCE_FILES =																\
-	libs/cwalk/src/cwalk.o													\
-	libs/cwalk/src/cwalk_wchar.o											\
-	util/common.o															\
-	util/errorCodes.o														\
-	util/crcLookupTables.o													\
-	util/hashTables.o														\
-	util/circularBuffer.o													\
-	util/bitStreamHandling.o												\
-	util/libraries.o														\
-	util/textFilesHandling.o												\
-	codecsUtilities.o														\
-	dtcpSettings.o															\
-	elementaryStream.o														\
-	elementaryStreamOptions.o												\
-	elementaryStreamProperties.o											\
-	elementaryStreamPesProperties.o											\
-	main.o																	\
-	mainMuxer.o																\
-	muxingContext.o															\
-	muxingSettings.o														\
-	packetIdentifier.o														\
-	pesPackets.o															\
-	stream.o																\
-	streamCodingType.o														\
-	streamHeap.o															\
-	systemStream.o															\
-	tsPackets.o																\
-	util.o																	\
-	codec/lpcm/lpcm_parser.o												\
-	codec/h262/h262_parser.o												\
+	codec/ac3/ac3_data.o													\
 	codec/ac3/ac3_parser.o													\
-	codec/dts/dts_parser.o													\
 	codec/dts/dts_checks.o													\
-	codec/dts/dts_util.o													\
 	codec/dts/dts_dtshd_file.o												\
-	codec/dts/dts_pbr_file.o												\
 	codec/dts/dts_frame.o													\
-	codec/dts/dts_patcher.o													\
+	codec/dts/dts_parser.o													\
 	codec/dts/dts_patcher_util.o											\
-	codec/dts/dts_xll.o														\
+	codec/dts/dts_patcher.o													\
+	codec/dts/dts_pbr_file.o												\
+	codec/dts/dts_util.o													\
 	codec/dts/dts_xll_checks.o												\
 	codec/dts/dts_xll_util.o												\
-	codec/h264/h264_parser.o												\
-	codec/h264/h264_util.o													\
-	codec/h264/h264_patcher.o												\
+	codec/dts/dts_xll.o														\
+	codec/h262/h262_parser.o												\
 	codec/h264/h264_checks.o												\
-	codec/h264/h264_hrdVerifier.o											\
 	codec/h264/h264_data.o													\
+	codec/h264/h264_hrdVerifier.o											\
+	codec/h264/h264_parser.o												\
+	codec/h264/h264_patcher.o												\
+	codec/h264/h264_util.o													\
 	codec/hdmv/common/hdmv_check.o											\
 	codec/hdmv/common/hdmv_common.o											\
 	codec/hdmv/common/hdmv_context.o										\
@@ -124,20 +96,49 @@ SOURCE_FILES =																\
 	codec/hdmv/common/hdmv_timecodes.o										\
 	codec/hdmv/igs_parser.o													\
 	codec/hdmv/pgs_parser.o													\
+	codec/lpcm/lpcm_parser.o												\
+	codecsUtilities.o														\
+	dtcpSettings.o															\
+	elementaryStream.o														\
+	elementaryStreamOptions.o												\
+	elementaryStreamPesProperties.o											\
+	elementaryStreamProperties.o											\
 	esms/scriptCreation.o													\
 	esms/scriptData.o														\
 	esms/scriptParsing.o													\
 	input/meta/metaFiles.o													\
 	input/meta/metaFilesData.o												\
 	input/meta/metaReader.o													\
-	tStdVerifier/bufferingModel.o											\
+	libs/cwalk/src/cwalk_wchar.o											\
+	libs/cwalk/src/cwalk.o													\
+	main.o																	\
+	mainMuxer.o																\
+	muxingContext.o															\
+	muxingSettings.o														\
+	packetIdentifier.o														\
+	pesPackets.o															\
+	stream.o																\
+	streamCodingType.o														\
+	streamHeap.o															\
+	systemStream.o															\
+	tsPackets.o																\
 	tStdVerifier/bdavStd.o													\
-	tStdVerifier/systemStreams.o											\
+	tStdVerifier/bufferingModel.o											\
 	tStdVerifier/codec/ac3.o												\
 	tStdVerifier/codec/dts.o												\
 	tStdVerifier/codec/h264.o												\
 	tStdVerifier/codec/hdmv.o												\
-	tStdVerifier/codec/lpcm.o
+	tStdVerifier/codec/lpcm.o												\
+	tStdVerifier/systemStreams.o											\
+	util.o																	\
+	util/bitStreamHandling.o												\
+	util/circularBuffer.o													\
+	util/common.o															\
+	util/crcLookupTables.o													\
+	util/errorCodes.o														\
+	util/hashTables.o														\
+	util/libraries.o														\
+	util/textFilesHandling.o
 
 LEXER_FILES =
 PARSER_FILES =

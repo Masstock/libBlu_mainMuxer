@@ -7,12 +7,12 @@
  * \brief System stream handling module.
  *
  * \xrefitem references "References" "References list"
- *  [1] Rec. ITU-T H.222 (03/2017)\n
- *  [2] Rec. ITU-T H.264 (08/2021)\n
- *  [3] ETSI TS 102 366 v1.4.1 (09/2017)\n
+ *  [1] Rec. ITU-T H.222 (03/2017);\n
+ *  [2] Rec. ITU-T H.264 (08/2021);\n
+ *  [3] AC-3/E-AC3 - ATSC Standard A52-2018;\n
  *  [4] DTLA, Digital Transmission Content Protection Specitification,
- *      Volume 1 (Informational Version), Revision 1.71.\n
- *  [5] ETSI TS 300 468 v1.16.1 (08/2019)\n
+ *      Volume 1 (Informational Version), Revision 1.71;\n
+ *  [5] ETSI TS 300 468 v1.16.1 (08/2019).\n
  */
 
 #ifndef __LIBBLU_MUXER__SYSTEM_STREAM_H__
@@ -341,14 +341,13 @@ int setAVCVideoDescriptorParameters(
  * [3] A.3 AC-3 Audio Descriptor.
  */
 typedef struct {
-  uint8_t sampleRateCode;
-  uint8_t bsid;
-  bool bitRateMode;
-  uint8_t bitRateCode;
-  uint8_t surroundMode;
-  uint8_t bsmod;
-  uint8_t numChannels;
-  bool fullSVC;
+  uint8_t sample_rate_code;  /**< Sample Rate code.                          */
+  uint8_t bsid;              /**< Bit Stream Identification.                 */
+  uint8_t bit_rate_code;     /**< Bit rate code.                             */
+  uint8_t surround_mode;     /**< Surround mode.                             */
+  uint8_t bsmod;             /**< Bit Stream Mode.                           */
+  uint8_t num_channels;      /**< Number of channels.                        */
+  uint8_t full_svc;          /**< Full service.                              */
 } AC3AudioDescriptorParameters;
 
 int setAC3AudioDescriptorParameters(

@@ -163,11 +163,11 @@ static inline bool areIdenticalHdmvVDParameters(
   HdmvVDParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.video_width)
     EQUAL(.video_height)
     EQUAL(.frame_rate)
-  END_CHECK;
+  );
 }
 
 /** \~english
@@ -1029,10 +1029,10 @@ static inline bool constantHdmvPDParameters(
   HdmvPDParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.palette_id)
     EQUAL(.palette_version_number)
-  END_CHECK;
+  );
 }
 
 /** \~english
@@ -1070,12 +1070,12 @@ static inline bool constantHdmvPaletteEntryParameters(
   HdmvPaletteEntryParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     EQUAL(.y_value)
     EQUAL(.cr_value)
     EQUAL(.cb_value)
     EQUAL(.t_value)
-  END_CHECK;
+  );
 }
 
 static inline bool constantEntriesHdmvPaletteEntryParameters(
@@ -1124,7 +1124,7 @@ static inline bool constantHdmvPdsSegmentParameters(
   HdmvPdsSegmentParameters second
 )
 {
-  return START_CHECK
+  return CHECK(
     SUB_FUN(.palette_descriptor, constantHdmvPDParameters)
     EQUAL(.number_of_palette_entries)
     EXPR(constantEntriesHdmvPaletteEntryParameters(
@@ -1132,7 +1132,7 @@ static inline bool constantHdmvPdsSegmentParameters(
       second.palette_entries,
       first.number_of_palette_entries
     ))
-  END_CHECK;
+  );
 }
 
 int updateHdmvPdsSegmentParameters(

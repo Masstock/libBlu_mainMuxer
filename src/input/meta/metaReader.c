@@ -133,11 +133,6 @@ static int _parseOptionsMetaFileStructure(
     if (NULL != prevOption)
       prevOption->next = option;
     prevOption = option;
-
-    /* if (argPres)
-      printf(">> '%" PRI_LBCS "', '%" PRI_LBCS "'\n", name, arg);
-    else
-      printf(">> '%" PRI_LBCS "'\n", name); */
   }
 
   return 0;
@@ -229,8 +224,6 @@ static int _parseTrackMetaFileStructure(
     LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
   rp += size;
 
-  /* printf("> '%" PRI_LBCS "' '%" PRI_LBCS "'\n", codec, filepath); */
-
   if (NULL == (track = createLibbluMetaFileTrack(codec, filepath)))
     return -1;
 
@@ -238,8 +231,7 @@ static int _parseTrackMetaFileStructure(
     prevTrack = dst->tracks;
     NULL != prevTrack && NULL != prevTrack->next;
     prevTrack = prevTrack->next
-  )
-    ;
+  ) {}
 
   if (NULL == dst->tracks)
     dst->tracks = track;
@@ -298,7 +290,6 @@ static int _parseHeaderMetaFileStructure(
       errno
     );
 
-  /* printf("> %" PRI_LBCS "\n", buf); */
   if (!lbc_equal(buf, LBMETA_FILE_HEADER))
     LIBBLU_ERROR_RETURN("Invalid META file, missing 'MUXOPT' keyword.\n");
 

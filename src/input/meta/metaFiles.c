@@ -144,7 +144,6 @@ static int _parseHeaderMetaFile(
   return 0;
 }
 
-#if 1
 static int parseCodecNameMetaFile(
   const lbc * string,
   LibbluStreamCodingType * trackCodingType,
@@ -159,16 +158,20 @@ static int parseCodecNameMetaFile(
     const char * name;
   } codecs[] = {
 #define D_(k, c, n) {.keyword = lbc_str(k), .codingType = c, .name = n}
-    D_(           "AUTO",                       -1,        "undefined"),
-    D_(        "V_MPEG2", STREAM_CODING_TYPE_H262,     "MPEG-2 video"),
-    D_("V_MPEG4/ISO/AVC",   STREAM_CODING_TYPE_AVC,  "H.264/AVC video"),
+    D_(           "AUTO",                       -1,          "undefined"),
 
-    D_(         "A_LPCM",  STREAM_CODING_TYPE_LPCM, "Linear PCM audio"),
-    D_(          "A_AC3",   STREAM_CODING_TYPE_AC3,       "AC-3 audio"),
-    D_(          "A_DTS",   STREAM_CODING_TYPE_DTS,        "DTS audio"),
+    D_(        "V_MPEG2",  STREAM_CODING_TYPE_H262, "H.262/MPEG-2 video"),
+    D_(         "V_H262",  STREAM_CODING_TYPE_H262, "H.262/MPEG-2 video"),
 
-    D_(     "M_HDMV/IGS",    STREAM_CODING_TYPE_IG,         "IG menus"),
-    D_(     "M_HDMV/PGS",    STREAM_CODING_TYPE_PG,     "PG subtitles")
+    D_("V_MPEG4/ISO/AVC",   STREAM_CODING_TYPE_AVC,    "H.264/AVC video"),
+    D_(         "V_H264",   STREAM_CODING_TYPE_AVC,    "H.264/AVC video"),
+
+    D_(         "A_LPCM",  STREAM_CODING_TYPE_LPCM,   "Linear PCM audio"),
+    D_(          "A_AC3",   STREAM_CODING_TYPE_AC3,         "AC-3 audio"),
+    D_(          "A_DTS",   STREAM_CODING_TYPE_DTS,          "DTS audio"),
+
+    D_(     "M_HDMV/IGS",    STREAM_CODING_TYPE_IG,           "IG menus"),
+    D_(     "M_HDMV/PGS",    STREAM_CODING_TYPE_PG,       "PG subtitles")
 #undef D_
   };
 
@@ -187,7 +190,7 @@ static int parseCodecNameMetaFile(
   }
 
   LIBBLU_ERROR_RETURN(
-    "Invalid codec name '%" PRI_LBCS "'.\n",
+    "Unknown codec name '%" PRI_LBCS "'.\n",
     string
   );
 }
@@ -368,7 +371,6 @@ static int parseTrackMetaFile(
 
   return 0;
 }
-#endif
 
 int parseMetaFile(
   const lbc * filepath,
