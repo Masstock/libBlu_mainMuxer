@@ -18,6 +18,77 @@
 #  include <sys/stat.h>
 #endif
 
+void applyNoTableBigEndianCrcContext(
+  CrcContext * ctx,
+  uint8_t byte
+)
+{
+  uint32_t poly = ctx->param.poly;
+  uint32_t mask = ctx->param.mask;
+  uint32_t buf  = ctx->buf;
+
+  for (unsigned i = 0; i < 8; i++) {
+    buf = (buf << 1) ^ ((byte >> (7 - i)) & 0x1);
+    if (mask != (buf | mask))
+      buf ^= poly;
+  }
+
+  ctx->buf = buf;
+}
+
+void applyNoTableLittleEndianCrcContext(
+  CrcContext * ctx,
+  uint8_t byte
+)
+{
+  unsigned length = ctx->param.length;
+  uint32_t poly = ctx->param.poly;
+  uint32_t mask = ctx->param.mask;
+  uint32_t buf  = ctx->buf;
+
+  for (unsigned i = 0; i < 8; i++) {
+    buf = (buf << 1) ^ (((byte >> (7 - i)) & 0x1) << length);
+    if (mask != (buf | mask))
+      buf ^= poly;
+  }
+
+  ctx->buf = buf;
+}
+
+#if 0
+void applyNoTableCrcContext(
+  CrcContext * ctx,
+  uint8_t byte
+)
+{
+  if (!ctx->in_use)
+    return;
+
+  uint32_t modulo, mask = (modulo = (1ull << ctx->param.crcLength)) - 1;
+
+  if (ctx->param.crcLookupTable != NO_CRC_TABLE) {
+    /* Applying CRC look-up table */
+    ctx->buf = ((ctx->buf << 8) & mask) ^ getCrcTableValue(
+      (byte ^ (uint8_t) ((ctx->buf & mask) >> 8)),
+      ctx->param.crcLookupTable
+    );
+    return;
+  }
+
+  /* Manual CRC Operation : */
+  for (unsigned i = 0; i < 8; i++) {
+    ctx->buf <<= 1;
+    if (ctx->param.crcBigByteOrder)
+      ctx->buf ^= (((uint32_t) byte >> (7 - i)) & 1);
+    else
+      ctx->buf ^= ((((uint32_t) byte >> (7 - i)) & 1) << ctx->param.crcLength);
+
+    if (modulo <= ctx->buf)
+      ctx->buf ^= ctx->param.crcPoly;
+  }
+}
+#endif
+
 /** \~english
  * \brief Generate a unique identifier for #BitstreamHandler structures.
  *
@@ -151,7 +222,7 @@ BitstreamReaderPtr createBitstreamReader(
   bitStream->bufferLength = bitStream->byteArraySize = bufferSize;
   bitStream->byteArrayOff = bufferSize;
   bitStream->bitCount = 8; /* By default, a complete byte can be readed at bit level. */
-  bitStream->crcCtx = DEF_CRC_CTX();
+  resetCrcContext(&bitStream->crcCtx);
 
   bitStream->identifier = _generatedBistreamIdentifier();
 
@@ -221,7 +292,7 @@ BitstreamWriterPtr createBitstreamWriter(
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
   bitStream->byteArraySize = bufferSize;
-  bitStream->crcCtx = DEF_CRC_CTX();
+  resetCrcContext(&bitStream->crcCtx);
 
   bitStream->identifier = _generatedBistreamIdentifier();
 
@@ -243,74 +314,6 @@ void closeBitstreamWriter(
   free(bitStream);
 }
 
-int initCrc(
-  CrcContext * crcCtx,
-  CrcParam param,
-  unsigned initialValue
-)
-{
-  assert(!crcCtx->crcInUse);
-
-  if (initialValue > 0xFFFF || 32 < param.crcLength) {
-    LIBBLU_ERROR(
-      "CRC computation overflows "
-      "(inital value: %u / 65355, crc length: %u).\n",
-      initialValue, param.crcLength
-    );
-
-    LIBBLU_ERROR_RETURN(
-      "CRC computation buffer overflows.\n"
-    );
-  }
-
-  crcCtx->crcInUse = true;
-  crcCtx->crcBuffer = initialValue;
-  crcCtx->crcParam = param;
-
-  return 0;
-}
-
-void applyCrc(
-  CrcContext * crcCtx,
-  uint8_t byte
-)
-{
-  uint32_t crcModulo, crcMask;
-  uint8_t i;
-
-  assert(crcCtx->crcInUse);
-
-  crcMask = (crcModulo = (uint32_t) 1 << crcCtx->crcParam.crcLength) - 1;
-
-  if (crcCtx->crcParam.crcLookupTable != NO_CRC_TABLE) {
-    /* Applying CRC look-up table */
-    crcCtx->crcBuffer =
-      ((crcCtx->crcBuffer << 8) & crcMask) ^
-      getCrcTableValue(
-        byte ^ (uint8_t) ((crcCtx->crcBuffer & crcMask) >> 8),
-        crcCtx->crcParam.crcLookupTable
-      )
-    ;
-
-    return;
-  }
-
-  /* Manual CRC Operation : */
-  for (i = 0; i < 8; i++) {
-    if (crcCtx->crcParam.crcBigByteOrder)
-      crcCtx->crcBuffer = (crcCtx->crcBuffer << 1) ^ (
-        ((uint32_t) byte >> (7 - i)) & 1
-      );
-    else
-      crcCtx->crcBuffer = (crcCtx->crcBuffer << 1) ^ (
-        (((uint32_t) byte >> (7 - i)) & 1) << crcCtx->crcParam.crcLength
-      );
-
-    if (crcModulo <= crcCtx->crcBuffer)
-      crcCtx->crcBuffer ^= crcCtx->crcParam.crcPoly;
-  }
-}
-
 int nextBytes(
   BitstreamReaderPtr bitStream,
   uint8_t * data,
@@ -320,7 +323,7 @@ int nextBytes(
   size_t shiftingSteps;
   size_t readedDataLen;
 
-  if (isEof(bitStream)) /* End of file */
+  if (unlikely(isEof(bitStream))) /* End of file */
     return -1;
 
   if (bitStream->byteArraySize < bitStream->byteArrayOff + dataLen) {
@@ -423,6 +426,13 @@ int nextBytes(
   return 0;
 }
 
+static inline bool _inUseCrcBitstream(
+  const BitstreamHandler * bs
+)
+{
+  return bs->crcCtx.in_use;
+}
+
 int readBit(
   BitstreamReaderPtr bitStream,
   bool * bit
@@ -440,8 +450,8 @@ int readBit(
 
   if (bitStream->bitCount == 0) {
     /* Applying CRC calculation if in use : */
-    if (IN_USE_BITSTREAM_CRC(bitStream))
-      applyCrc(&bitStream->crcCtx, byte);
+    if (_inUseCrcBitstream(bitStream))
+      applySingleByteCrcContext(&bitStream->crcCtx, byte);
 
     /* A complete byte as been readed, jumping to next one. */
     bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
@@ -476,7 +486,7 @@ int readBits(
 
   assert(size <= 32); /* Can't read more than 32 bits using readBits() */
 
-  if (size == 0) {
+  if (unlikely(size == 0)) {
     if (NULL != value)
       *value = 0;
     return 0;
@@ -485,7 +495,7 @@ int readBits(
   readedBitsNb = MIN(size, bitStream->bitCount);
   bitStream->bitCount -= readedBitsNb;
 
-  if (nextBytes(bitStream, &byte, 1) < 0)
+  if (unlikely(nextBytes(bitStream, &byte, 1) < 0))
     LIBBLU_ERROR_RETURN("Prematurate end of file.\n");
 
   if (NULL != value)
@@ -493,15 +503,15 @@ int readBits(
 
   if (bitStream->bitCount <= 0) {
     /* Applying CRC calculation if in use : */
-    if (IN_USE_BITSTREAM_CRC(bitStream))
-      applyCrc(&bitStream->crcCtx, byte);
+    if (_inUseCrcBitstream(bitStream))
+      applySingleByteCrcContext(&bitStream->crcCtx, byte);
 
     /* A complete byte as been readed, jumping to next one. */
     bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
     bitStream->bitCount = 8; /* Reset the number of bits remaining in the current byte. */
 
     /* If reading offset goes outside of the reading buffer, buffering a new section of readed file. */
-    if (!isEof(bitStream) && bitStream->byteArraySize <= bitStream->byteArrayOff) {
+    if (unlikely(!isEof(bitStream) && bitStream->byteArraySize <= bitStream->byteArrayOff)) {
       if (_fillBitstreamReader(bitStream) < 0)
         return -1;
     }
@@ -580,8 +590,8 @@ int readByte(
   *data = byte;
 
   /* Applying CRC calculation if in use : */
-  if (IN_USE_BITSTREAM_CRC(bitStream))
-    applyCrc(&bitStream->crcCtx, byte);
+  if (_inUseCrcBitstream(bitStream))
+    applySingleByteCrcContext(&bitStream->crcCtx, byte);
   return 0;
 }
 
@@ -622,9 +632,9 @@ int readBytes(
   }
 
   /* Applying CRC calculation if in use : */
-  if (IN_USE_BITSTREAM_CRC(bs)) {
+  if (_inUseCrcBitstream(bs)) {
     for (off = 0; off < size; off++)
-      applyCrc(&bs->crcCtx, data[off]);
+      applySingleByteCrcContext(&bs->crcCtx, data[off]);
   }
 
 #endif
@@ -778,34 +788,30 @@ int writeBytes(
   return 0;
 }
 
-void crcTableGenerator(const CrcParam param)
+void crcTableGenerator(
+  CrcParam param
+)
 {
-  /* Usage: crcTableGenerator(crcParam); */
-  unsigned bit, byte;
-  uint32_t modulo, crc;
-
-  assert(param.crcLength <= 32);
-
-  modulo = (uint32_t) (1 << (param.crcLength - 1));
+  /* Usage: crcTableGenerator(param); */
+  unsigned length = param.length;
+  uint32_t mask   = param.mask;
+  uint32_t poly   = param.poly;
+  lbc * indent = lbc_str("  ");
 
   lbc_printf("{\n");
-  for (byte = 0; byte < 256; byte++) {
-    if (0 == (byte & 0x7) && 0 < byte)
-      lbc_printf("\n  ");
-    else if (byte == 0)
-      lbc_printf("  ");
+  for (unsigned byte = 0; byte < 256; byte++) {
+    if (0x0 == (byte & 0x7))
+      lbc_printf("%s", indent);
 
-    crc = byte;
-    for (bit = 0; bit < param.crcLength; bit++) {
-      if (crc & modulo)
-        crc = (crc << 1) ^ param.crcPoly;
-      else
-        crc <<= 1;
+    uint32_t crc = byte;
+    for (unsigned bit = 0; bit < length; bit++) {
+      crc = crc << 1;
+      if (mask != (crc | mask))
+        crc ^= poly;
     }
 
-    lbc_printf("0x%" PRIX32, crc);
-    if (byte != 255)
-      lbc_printf(", ");
+    lbc_printf("0x%04" PRIX32 ", ", crc);
+    indent = lbc_str("\n  ");
   }
 
   lbc_printf("\n}\n");

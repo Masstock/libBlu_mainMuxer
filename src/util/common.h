@@ -159,6 +159,16 @@ static inline unsigned lb_nm_unsigned(
   return x;
 }
 
+static inline int lb_sign_extend(
+  int value,
+  unsigned size
+)
+{
+  const int mask = 1u << (size - 1);
+  return (value ^ mask) - mask;
+}
+
+#if 0
 static inline int8_t lb_conv_signed8(
   uint8_t value,
   unsigned size
@@ -171,6 +181,7 @@ static inline int8_t lb_conv_signed8(
 
   return (value >> (size-1)) ? mask - ~digits : digits;
 }
+#endif
 
 static inline unsigned lb_ceil_log2(
   unsigned value

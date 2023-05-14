@@ -143,8 +143,11 @@ typedef enum {
   /* LPCM Audio : */
   LIBBLU_DEBUG_LPCM_PARSING,
 
-  /* AC3 Audio : */
+  /* Dolby Audio : */
   LIBBLU_DEBUG_AC3_PARSING,
+  LIBBLU_DEBUG_MLP_PARSING_HDR, /**< Headers */
+  LIBBLU_DEBUG_MLP_PARSING_MS, /**< Major Sync */
+  LIBBLU_DEBUG_MLP_PARSING_SS, /**< Substreams */
 
   /* DTS Audio : */
   LIBBLU_DEBUG_DTS_PARSING_DTSHD,

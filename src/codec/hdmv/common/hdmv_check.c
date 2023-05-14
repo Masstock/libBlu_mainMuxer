@@ -161,7 +161,7 @@ static int _checkAndCollectODSHdmvEpochState(
   else
     start = end_object_id_ref, end = start_object_id_ref;
 
-  uint16_t width, height;
+  uint16_t width = 0, height = 0;
   HdmvSequencePtr odsList = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
   for (uint16_t id = start; id <= end; id++) {
     HdmvSequencePtr ods;
@@ -182,7 +182,7 @@ static int _checkAndCollectODSHdmvEpochState(
     }
 
     /* Check objects dimensions uniformization */
-    if (id == start) {
+    if (!width) {
       width = ods->data.od.object_width;
       height = ods->data.od.object_height;
     }

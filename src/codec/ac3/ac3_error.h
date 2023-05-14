@@ -50,4 +50,36 @@
     ##__VA_ARGS__                                                             \
   )
 
+/* ### MLP/TrueHD : ######################################################## */
+
+#define LIBB
+#define LIBBLU_MLP_PREFIX  "MLP/TrueHD: "
+
+#define LIBBLU_MLP_ERROR(format, ...)                                         \
+  LIBBLU_ERROR(LIBBLU_MLP_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_MLP_ERROR_RETURN(format, ...)                                  \
+  LIBBLU_ERROR_RETURN(LIBBLU_MLP_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_MLP_WARNING(format, ...)                                       \
+  LIBBLU_WARNING(LIBBLU_MLP_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_MLP_DEBUG_PARSING_HDR(format, ...)                             \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_MLP_PARSING_HDR, "MLP/TrueHD Minor Sync",                    \
+    format, ##__VA_ARGS__                                                     \
+  )
+
+#define LIBBLU_MLP_DEBUG_PARSING_MS(format, ...)                              \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_MLP_PARSING_MS, "MLP/TrueHD Major Sync",                     \
+    format, ##__VA_ARGS__                                                     \
+  )
+
+#define LIBBLU_MLP_DEBUG_PARSING_SS(format, ...)                              \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_MLP_PARSING_SS, "MLP/TrueHD  Substream",                     \
+    format, ##__VA_ARGS__                                                     \
+  )
+
 #endif

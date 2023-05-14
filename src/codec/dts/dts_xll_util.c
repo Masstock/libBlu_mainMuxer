@@ -198,7 +198,7 @@ DtsXllFrameContextPtr createDtsXllFrameContext(
 
   ctx->initializedPbrUnpack = false;
 
-  ctx->crcCtx = DEF_CRC_CTX();
+  resetCrcContext(&ctx->crcCtx);
 
   ctx->pendingFrames = createCircularBuffer(sizeof(DcaXllPbrFrame));
   ctx->nbParsedPbrFrames = 0;
@@ -500,7 +500,7 @@ int unpackBitsDtsXllPbr(
 
       /* Applying CRC calculation if in use : */
       if (IN_USE_DTS_XLL_CRC(ctx))
-        applyCrc(&ctx->crcCtx, ctx->byteBuf);
+        applySingleByteCrcContext(&ctx->crcCtx, ctx->byteBuf);
     }
 
     if (NULL != value)
@@ -573,7 +573,7 @@ int unpackByteDtsXllPbr(
 
   /* Applying CRC calculation if in use : */
   if (IN_USE_DTS_XLL_CRC(ctx))
-    applyCrc(&ctx->crcCtx, ctx->pbrBuffer[ctx->pbrBufferParsedSize]);
+    applySingleByteCrcContext(&ctx->crcCtx, ctx->pbrBuffer[ctx->pbrBufferParsedSize]);
 
   ctx->pbrBufferParsedSize++;
 

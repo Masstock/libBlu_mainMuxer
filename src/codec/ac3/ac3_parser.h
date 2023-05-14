@@ -33,18 +33,12 @@
  *
  * 16-bit CRC word, generator polynomial: 0x18005, little-endian.
  */
-#define AC3_CRC_PARAMS  (CrcParam) {16, 0x18005, AC3_CRC_TABLE, false}
+#define AC3_CRC_PARAMS                                                        \
+  (CrcParam) {.length = 16, .mask = 0xFFFF, .poly = 0x18005}
 
-/** \~english
- * \brief TrueHD Major Sync CRC parameters ([3] 4.2.10 major_sync_info_CRC).
- *
- * 16-bit CRC word, generator polynomial: 0x1002D, big-endian.
- *
- */
-#define TRUE_HD_MS_CRC_PARAMS  (CrcParam) {16, 0x1002D, NO_CRC_TABLE, true}
-
+#if 0
 typedef struct {
-  bool checkMode; /* Indicates if function need to fill the struct or control if values are the same */
+  // bool checkMode; /* Indicates if function need to fill the struct or control if values are the same */
 
   Ac3SyncInfoParameters syncInfo;
   Ac3BitStreamInfoParameters bitstreamInfo;
@@ -52,9 +46,11 @@ typedef struct {
   bool eac3Present;
   Eac3BitStreamInfoParameters eac3BitstreamInfo;
 } Ac3SyncFrameParameters;
+#endif
 
-#define MLP_MAX_EXT_SS_NB  4
+#define MLP_MAX_NB_SS  4
 
+#if 0
 typedef struct {
   bool checkMode;
 
@@ -67,8 +63,41 @@ typedef struct {
 
   bool containAtmos;
 
-  MlpExtSubstream extSubstreams[MLP_MAX_EXT_SS_NB];
+  MlpSubstreamDirectoryEntry extSubstreams[MLP_MAX_EXT_SS_NB];
 } MlpAccessUnitParameters;
+#endif
+
+typedef struct {
+  struct {
+    Ac3SyncInfoParameters syncinfo;
+    Ac3BitStreamInfoParameters bsi;
+
+    unsigned nbFrames;
+    uint64_t pts;
+  } ac3Core;
+
+  struct {
+    MlpSyncHeaderParameters mlp_sync_header;
+    MlpSubstreamDirectoryEntry substream_directory[MLP_MAX_NB_SS];
+    MlpSubstreamParameters substreams[MLP_MAX_NB_SS];
+    MlpInformations info;
+
+    unsigned nbFrames;
+    uint64_t pts;
+  } mlpExt;
+
+  struct {
+    Eac3BitStreamInfoParameters bsi;
+
+    unsigned nbFrames;
+    uint64_t pts;
+  } eac3;
+
+  bool checkCrc;
+  bool extractCore;
+  bool containsMlp;
+  bool containsAtmos;
+} Ac3Context;
 
 int analyzeAc3(
   LibbluESParsingSettings * settings

@@ -70,14 +70,12 @@ int getGeneratedArrayDtsPatcherBitstreamHandle(
  * \param handle Bitstream handle.
  * \param param CRC computation parameters.
  * \param initialValue Initial CRC value.
- * \return int Upon success, a zero value is returned. Otherwise, a negative
- * value is returned.
  *
  * After initialization, added bits in bitstream will be proceed in CRC
  * computation.
  * Only one CRC computation process can be used at one time.
  */
-int initCrcDtsPatcherBitstreamHandle(
+void initCrcDtsPatcherBitstreamHandle(
   DtsPatcherBitstreamHandlePtr handle,
   CrcParam param,
   uint32_t initialValue
@@ -87,13 +85,10 @@ int initCrcDtsPatcherBitstreamHandle(
  * \brief Complete CRC checksum computation on given bitstream handle.
  *
  * \param handle Bitstream handle with enabled CRC process.
- * \param finalValue Final CRC computed value return pointer.
- * \return int Upon success, a zero value is returned. Otherwise, a negative
- * value is returned.
+ * \return uint32_t Final CRC computed value.
  */
-int finalizeCrcDtsPatcherBitstreamHandle(
-  DtsPatcherBitstreamHandlePtr handle,
-  uint32_t * finalValue
+uint16_t finalizeCrcDtsPatcherBitstreamHandle(
+  DtsPatcherBitstreamHandlePtr handle
 );
 
 /** \~english

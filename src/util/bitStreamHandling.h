@@ -28,30 +28,102 @@
 #define IO_VBUF_SIZE 1048576
 
 typedef struct {
-  unsigned crcLength;
-  uint32_t crcPoly;
-  CrcTableId crcLookupTable;
-  bool crcBigByteOrder;
+  const uint32_t * table;
+  uint32_t poly;
+  uint32_t mask;
+  unsigned length;
+  bool big_endian;
 } CrcParam;
 
 typedef struct {
-  bool crcInUse;       /**< Set current usage of CRC computation.            */
-  uint32_t crcBuffer;  /**< CRC computation buffer.                          */
-  CrcParam crcParam;   /**< Attached CRC generation parameters.              */
+  bool in_use;     /**< Set current usage of CRC computation.            */
+  uint32_t buf;    /**< CRC computation buffer.                          */
+  CrcParam param;  /**< Attached CRC generation parameters.              */
 } CrcContext;
 
-#define DEF_CRC_CTX()                                                         \
-  (                                                                           \
-    (CrcContext) {                                                            \
-      .crcInUse = false                                                       \
-    }                                                                         \
-  )
+static inline void resetCrcContext(
+  CrcContext * ctx
+)
+{
+  *ctx = (CrcContext) {
+    0
+  };
+}
 
-#define IN_USE_BITSTREAM_CRC(bitStreamPtr)                                    \
-  ((bitStreamPtr)->crcCtx.crcInUse)
+static inline void initCrcContext(
+  CrcContext * ctx,
+  CrcParam param,
+  unsigned initial_value
+)
+{
+  assert(initial_value < (1ull << param.length));
+  *ctx = (CrcContext) {
+    .in_use = true,
+    .buf = initial_value,
+    .param = param
+  };
+}
 
-#define BITSTREAM_CRC_CTX(bitStreamPtr)                                       \
-  (&(bitStreamPtr)->crcCtx)
+static inline void setUseCrcContext(
+  CrcContext * ctx,
+  bool use
+)
+{
+  ctx->in_use = use;
+}
+
+void applyNoTableBigEndianCrcContext(
+  CrcContext * ctx,
+  uint8_t byte
+);
+
+void applyNoTableLittleEndianCrcContext(
+  CrcContext * ctx,
+  uint8_t byte
+);
+
+static inline void applySingleByteCrcContext(
+  CrcContext * ctx,
+  uint8_t byte
+)
+{
+  const uint32_t * table = ctx->param.table;
+  uint32_t mask = ctx->param.mask;
+  uint32_t buf = ctx->buf;
+
+  if (NULL != table) {
+    /* Applying CRC look-up table */
+    assert(!ctx->param.big_endian); // FIXME Issue with big endian
+    ctx->buf = ((buf << 8) & mask) ^ table[byte ^ ((buf & mask) >> 8)];
+  }
+  else {
+    if (ctx->param.big_endian)
+      applyNoTableBigEndianCrcContext(ctx, byte);
+    else
+      applyNoTableLittleEndianCrcContext(ctx, byte);
+  }
+}
+
+static inline void applyCrcContext(
+  CrcContext * ctx,
+  const uint8_t * array,
+  unsigned size
+)
+{
+  for (unsigned i = 0; i < size; i++) {
+    applySingleByteCrcContext(ctx, array[i]);
+  }
+}
+
+static inline uint32_t completeCrcContext(
+  CrcContext * ctx
+)
+{
+  assert(ctx->in_use);
+
+  ctx->in_use = false;
+  return (ctx->buf & ctx->param.mask);
+}
 
 /** \~english
  * \brief Bitstreams handling structure used for reading and writing.
@@ -77,6 +149,13 @@ typedef struct {
   size_t bufferLength;  /**< Initial byteArray buffer length in bytes.       */
   uint64_t identifier;  /**< Bytestream randomized identifier.               */
 } BitstreamHandler, *BitstreamWriterPtr, *BitstreamReaderPtr;
+
+static inline CrcContext * crcCtxBitstream(
+  BitstreamHandler * bs
+)
+{
+  return &bs->crcCtx;
+}
 
 /** \~english
  * \brief Creates a bitstream reading handling structure on supplied file.
@@ -167,30 +246,6 @@ static inline BitstreamReaderPtr createBitstreamWriterDefBuf(
 void closeBitstreamWriter(
   BitstreamWriterPtr bitStream
 );
-
-int initCrc(
-  CrcContext * crcCtx,
-  CrcParam param,
-  unsigned initialValue
-);
-
-void applyCrc(
-  CrcContext * crcCtx,
-  uint8_t byte
-);
-
-static inline int endCrc(
-  CrcContext * crcCtx,
-  uint32_t * returnedCrcValue
-)
-{
-  assert(crcCtx->crcInUse);
-
-  crcCtx->crcInUse = false;
-  *returnedCrcValue = crcCtx->crcBuffer;
-
-  return 0;
-}
 
 static inline int64_t remainingSize(
   const BitstreamReaderPtr bitStream

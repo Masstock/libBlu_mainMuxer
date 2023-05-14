@@ -30,8 +30,7 @@ int decodeDtsXllCommonHeader(
       value, DTS_SYNCWORD_XLL
     );
 
-  if (initCrc(DTS_XLL_CRC_CTX(ctx), DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V) < 0)
-    return -1;
+  initCrcContext(DTS_XLL_CRC_CTX(ctx), DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V);
 
   /* [u4 nVersion] */
   if (unpackBitsDtsXllPbr(ctx, &value, 4) < 0)
@@ -120,9 +119,7 @@ int decodeDtsXllCommonHeader(
   param->paddingBits = ctx->remainingBits;
   alignByteDtsXllPbr(ctx);
 
-  if (endCrc(DTS_XLL_CRC_CTX(ctx), &value) < 0)
-    return -1;
-  headerCrcResult = value & 0xFFFF;
+  headerCrcResult = completeCrcContext(DTS_XLL_CRC_CTX(ctx));
 
   /* [u16 nCRC16Header] */
   if (unpackBitsDtsXllPbr(ctx, &value, 16) < 0)

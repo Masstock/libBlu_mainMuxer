@@ -1708,7 +1708,7 @@ size_t appendDcaExtSSHeader(
     goto free_return;
 
   /* Init DTS ExtSS Header CRC 16 checksum (nCRC16ExtSSHeader) */
-  ret = initCrcDtsPatcherBitstreamHandle(
+  initCrcDtsPatcherBitstreamHandle(
     handle,
     DCA_EXT_SS_CRC_PARAM(),
     DCA_EXT_SS_CRC_INITIAL_V
@@ -1836,10 +1836,7 @@ size_t appendDcaExtSSHeader(
   if (byteAlignDtsPatcherBitstreamHandle(handle) < 0)
     goto free_return;
 
-  ret = finalizeCrcDtsPatcherBitstreamHandle(
-    handle,
-    &crc16HdrValue
-  );
+  crc16HdrValue = finalizeCrcDtsPatcherBitstreamHandle(handle);
 
   /* [u16 nCRC16ExtSSHeader] */
   if (writeValueDtsPatcherBitstreamHandle(handle, crc16HdrValue, 16) < 0)

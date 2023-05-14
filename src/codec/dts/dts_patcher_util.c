@@ -24,7 +24,7 @@ DtsPatcherBitstreamHandlePtr createDtsPatcherBitstreamHandle(
   handle->dataUsedLength = 0;
   handle->currentByte = 0x00;
   handle->currentByteUsedBits = 0;
-  handle->crc = DEF_CRC_CTX();
+  resetCrcContext(&handle->crc);
 
   return handle;
 }
@@ -80,21 +80,20 @@ int getGeneratedArrayDtsPatcherBitstreamHandle(
   return 0;
 }
 
-int initCrcDtsPatcherBitstreamHandle(
+void initCrcDtsPatcherBitstreamHandle(
   DtsPatcherBitstreamHandlePtr handle,
   CrcParam param,
   uint32_t initialValue
 )
 {
-  return initCrc(&handle->crc, param, initialValue);
+  initCrcContext(&handle->crc, param, initialValue);
 }
 
-int finalizeCrcDtsPatcherBitstreamHandle(
-  DtsPatcherBitstreamHandlePtr handle,
-  uint32_t * finalValue
+uint16_t finalizeCrcDtsPatcherBitstreamHandle(
+  DtsPatcherBitstreamHandlePtr handle
 )
 {
-  return endCrc(&handle->crc, finalValue);
+  return completeCrcContext(&handle->crc);
 }
 
 int writeByteDtsPatcherBitstreamHandle(
@@ -111,9 +110,9 @@ int writeByteDtsPatcherBitstreamHandle(
 
   handle->data[handle->dataUsedLength++] = byte;
 
-  if (handle->crc.crcInUse) {
+  if (handle->crc.in_use) {
     /* \warning Will include bits before activation */
-    applyCrc(&handle->crc, byte);
+    applySingleByteCrcContext(&handle->crc, byte);
   }
 
   return 0;

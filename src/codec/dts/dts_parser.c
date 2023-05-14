@@ -1376,8 +1376,7 @@ int decodeDcaExtSSHeader(
   param->userDefinedBits = value;
 
 #if !DCA_EXT_SS_DISABLE_CRC
-  if (initCrc(BITSTREAM_CRC_CTX(file), DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V) < 0)
-    return -1;
+  initCrcContext(crcCtxBitstream(file), DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V);
 #endif
 
   /* [u2 nExtSSIndex] */
@@ -1516,10 +1515,7 @@ int decodeDcaExtSSHeader(
   }
 
 #if !DCA_EXT_SS_DISABLE_CRC
-  if (endCrc(BITSTREAM_CRC_CTX(file), &value) < 0)
-    return -1;
-
-  extSSCrcResult = value & 0xFFFF;
+  extSSCrcResult = completeCrcContext(crcCtxBitstream(file));
 #endif
 
   /* [u16 nCRC16ExtSSHeader] */

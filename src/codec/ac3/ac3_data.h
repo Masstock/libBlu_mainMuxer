@@ -13,11 +13,15 @@
 #include "../../util.h"
 #include "../common/constantCheckFunctionsMacros.h"
 
+/** \~english
+ * \brief AC-3/MLP word size in bytes.
+ *
+ */
+#define AC3_WORD  2
+
 /* ### AC-3 : ############################################################## */
 
 #define AC3_SYNCWORD  0x0B77
-
-#define AC3_WORD_SIZE  2
 
 typedef enum {
   EAC3_FSCOD_48000_HZ  = 0x0,
@@ -328,7 +332,7 @@ static inline const char * Ac3DmixmodStr(
 
   if (dmixmod < ARRAY_SIZE(strings))
     return strings[dmixmod];
-  return "Reserved value";
+  return "Not indicated (Reserved value)";
 }
 
 typedef enum {
@@ -693,11 +697,6 @@ static inline unsigned nbChannelsEac3Chanmap(
 
 #define EAC3_CHANMAP_STR_BUFSIZE  80
 
-void buildStrReprEac3Chanmap(
-  char * dst,
-  uint16_t mask
-);
-
 typedef struct {
   uint8_t dialnorm2;
   bool compr2e;
@@ -797,11 +796,35 @@ typedef struct {
 
 /* ### TrueHD / MLP : ###################################################### */
 
+typedef enum {
+  MLP_INFO_MS_NOT_INDICATED,  /**< No indication over any matrix-surround encoding. */
+  MLP_INFO_MS_NOT_ENCODED,    /**< Not matrix-surround encoded. */
+  MLP_INFO_MS_ENCODED,        /**< Unspecified matrix-surround encoding encoded. */
+  MLP_INFO_MS_DSEX_DPLIIX,    /**< Dolby Surround EX / Dolby Pro Logic IIx encoded. */
+  MLP_INFO_MS_DPLIIZ          /**< Dolby Pro Logic IIz encoded. */
+} MlpInformationsMatrixSurroundEncoding;
+
+/** \~english
+ * \brief MLP/TrueHD bitstream informations.
+ *
+ * Bitstream informations synthesis.
+ */
+typedef struct {
+  unsigned samplingFrequency;
+  unsigned peakDataRate;
+  unsigned nbChannels;
+
+  bool binauralAudioPresent;
+  bool monoAudioPresent;
+  bool atmosPresent;
+  MlpInformationsMatrixSurroundEncoding matrixSurround;
+} MlpInformations;
+
 /** \~english
  * \brief MLP generic bit-stream syncword prefix.
  *
  */
-#define MLP_SYNCWORD_PREFIX  0xF8726F
+#define MLP_SYNCWORD_PREFIX  ((uint32_t) 0xF8726F)
 
 /** \~english
  * \brief MLP TrueHD extension bit-stream syncword suffix.
@@ -809,7 +832,7 @@ typedef struct {
  * This suffix combined with #MLP_SYNCWORD_PREFIX prefix indicates a TrueHD
  * bitstream (#TRUE_HD_SYNCWORD).
  */
-#define TRUE_HD_SYNCWORD_SUFFIX  0xBA
+#define TRUE_HD_SYNCWORD_SUFFIX  ((uint8_t) 0xBA)
 
 /** \~english
  * \brief MLP bit-stream syncword suffix.
@@ -817,21 +840,32 @@ typedef struct {
  * This suffix combined with #MLP_SYNCWORD_SUFFIX prefix indicates a MLP
  * bitstream without TrueHD extensions (#MLP_SYNCWORD).
  */
-#define MLP_SYNCWORD_SUFFIX  0xBB
+#define MLP_SYNCWORD_SUFFIX  ((uint8_t) 0xBB)
 
 /** \~english
  * \brief MLP TrueHD extension bit-stream syncword.
  *
  */
 #define TRUE_HD_SYNCWORD                                                      \
-  ((MLP_SYNCWORD_PREFIX << 8) | TRUE_HD_SYNCWORD_SUFFIX)
+  ((uint32_t) (MLP_SYNCWORD_PREFIX << 8) | TRUE_HD_SYNCWORD_SUFFIX)
 
 /** \~english
  * \brief MLP bit-stream syncword.
  *
  */
 #define MLP_SYNCWORD                                                          \
-  ((MLP_SYNCWORD_PREFIX << 8) | MLP_SYNCWORD_SUFFIX)
+  ((uint32_t) (MLP_SYNCWORD_PREFIX << 8) | MLP_SYNCWORD_SUFFIX)
+
+static inline char * MlpFormatSyncStr(
+  uint32_t format_sync
+)
+{
+  if (TRUE_HD_SYNCWORD == format_sync)
+    return "Dolby TrueHD (FBA)";
+  if (MLP_SYNCWORD == format_sync)
+    return "Meridian Lossless Packing (FBB)";
+  return "Unknown/reserved value";
+}
 
 #define TRUE_HD_SIGNATURE  0xB752
 
@@ -855,9 +889,9 @@ static inline unsigned sampleRateMlpAudioSamplingFrequency(
     44100, 88200, 176400
   };
 
-  if (audio_sampling_frequency <= ARRAY_SIZE(values))
+  if (audio_sampling_frequency < ARRAY_SIZE(values))
     return values[audio_sampling_frequency];
-  if ((audio_sampling_frequency & 0x7) <= ARRAY_SIZE(values2))
+  if ((audio_sampling_frequency & 0x7) < ARRAY_SIZE(values2))
     return values2[audio_sampling_frequency & 0x7];
   return 0;
 }
@@ -877,9 +911,9 @@ static inline const char * MlpAudioSamplingFrequencyStr(
     "176.4 kHz"
   };
 
-  if (audio_sampling_frequency <= ARRAY_SIZE(strings))
+  if (audio_sampling_frequency < ARRAY_SIZE(strings))
     return strings[audio_sampling_frequency];
-  if ((audio_sampling_frequency & 0x7) <= ARRAY_SIZE(strings2))
+  if ((audio_sampling_frequency & 0x7) < ARRAY_SIZE(strings2))
     return strings2[audio_sampling_frequency & 0x7];
   return "Reserved value";
 }
@@ -890,10 +924,28 @@ typedef enum {
   MLP_6CH_MULTICHANNEL_TYPE_RES              = 0x1
 } Mlp6ChMultichannelType;
 
+static inline const char * Mlp6ChMultichannelTypeStr(
+  Mlp6ChMultichannelType u6ch_multichannel_type
+)
+{
+  if (u6ch_multichannel_type)
+    return "Reserved value";
+  return "Standard loudspeaker layout";
+}
+
 typedef enum {
   MLP_8CH_MULTICHANNEL_TYPE_STD_SPKR_LAYOUT  = 0x0,
   MLP_8CH_MULTICHANNEL_TYPE_RES              = 0x1
 } Mlp8ChMultichannelType;
+
+static inline const char * Mlp8ChMultichannelTypeStr(
+  Mlp8ChMultichannelType u8ch_multichannel_type
+)
+{
+  if (u8ch_multichannel_type)
+    return "Reserved value";
+  return "Standard loudspeaker layout";
+}
 
 typedef enum {
   MLP_2CH_PRES_CH_MOD_STEREO     = 0x0,
@@ -902,21 +954,126 @@ typedef enum {
   MLP_2CH_PRES_CH_MOD_MONO       = 0x3
 } Mlp2ChPresentationChannelModifier;
 
+static inline const char * Mlp2ChPresentationChannelModifierStr(
+  Mlp2ChPresentationChannelModifier u2ch_presentation_channel_modifier
+)
+{
+  static const char * strings[] = {
+    "Stereo (L/R speaker feeds)",
+    "Lt/Rt (Matrix-surround encoded, L/R speaker feeds compatible)",
+    "Lbin/Rbin (Binaural headphone playback encoded)",
+    "Mono (Single channel signal/Identical L/R speaker feeds)"
+  };
+
+  if (u2ch_presentation_channel_modifier < ARRAY_SIZE(strings))
+    return strings[u2ch_presentation_channel_modifier];
+  return "Reserved value";
+}
+
 typedef enum {
-  MLP_6CH_PRES_CH_MOD_STEREO     = 0x0,
-  MLP_6CH_PRES_CH_MOD_LT_RT      = 0x1,
-  MLP_6CH_PRES_CH_MOD_LBIN_RBIN  = 0x2,
-  MLP_6CH_PRES_CH_MOD_MONO       = 0x3
+  MLP_6CH_PRES_CH_MOD_STEREO__NI              = 0x0,
+  MLP_6CH_PRES_CH_MOD_LT_RT__NE               = 0x1,
+  MLP_6CH_PRES_CH_MOD_LBIN_RBIN__DSEX_DPLIIX  = 0x2,
+  MLP_6CH_PRES_CH_MOD_MONO__DPLIIZ            = 0x3
 } Mlp6ChPresentationChannelModifier;
 
+static inline const char * Mlp6ChPresentationChannelModifierStr(
+  Mlp6ChPresentationChannelModifier u6ch_presentation_channel_modifier,
+  unsigned nbChannels,
+  bool lsRsPres
+)
+{
+  static const char * strings1[] = {
+    "Stereo (L/R speaker feeds)",
+    "Lt/Rt (Matrix-surround encoded, L/R speaker feeds compatible)",
+    "Lbin/Rbin (Binaural headphone playback encoded)",
+    "Mono (Single channel signal/Identical L/R speaker feeds)"
+  };
+  static const char * strings2[] = {
+    "Ls/Rs content type: Not indicated",
+    "Ls/Rs content type: Not Dolby Surround EX, Dolby Pro Logic IIx or IIz encoded",
+    "Ls/Rs content type: Dolby Surround EX/Dolby Pro Logic IIx encoded",
+    "Ls/Rs content type: Dolby Pro Logic IIz encoded"
+  };
+
+  if (0x3 < u6ch_presentation_channel_modifier)
+    return "Reserved value";
+  if (2 == nbChannels)
+    return strings1[u6ch_presentation_channel_modifier];
+  if (3 <= nbChannels && lsRsPres)
+    return strings2[u6ch_presentation_channel_modifier];
+  return "No meaning";
+}
+
+unsigned getNbChannels6ChPresentationAssignment(
+  uint8_t u6ch_presentation_channel_assignment
+);
+
+static inline bool lsRsPresent6ChPresentationAssignment(
+  uint8_t u6ch_presentation_channel_assignment
+)
+{
+  return u6ch_presentation_channel_assignment & 0x2; // Ls/Rs
+}
+
 typedef enum {
-  MLP_8CH_PRES_CH_MOD_STEREO     = 0x0,
-  MLP_8CH_PRES_CH_MOD_LT_RT      = 0x1,
-  MLP_8CH_PRES_CH_MOD_LBIN_RBIN  = 0x2,
-  MLP_8CH_PRES_CH_MOD_MONO       = 0x3
+  MLP_8CH_PRES_CH_MOD_STEREO__NI              = 0x0,
+  MLP_8CH_PRES_CH_MOD_LT_RT__NE               = 0x1,
+  MLP_8CH_PRES_CH_MOD_LBIN_RBIN__DSEX_DPLIIX  = 0x2,
+  MLP_8CH_PRES_CH_MOD_MONO__DPLIIZ            = 0x3
 } Mlp8ChPresentationChannelModifier;
 
+static inline const char * Mlp8ChPresentationChannelModifierStr(
+  Mlp8ChPresentationChannelModifier u8ch_presentation_channel_modifier,
+  unsigned nbChannels,
+  bool mainLRChannelsPresent,
+  bool lsRsPres
+)
+{
+  static const char * strings1[] = {
+    "Stereo (L/R speaker feeds)",
+    "Lt/Rt (Matrix-surround encoded, L/R speaker feeds compatible)",
+    "Lbin/Rbin (Binaural headphone playback encoded)",
+    "Mono (Single channel signal/Identical L/R speaker feeds)"
+  };
+  static const char * strings2[] = {
+    "Ls/Rs content type: Not indicated",
+    "Ls/Rs content type: Not Dolby Surround EX, Dolby Pro Logic IIx or IIz encoded",
+    "Ls/Rs content type: Dolby Surround EX/Dolby Pro Logic IIx encoded",
+    "Ls/Rs content type: Dolby Pro Logic IIz encoded"
+  };
+
+  if (0x3 < u8ch_presentation_channel_modifier)
+    return "Reserved value";
+  if (2 == nbChannels && mainLRChannelsPresent)
+    return strings1[u8ch_presentation_channel_modifier];
+  if (3 <= nbChannels && lsRsPres)
+    return strings2[u8ch_presentation_channel_modifier];
+  return "No meaning";
+}
+
+unsigned getNbChannels8ChPresentationAssignment(
+  uint8_t u8ch_presentation_channel_assignment,
+  bool alternateMeaning
+);
+
+static inline bool mainLRPresent8ChPresentationAssignment(
+  uint8_t u8ch_presentation_channel_assignment
+)
+{
+  return u8ch_presentation_channel_assignment & 0x1; // L/R
+}
+
+static inline bool onlyLsRsPresent8ChPresentationAssignment(
+  uint8_t u8ch_presentation_channel_assignment
+)
+{
+  return (u8ch_presentation_channel_assignment >> 3) == 0x1; // Only Ls/Rs
+}
+
 typedef struct {
+  uint32_t value;
+
   MlpAudioSamplingFrequency audio_sampling_frequency;
   Mlp6ChMultichannelType u6ch_multichannel_type;
   Mlp8ChMultichannelType u8ch_multichannel_type;
@@ -928,36 +1085,9 @@ typedef struct {
 
   Mlp8ChPresentationChannelModifier u8ch_presentation_channel_modifier;
   uint16_t u8ch_presentation_channel_assignment;
-
-  unsigned sampleRate;
-  unsigned u6ch_presentation_channel_nb;
-  unsigned u8ch_presentation_channel_nb;
 } MlpMajorSyncFormatInfo;
 
-unsigned getNbChannels6ChPresentationAssignment(
-  uint8_t u6ch_presentation_channel_assignment
-);
-
-unsigned getNbChannels8ChPresentationAssignment(
-  uint8_t u8ch_presentation_channel_assignment
-);
-
-static inline bool constantMlpMajorSyncFormatInfoCheck(
-  const MlpMajorSyncFormatInfo * first,
-  const MlpMajorSyncFormatInfo * second
-)
-{
-  return CHECK(
-    EQUAL(->audio_sampling_frequency)
-    EQUAL(->u6ch_multichannel_type)
-    EQUAL(->u8ch_multichannel_type)
-    EQUAL(->u2ch_presentation_channel_modifier)
-    EQUAL(->u6ch_presentation_channel_modifier)
-    EQUAL(->u8ch_presentation_channel_modifier)
-    EQUAL(->u6ch_presentation_channel_assignment)
-    EQUAL(->u8ch_presentation_channel_assignment)
-  );
-}
+#define MLP_MAX_PEAK_DATA_RATE  18000000u
 
 typedef struct {
   uint8_t u16ch_dialogue_norm;
@@ -1002,6 +1132,18 @@ typedef enum {
   MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING
 } MlpExtraChannelMeaningContent;
 
+static inline const char * MlpExtraChannelMeaningContentStr(
+  MlpExtraChannelMeaningContent type
+)
+{
+  static const char * strings[] = {
+    "Unknown",
+    "16-ch meaning"
+  };
+
+  return strings[type];
+}
+
 /** \~english
  * \brief AC-3 MLP extension extra_channel_meaning of channel_meaning().
  *
@@ -1011,32 +1153,28 @@ typedef enum {
  * [2] 3.3.3-3.3.5, 4.4
  */
 typedef struct {
-  uint8_t extra_channel_meaning_length;
+  // uint8_t extra_channel_meaning_length;
 
   MlpExtraChannelMeaningContent type;
   union {
     Mlp16ChChannelMeaning v16ch_channel_meaning;
   } content;  /**< extra_channel_meaning_data() content, declared as an
     union to allow future additions.                                         */
-  uint8_t unknownData[32];   /**< 'reserved' field content, size is set by
-   unknownDataSize in bits.                                                  */
 
-  unsigned size;             /**< extra_channel_meaning_data() block plus
-    extra_channel_meaning_length field size in bits. This value is equal to
-    (extra_channel_meaning_length + 1) * 16.                                 */
-  unsigned unknownDataSize;  /**< 'reserved' field size in bits.             */
-} MlpExtraChannelMeaning;
+  uint8_t reserved[32];
+  unsigned reserved_size;
+} MlpExtraChannelMeaningData;
 
 static inline bool atmosPresentMlpExtraChannelMeaning(
-  const MlpExtraChannelMeaning * param
+  const MlpExtraChannelMeaningData * param
 )
 {
   return (MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING != param->type);
 }
 
 static inline bool constantMlpExtraChannelMeaningCheck(
-  const MlpExtraChannelMeaning * first,
-  const MlpExtraChannelMeaning * second
+  const MlpExtraChannelMeaningData * first,
+  const MlpExtraChannelMeaningData * second
 )
 {
   return CHECK(
@@ -1047,12 +1185,105 @@ static inline bool constantMlpExtraChannelMeaningCheck(
   );
 }
 
+typedef enum {
+  MLP_EXT_SS_INFO_16CH_PRES_SS_3        = 0x0,
+  MLP_EXT_SS_INFO_16CH_PRES_SS_2_3      = 0x1,
+  MLP_EXT_SS_INFO_16CH_PRES_SS_1_2_3    = 0x2,
+  MLP_EXT_SS_INFO_16CH_PRES_SS_0_1_2_3  = 0x3
+} MlpExtendedSubstreamInfo;
+
+static inline const char * MlpExtendedSubstreamInfoStr(
+  MlpExtendedSubstreamInfo extended_substream_info,
+  bool b16ch_presentation_present
+)
+{
+  static const char * strings[] = {
+    "Substream 3",
+    "Substreams 2 and 3",
+    "Substreams 1, 2 and 3",
+    "Substreams 0, 1, 2 and 3",
+  };
+
+  if (!b16ch_presentation_present && extended_substream_info == 0x0)
+    return "Unused field";
+  if (b16ch_presentation_present && extended_substream_info < ARRAY_SIZE(strings))
+    return strings[extended_substream_info];
+  return "Unknown value";
+}
+
+typedef enum {
+  MLP_SS_INFO_6CH_PRES_RESERVED  = 0x0,
+  MLP_SS_INFO_6CH_PRES_SS_0      = 0x1,
+  MLP_SS_INFO_6CH_PRES_SS_1      = 0x2,
+  MLP_SS_INFO_6CH_PRES_SS_0_1    = 0x3
+} MlpSubstreamInfo6ChPresentation;
+
+static inline const char * MlpSubstreamInfo6ChPresentationStr(
+  MlpSubstreamInfo6ChPresentation u6ch_presentation
+)
+{
+  static const char * strings[] = {
+    "Illegal",
+    "Substream 0 (Copy of 2-ch presentation)",
+    "Substream 1",
+    "Substreams 1 and 2"
+  };
+
+  if (u6ch_presentation < ARRAY_SIZE(strings))
+    return strings[u6ch_presentation];
+  return "Reserved value";
+}
+
+typedef enum {
+  MLP_SS_INFO_8CH_PRES_RESERVED  = 0x0,
+  MLP_SS_INFO_8CH_PRES_SS_0      = 0x1,
+  MLP_SS_INFO_8CH_PRES_SS_1      = 0x2,
+  MLP_SS_INFO_8CH_PRES_SS_0_1    = 0x3,
+  MLP_SS_INFO_8CH_PRES_SS_2      = 0x4,
+  MLP_SS_INFO_8CH_PRES_SS_0_2    = 0x5,
+  MLP_SS_INFO_8CH_PRES_SS_1_2    = 0x6,
+  MLP_SS_INFO_8CH_PRES_SS_0_1_2  = 0x7
+} MlpSubstreamInfo8ChPresentation;
+
+static inline const char * MlpSubstreamInfo8ChPresentationStr(
+  MlpSubstreamInfo8ChPresentation u8ch_presentation
+)
+{
+  static const char * strings[] = {
+    "Illegal",
+    "Substream 0 (Copy of 2-ch presentation)",
+    "Substream 1 (Copy of 6-ch presentation)",
+    "Substreams 0 and 1 (Copy of 6-ch presentation)",
+    "Substream 2",
+    "Substreams 0 and 2",
+    "Substreams 1 and 2",
+    "Substreams 0, 1 and 2",
+  };
+
+  if (u8ch_presentation < ARRAY_SIZE(strings))
+    return strings[u8ch_presentation];
+  return "Reserved value";
+}
+
 typedef struct {
+  uint8_t value;
+
+  uint8_t reserved_field;
+  MlpSubstreamInfo6ChPresentation u6ch_presentation;
+  MlpSubstreamInfo8ChPresentation u8ch_presentation;
+  bool b16ch_presentation_present;
+} MlpSubstreamInfo;
+
+typedef struct {
+  uint8_t reserved_field;
+
   bool b2ch_control_enabled;
   bool b6ch_control_enabled;
   bool b8ch_control_enabled;
 
-  int8_t drc_start_up_gain;
+  bool reserved_bool_1;
+
+  uint8_t drc_start_up_gain;
 
   uint8_t u2ch_dialogue_norm;
   uint8_t u2ch_mix_level;
@@ -1065,57 +1296,35 @@ typedef struct {
   uint8_t u8ch_mix_level;
   uint8_t u8ch_source_format;
 
+  bool reserved_bool_2;
+
   bool extra_channel_meaning_present;
-  MlpExtraChannelMeaning extra_channel_meaning;
-} MlpMajorSyncChannelMeaning;
-
-static inline bool constantMlpMajorSyncChannelMeaningCheck(
-  const MlpMajorSyncChannelMeaning * first,
-  const MlpMajorSyncChannelMeaning * second
-)
-{
-  return CHECK(
-    EQUAL(->b2ch_control_enabled)
-    EQUAL(->b6ch_control_enabled)
-    EQUAL(->b8ch_control_enabled)
-    EQUAL(->drc_start_up_gain)
-    EQUAL(->u2ch_dialogue_norm)
-    EQUAL(->u2ch_mix_level)
-    EQUAL(->u6ch_dialogue_norm)
-    EQUAL(->u6ch_mix_level)
-    EQUAL(->u6ch_source_format)
-    EQUAL(->u8ch_dialogue_norm)
-    EQUAL(->u8ch_mix_level)
-    EQUAL(->u8ch_source_format)
-    EQUAL(->extra_channel_meaning_present)
-    START_COND(->extra_channel_meaning_present, 0x1)
-      SUB_FUN_PTR(->extra_channel_meaning, constantMlpExtraChannelMeaningCheck)
-    END_COND
-  );
-}
-
-typedef enum {
-  MLP_EXT_SS_INFO_16CH_PRES_SS_3        = 0x0,
-  MLP_EXT_SS_INFO_16CH_PRES_SS_2_3      = 0x1,
-  MLP_EXT_SS_INFO_16CH_PRES_SS_1_2_3    = 0x2,
-  MLP_EXT_SS_INFO_16CH_PRES_SS_0_1_2_3  = 0x3
-} MlpExtendedSubstreamInfo;
+  uint8_t extra_channel_meaning_length;
+  MlpExtraChannelMeaningData extra_channel_meaning_data;
+} MlpChannelMeaning;
 
 typedef struct {
-  bool b16ch_presentation_present;
+  uint16_t value;  /**< Value of the 'flags' field.                          */
 
-  uint8_t u8ch_presentation;
-  uint8_t u6ch_presentation;
-} MlpSubstreamInfo;
+  bool constant_fifo_buf_delay;
+  bool fmt_info_alter_8ch_asgmt_syntax; /**< Field 'format_info' alternative
+    8ch assignment syntax.                                                   */
+} MlpMajorSyncFlags;
+
+/** \~english
+ * \brief TrueHD Major Sync CRC parameters ([3] 4.2.10 major_sync_info_CRC).
+ *
+ * 16-bit CRC word, generator polynomial: 0x1002D, big-endian.
+ */
+#define TRUE_HD_MS_CRC_PARAMS                                                 \
+  (CrcParam) {.length = 16, .mask = 0xFFFF, .poly = 0x1002D,                  \
+              .big_endian = true}
 
 typedef struct {
+  uint32_t format_sync;
   MlpMajorSyncFormatInfo format_info;
-
-  uint16_t flags;
-  struct {
-    bool constantFifoBufDelay;
-    bool formatInfoAlternative8chAssSyntax;
-  };  /**< 'flags' extracted parameters. */
+  uint16_t signature;
+  MlpMajorSyncFlags flags;
 
   bool variable_bitrate;
   uint16_t peak_data_rate;
@@ -1124,52 +1333,159 @@ typedef struct {
   MlpExtendedSubstreamInfo extended_substream_info;
   MlpSubstreamInfo substream_info;
 
-  MlpMajorSyncChannelMeaning channel_meaning;
+  MlpChannelMeaning channel_meaning;
 
   uint16_t major_sync_info_CRC;
-
-  unsigned peakDataRate;
-} MlpMajorSyncParameters;
+} MlpMajorSyncInfoParameters;
 
 static inline bool atmosPresentMlpMajorSyncParameters(
-  const MlpMajorSyncParameters * param
+  const MlpMajorSyncInfoParameters * param
 )
 {
   if (!param->channel_meaning.extra_channel_meaning_present)
     return false;
   return atmosPresentMlpExtraChannelMeaning(
-    &param->channel_meaning.extra_channel_meaning
-  );
-}
-
-static inline bool constantMlpMajorSyncCheck(
-  const MlpMajorSyncParameters * first,
-  const MlpMajorSyncParameters * second
-)
-{
-  return CHECK(
-    EQUAL(->major_sync_info_CRC)
-    SUB_FUN_PTR(->format_info, constantMlpMajorSyncFormatInfoCheck)
-    EQUAL(->flags)
-    EQUAL(->variable_bitrate)
-    EQUAL(->peak_data_rate)
-    EQUAL(->substreams)
-    EQUAL(->extended_substream_info)
-    EQUAL(->substream_info.b16ch_presentation_present)
-    EQUAL(->substream_info.u8ch_presentation)
-    EQUAL(->substream_info.u6ch_presentation)
-    SUB_FUN_PTR(->channel_meaning, constantMlpMajorSyncChannelMeaningCheck)
+    &param->channel_meaning.extra_channel_meaning_data
   );
 }
 
 typedef struct {
-  bool extra_extSubstream_word;
+  uint8_t check_nibble;
+  uint16_t access_unit_length;  /**< Total length of the Access Unit in
+    2-byte word units.                                                       */
+  uint16_t input_timing;
+
+  bool major_sync;
+  MlpMajorSyncInfoParameters major_sync_info;
+
+  unsigned accessUnitLength;
+} MlpSyncHeaderParameters;
+
+static inline void updateMlpSyncHeaderParametersParameters(
+  MlpSyncHeaderParameters * dst,
+  MlpSyncHeaderParameters src
+)
+{
+  if (src.major_sync) {
+    *dst = src;
+  }
+  else {
+    dst->check_nibble = src.check_nibble;
+    dst->access_unit_length = src.access_unit_length;
+    dst->input_timing = src.input_timing;
+    dst->major_sync = src.major_sync;
+  }
+}
+
+typedef struct {
+  bool extra_substream_word;
   bool restart_nonexistent;
   bool crc_present;
-  bool reserved_field;
+  bool reserved_field_1;
 
-  uint16_t extSubstream_end_ptr;
-} MlpExtSubstream;
+  uint16_t substream_end_ptr;
+
+  uint16_t drc_gain_update;
+  uint8_t drc_time_update;
+  uint8_t reserved_field_2;
+
+  unsigned substreamSize;
+} MlpSubstreamDirectoryEntry;
+
+// typedef struct {
+
+// } MlpRestartHeader;
+
+// typedef struct {
+//   uint8_t block_header_content;
+// } MlpBlockHeader;
+
+/** \~english
+ * \brief MLP restart header 'restart_sync_word' noise type mask.
+ *
+ */
+#define MLP_RH_SW_NOISE_TYPE_MASK  0x1
+
+typedef struct {
+  uint16_t restart_sync_word;
+  bool noise_type;
+  // uint16_t output_timing;
+  uint8_t min_chan;
+  uint8_t max_chan;
+  uint8_t max_matrix_chan;
+  // uint8_t dither_shift;
+  bool error_protect;
+} MlpRestartHeader;
+
+/** \~english
+ * \brief MLP block header content flags.
+ *
+ * Block header 'block_header_content' parameter flags. Each flag is used to
+ * check presence or not of a specific section in the block header. If the
+ * binary AND with a flag is non-zero, the section is present. Otherwise it is
+ * absent until potential further update of the 'block_header_content'
+ * parameter.
+ *
+ * Default value of the parameter is #MLP_BHC_DEFAULT and is used each time
+ * a restart header is present in block before block header.
+ */
+typedef enum {
+  MLP_BHC_BLOCK_HEADER_CONTENT   = (1u << 0),  /**< Block header content
+    section.                                                                 */
+  MLP_BHC_HUFFMAN_OFFSET         = (1u << 1),  /**< Huffman coded residuals
+    offset section.                                                          */
+  MLP_BHC_IIR_FILTER_PARAMETERS  = (1u << 2),  /**< IIR filter parameters
+    section.                                                                 */
+  MLP_BHC_FIR_FILTER_PARAMETERS  = (1u << 3),  /**< FIR filter parameters
+    section.                                                                 */
+  MLP_BHC_QUANT_STEP_SIZE        = (1u << 4),  /**< Quantization step
+    section.                                                                 */
+  MLP_BHC_OUTPUT_SHIFT           = (1u << 5),  /**< Output samples shift
+    section.                                                                 */
+  MLP_BHC_MATRIX_PARAMETERS      = (1u << 6),  /**< Primitive matrices
+    parameters section.                                                      */
+  MLP_BHC_BLOCK_SIZE             = (1u << 7),  /**< Block size section.      */
+
+  MLP_BHC_DEFAULT                = 0xFF  /**< Block header content default
+    value, setting presence of all sections.                                 */
+} MlpBlockHeaderContentFlag;
+
+#define MLP_MAX_NB_MATRICES  8
+
+typedef struct {
+  bool lsb_bypass_exists;
+} MlpMatrix;
+
+typedef struct {
+  unsigned num_primitive_matrices;
+  MlpMatrix matrices[MLP_MAX_NB_MATRICES];
+} MlpMatrixParameters;
+
+typedef struct {
+  unsigned fir_filter_nb_changes;
+  unsigned iir_filter_nb_changes;
+
+  unsigned huffman_codebook;
+  unsigned num_huffman_lsbs;
+} MlpChannelParameters;
+
+#define MLP_MAX_NB_CHANNELS  8
+
+typedef struct {
+  MlpRestartHeader restart_header;
+  bool restart_header_seen;
+
+  uint8_t block_header_content;
+
+  unsigned block_size;
+
+  MlpMatrixParameters matrix_parameters;
+  unsigned matrix_parameters_nb_changes;
+
+  unsigned quant_step_size[MLP_MAX_NB_CHANNELS];
+
+  MlpChannelParameters channels_parameters[MLP_MAX_NB_CHANNELS];
+} MlpSubstreamParameters;
 
 #define TRUE_HD_UNITS_PER_SEC  1200
 

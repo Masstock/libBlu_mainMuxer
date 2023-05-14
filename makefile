@@ -15,8 +15,6 @@ EXEC := mainMuxer
 SRC_PATH = src
 OBJ_PATH = obj
 
-CFLAGS +=
-
 ###############################################################################
 # OS dependant                                                                #
 ###############################################################################
@@ -52,8 +50,8 @@ ifneq "$(findstring leaks, $(MAKECMDGOALS))" ""
 EXTCFLAGS += -fsanitize=address -fsanitize=leak
 endif
 
-ifneq "$(findstring pg, $(MAKECMDGOALS))" ""
-EXTCFLAGS += -pg
+ifneq "$(findstring profile, $(MAKECMDGOALS))" ""
+EXTCFLAGS += -pg -fprofile-arcs
 endif
 
 ###############################################################################
@@ -61,6 +59,7 @@ endif
 ###############################################################################
 
 SOURCE_FILES =																\
+	codec/ac3/ac3_check.o													\
 	codec/ac3/ac3_data.o													\
 	codec/ac3/ac3_parser.o													\
 	codec/dts/dts_checks.o													\
@@ -224,12 +223,12 @@ $(EXEC): $(OBJECTS)
 
 all: $(EXEC)
 
-linux: all
-windows: all
-no_debug: all
 build: all
 leaks: all
-pg: all
+linux: all
+no_debug: all
+profile: all
+windows: all
 
 clean:
 	rm -rf $(OBJECTS) $(WASTES)

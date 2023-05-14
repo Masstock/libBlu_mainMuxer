@@ -146,7 +146,7 @@ typedef struct {
   (&(dtsXllFrameContextPtr)->crcCtx)
 
 #define IN_USE_DTS_XLL_CRC(dtsXllFrameContextPtr)                             \
-  ((dtsXllFrameContextPtr)->crcCtx.crcInUse)
+  ((dtsXllFrameContextPtr)->crcCtx.in_use)
 
 #define UPDATE_PBR_BUF_SIZE(dtsXllFrameContextPtr, bufSize)                   \
   (                                                                           \
