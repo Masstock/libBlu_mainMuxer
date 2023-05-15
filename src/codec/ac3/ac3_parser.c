@@ -12,6 +12,14 @@
 #define USE_CRC  false
 #define TRUE_HD_SHOW_DETAILS_DISABLED_PARAM  false
 
+#define READ_BITS(d, bs, s, e)                                                \
+  do {                                                                        \
+    uint32_t _val;                                                            \
+    if (readBits(bs, &_val, s) < 0)                                           \
+      e;                                                                      \
+    *(d) = _val;                                                              \
+  } while (0)
+
 static size_t _frmsizecodToNominalBitrate(
   uint8_t code
 )
@@ -29,10 +37,10 @@ static size_t _frmsizecodToNominalBitrate(
 }
 
 static uint8_t _getSyncFrameBsid(
-  BitstreamReaderPtr ac3Input
+  BitstreamReaderPtr bs
 )
 {
-  uint64_t value = nextUint64(ac3Input);
+  uint64_t value = nextUint64(bs);
 
   /* [v40 *variousBits*] [u5 bsid] [v19 *variousBits*] */
   return (value >> 19) & 0x1F;
@@ -94,7 +102,7 @@ static bool _constantAc3SyncInfoCheck(
 }
 
 static int _parseAc3SyncInfo(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Ac3SyncInfoParameters * syncinfo,
   bool useCrcCheck
 )
@@ -105,7 +113,7 @@ static int _parseAc3SyncInfo(
   LIBBLU_AC3_DEBUG(" Synchronization Information, syncinfo()\n");
 
   /* [v16 syncword] // 0x0B77 */
-  if (readValueBigEndian(ac3Input, 2, &value) < 0)
+  if (readValueBigEndian(bs, 2, &value) < 0)
     return -1;
   LIBBLU_AC3_DEBUG(
     "  Sync Word (syncword): 0x%04" PRIX32 ".\n",
@@ -120,20 +128,20 @@ static int _parseAc3SyncInfo(
 
   /* Init the CRC check if requested */
   if (useCrcCheck)
-    initCrcContext(crcCtxBitstream(ac3Input), AC3_CRC_PARAMS, 0);
+    initCrcContext(crcCtxBitstream(bs), AC3_CRC_PARAMS, 0);
 
   /* [v16 crc1] */
-  if (readValueBigEndian(ac3Input, 2, &value) < 0)
+  if (readValueBigEndian(bs, 2, &value) < 0)
     return -1;
   syncinfo->crc1 = value;
 
   /* [u2 fscod] */
-  if (readBits(ac3Input, &value, 2) < 0)
+  if (readBits(bs, &value, 2) < 0)
     return -1;
   syncinfo->fscod = value;
 
   /* [u6 frmsizecod] */
-  if (readBits(ac3Input, &value, 6) < 0)
+  if (readBits(bs, &value, 6) < 0)
     return -1;
   syncinfo->frmsizecod = value;
 
@@ -146,7 +154,7 @@ static int _parseAc3SyncInfo(
 }
 
 static int _parseEac3SyncInfo(
-  BitstreamReaderPtr ac3Input
+  BitstreamReaderPtr bs
 )
 {
   /* For (bsid == 16) syntax */
@@ -155,7 +163,7 @@ static int _parseEac3SyncInfo(
   LIBBLU_AC3_DEBUG(" Synchronization Information, syncinfo()\n");
 
   /* [v16 syncword] // 0x0B77 */
-  if (readValueBigEndian(ac3Input, 2, &value) < 0)
+  if (readValueBigEndian(bs, 2, &value) < 0)
     return -1;
 
   LIBBLU_AC3_DEBUG("  Sync Word (syncword): 0x%04" PRIX16 ".\n", value);
@@ -170,14 +178,14 @@ static int _parseEac3SyncInfo(
 }
 
 static int _parseAc3Addbsi(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Ac3Addbsi * param
 )
 {
   uint32_t value;
 
   /* [u6 addbsil] */
-  if (readBits(ac3Input, &value, 6) < 0)
+  if (readBits(bs, &value, 6) < 0)
     return -1;
   param->addbsil = value;
 
@@ -186,7 +194,7 @@ static int _parseAc3Addbsi(
     /* Reference: ETSI TS 103 420 V1.2.1 - 8.3 */
 
     /* Try [v7 reserved] [b1 flag_ec3_extension_type_a] ... */
-    if (readBits(ac3Input, &value, 16) < 0)
+    if (readBits(bs, &value, 16) < 0)
       return -1;
 
     if ((value >> 8) == 0x1) {
@@ -201,7 +209,7 @@ static int _parseAc3Addbsi(
   else {
     /* Unknown extension. */
     /* [v<(addbsil + 1) * 8> addbsi] */
-    if (skipBits(ac3Input, (value + 1) * 8) < 0)
+    if (skipBits(bs, (value + 1) * 8) < 0)
       return -1;
   }
 
@@ -763,7 +771,7 @@ static bool _constantAc3BitStreamInfoCheck(
 }
 
 static int _parseAc3BitStreamInfo(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Ac3BitStreamInfoParameters * bsi
 )
 {
@@ -771,7 +779,7 @@ static int _parseAc3BitStreamInfo(
   uint32_t value;
 
   /* [u5 bsid] */
-  if (readBits(ac3Input, &value, 5) < 0)
+  if (readBits(bs, &value, 5) < 0)
     return -1;
   bsi->bsid = value;
 
@@ -783,12 +791,12 @@ static int _parseAc3BitStreamInfo(
     );
 
   /* [u3 bsmod] */
-  if (readBits(ac3Input, &value, 3) < 0)
+  if (readBits(bs, &value, 3) < 0)
     return -1;
   bsi->bsmod = value;
 
   /* [u3 acmod] */
-  if (readBits(ac3Input, &value, 3) < 0)
+  if (readBits(bs, &value, 3) < 0)
     return -1;
   bsi->acmod = value;
 
@@ -796,7 +804,7 @@ static int _parseAc3BitStreamInfo(
     /* If 3 front channels present. */
 
     /* [u2 cmixlevel] */
-    if (readBits(ac3Input, &value, 2) < 0)
+    if (readBits(bs, &value, 2) < 0)
       return -1;
     bsi->cmixlev = value;
   }
@@ -805,7 +813,7 @@ static int _parseAc3BitStreamInfo(
     /* If surround channel(s) present. */
 
     /* [u2 surmixlev] */
-    if (readBits(ac3Input, &value, 2) < 0)
+    if (readBits(bs, &value, 2) < 0)
       return -1;
     bsi->surmixlev = value;
   }
@@ -814,13 +822,13 @@ static int _parseAc3BitStreamInfo(
     /* If Stereo 2/0 (L, R) */
 
     /* [u2 dsurmod] */
-    if (readBits(ac3Input, &value, 2) < 0)
+    if (readBits(bs, &value, 2) < 0)
       return -1;
     bsi->dsurmod = value;
   }
 
   /* [b1 lfeon] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
       return -1;
   bsi->lfeon = value;
 
@@ -830,47 +838,47 @@ static int _parseAc3BitStreamInfo(
   );
 
   /* [u5 dialnorm] */
-  if (readBits(ac3Input, &value, 5) < 0)
+  if (readBits(bs, &value, 5) < 0)
     return -1;
   bsi->dialnorm = value;
 
   /* [b1 compre] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->compre = value;
 
   if (bsi->compre) {
     /* [u8 compr] */
-    if (readBits(ac3Input, &value, 8) < 0)
+    if (readBits(bs, &value, 8) < 0)
       return -1;
     bsi->compr = value;
   }
 
   /* [b1 langcode] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->langcode = value;
 
   if (bsi->langcode) {
     /* [u8 langcod] */
-    if (readBits(ac3Input, &value, 8) < 0)
+    if (readBits(bs, &value, 8) < 0)
       return -1;
     bsi->langcod = value;
   }
 
   /* [b1 audprodie] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->audprodie = value;
 
   if (bsi->audprodie) {
     /* [u5 mixlevel] */
-    if (readBits(ac3Input, &value, 5) < 0)
+    if (readBits(bs, &value, 5) < 0)
       return -1;
     bsi->audioProdInfo.mixlevel = value;
 
     /* [u2 roomtyp] */
-    if (readBits(ac3Input, &value, 2) < 0)
+    if (readBits(bs, &value, 2) < 0)
       return -1;
     bsi->audioProdInfo.roomtyp = value;
   }
@@ -879,59 +887,59 @@ static int _parseAc3BitStreamInfo(
     /* If 1+1 duplicated mono, require parameters for the second mono builded channel. */
 
     /* [u5 dialnorm2] */
-    if (readBits(ac3Input, &value, 5) < 0)
+    if (readBits(bs, &value, 5) < 0)
       return -1;
     bsi->dualMonoParam.dialnorm2 = value;
 
     /* [b1 compr2e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->dualMonoParam.compr2e = value;
 
     if (bsi->dualMonoParam.compr2e) {
       /* [u8 compr2] */
-      if (readBits(ac3Input, &value, 8) < 0)
+      if (readBits(bs, &value, 8) < 0)
         return -1;
       bsi->dualMonoParam.compr2 = value;
     }
 
     /* [b1 langcod2e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->dualMonoParam.langcod2e = value;
 
     if (bsi->dualMonoParam.langcod2e) {
       /* [u8 langcod2] */
-      if (readBits(ac3Input, &value, 8) < 0)
+      if (readBits(bs, &value, 8) < 0)
         return -1;
       bsi->dualMonoParam.langcod2 = value;
     }
 
     /* [b1 audprodi2e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->dualMonoParam.audprodi2e = value;
 
     if (bsi->dualMonoParam.audprodi2e) {
       /* [u5 mixlevel2] */
-      if (readBits(ac3Input, &value, 5) < 0)
+      if (readBits(bs, &value, 5) < 0)
         return -1;
       bsi->dualMonoParam.audioProdInfo.mixlevel2 = value;
 
       /* [u2 roomtyp2] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->dualMonoParam.audioProdInfo.roomtyp2 = value;
     }
   }
 
   /* [b1 copyrightb] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->copyrightb = value;
 
   /* [b1 origbs] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->origbs = value;
 
@@ -940,146 +948,146 @@ static int _parseAc3BitStreamInfo(
     /* ETSI TS 102 366 V1.4.1 - Annex D */
 
     /* [b1 xbsi1e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->xbsi1e = value;
 
     if (bsi->xbsi1e) {
       /* [u2 dmixmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->xbsi1.dmixmod = value;
 
       /* [u3 ltrtcmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->xbsi1.ltrtcmixlev = value;
 
       /* [u3 ltrtsurmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->xbsi1.ltrtsurmixlev = value;
 
       /* [u3 lorocmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->xbsi1.lorocmixlev = value;
 
       /* [u3 lorosurmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->xbsi1.lorosurmixlev = value;
     }
 
     /* [b1 xbsi2e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->xbsi2e = value;
 
     if (bsi->xbsi2e) {
       /* [u2 dsurexmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->xbsi2.dsurexmod = value;
 
       /* [u2 dheadphonmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->xbsi2.dheadphonmod = value;
 
       /* [b1 adconvtyp] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->xbsi2.adconvtyp = value;
 
       /* [u8 xbsi2] */
-      if (readBits(ac3Input, &value, 8) < 0)
+      if (readBits(bs, &value, 8) < 0)
         return -1;
       bsi->xbsi2.xbsi2 = value;
 
       /* [b1 encinfo] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->xbsi2.encinfo = value;
     }
   }
   else {
     /* [b1 timecod1e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->timecod1e = value;
 
     if (bsi->timecod1e) {
       /* [u16 timecod1] */
-      if (readBits(ac3Input, &value, 16) < 0)
+      if (readBits(bs, &value, 16) < 0)
         return -1;
       bsi->timecod1 = value;
     }
 
     /* [b1 timecod2e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->timecod2e = value;
 
     if (bsi->timecod2e) {
       /* [u16 timecod2] */
-      if (readBits(ac3Input, &value, 16) < 0)
+      if (readBits(bs, &value, 16) < 0)
         return -1;
       bsi->timecod2 = value;
     }
   }
 
   /* [b1 addbsie] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->addbsie = value;
 
   if (bsi->addbsie) {
-    if (_parseAc3Addbsi(ac3Input, &bsi->addbsi) < 0)
+    if (_parseAc3Addbsi(bs, &bsi->addbsi) < 0)
       return -1;
   }
 
-  if (paddingByte(ac3Input) < 0)
+  if (paddingByte(bs) < 0)
     return -1;
 
   return 0;
 }
 
 static int _parseRemainingAc3Frame(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Ac3SyncInfoParameters syncinfo,
   int64_t syncFrameOffset,
-  bool checkCrc
+  bool enable_crc_checks
 )
 {
-  if (checkCrc) {
+  if (enable_crc_checks) {
     int64_t firstPartSize    = syncinfo.frameSize * 5 / 8;
-    int64_t firstPartRemSize = firstPartSize - (tellPos(ac3Input) - syncFrameOffset);
+    int64_t firstPartRemSize = firstPartSize - (tellPos(bs) - syncFrameOffset);
     int64_t secondPartSize   = syncinfo.frameSize * 3 / 8;
 
     /* Compute CRC for the remaining bytes of the first 5/8 of the sync */
-    if (skipBytes(ac3Input, firstPartRemSize) < 0)
+    if (skipBytes(bs, firstPartRemSize) < 0)
       return -1;
 
-    uint32_t crcResult = completeCrcContext(crcCtxBitstream(ac3Input));
+    uint32_t crcResult = completeCrcContext(crcCtxBitstream(bs));
 
     if (0x0 != crcResult)
       LIBBLU_AC3_ERROR_RETURN("CRC checksum error at the 5/8 of the frame.\n");
 
     /* Compute CRC for the remaining bytes */
-    initCrcContext(crcCtxBitstream(ac3Input), AC3_CRC_PARAMS, 0);
+    initCrcContext(crcCtxBitstream(bs), AC3_CRC_PARAMS, 0);
 
-    if (skipBytes(ac3Input, secondPartSize) < 0)
+    if (skipBytes(bs, secondPartSize) < 0)
       return -1;
 
-    crcResult = completeCrcContext(crcCtxBitstream(ac3Input));
+    crcResult = completeCrcContext(crcCtxBitstream(bs));
 
     if (0x0 != crcResult)
       LIBBLU_AC3_ERROR_RETURN("CRC checksum error at the end of the frame.\n");
   }
   else {
-    int64_t remaining = syncinfo.frameSize - (tellPos(ac3Input) - syncFrameOffset);
-    if (skipBytes(ac3Input, remaining) < 0)
+    int64_t remaining = syncinfo.frameSize - (tellPos(bs) - syncFrameOffset);
+    if (skipBytes(bs, remaining) < 0)
       return -1;
   }
 
@@ -1741,7 +1749,7 @@ static bool _constantEac3BitStreamInfoCheck(
 }
 
 static int _parseEac3BitStreamInfo(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Eac3BitStreamInfoParameters * bsi
 )
 {
@@ -1749,30 +1757,30 @@ static int _parseEac3BitStreamInfo(
   uint32_t value;
 
   /* [u2 strmtyp] */
-  if (readBits(ac3Input, &value, 2) < 0)
+  if (readBits(bs, &value, 2) < 0)
     return -1;
   bsi->strmtyp = value;
 
   /* [u3 substreamid] */
-  if (readBits(ac3Input, &value, 3) < 0)
+  if (readBits(bs, &value, 3) < 0)
     return -1;
   bsi->substreamid = value;
 
   /* [u11 frmsiz] */
-  if (readBits(ac3Input, &value, 11) < 0)
+  if (readBits(bs, &value, 11) < 0)
     return -1;
   bsi->frmsiz = value;
   bsi->frameSize = (value + 1) * AC3_WORD;
 
   /* [u2 fscod] */
-  if (readBits(ac3Input, &value, 2) < 0)
+  if (readBits(bs, &value, 2) < 0)
     return -1;
   bsi->fscod = value;
   bsi->sampleRate = sampleRateAc3Fscod(value);
 
   if (bsi->fscod == 0x3) {
     /* [u2 fscod2] */
-    if (readBits(ac3Input, &value, 2) < 0)
+    if (readBits(bs, &value, 2) < 0)
       return -1;
     bsi->fscod2 = value;
     bsi->sampleRate = sampleRateEac3Fscod2(value);
@@ -1781,7 +1789,7 @@ static int _parseEac3BitStreamInfo(
   }
   else {
     /* [u2 numblkscod] */
-    if (readBits(ac3Input, &value, 2) < 0)
+    if (readBits(bs, &value, 2) < 0)
       return -1;
     bsi->numblkscod = value;
   }
@@ -1790,12 +1798,12 @@ static int _parseEac3BitStreamInfo(
   bsi->numBlksPerSync = nbBlocksEac3Numblkscod(bsi->numblkscod);
 
   /* [u3 acmod] */
-  if (readBits(ac3Input, &value, 3) < 0)
+  if (readBits(bs, &value, 3) < 0)
     return -1;
   bsi->acmod = value;
 
   /* [b1 lfeon] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->lfeon = value;
 
@@ -1805,7 +1813,7 @@ static int _parseEac3BitStreamInfo(
   );
 
   /* [u5 bsid] // 0x10/16 in this syntax */
-  if (readBits(ac3Input, &value, 5) < 0)
+  if (readBits(bs, &value, 5) < 0)
     return -1;
   bsi->bsid = value;
 
@@ -1817,18 +1825,18 @@ static int _parseEac3BitStreamInfo(
     );
 
   /* [u5 dialnorm] */
-  if (readBits(ac3Input, &value, 5) < 0)
+  if (readBits(bs, &value, 5) < 0)
     return -1;
   bsi->dialnorm = value;
 
   /* [b1 compre] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->compre = value;
 
   if (bsi->compre) {
     /* [u8 compr] */
-    if (readBits(ac3Input, &value, 8) < 0)
+    if (readBits(bs, &value, 8) < 0)
       return -1;
     bsi->compr = value;
   }
@@ -1837,18 +1845,18 @@ static int _parseEac3BitStreamInfo(
     /* If 1+1 duplicated mono, require parameters for the second mono builded channel. */
 
     /* [u5 dialnorm2] */
-    if (readBits(ac3Input, &value, 5) < 0)
+    if (readBits(bs, &value, 5) < 0)
       return -1;
     bsi->dualMonoParam.dialnorm2 = value;
 
     /* [b1 compr2e] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->dualMonoParam.compr2e = value;
 
     if (bsi->dualMonoParam.compr2e) {
       /* [u8 compr2] */
-      if (readBits(ac3Input, &value, 8) < 0)
+      if (readBits(bs, &value, 8) < 0)
         return -1;
       bsi->dualMonoParam.compr2 = value;
     }
@@ -1856,13 +1864,13 @@ static int _parseEac3BitStreamInfo(
 
   if (bsi->strmtyp == 0x1) {
     /* [b1 chanmape] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->chanmape = value;
 
     if (bsi->chanmape) {
       /* [u16 chanmap] */
-      if (readBits(ac3Input, &value, 16) < 0)
+      if (readBits(bs, &value, 16) < 0)
         return -1;
       bsi->chanmap = value;
       bsi->nbChannelsFromMap = nbChannelsEac3Chanmap(value);
@@ -1870,7 +1878,7 @@ static int _parseEac3BitStreamInfo(
   }
 
   /* [b1 mixmdate] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->mixmdate = value;
 
@@ -1882,7 +1890,7 @@ static int _parseEac3BitStreamInfo(
       /* More than two channels. */
 
       /* [u2 dmixmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->Mixdata.dmixmod = value;
     }
@@ -1891,12 +1899,12 @@ static int _parseEac3BitStreamInfo(
       /* Three front channels present. */
 
       /* [u3 ltrtcmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->Mixdata.ltrtcmixlev = value;
 
       /* [u3 lorocmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->Mixdata.lorocmixlev = value;
     }
@@ -1905,25 +1913,25 @@ static int _parseEac3BitStreamInfo(
       /* Surround channels present. */
 
       /* [u3 ltrtsurmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->Mixdata.ltrtsurmixlev = value;
 
       /* [u3 lorosurmixlev] */
-      if (readBits(ac3Input, &value, 3) < 0)
+      if (readBits(bs, &value, 3) < 0)
         return -1;
       bsi->Mixdata.lorosurmixlev = value;
     }
 
     if (bsi->lfeon) {
       /* [b1 lfemixlevcode] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->Mixdata.lfemixlevcode = value;
 
       if (value) {
         /* [u5 lfemixlevcod] */
-        if (readBits(ac3Input, &value, 5) < 0)
+        if (readBits(bs, &value, 5) < 0)
           return -1;
         bsi->Mixdata.lfemixlevcod = value;
       }
@@ -1931,78 +1939,78 @@ static int _parseEac3BitStreamInfo(
 
     if (bsi->strmtyp == 0x0) {
       /* [b1 pgmscle] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->Mixdata.pgmscle = value;
 
       if (value) {
         /* [u6 pgmscl] */
-        if (readBits(ac3Input, &value, 6) < 0)
+        if (readBits(bs, &value, 6) < 0)
           return -1;
         bsi->Mixdata.pgmscl = value;
       }
 
       if (bsi->acmod == 0x0) {
         /* [b1 pgmscl2e] */
-        if (readBits(ac3Input, &value, 1) < 0)
+        if (readBits(bs, &value, 1) < 0)
           return -1;
         bsi->Mixdata.pgmscl2e = value;
 
         if (value) {
           /* [u6 pgmscl2] */
-          if (readBits(ac3Input, &value, 6) < 0)
+          if (readBits(bs, &value, 6) < 0)
             return -1;
           bsi->Mixdata.pgmscl2 = value;
         }
       }
 
       /* [b1 extpgmscle] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->Mixdata.extpgmscle = value;
 
       if (bsi->Mixdata.extpgmscle) {
         /* [u6 extpgmscl] */
-        if (readBits(ac3Input, &value, 6) < 0)
+        if (readBits(bs, &value, 6) < 0)
           return -1;
         bsi->Mixdata.extpgmscl = value;
       }
 
       /* [u2 mixdef] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->Mixdata.mixdef = value;
 
       if (bsi->Mixdata.mixdef == 0x1) {
         /* [b1 premixcmpsel] */
-        if (readBits(ac3Input, &value, 1) < 0)
+        if (readBits(bs, &value, 1) < 0)
           return -1;
         bsi->Mixdata.premixcmpsel = value;
 
         /* [b1 drcsrc] */
-        if (readBits(ac3Input, &value, 1) < 0)
+        if (readBits(bs, &value, 1) < 0)
           return -1;
         bsi->Mixdata.drcsrc = value;
 
         /* [u3 premixcmpscl] */
-        if (readBits(ac3Input, &value, 3) < 0)
+        if (readBits(bs, &value, 3) < 0)
           return -1;
         bsi->Mixdata.premixcmpscl = value;
       }
 
       else if (bsi->Mixdata.mixdef == 0x2) {
         /* [v12 mixdata] */
-        if (skipBits(ac3Input, 12) < 0)
+        if (skipBits(bs, 12) < 0)
           return -1;
       }
 
       else if (bsi->Mixdata.mixdef == 0x3) {
         /* [u5 mixdeflen] */
-        if (readBits(ac3Input, &value, 5) < 0)
+        if (readBits(bs, &value, 5) < 0)
           return -1;
 
         /* [v<(mixdeflen + 2) * 8> mixdata] */
-        if (skipBits(ac3Input, (value + 2) * 8) < 0)
+        if (skipBits(bs, (value + 2) * 8) < 0)
           return -1;
       }
 
@@ -2010,13 +2018,13 @@ static int _parseEac3BitStreamInfo(
         /* Mono or Dual-Mono */
 
         /* [b1 paninfoe] */
-        if (readBits(ac3Input, &value, 1) < 0)
+        if (readBits(bs, &value, 1) < 0)
           return -1;
 
         if (value) {
           /* [u8 panmean] */
           /* [u6 paninfo] */
-          if (skipBits(ac3Input, 14) < 0)
+          if (skipBits(bs, 14) < 0)
             return -1;
         }
 
@@ -2024,26 +2032,26 @@ static int _parseEac3BitStreamInfo(
           /* Dual-Mono */
 
           /* [b1 paninfo2e] */
-          if (readBits(ac3Input, &value, 1) < 0)
+          if (readBits(bs, &value, 1) < 0)
             return -1;
 
           if (value) {
             /* [u8 panmean2] */
             /* [u6 paninfo2] */
-            if (skipBits(ac3Input, 14) < 0)
+            if (skipBits(bs, 14) < 0)
               return -1;
           }
         }
       }
 
       /* [b1 frmmixcfginfoe] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
 
       if (value) {
         if (bsi->numblkscod == 0x0) {
           /* [u5 blkmixcfginfo[0]] */
-          if (skipBits(ac3Input, 5) < 0)
+          if (skipBits(bs, 5) < 0)
             return -1;
         }
         else {
@@ -2051,12 +2059,12 @@ static int _parseEac3BitStreamInfo(
 
           for (i = 0; i < bsi->numBlksPerSync; i++) {
             /* [b1 blkmixcfginfoe] */
-            if (readBits(ac3Input, &value, 1) < 0)
+            if (readBits(bs, &value, 1) < 0)
               return -1;
 
             if (value) {
               /* [u5 blkmixcfginfo[i]] */
-              if (skipBits(ac3Input, 5) < 0)
+              if (skipBits(bs, 5) < 0)
                 return -1;
             }
           }
@@ -2066,23 +2074,23 @@ static int _parseEac3BitStreamInfo(
   }
 
   /* [b1 infomdate] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->infomdate = value;
 
   if (bsi->infomdate) {
     /* [u3 bsmod] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->InformationalMetadata.bsmod = value;
 
     /* [b1 copyrightb] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->InformationalMetadata.copyrightb = value;
 
     /* [b1 origbs] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->InformationalMetadata.origbs = value;
 
@@ -2090,12 +2098,12 @@ static int _parseEac3BitStreamInfo(
       /* If Stereo 2.0 */
 
       /* [u2 dsurmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->InformationalMetadata.dsurmod = value;
 
       /* [u2 dheadphonmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->InformationalMetadata.dheadphonmod = value;
     }
@@ -2103,29 +2111,29 @@ static int _parseEac3BitStreamInfo(
     if (0x6 <= bsi->acmod) {
       /* If Both Surround channels present (2/2, 3/2 modes) */
       /* [u2 dsurexmod] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->InformationalMetadata.dsurexmod = value;
     }
 
     /* [b1 audprodie] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->InformationalMetadata.audprodie = value;
 
     if (bsi->InformationalMetadata.audprodie) {
       /* [u5 mixlevel] */
-      if (readBits(ac3Input, &value, 5) < 0)
+      if (readBits(bs, &value, 5) < 0)
         return -1;
       bsi->InformationalMetadata.audioProdInfo.mixlevel = value;
 
       /* [u2 roomtyp] */
-      if (readBits(ac3Input, &value, 2) < 0)
+      if (readBits(bs, &value, 2) < 0)
         return -1;
       bsi->InformationalMetadata.audioProdInfo.roomtyp = value;
 
       /* [b1 adconvtyp] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->InformationalMetadata.audioProdInfo.adconvtyp = value;
     }
@@ -2134,23 +2142,23 @@ static int _parseEac3BitStreamInfo(
       /* If Dual-Mono mode */
 
       /* [b1 audprodi2e] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->InformationalMetadata.audprodi2e = value;
 
       if (bsi->InformationalMetadata.audprodi2e) {
         /* [u5 mixlevel2] */
-        if (readBits(ac3Input, &value, 5) < 0)
+        if (readBits(bs, &value, 5) < 0)
           return -1;
         bsi->InformationalMetadata.audioProdInfo2.mixlevel2 = value;
 
         /* [u2 roomtyp2] */
-        if (readBits(ac3Input, &value, 2) < 0)
+        if (readBits(bs, &value, 2) < 0)
           return -1;
         bsi->InformationalMetadata.audioProdInfo2.roomtyp2 = value;
 
         /* [b1 adconvtyp2] */
-        if (readBits(ac3Input, &value, 1) < 0)
+        if (readBits(bs, &value, 1) < 0)
           return -1;
         bsi->InformationalMetadata.audioProdInfo2.adconvtyp2 = value;
       }
@@ -2158,7 +2166,7 @@ static int _parseEac3BitStreamInfo(
 
     if (bsi->fscod < 0x3) {
       /* [b1 sourcefscod] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->InformationalMetadata.sourcefscod = value;
     }
@@ -2166,7 +2174,7 @@ static int _parseEac3BitStreamInfo(
 
   if (bsi->strmtyp == 0x0 && bsi->numblkscod != 0x3) {
     /* [b1 convsync] */
-    if (readBits(ac3Input, &value, 1) < 0)
+    if (readBits(bs, &value, 1) < 0)
       return -1;
     bsi->convsync = value;
   }
@@ -2176,49 +2184,49 @@ static int _parseEac3BitStreamInfo(
       bsi->blkid = true;
     else {
       /* [b1 blkid] */
-      if (readBits(ac3Input, &value, 1) < 0)
+      if (readBits(bs, &value, 1) < 0)
         return -1;
       bsi->blkid = value;
     }
 
     if (bsi->blkid) {
       /* [u6 frmsizecod] */
-      if (readBits(ac3Input, &value, 6) < 0)
+      if (readBits(bs, &value, 6) < 0)
         return -1;
       bsi->frmsizecod = value;
     }
   }
 
   /* [b1 addbsie] */
-  if (readBits(ac3Input, &value, 1) < 0)
+  if (readBits(bs, &value, 1) < 0)
     return -1;
   bsi->addbsie = value;
 
   if (bsi->addbsie) {
-    if (_parseAc3Addbsi(ac3Input, &bsi->addbsi) < 0)
+    if (_parseAc3Addbsi(bs, &bsi->addbsi) < 0)
       return -1;
   }
 
-  if (paddingByte(ac3Input) < 0)
+  if (paddingByte(bs) < 0)
     return -1;
 
   return 0;
 }
 
 static int _parseRemainingEac3Frame(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Eac3BitStreamInfoParameters bsi,
   int64_t syncFrameOffset,
   bool checkCrc
 )
 {
   /* Skipping remaining frame bytes */
-  int64_t remaining = bsi.frameSize - (tellPos(ac3Input) - syncFrameOffset);
-  if (skipBytes(ac3Input, remaining) < 0)
+  int64_t remaining = bsi.frameSize - (tellPos(bs) - syncFrameOffset);
+  if (skipBytes(bs, remaining) < 0)
     return -1;
 
   if (checkCrc) {
-    uint32_t crcResult = completeCrcContext(crcCtxBitstream(ac3Input));
+    uint32_t crcResult = completeCrcContext(crcCtxBitstream(bs));
 
     if (0x0 != crcResult)
       LIBBLU_AC3_ERROR("CRC checksum error at the end of the frame.\n");
@@ -2229,7 +2237,7 @@ static int _parseRemainingEac3Frame(
 
 #if 0
 static int _decodeAc3Sync(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   Ac3SyncFrameParameters * param,
   bool * isEac3Frame,
   bool useCrcCheck
@@ -2237,10 +2245,10 @@ static int _decodeAc3Sync(
 {
   uint8_t bsid;
 
-  uint64_t startFrameOff = tellPos(ac3Input);
+  uint64_t startFrameOff = tellPos(bs);
 
   /* Get bsid to know correct syntax structure : */
-  bsid = _getSyncFrameBsid(ac3Input);
+  bsid = _getSyncFrameBsid(bs);
   LIBBLU_DEBUG_COM("# Identified bsid: 0x%" PRIx8 ".\n", bsid);
 
   if (bsid <= 8) {
@@ -2248,11 +2256,11 @@ static int _decodeAc3Sync(
     LIBBLU_DEBUG_COM(" === AC3 Sync Frame ===\n");
 
     /* syncinfo() */
-    if (_parseAc3SyncInfo(ac3Input, param, useCrcCheck) < 0)
+    if (_parseAc3SyncInfo(bs, param, useCrcCheck) < 0)
       return -1;
 
     /* bsi() */
-    if (_parseAc3BitStreamInfo(ac3Input, param) < 0)
+    if (_parseAc3BitStreamInfo(bs, param) < 0)
       return -1;
 
     if (useCrcCheck) {
@@ -2261,27 +2269,27 @@ static int _decodeAc3Sync(
       uint32_t crcResult;
 
       firstPartSize  = (param->syncInfo.frameSize * 5 / 8);
-      firstPartRemSize = firstPartSize - (tellPos(ac3Input) - startFrameOff);
+      firstPartRemSize = firstPartSize - (tellPos(bs) - startFrameOff);
       secondPartSize = (param->syncInfo.frameSize * 3 / 8);
 
       /* Compute CRC for the remaining bytes of the first 5/8 of the sync */
-      if (skipBytes(ac3Input, firstPartRemSize) < 0)
+      if (skipBytes(bs, firstPartRemSize) < 0)
         return -1;
 
-      if (completeCrcContext(crcCtxBitstream(ac3Input), &crcResult) < 0)
+      if (completeCrcContext(crcCtxBitstream(bs), &crcResult) < 0)
         return -1;
 
       if (0x0 != crcResult)
         LIBBLU_AC3_ERROR_RETURN("CRC checksum error at the 5/8 of the frame.\n");
 
       /* Compute CRC for the remaining bytes */
-      if (initCrcContext(crcCtxBitstream(ac3Input), AC3_CRC_PARAMS, 0) < 0)
+      if (initCrcContext(crcCtxBitstream(bs), AC3_CRC_PARAMS, 0) < 0)
         return -1;
 
-      if (skipBytes(ac3Input, secondPartSize) < 0)
+      if (skipBytes(bs, secondPartSize) < 0)
         return -1;
 
-      if (completeCrcContext(crcCtxBitstream(ac3Input), &crcResult) < 0)
+      if (completeCrcContext(crcCtxBitstream(bs), &crcResult) < 0)
         return -1;
 
       if (0x0 != crcResult)
@@ -2290,10 +2298,10 @@ static int _decodeAc3Sync(
     else {
       /* Skipping remaining frame bytes with CRC disabled */
       size_t syncFrameRemSize =
-        param->syncInfo.frameSize - (tellPos(ac3Input) - startFrameOff)
+        param->syncInfo.frameSize - (tellPos(bs) - startFrameOff)
       ;
 
-      if (skipBytes(ac3Input, syncFrameRemSize) < 0)
+      if (skipBytes(bs, syncFrameRemSize) < 0)
         return -1;
     }
 
@@ -2307,29 +2315,29 @@ static int _decodeAc3Sync(
     LIBBLU_DEBUG_COM(" === E-AC3 Sync Frame ===\n");
 
     /* syncinfo() */
-    if (_parseEac3SyncInfo(ac3Input) < 0)
+    if (_parseEac3SyncInfo(bs) < 0)
       return -1;
 
     if (useCrcCheck) {
-      if (initCrcContext(crcCtxBitstream(ac3Input), AC3_CRC_PARAMS, 0) < 0)
+      if (initCrcContext(crcCtxBitstream(bs), AC3_CRC_PARAMS, 0) < 0)
         return -1;
     }
 
     /* bsi() */
-    if (_parseEac3BitStreamInfo(ac3Input, param) < 0)
+    if (_parseEac3BitStreamInfo(bs, param) < 0)
       return -1;
 
     /* Skipping remaining frame bytes */
     syncFrameRemSize =
-      param->eac3BitstreamInfo.frameSize - (tellPos(ac3Input) - startFrameOff)
+      param->eac3BitstreamInfo.frameSize - (tellPos(bs) - startFrameOff)
     ;
-    if (skipBytes(ac3Input, syncFrameRemSize) < 0)
+    if (skipBytes(bs, syncFrameRemSize) < 0)
       return -1;
 
     if (useCrcCheck) {
       uint32_t crcResult;
 
-      if (completeCrcContext(crcCtxBitstream(ac3Input), &crcResult) < 0)
+      if (completeCrcContext(crcCtxBitstream(bs), &crcResult) < 0)
         return -1;
 
       if (0x0 != crcResult)
@@ -2482,21 +2490,19 @@ static int _unpackMlpMajorSyncextSubstreamInfo(
 /** \~english
  * \brief
  *
- * \param ac3Input
+ * \param bs
  * \param ecm
  * \param substream_info
  * \param length Size of extra_channel_meaning_data() section in bits.
  * \return int
  */
 static int _parseMlpExtraChannelMeaningData(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   MlpExtraChannelMeaningData * ecmd,
   MlpSubstreamInfo si,
   unsigned length
 )
 {
-  uint32_t value;
-
   unsigned ecm_used_length = 0;
   ecmd->type = MLP_EXTRA_CH_MEANING_CONTENT_UNKNOWN;
 
@@ -2507,31 +2513,20 @@ static int _parseMlpExtraChannelMeaningData(
     ecmd->type = MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING;
 
     /* [u5 16ch_dialogue_norm] */
-    if (readBits(ac3Input, &value, 5) < 0)
-      return -1;
-    v16ch_cm->u16ch_dialogue_norm = value;
+    READ_BITS(&v16ch_cm->u16ch_dialogue_norm, bs, 5, return -1);
 
     /* [u6 16ch_mix_level] */
-    if (readBits(ac3Input, &value, 6) < 0)
-      return -1;
-    v16ch_cm->u16ch_mix_level = value;
+    READ_BITS(&v16ch_cm->u16ch_mix_level, bs, 6, return -1);
 
     /* [u5 16ch_channel_count] */
-    if (readBits(ac3Input, &value, 5) < 0)
-      return -1;
-    v16ch_cm->u16ch_channel_count = value;
+    READ_BITS(&v16ch_cm->u16ch_channel_count, bs, 5, return -1);
 
     /* [b1 dyn_object_only] */
-    if (readBits(ac3Input, &value, 1) < 0)
-      return -1;
-    v16ch_cm->dyn_object_only = value;
+    READ_BITS(&v16ch_cm->dyn_object_only, bs, 1, return -1);
 
     if (v16ch_cm->dyn_object_only) {
       /* [b1 lfe_present] */
-      if (readBits(ac3Input, &value, 1) < 0)
-        return -1;
-      v16ch_cm->lfe_present = value;
-
+      READ_BITS(&v16ch_cm->lfe_present, bs, 1, return -1);
       ecm_used_length = 18;
     }
     else {
@@ -2553,112 +2548,84 @@ static int _parseMlpExtraChannelMeaningData(
 
   /* [vn reserved] */
   unsigned size = ecmd->reserved_size = length - ecm_used_length;
-  if (readBytes(ac3Input, ecmd->reserved, size >> 3) < 0)
+  if (readBytes(bs, ecmd->reserved, size >> 3) < 0)
     return -1;
-  if (readBits(ac3Input, &value, size & 0x7) < 0)
-    return -1;
-  ecmd->reserved[size >> 3] = value;
+  READ_BITS(&ecmd->reserved[size >> 3], bs, size & 0x7, return -1);
 
   return 0;
 }
 
 static int _parseMlpChannelMeaning(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   MlpChannelMeaning * param,
   MlpSubstreamInfo si
 )
 {
-  uint32_t value;
 
   /* [v6 reserved] */
-  if (readBits(ac3Input, &value, 6) < 0)
-    return -1;
-  param->reserved_field = value;
+  READ_BITS(&param->reserved_field, bs, 6, return -1);
 
   /* [b1 2ch_control_enabled] */
-  if (readBit(ac3Input, &param->b2ch_control_enabled) < 0)
-    return -1;
+  READ_BITS(&param->b2ch_control_enabled, bs, 1, return -1);
 
   /* [b1 6ch_control_enabled] */
-  if (readBit(ac3Input, &param->b6ch_control_enabled) < 0)
-    return -1;
+  READ_BITS(&param->b6ch_control_enabled, bs, 1, return -1);
 
   /* [b1 8ch_control_enabled] */
-  if (readBit(ac3Input, &param->b8ch_control_enabled) < 0)
-    return -1;
+  READ_BITS(&param->b8ch_control_enabled, bs, 1, return -1);
 
   /* [v1 reserved] */
-  if (readBit(ac3Input, &param->reserved_bool_1) < 0)
-    return -1;
+  READ_BITS(&param->reserved_bool_1, bs, 1, return -1);
 
   /* [s7 drc_start_up_gain] */
-  if (readBits(ac3Input, &value, 7) < 0)
-    return -1;
-  param->drc_start_up_gain = value;
+  READ_BITS(&param->drc_start_up_gain, bs, 7, return -1);
 
   /* [u6 2ch_dialogue_norm] */
-  if (readBits(ac3Input, &value, 6) < 0)
-    return -1;
-  param->u2ch_dialogue_norm = value;
+  READ_BITS(&param->u2ch_dialogue_norm, bs, 6, return -1);
 
   /* [u6 2ch_mix_level] */
-  if (readBits(ac3Input, &value, 6) < 0)
-    return -1;
-  param->u2ch_mix_level = value;
+  READ_BITS(&param->u2ch_mix_level, bs, 6, return -1);
 
   /* [u5 6ch_dialogue_norm] */
-  if (readBits(ac3Input, &value, 5) < 0)
-    return -1;
-  param->u6ch_dialogue_norm = value;
+  READ_BITS(&param->u6ch_dialogue_norm, bs, 5, return -1);
 
   /* [u6 6ch_mix_level] */
-  if (readBits(ac3Input, &value, 6) < 0)
-    return -1;
-  param->u6ch_mix_level = value;
+  READ_BITS(&param->u6ch_mix_level, bs, 6, return -1);
 
   /* [u5 6ch_source_format] */
-  if (readBits(ac3Input, &value, 5) < 0)
-    return -1;
-  param->u6ch_source_format = value;
+  READ_BITS(&param->u6ch_source_format, bs, 5, return -1);
 
   /* [u5 8ch_dialogue_norm] */
-  if (readBits(ac3Input, &value, 5) < 0)
-    return -1;
-  param->u8ch_dialogue_norm = value;
+  READ_BITS(&param->u8ch_dialogue_norm, bs, 5, return -1);
 
   /* [u6 8ch_mix_level] */
-  if (readBits(ac3Input, &value, 6) < 0)
-    return -1;
-  param->u8ch_mix_level = value;
+  READ_BITS(&param->u8ch_mix_level, bs, 6, return -1);
 
   /* [u6 8ch_source_format] */
-  if (readBits(ac3Input, &value, 6) < 0)
-    return -1;
-  param->u8ch_source_format = value;
+  READ_BITS(&param->u8ch_source_format, bs, 6, return -1);
 
   /* [v1 reserved] */
-  if (readBit(ac3Input, &param->reserved_bool_2) < 0)
+  if (readBit(bs, &param->reserved_bool_2) < 0)
     return -1;
 
   /* [b1 extra_channel_meaning_present] */
-  if (readBit(ac3Input, &param->extra_channel_meaning_present) < 0)
+  if (readBit(bs, &param->extra_channel_meaning_present) < 0)
     return -1;
+  param->extra_channel_meaning_length = 0;
 
   if (param->extra_channel_meaning_present) {
     MlpExtraChannelMeaningData * ecmd = &param->extra_channel_meaning_data;
 
     /* [u4 extra_channel_meaning_length] */
-    if (readBits(ac3Input, &value, 4) < 0)
-      return -1;
-    param->extra_channel_meaning_length = value;
+    READ_BITS(&param->extra_channel_meaning_length, bs, 4, return -1);
 
     /* [vn extra_channel_meaning_data] */
     unsigned length = ((param->extra_channel_meaning_length + 1) << 4) - 4;
-    if (_parseMlpExtraChannelMeaningData(ac3Input, ecmd, si, length) < 0)
+    if (_parseMlpExtraChannelMeaningData(bs, ecmd, si, length) < 0)
       return -1;
 
     /* [vn padding] */
-    if (paddingBoundary(ac3Input, 16) < 0)
+    if (paddingBoundary(bs, 16) < 0)
       return -1;
   }
 
@@ -2687,106 +2654,88 @@ static void _unpackMlpMajorSyncFlags(
 }
 
 static int _parseMlpMajorSyncInfo(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   MlpMajorSyncInfoParameters * param
 )
 {
-  uint32_t value;
 
-  initCrcContext(crcCtxBitstream(ac3Input), TRUE_HD_MS_CRC_PARAMS, 0);
+  initCrcContext(crcCtxBitstream(bs), TRUE_HD_MS_CRC_PARAMS, 0);
 
   /* [v32 format_sync] */
-  if (readBits(ac3Input, &value, 32) < 0)
-    return -1;
-  param->format_sync = value;
+  READ_BITS(&param->format_sync, bs, 32, return -1);
 
-  if (MLP_SYNCWORD == value) {
+  if (MLP_SYNCWORD == param->format_sync) {
     LIBBLU_AC3_ERROR_RETURN(
       "Unexpected DVD Audio MLP format sync word "
       "(format_sync == 0x%08X).\n",
       MLP_SYNCWORD
     );
   }
-  else if (TRUE_HD_SYNCWORD != value) {
+  else if (TRUE_HD_SYNCWORD != param->format_sync) {
     LIBBLU_AC3_ERROR_RETURN(
       "Unexpected sync word in MLP Major Sync "
       "(format_sync == 0x%08" PRIX32 ").\n",
-      value
+      param->format_sync
     );
   }
 
   /* [v32 format_info] */
   uint32_t format_info_value;
-  if (readBits(ac3Input, &format_info_value, 32) < 0)
-    return -1;
+  READ_BITS(&format_info_value, bs, 32, return -1);
   /* Unpacking is delayed to flags field parsing */
 
   /* [v16 signature] */
-  if (readBits(ac3Input, &value, 16) < 0)
-    return -1;
-  param->signature = value;
+  READ_BITS(&param->signature, bs, 16, return -1);
 
-  if (TRUE_HD_SIGNATURE != value) {
+  if (TRUE_HD_SIGNATURE != param->signature) {
     LIBBLU_AC3_ERROR_RETURN(
       "Invalid MLP Major Sync signature word "
       "(signature == 0x%04" PRIX32 ", expect 0x%04X).\n",
-      value,
+      param->signature,
       TRUE_HD_SIGNATURE
     );
   }
 
   /* [v16 flags] */
-  if (readBits(ac3Input, &value, 16) < 0)
-    return -1;
-  _unpackMlpMajorSyncFlags(&param->flags, value);
+  uint16_t flags_value;
+  READ_BITS(&flags_value, bs, 16, return -1);
+  _unpackMlpMajorSyncFlags(&param->flags, flags_value);
 
   /* Unpack format_info field using flags */
   _unpackMlpMajorSyncFormatInfo(&param->format_info, format_info_value);
 
   /* [v16 reserved] // ignored */
-  if (readBits(ac3Input, &value, 16) < 0)
-    return -1;
+  READ_BITS(&param->reserved_field_1, bs, 16, return -1);
 
   /* [b1 variable_rate] */
-  if (readBits(ac3Input, &value, 1) < 0)
-    return -1;
-  param->variable_bitrate = value;
+  READ_BITS(&param->variable_bitrate, bs, 1, return -1);
 
   /* [u15 peak_data_rate] */
-  if (readBits(ac3Input, &value, 15) < 0)
-    return -1;
-  param->peak_data_rate = value;
+  READ_BITS(&param->peak_data_rate, bs, 15, return -1);
 
   /* [u4 substreams] */
-  if (readBits(ac3Input, &value, 4) < 0)
-    return -1;
-  param->substreams = value;
+  READ_BITS(&param->substreams, bs, 4, return -1);
 
   /* [v2 reserved] // ignored */
-  if (readBits(ac3Input, &value, 2) < 0)
-    return -1;
+  READ_BITS(&param->reserved_field_2, bs, 2, return -1);
 
   /* [u2 extended_substream_info] */
-  if (readBits(ac3Input, &value, 2) < 0)
-    return -1;
-  param->extended_substream_info = value;
+  READ_BITS(&param->extended_substream_info, bs, 2, return -1);
 
   /* [v8 substream_info] */
-  if (readBits(ac3Input, &value, 8) < 0)
-    return -1;
-  if (_unpackMlpMajorSyncextSubstreamInfo(value, &param->substream_info) < 0)
+  uint8_t substream_info_value;
+  READ_BITS(&substream_info_value, bs, 8, return -1);
+  if (_unpackMlpMajorSyncextSubstreamInfo(substream_info_value, &param->substream_info) < 0)
     return -1;
 
   /* [v64 channel_meaning()] */
-  if (_parseMlpChannelMeaning(ac3Input, &param->channel_meaning, param->substream_info) < 0)
+  if (_parseMlpChannelMeaning(bs, &param->channel_meaning, param->substream_info) < 0)
     return -1;
 
-  uint16_t crc_result = completeCrcContext(crcCtxBitstream(ac3Input));
+  uint16_t crc_result = completeCrcContext(crcCtxBitstream(bs));
 
   /* [u16 major_sync_info_CRC] */
-  if (readBits(ac3Input, &value, 16) < 0)
-    return -1;
-  param->major_sync_info_CRC = value;
+  READ_BITS(&param->major_sync_info_CRC, bs, 16, return -1);
 
   if (crc_result != param->major_sync_info_CRC)
     LIBBLU_AC3_ERROR_RETURN(
@@ -2885,13 +2834,13 @@ static inline void _applyNibbleXorMlp(
 /** \~english
  * \brief
  *
- * \param ac3Input
+ * \param bs
  * \param sh
  * \param cnv Check nibble value.
  * \return int
  */
 static int _parseMlpSyncHeader(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   MlpSyncHeaderParameters * sh,
   uint8_t * cnv
 )
@@ -2899,24 +2848,24 @@ static int _parseMlpSyncHeader(
 
   /* [v4 check_nibble] */
   READ_BITS_NIBBLE_MLP(
-    &sh->check_nibble, ac3Input, 4,
+    &sh->check_nibble, bs, 4,
     cnv, return -1
   );
 
   /* [u12 access_unit_length] */
   READ_BITS_NIBBLE_MLP(
-    &sh->access_unit_length, ac3Input, 12,
+    &sh->access_unit_length, bs, 12,
     cnv, return -1
   );
 
   /* [u16 input_timing] */
   READ_BITS_NIBBLE_MLP(
-    &sh->input_timing, ac3Input, 16,
+    &sh->input_timing, bs, 16,
     cnv, return -1
   );
 
   /* Check if current frame contain Major Sync : */
-  bool major_sync = ((nextUint32(ac3Input) >> 8) == MLP_SYNCWORD_PREFIX);
+  bool major_sync = ((nextUint32(bs) >> 8) == MLP_SYNCWORD_PREFIX);
   sh->major_sync = major_sync;
 
   if (major_sync) {
@@ -2924,7 +2873,7 @@ static int _parseMlpSyncHeader(
       "  Major Sync present.\n"
     );
 
-    if (_parseMlpMajorSyncInfo(ac3Input, &sh->major_sync_info) < 0)
+    if (_parseMlpMajorSyncInfo(bs, &sh->major_sync_info) < 0)
       return -1; /* Error happen during decoding. */
   }
 
@@ -2932,6 +2881,28 @@ static int _parseMlpSyncHeader(
   sh->accessUnitLength = 2 * sh->access_unit_length;
 
   return 0;
+}
+
+/** \~english
+ * \brief Return the size in 16-bits words of the 'mlp_sync' section.
+ *
+ * \param param 'mlp_sync' syntax object.
+ * \return unsigned Size in 16-bits words.
+ */
+static unsigned _getSizeMlpSyncHeader(
+  const MlpSyncHeaderParameters * param
+)
+{
+  unsigned size = 2; // Minor sync
+
+  if (param->major_sync) {
+    const MlpChannelMeaning * chm = &param->major_sync_info.channel_meaning;
+    size += 10 + 4; // Major sync info (plus channel_meaning())
+    if (chm->extra_channel_meaning_present)
+      size += 1 + chm->extra_channel_meaning_length;
+  }
+
+  return size;
 }
 
 #define MLP_6CH_CHASSIGN_STR_BUFFSIZE  48
@@ -3008,13 +2979,13 @@ static int _checkMlpMajorSyncFormatInfo(
     "    Sampling frequency (audio_sampling_frequency): 0x%" PRIX8 ".\n",
     fi->audio_sampling_frequency
   );
-  unsigned samplingFrequency = sampleRateMlpAudioSamplingFrequency(
+  unsigned sampling_frequency = sampleRateMlpAudioSamplingFrequency(
     fi->audio_sampling_frequency
   );
-  info->samplingFrequency = samplingFrequency;
+  info->sampling_frequency = sampling_frequency;
   LIBBLU_MLP_DEBUG_PARSING_MS(
     "     -> %u Hz.\n",
-    samplingFrequency
+    sampling_frequency
   );
 
   LIBBLU_MLP_DEBUG_PARSING_MS(
@@ -3062,11 +3033,11 @@ static int _checkMlpMajorSyncFormatInfo(
   Mlp2ChPresentationChannelModifier u2ch_pres_ch_mod =
     fi->u2ch_presentation_channel_modifier;
   if (MLP_2CH_PRES_CH_MOD_LT_RT == u2ch_pres_ch_mod)
-    info->matrixSurround = MLP_INFO_MS_ENCODED;
+    info->matrix_surround = MLP_INFO_MS_ENCODED;
   if (MLP_2CH_PRES_CH_MOD_LBIN_RBIN == u2ch_pres_ch_mod)
-    info->binauralAudioPresent = true;
+    info->binaural_audio = true;
   if (MLP_2CH_PRES_CH_MOD_MONO == u2ch_pres_ch_mod)
-    info->monoAudioPresent = true;
+    info->mono_audio = true;
 
   unsigned u6chNbCh = getNbChannels6ChPresentationAssignment(
     fi->u6ch_presentation_channel_assignment
@@ -3124,7 +3095,7 @@ static int _checkMlpMajorSyncFormatInfo(
       u6chNbCh
     );
   }
-  info->nbChannels = u6chNbCh;
+  info->nb_channels = u6chNbCh;
 
   unsigned u8chNbCh = getNbChannels8ChPresentationAssignment(
     fi->u8ch_presentation_channel_assignment,
@@ -3190,7 +3161,7 @@ static int _checkMlpMajorSyncFormatInfo(
   }
 
   if (0 < u8chNbCh)
-    info->nbChannels = u8chNbCh;
+    info->nb_channels = u8chNbCh;
   else
     LIBBLU_MLP_WARNING(
       "Missing 8-ch presentation channels assignment mask.\n"
@@ -3571,18 +3542,18 @@ static int _checkMlpMajorSyncInfo(
     );
   }
 
-  info->peakDataRate = (msi->peak_data_rate * info->samplingFrequency) >> 4;
+  info->peak_data_rate = (msi->peak_data_rate * info->sampling_frequency) >> 4;
 
   LIBBLU_MLP_DEBUG_PARSING_MS(
     "    -> %u bps, %u kbps.\n",
-    info->peakDataRate,
-    info->peakDataRate / 1000
+    info->peak_data_rate,
+    info->peak_data_rate / 1000
   );
 
-  if (MLP_MAX_PEAK_DATA_RATE < info->peakDataRate)
+  if (MLP_MAX_PEAK_DATA_RATE < info->peak_data_rate)
     LIBBLU_MLP_ERROR_RETURN(
       "Too high peak data rate %u bps (shall not exceed %u bps).\n",
-      info->peakDataRate,
+      info->peak_data_rate,
       MLP_MAX_PEAK_DATA_RATE
     );
 
@@ -3619,7 +3590,7 @@ static int _checkMlpMajorSyncInfo(
       );
 
     if (msi->substream_info.b16ch_presentation_present)
-      info->atmosPresent = true;
+      info->atmos = true;
   }
 
   if (_checkMlpChannelMeaning(&msi->channel_meaning) < 0)
@@ -3676,71 +3647,84 @@ static int _checkMlpSyncHeader(
 }
 
 static int _parseMlpSubstreamDirectoryEntry(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   MlpSubstreamDirectoryEntry * entry,
-  uint8_t * check_nibble_value
+  uint8_t * chkn
 )
 {
 
+  /** [v4 flags]
+   * -> b1: extra_substream_word
+   * -> b1: restart_nonexistent
+   * -> b1: crc_present
+   * -> v1: reserved
+   */
   uint8_t flags;
-  READ_BITS_NIBBLE_MLP(
-    &flags, ac3Input, 4,
-    check_nibble_value, return -1
-  );
-
-  /* [b1 extra_substream_word] */
+  READ_BITS_NIBBLE_MLP(&flags, bs, 4, chkn, return -1);
   entry->extra_substream_word = flags & 0x8;
-  /* [b1 restart_nonexistent] */
   entry->restart_nonexistent  = flags & 0x4;
-  /* [b1 crc_present] */
   entry->crc_present          = flags & 0x2;
-  /* [v1 reserved] */
   entry->reserved_field_1     = flags & 0x1;
 
   /* [u12 substream_end_ptr] */
-  READ_BITS_NIBBLE_MLP(
-    &entry->substream_end_ptr, ac3Input, 12,
-    check_nibble_value, return -1
-  );
+  READ_BITS_NIBBLE_MLP(&entry->substream_end_ptr, bs, 12, chkn, return -1);
 
   if (entry->extra_substream_word) {
+    /** [v16 extra_substream_word]
+     * -> s9: drc_gain_update
+     * -> u3: drc_time_update
+     * -> v4: reserved_field_2
+     */
     uint16_t drc_fields;
-    READ_BITS_NIBBLE_MLP(
-      &drc_fields, ac3Input, 16,
-      check_nibble_value, return -1
-    );
-
-    /* [s9 drc_gain_update] */
-    entry->drc_gain_update =  drc_fields >> 7;
-    /* [u3 drc_time_update] */
-    entry->drc_time_update = (drc_fields >> 4) & 0x7;
-    /* [v4 reserved_field_2] */
-    entry->reserved_field_2 = drc_fields & 0xF;
+    READ_BITS_NIBBLE_MLP(&drc_fields, bs, 16, chkn, return -1);
+    entry->drc_gain_update  = (drc_fields >> 7);
+    entry->drc_time_update  = (drc_fields >> 4) & 0x7;
+    entry->reserved_field_2 = (drc_fields     ) & 0xF;
   }
 
   return 0;
 }
 
-static int _checkAndComputeSizeMlpSubstreamDirectory(
-  MlpSubstreamDirectoryEntry * directory,
-  const MlpSyncHeaderParameters * mlp_sync_header
+
+static unsigned _computeLengthMlpSync(
+  const MlpSyncHeaderParameters * mlp_sync_header,
+  const MlpSubstreamDirectoryEntry * directory
 )
 {
-  const MlpMajorSyncInfoParameters * ms_info = &mlp_sync_header->major_sync_info;
+  /* Compute access_unit headers size (in 16-bits words unit) */
+  const MlpMajorSyncInfoParameters * msi = &mlp_sync_header->major_sync_info;
 
-  // TODO compute sync header
-  // unsigned sync_length = 4;
-  // if (mlp_sync_header->major_sync)
-  //   sync_length += ???;
+  unsigned au_hdr_length = _getSizeMlpSyncHeader(mlp_sync_header);
+  for (unsigned i = 0; i < msi->substreams; i++)
+    au_hdr_length += 1 + directory[i].extra_substream_word;
 
-  unsigned remAccessUnitLength = mlp_sync_header->accessUnitLength - 0; // TODO
+  return au_hdr_length;
+}
+
+
+/** \~english
+ * \brief Check and compute substreams sizes from substream_directory().
+ *
+ * \param directory substream_directory() syntax object.
+ * \param au_ss_length Access unit remaining size in 16-bits words.
+ * \param is_major_sync Is the access unit a major sync.
+ * \return int Upon success, a zero value is returned. Otherwise, a negative
+ * value is returned.
+ */
+static int _checkAndComputeSSSizesMlpSubstreamDirectory(
+  MlpSubstreamDirectoryEntry * directory,
+  const MlpMajorSyncInfoParameters * msi,
+  unsigned au_ss_length,
+  bool is_major_sync
+)
+{
 
   LIBBLU_MLP_DEBUG_PARSING_HDR(
     "  Substream directory, substream_directory\n"
   );
 
   unsigned substream_start = 0;
-  for (unsigned i = 0; i < ms_info->substreams; i++) {
+  for (unsigned i = 0; i < msi->substreams; i++) {
     MlpSubstreamDirectoryEntry * entry = &directory[i];
 
     LIBBLU_MLP_DEBUG_PARSING_HDR("   Substream %u:\n", i);
@@ -3792,18 +3776,18 @@ static int _checkAndComputeSizeMlpSubstreamDirectory(
       }
     }
 
-    if (!entry->restart_nonexistent ^ mlp_sync_header->major_sync)
+    if (!entry->restart_nonexistent ^ is_major_sync)
       LIBBLU_MLP_ERROR_RETURN(
         "Substream %u 'restart_nonexistent' shall be set to 0b%x since "
         "the access unit %s with a major sync.",
         i, !entry->restart_nonexistent,
-        (mlp_sync_header->major_sync) ? "starts" : "does not start"
+        (is_major_sync) ? "starts" : "does not start"
       );
 
-    if (remAccessUnitLength < entry->substream_end_ptr)
+    if (au_ss_length < entry->substream_end_ptr)
       LIBBLU_MLP_ERROR_RETURN(
         "Substream %u 'substream_end_ptr' out of Access Unit (%u < %u).\n",
-        i, remAccessUnitLength, entry->substream_end_ptr
+        i, au_ss_length, entry->substream_end_ptr
       );
 
     if (entry->substream_end_ptr <= substream_start)
@@ -4080,7 +4064,7 @@ static void _cleanMlpSubstreamBitsReader(
   free(reader.buf);
 }
 
-#define READ_BITS_SUBSTR_MLP(d, r, s, e)                                      \
+#define READ_BITS_MLP_SUBSTR(d, r, s, e)                                      \
   do {                                                                        \
     uint32_t _val;                                                            \
     if (_readMlpSubstreamBitsReader(r, &_val, s) < 0)                         \
@@ -4120,7 +4104,7 @@ static int _decodeMlpRestartHeader(
 
   /* [v14 restart_sync_word] */
   uint16_t restart_sync_word;
-  READ_BITS_SUBSTR_MLP(&restart_sync_word, reader, 14, return -1);
+  READ_BITS_MLP_SUBSTR(&restart_sync_word, reader, 14, return -1);
   restart_hdr->restart_sync_word = restart_sync_word;
   restart_hdr->noise_type = restart_sync_word & MLP_RH_SW_NOISE_TYPE_MASK;
 
@@ -4146,7 +4130,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u16 output_timing] */
   uint16_t output_timing;
-  READ_BITS_SUBSTR_MLP(&output_timing, reader, 16, return -1);
+  READ_BITS_MLP_SUBSTR(&output_timing, reader, 16, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Output timing (output_timing): %u samples (0x%04" PRIX16 ").\n",
@@ -4156,7 +4140,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u4 min_chan] */
   uint8_t min_chan;
-  READ_BITS_SUBSTR_MLP(&min_chan, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&min_chan, reader, 4, return -1);
   restart_hdr->min_chan = min_chan;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4168,7 +4152,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u4 max_chan] */
   uint8_t max_chan;
-  READ_BITS_SUBSTR_MLP(&max_chan, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&max_chan, reader, 4, return -1);
   restart_hdr->max_chan = max_chan;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4190,7 +4174,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u4 max_matrix_chan] */
   uint8_t max_matrix_chan;
-  READ_BITS_SUBSTR_MLP(&max_matrix_chan, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&max_matrix_chan, reader, 4, return -1);
   restart_hdr->max_matrix_chan = max_matrix_chan;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4204,7 +4188,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u4 dither_shift] */
   uint8_t dither_shift;
-  READ_BITS_SUBSTR_MLP(&dither_shift, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&dither_shift, reader, 4, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Dithering noise left-shift (dither_shift): %u (0x%" PRIX8 ").\n",
@@ -4214,7 +4198,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u23 dither_seed] */
   uint32_t dither_seed;
-  READ_BITS_SUBSTR_MLP(&dither_seed, reader, 23, return -1);
+  READ_BITS_MLP_SUBSTR(&dither_seed, reader, 23, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Dithering noise seed (dither_seed): %u (0x%03" PRIX32 ").\n",
@@ -4224,7 +4208,7 @@ static int _decodeMlpRestartHeader(
 
   /* [s4 max_shift] */
   uint8_t max_shift;
-  READ_BITS_SUBSTR_MLP(&max_shift, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&max_shift, reader, 4, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        TODO (max_shift): %d (0x%" PRIX8 ").\n",
@@ -4234,7 +4218,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u5 max_lsbs] */
   uint8_t max_lsbs;
-  READ_BITS_SUBSTR_MLP(&max_lsbs, reader, 5, return -1);
+  READ_BITS_MLP_SUBSTR(&max_lsbs, reader, 5, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Maximum bit width of LSBs (max_lsbs): %u (0x%" PRIX8 ").\n",
@@ -4244,7 +4228,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u5 max_bits] */
   uint8_t max_bits;
-  READ_BITS_SUBSTR_MLP(&max_bits, reader, 5, return -1);
+  READ_BITS_MLP_SUBSTR(&max_bits, reader, 5, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        TODO (max_bits): %u (0x%" PRIX8 ").\n",
@@ -4254,7 +4238,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u5 max_bits] */
   // uint8_t max_bits;
-  READ_BITS_SUBSTR_MLP(&max_bits, reader, 5, return -1);
+  READ_BITS_MLP_SUBSTR(&max_bits, reader, 5, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        TODO (max_bits): %u (0x%" PRIX8 ").\n",
@@ -4264,7 +4248,7 @@ static int _decodeMlpRestartHeader(
 
   /* [b1 error_protect] */
   bool error_protect;
-  READ_BITS_SUBSTR_MLP(&error_protect, reader, 1, return -1);
+  READ_BITS_MLP_SUBSTR(&error_protect, reader, 1, return -1);
   restart_hdr->error_protect = error_protect;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4275,7 +4259,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u8 lossless_check] */
   bool lossless_check;
-  READ_BITS_SUBSTR_MLP(&lossless_check, reader, 8, return -1);
+  READ_BITS_MLP_SUBSTR(&lossless_check, reader, 8, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        TODO (lossless_check): 0x%02" PRIX8 ".\n",
@@ -4284,7 +4268,7 @@ static int _decodeMlpRestartHeader(
 
   /* [v16 reserved] */
   uint16_t reserved;
-  READ_BITS_SUBSTR_MLP(&reserved, reader, 16, return -1);
+  READ_BITS_MLP_SUBSTR(&reserved, reader, 16, return -1);
 
   if (0x0000 != reserved) {
     LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4297,7 +4281,7 @@ static int _decodeMlpRestartHeader(
   for (unsigned ch = 0; ch <= max_matrix_chan; ch++) {
     /* [u6 ch_assign[ch]] */
     uint8_t ch_assign;
-    READ_BITS_SUBSTR_MLP(&ch_assign, reader, 6, return -1);
+    READ_BITS_MLP_SUBSTR(&ch_assign, reader, 6, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "        Channel assignment for matrix channel %u (ch_assign[%u]): "
@@ -4312,7 +4296,7 @@ static int _decodeMlpRestartHeader(
 
   /* [u8 restart_header_CRC] */
   uint8_t restart_header_CRC;
-  READ_BITS_SUBSTR_MLP(&restart_header_CRC, reader, 8, return -1);
+  READ_BITS_MLP_SUBSTR(&restart_header_CRC, reader, 8, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        TODO (restart_header_CRC): 0x%02" PRIX8 ".\n",
@@ -4357,7 +4341,7 @@ static int _decodeMlpMatrixParameters(
 
   /* [u4 num_primitive_matrices] */
   unsigned num_primitive_matrices;
-  READ_BITS_SUBSTR_MLP(&num_primitive_matrices, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&num_primitive_matrices, reader, 4, return -1);
   matrix_param->num_primitive_matrices = num_primitive_matrices;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4376,7 +4360,7 @@ static int _decodeMlpMatrixParameters(
 
     /* [u4 matrix_output_chan[mat]] */
     uint8_t matrix_output_chan;
-    READ_BITS_SUBSTR_MLP(&matrix_output_chan, reader, 4, return -1);
+    READ_BITS_MLP_SUBSTR(&matrix_output_chan, reader, 4, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "           TODO (matrix_output_chan[%u]): 0x%" PRIX8 ".\n",
@@ -4385,7 +4369,7 @@ static int _decodeMlpMatrixParameters(
 
     /* [u4 num_frac_bits] */
     unsigned num_frac_bits;
-    READ_BITS_SUBSTR_MLP(&num_frac_bits, reader, 4, return -1);
+    READ_BITS_MLP_SUBSTR(&num_frac_bits, reader, 4, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "           TODO (num_frac_bits): %u bit(s).\n",
@@ -4394,7 +4378,7 @@ static int _decodeMlpMatrixParameters(
 
     /* [b1 lsb_bypass_exists[mat]] */
     bool lsb_bypass_exists;
-    READ_BITS_SUBSTR_MLP(&lsb_bypass_exists, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&lsb_bypass_exists, reader, 1, return -1);
     mat_param->lsb_bypass_exists = lsb_bypass_exists;
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4410,7 +4394,7 @@ static int _decodeMlpMatrixParameters(
     for (unsigned ch = 0; ch <= max_nb_channels; ch++) {
       /* [b1 matrix_coeff_present[mat][ch]] */
       bool matrix_coeff_present;
-      READ_BITS_SUBSTR_MLP(&matrix_coeff_present, reader, 1, return -1);
+      READ_BITS_MLP_SUBSTR(&matrix_coeff_present, reader, 1, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "           TODO (matrix_coeff_present[%u][%u]): %s (0b%x).\n",
@@ -4421,7 +4405,7 @@ static int _decodeMlpMatrixParameters(
       if (matrix_coeff_present) {
         /* [s(2+num_frac_bits) coeff_value[mat][ch]] */
         unsigned coeff_value;
-        READ_BITS_SUBSTR_MLP(&coeff_value, reader, 2+num_frac_bits, return -1);
+        READ_BITS_MLP_SUBSTR(&coeff_value, reader, 2+num_frac_bits, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
           "            TODO (coeff_value[%u][%u]): %d (0x%X).\n",
@@ -4434,7 +4418,7 @@ static int _decodeMlpMatrixParameters(
     if (noise_type) {
       /* [u4 matrix_noise_shift[mat]] */
       uint8_t matrix_noise_shift;
-      READ_BITS_SUBSTR_MLP(&matrix_noise_shift, reader, 4, return -1);
+      READ_BITS_MLP_SUBSTR(&matrix_noise_shift, reader, 4, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "           TODO (matrix_noise_shift[%u]): "
@@ -4455,7 +4439,6 @@ typedef enum {
 
 static int _decodeMlpFilterParameters(
   MlpSubstreamBitsReader * reader,
-  MlpSubstreamParameters * ss_param,
   MlpFilterType filter_type
 )
 {
@@ -4468,7 +4451,7 @@ static int _decodeMlpFilterParameters(
 
   /* [u4 filter_order] */
   unsigned filter_order;
-  READ_BITS_SUBSTR_MLP(&filter_order, reader, 4, return -1);
+  READ_BITS_MLP_SUBSTR(&filter_order, reader, 4, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "           TODO (filter_order): %u (0x%X).\n",
@@ -4479,7 +4462,7 @@ static int _decodeMlpFilterParameters(
   if (0 < filter_order) {
     /* [u4 shift] */
     unsigned shift;
-    READ_BITS_SUBSTR_MLP(&shift, reader, 4, return -1);
+    READ_BITS_MLP_SUBSTR(&shift, reader, 4, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "           TODO (shift): %u (0x%X).\n",
@@ -4489,7 +4472,7 @@ static int _decodeMlpFilterParameters(
 
     /* [u5 coeff_bits] */
     unsigned coeff_bits;
-    READ_BITS_SUBSTR_MLP(&coeff_bits, reader, 5, return -1);
+    READ_BITS_MLP_SUBSTR(&coeff_bits, reader, 5, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "           TODO (coeff_bits): %u (0x%02X).\n",
@@ -4499,7 +4482,7 @@ static int _decodeMlpFilterParameters(
 
     /* [u3 coeff_shift] */
     unsigned coeff_shift;
-    READ_BITS_SUBSTR_MLP(&coeff_shift, reader, 3, return -1);
+    READ_BITS_MLP_SUBSTR(&coeff_shift, reader, 3, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "           TODO (coeff_shift): %u (0x%02X).\n",
@@ -4510,7 +4493,7 @@ static int _decodeMlpFilterParameters(
     for (unsigned i = 0; i < filter_order; i++) {
       /* [u<coeff_bits> coeff[i]] */
       uint32_t coeff;
-      READ_BITS_SUBSTR_MLP(&coeff, reader, coeff_bits, return -1);
+      READ_BITS_MLP_SUBSTR(&coeff, reader, coeff_bits, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "            TODO (coeff[i]): %" PRIu32 " (0x%0*" PRIX32 ").\n",
@@ -4522,7 +4505,7 @@ static int _decodeMlpFilterParameters(
 
     /* [b1 state_present] */
     bool state_present;
-    READ_BITS_SUBSTR_MLP(&state_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&state_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "            TODO (state_present): %s (0b%x).\n",
@@ -4533,7 +4516,7 @@ static int _decodeMlpFilterParameters(
     if (state_present) {
       /* [u4 state_bits] */
       unsigned state_bits;
-      READ_BITS_SUBSTR_MLP(&state_bits, reader, 4, return -1);
+      READ_BITS_MLP_SUBSTR(&state_bits, reader, 4, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "             TODO (state_bits): %u (0x%X).\n",
@@ -4543,7 +4526,7 @@ static int _decodeMlpFilterParameters(
 
       /* [u4 state_shift] */
       unsigned state_shift;
-      READ_BITS_SUBSTR_MLP(&state_shift, reader, 4, return -1);
+      READ_BITS_MLP_SUBSTR(&state_shift, reader, 4, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "             TODO (state_shift): %u (0x%X).\n",
@@ -4554,7 +4537,7 @@ static int _decodeMlpFilterParameters(
       for (unsigned i = 0; i < filter_order; i++) {
         /* [u<state_bits> state[i]] */
         uint32_t state;
-        READ_BITS_SUBSTR_MLP(&state, reader, state_bits, return -1);
+        READ_BITS_MLP_SUBSTR(&state, reader, state_bits, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
           "             TODO (state[i]): %" PRIu32 " (0x%0*" PRIX32 ").\n",
@@ -4585,7 +4568,7 @@ static int _decodeMlpChannelParameters(
   if (ss_param->block_header_content & MLP_BHC_FIR_FILTER_PARAMETERS) {
     /* [b1 fir_filter_parameters_present] */
     bool fir_filter_parameters_present;
-    READ_BITS_SUBSTR_MLP(&fir_filter_parameters_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&fir_filter_parameters_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "         TODO (fir_filter_parameters_present): %s (0b%x).\n",
@@ -4601,7 +4584,7 @@ static int _decodeMlpChannelParameters(
         );
 
       /* [vn filter_parameters(FIR_filter_type)] */
-      if (_decodeMlpFilterParameters(reader, ss_param, MLP_FIR) < 0)
+      if (_decodeMlpFilterParameters(reader, MLP_FIR) < 0)
         return -1;
     }
   }
@@ -4609,7 +4592,7 @@ static int _decodeMlpChannelParameters(
   if (ss_param->block_header_content & MLP_BHC_IIR_FILTER_PARAMETERS) {
     /* [b1 iir_filter_parameters_present] */
     bool iir_filter_parameters_present;
-    READ_BITS_SUBSTR_MLP(&iir_filter_parameters_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&iir_filter_parameters_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "         TODO (iir_filter_parameters_present): %s (0b%x).\n",
@@ -4625,7 +4608,7 @@ static int _decodeMlpChannelParameters(
         );
 
       /* [vn filter_parameters(IIR_filter_type)] */
-      if (_decodeMlpFilterParameters(reader, ss_param, MLP_IIR) < 0)
+      if (_decodeMlpFilterParameters(reader, MLP_IIR) < 0)
         return -1;
     }
   }
@@ -4633,7 +4616,7 @@ static int _decodeMlpChannelParameters(
   if (ss_param->block_header_content & MLP_BHC_HUFFMAN_OFFSET) {
     /* [b1 huffman_offset_present] */
     bool huffman_offset_present;
-    READ_BITS_SUBSTR_MLP(&huffman_offset_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&huffman_offset_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "         TODO (huffman_offset_present): %s (0b%x).\n",
@@ -4644,7 +4627,7 @@ static int _decodeMlpChannelParameters(
     if (huffman_offset_present) {
       /* [s15 huffman_offset] */
       uint16_t huffman_offset;
-      READ_BITS_SUBSTR_MLP(&huffman_offset, reader, 15, return -1);
+      READ_BITS_MLP_SUBSTR(&huffman_offset, reader, 15, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "          TODO (huffman_offset): %d (0x%04" PRIX16 ").\n",
@@ -4656,7 +4639,7 @@ static int _decodeMlpChannelParameters(
 
   /* [u2 huffman_codebook] */
   unsigned huffman_codebook;
-  READ_BITS_SUBSTR_MLP(&huffman_codebook, reader, 2, return -1);
+  READ_BITS_MLP_SUBSTR(&huffman_codebook, reader, 2, return -1);
   ch_param->huffman_codebook = huffman_codebook;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4666,7 +4649,7 @@ static int _decodeMlpChannelParameters(
 
   /* [u5 num_huffman_lsbs] */
   unsigned num_huffman_lsbs;
-  READ_BITS_SUBSTR_MLP(&num_huffman_lsbs, reader, 5, return -1);
+  READ_BITS_MLP_SUBSTR(&num_huffman_lsbs, reader, 5, return -1);
   ch_param->num_huffman_lsbs = num_huffman_lsbs;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4697,7 +4680,7 @@ static int _decodeMlpBlockHeader(
   if (ss_param->block_header_content & MLP_BHC_BLOCK_HEADER_CONTENT) {
     /* [b1 block_header_content_exists] */
     bool block_header_content_exists;
-    READ_BITS_SUBSTR_MLP(&block_header_content_exists, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&block_header_content_exists, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "       TODO (block_header_content_exists): %s (0b%x).\n",
@@ -4708,7 +4691,7 @@ static int _decodeMlpBlockHeader(
     if (block_header_content_exists) {
       /* [u8 block_header_content] */
       uint8_t block_header_content;
-      READ_BITS_SUBSTR_MLP(&block_header_content, reader, 8, return -1);
+      READ_BITS_MLP_SUBSTR(&block_header_content, reader, 8, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "        TODO (block_header_content): 0x%02" PRIX8 ".\n",
@@ -4721,7 +4704,7 @@ static int _decodeMlpBlockHeader(
   if (ss_param->block_header_content & MLP_BHC_BLOCK_SIZE) {
     /* [b1 block_size_present] */
     bool block_size_present;
-    READ_BITS_SUBSTR_MLP(&block_size_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&block_size_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "       TODO (block_size_present): %s (0b%x).\n",
@@ -4732,7 +4715,7 @@ static int _decodeMlpBlockHeader(
     if (block_size_present) {
       /* [u9 block_size] */
       unsigned block_size;
-      READ_BITS_SUBSTR_MLP(&block_size, reader, 9, return -1);
+      READ_BITS_MLP_SUBSTR(&block_size, reader, 9, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "        TODO (block_size): %u samples (0x%03X).\n",
@@ -4746,7 +4729,7 @@ static int _decodeMlpBlockHeader(
   if (ss_param->block_header_content & MLP_BHC_MATRIX_PARAMETERS) {
     /* [b1 matrix_parameters_present] */
     bool matrix_parameters_present;
-    READ_BITS_SUBSTR_MLP(&matrix_parameters_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&matrix_parameters_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "       TODO (matrix_parameters_present): %s (0b%x).\n",
@@ -4774,7 +4757,7 @@ static int _decodeMlpBlockHeader(
   if (ss_param->block_header_content & MLP_BHC_OUTPUT_SHIFT) {
     /* [b1 output_shift_present] */
     bool output_shift_present;
-    READ_BITS_SUBSTR_MLP(&output_shift_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&output_shift_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "       TODO (output_shift_present): %s (0b%x).\n",
@@ -4783,11 +4766,10 @@ static int _decodeMlpBlockHeader(
     );
 
     if (output_shift_present) {
-
       for (unsigned ch = 0; ch <= max_matrix_chan; ch++) {
         /* [s4 output_shift[ch]] */
         uint8_t output_shift;
-        READ_BITS_SUBSTR_MLP(&output_shift, reader, 4, return -1);
+        READ_BITS_MLP_SUBSTR(&output_shift, reader, 4, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
           "        TODO (output_shift[%u]): %d (0x%" PRIX8 ").\n",
@@ -4801,7 +4783,7 @@ static int _decodeMlpBlockHeader(
   if (ss_param->block_header_content & MLP_BHC_QUANT_STEP_SIZE) {
     /* [b1 quant_step_size_present] */
     bool quant_step_size_present;
-    READ_BITS_SUBSTR_MLP(&quant_step_size_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&quant_step_size_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "       TODO (quant_step_size_present): %s (0b%x).\n",
@@ -4813,7 +4795,7 @@ static int _decodeMlpBlockHeader(
       for (unsigned ch = 0; ch <= max_matrix_chan; ch++) {
         /* [u4 quant_step_size[ch]] */
         uint8_t quant_step_size;
-        READ_BITS_SUBSTR_MLP(&quant_step_size, reader, 4, return -1);
+        READ_BITS_MLP_SUBSTR(&quant_step_size, reader, 4, return -1);
         ss_param->quant_step_size[ch] = quant_step_size;
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4828,7 +4810,7 @@ static int _decodeMlpBlockHeader(
   for (unsigned ch = min_chan; ch <= max_chan; ch++) {
     /* [b1 channel_parameters_present[ch]] */
     bool channel_parameters_present;
-    READ_BITS_SUBSTR_MLP(&channel_parameters_present, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&channel_parameters_present, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "       TODO (channel_parameters_present[%u]): %s (0b%x).\n",
@@ -4849,14 +4831,7 @@ static int _decodeMlpBlockHeader(
     assert(
       0 == ch_param->huffman_codebook
       || ss_param->quant_step_size[ch] <= ch_param->num_huffman_lsbs
-    );
-
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "cb: %u, qss: %u, nhl: %u\n",
-      ch_param->huffman_codebook,
-      ss_param->quant_step_size[ch],
-      ch_param->num_huffman_lsbs
-    );
+    ); // TODO
   }
 
   return 0;
@@ -4889,7 +4864,7 @@ static int _decodeMlpBlockData(
 
       if (lsb_bypass_exists) {
         bool lsb_bypass;
-        READ_BITS_SUBSTR_MLP(&lsb_bypass, reader, 1, return -1);
+        READ_BITS_MLP_SUBSTR(&lsb_bypass, reader, 1, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
           "        TODO (lsb_bypass[%u]): %s (0b%x).\n",
@@ -4925,7 +4900,7 @@ static int _decodeMlpBlockData(
       if (0 < num_lsb_bits) {
         /* [u<num_lsb_bits> lsb_bits[ch]] */
         uint32_t lsb_bits;
-        READ_BITS_SUBSTR_MLP(&lsb_bits, reader, num_lsb_bits, return -1);
+        READ_BITS_MLP_SUBSTR(&lsb_bits, reader, num_lsb_bits, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
           "        TODO (lsb_bits[%u]): 0x%0*" PRIX32 " (%u bit(s)).\n",
@@ -4948,6 +4923,7 @@ static int _decodeMlpBlock(
   unsigned blk_idx
 )
 {
+  (void) entry; // TODO
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "    Audio data block %u, block()\n",
@@ -4956,7 +4932,7 @@ static int _decodeMlpBlock(
 
   /* [b1 block_header_exists] */
   bool block_header_exists;
-  READ_BITS_SUBSTR_MLP(&block_header_exists, reader, 1, return -1);
+  READ_BITS_MLP_SUBSTR(&block_header_exists, reader, 1, return -1);
   bool restart_header_exists = block_header_exists;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -4968,7 +4944,7 @@ static int _decodeMlpBlock(
   if (block_header_exists) {
 
     /* [b1 restart_header_exists] */
-    READ_BITS_SUBSTR_MLP(&restart_header_exists, reader, 1, return -1);
+    READ_BITS_MLP_SUBSTR(&restart_header_exists, reader, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "      Restart header (restart_header_exists): %s (0b%x).\n",
@@ -4998,7 +4974,7 @@ static int _decodeMlpBlock(
   if (ss_param->restart_header.error_protect) {
     /* [v16 error_protect] */
     uint16_t error_protect;
-    READ_BITS_SUBSTR_MLP(&error_protect, reader, 16, return -1);
+    READ_BITS_MLP_SUBSTR(&error_protect, reader, 16, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "     TODO (error_protect): 0x%04" PRIX16 ".\n",
@@ -5013,7 +4989,7 @@ static int _decodeMlpBlock(
   if (ss_param->restart_header.error_protect) {
     /* [v8 block_header_CRC] */
     uint8_t block_header_CRC;
-    READ_BITS_SUBSTR_MLP(&block_header_CRC, reader, 8, return -1);
+    READ_BITS_MLP_SUBSTR(&block_header_CRC, reader, 8, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "     TODO (block_header_CRC): 0x%02" PRIX8 ".\n",
@@ -5060,7 +5036,7 @@ static int _decodeMlpSubstreamSegment(
       goto free_return;
 
     /* [b1 last_block_in_segment] */
-    READ_BITS_SUBSTR_MLP(&last_block_in_segment, &reader, 1, goto free_return);
+    READ_BITS_MLP_SUBSTR(&last_block_in_segment, &reader, 1, goto free_return);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "    TODO (last_block_in_segment): %s (0b%x).\n",
@@ -5079,7 +5055,7 @@ static int _decodeMlpSubstreamSegment(
 
     /* [v18 terminatorA] */
     uint32_t terminatorA;
-    READ_BITS_SUBSTR_MLP(&terminatorA, &reader, 18, goto free_return);
+    READ_BITS_MLP_SUBSTR(&terminatorA, &reader, 18, goto free_return);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "     TODO (terminatorA): 0x%05" PRIX32 ".\n",
@@ -5088,7 +5064,7 @@ static int _decodeMlpSubstreamSegment(
 
     /* [b1 zero_samples_indicated] */
     bool zero_samples_indicated;
-    READ_BITS_SUBSTR_MLP(&zero_samples_indicated, &reader, 1, goto free_return);
+    READ_BITS_MLP_SUBSTR(&zero_samples_indicated, &reader, 1, goto free_return);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "     TODO (zero_samples_indicated): %s (0b%x).\n",
@@ -5099,7 +5075,7 @@ static int _decodeMlpSubstreamSegment(
     if (zero_samples_indicated) {
       /* [u13 zero_samples] */
       unsigned zero_samples;
-      READ_BITS_SUBSTR_MLP(&zero_samples, &reader, 13, goto free_return);
+      READ_BITS_MLP_SUBSTR(&zero_samples, &reader, 13, goto free_return);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "     TODO (zero_samples): %u (0x%04X).\n",
@@ -5110,7 +5086,7 @@ static int _decodeMlpSubstreamSegment(
     else {
       /* [v13 terminatorB] */
       uint32_t terminatorB;
-      READ_BITS_SUBSTR_MLP(&terminatorB, &reader, 13, goto free_return);
+      READ_BITS_MLP_SUBSTR(&terminatorB, &reader, 13, goto free_return);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "     TODO (terminatorB): 0x%05" PRIX32 ".\n",
@@ -5122,7 +5098,7 @@ static int _decodeMlpSubstreamSegment(
   if (entry->crc_present) {
     /* [v8 substream_parity[i]] */
     uint8_t substream_parity;
-    READ_BITS_SUBSTR_MLP(&substream_parity, &reader, 8, goto free_return);
+    READ_BITS_MLP_SUBSTR(&substream_parity, &reader, 8, goto free_return);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "     TODO (substream_parity[%u]): 0x%02" PRIX8 ".\n",
@@ -5130,13 +5106,9 @@ static int _decodeMlpSubstreamSegment(
       substream_parity
     );
 
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "%u\n", _remainingBitsMlpSubstreamBitsReader(&reader)
-    );
-
     /* [v8 substream_CRC[i]] */
     uint8_t substream_CRC;
-    READ_BITS_SUBSTR_MLP(&substream_CRC, &reader, 8, goto free_return);
+    READ_BITS_MLP_SUBSTR(&substream_CRC, &reader, 8, goto free_return);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "     TODO (substream_CRC[%u]): 0x%02" PRIX8 ".\n",
@@ -5153,9 +5125,65 @@ free_return:
   return -1;
 }
 
+static int _decodeMlpExtraData(
+  BitstreamReaderPtr input,
+  unsigned au_remaining_length
+)
+{
+  MlpSubstreamBitsReader reader;
+  uint8_t parity = 0x00;
+
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "  Extension data, EXTRA_DATA()\n"
+  );
+
+  /** [v16 EXTRA_DATA_length_word]
+   * -> v4:  length_check_nibble
+   * -> u12: EXTRA_DATA_length
+   */
+  uint16_t length_word;
+  READ_BITS(&length_word, input, 5, return -1);
+
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "   TODO (length_check_nibble): 0x%X.\n",
+    length_word >> 12
+  );
+
+  for (int i = 3; 0 <= i; i--)
+    parity ^= (length_word >> (i << 2)) & 0xFF;
+  if (parity != 0xF)
+    LIBBLU_MLP_ERROR_RETURN("Invalid EXTRA DATA length nibble check.\n");
+
+  unsigned EXTRA_DATA_length = length_word & 0xFFF;
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "   TODO (EXTRA_DATA_length): 0x%02X.\n",
+    EXTRA_DATA_length
+  );
+
+  if (au_remaining_length < EXTRA_DATA_length)
+    LIBBLU_MLP_ERROR_RETURN("EXTRA DATA length is out of access unit.\n");
+
+  unsigned data_length = (EXTRA_DATA_length << 4) - 4;
+  if (_initMlpSubstreamBitsReader(&reader, input, data_length, &parity) < 0)
+    return -1;
+  _cleanMlpSubstreamBitsReader(reader);
+
+  /* [vn EXTRA_DATA_padding] */
+  // Skipped
+
+  /* [v8 EXTRA_DATA_parity] */
+  uint8_t EXTRA_DATA_parity;
+  READ_BITS(&EXTRA_DATA_parity, input, 8, return -1);
+
+  if (parity != EXTRA_DATA_parity)
+    LIBBLU_MLP_ERROR_RETURN("Invalid EXTRA DATA parity check.\n");
+
+  return 0;
+}
+
 #if 0
 int decodeMlpAccessUnit(
-  BitstreamReaderPtr ac3Input,
+  BitstreamReaderPtr bs,
   MlpAccessUnitParameters * param
 )
 {
@@ -5163,13 +5191,13 @@ int decodeMlpAccessUnit(
 
   LIBBLU_AC3_DEBUG(" === MLP Access Unit ===\n");
 
-  int64_t startOff = tellPos(ac3Input);
+  int64_t startOff = tellPos(bs);
   uint8_t checkNibbleValue = 0x00;
 
 
 
   /* Check if current frame contain Major Sync : */
-  if ((nextUint32(ac3Input) >> 8) == MLP_SYNCWORD_PREFIX) {
+  if ((nextUint32(bs) >> 8) == MLP_SYNCWORD_PREFIX) {
     MlpMajorSyncParameters majorSyncParam = {0}; /* Used as comparison */
 
     /**
@@ -5179,7 +5207,7 @@ int decodeMlpAccessUnit(
      */
     LIBBLU_DEBUG_COM("MajorSyncInfo present:\n");
 
-    if (decodeMlpMajorSyncInfo(ac3Input, &majorSyncParam) < 0)
+    if (decodeMlpMajorSyncInfo(bs, &majorSyncParam) < 0)
       return -1; /* Error happen during decoding. */
 
     if (!param->checkMode) {
@@ -5189,7 +5217,7 @@ int decodeMlpAccessUnit(
       */
       // TODO: Check
 
-      if (BDAV_TRUE_HD_MAX_AUTHORIZED_BITRATE < majorSyncParam.peakDataRate) {
+      if (BDAV_TRUE_HD_MAX_AUTHORIZED_BITRATE < majorSyncParam.peak_data_rate) {
         // TODO: Check and add to core sync frame bit-rate.
       }
 
@@ -5254,7 +5282,7 @@ int decodeMlpAccessUnit(
     LIBBLU_DEBUG_COM(" - extSubstream %d.\n", i);
 
     /* [b1 extra_extSubstream_word] [b1 restart_nonexistent] [b1 crc_present] [v1 reserved] */
-    READ_BITS_NIBBLE_MLP(&value, ac3Input, 4, &checkNibbleValue, return -1);
+    READ_BITS_NIBBLE_MLP(&value, bs, 4, &checkNibbleValue, return -1);
 
     param->extSubstreams[i].extra_extSubstream_word = value >> 3;
     param->extSubstreams[i].restart_nonexistent = (value >> 2) & 0x1;
@@ -5278,13 +5306,13 @@ int decodeMlpAccessUnit(
     }
 
     /* [u12 extSubstream_end_ptr] */
-    READ_BITS_NIBBLE_MLP(&value, ac3Input, 12, &checkNibbleValue, return -1);
+    READ_BITS_NIBBLE_MLP(&value, bs, 12, &checkNibbleValue, return -1);
 
     param->extSubstreams[i].extSubstream_end_ptr = value;
     LIBBLU_DEBUG_COM("    -> extSubstream end ptr: 0x04%" PRIx16 ".\n", param->extSubstreams[i].extSubstream_end_ptr);
 
     if (param->extSubstreams[i].extra_extSubstream_word) {
-      READ_BITS_NIBBLE_MLP(&value, ac3Input, 16, &checkNibbleValue, return -1);
+      READ_BITS_NIBBLE_MLP(&value, bs, 16, &checkNibbleValue, return -1);
       LIBBLU_DEBUG_COM("    -> drc_gain_update: 0x%" PRIx16 ".\n", (value >> 7) & 0x1FF);
       LIBBLU_DEBUG_COM("    -> drc_time_update: 0x%" PRIx16 ".\n", (value >> 4) & 0x7);
     }
@@ -5310,14 +5338,14 @@ int decodeMlpAccessUnit(
     );
 
     for (; startSubOff++ < param->extSubstreams[i].extSubstream_end_ptr;) {
-      if (readBits(ac3Input,  &value, 16) < 0)
+      if (readBits(bs,  &value, 16) < 0)
         return -1;
     }
   }
 
   /* Extra data */
-  for (; tellPos(ac3Input) < startOff + param->accessUnitLength * 2;) {
-    if (readBits(ac3Input,  &value, 16) < 0)
+  for (; tellPos(bs) < startOff + param->accessUnitLength * 2;) {
+    if (readBits(bs,  &value, 16) < 0)
       return -1;
   }
 
@@ -5356,41 +5384,45 @@ int analyzeAc3(
 {
   int ret;
 
-  EsmsFileHeaderPtr scriptHdl;
-  BitstreamReaderPtr ac3Input = NULL;
-  BitstreamWriterPtr scriptFd = NULL;
-  unsigned srcFileIdx;
 
-  if (NULL == (scriptHdl = createEsmsFileHandler(ES_AUDIO, settings->options, FMT_SPEC_INFOS_AC3)))
+  EsmsFileHeaderPtr script_hdl = createEsmsFileHandler(
+    ES_AUDIO, settings->options, FMT_SPEC_INFOS_AC3
+  );
+  if (NULL == script_hdl)
     return -1;
 
-  /* Pre-gen CRC-32 */
-  if (appendSourceFileEsms(scriptHdl, settings->esFilepath, &srcFileIdx) < 0)
+  unsigned src_file_idx;
+  if (appendSourceFileEsms(script_hdl, settings->esFilepath, &src_file_idx) < 0)
     return -1;
 
-  /* Open input file : */
-  if (NULL == (ac3Input = createBitstreamReaderDefBuf(settings->esFilepath)))
+  BitstreamReaderPtr bs = createBitstreamReaderDefBuf(
+    settings->esFilepath
+  );
+  if (NULL == bs)
     return -1;
 
-  if (NULL == (scriptFd = createBitstreamWriterDefBuf(settings->scriptFilepath)))
+  BitstreamWriterPtr script_bs = createBitstreamWriterDefBuf(
+    settings->scriptFilepath
+  );
+  if (NULL == script_bs)
     return -1;
 
-  if (writeEsmsHeader(scriptFd) < 0)
+  if (writeEsmsHeader(script_bs) < 0)
     return -1;
 
   Ac3Context ctx = (Ac3Context) {
-    .checkCrc = USE_CRC,
-    .extractCore = settings->options.extractCore
+    .perform_crc_checks = USE_CRC,
+    .extract_core = settings->options.extractCore
   };
 
-  while (!isEof(ac3Input)) {
-    uint64_t startOff = tellPos(ac3Input);
+  while (!isEof(bs)) {
+    uint64_t start_off = tellPos(bs);
 
     /* Progress bar : */
-    printFileParsingProgressionBar(ac3Input);
+    printFileParsingProgressionBar(bs);
 
-    if (nextUint16(ac3Input) == AC3_SYNCWORD) {
-      uint8_t bsid = _getSyncFrameBsid(ac3Input);
+    if (nextUint16(bs) == AC3_SYNCWORD) {
+      uint8_t bsid = _getSyncFrameBsid(bs);
 
       if (bsid <= 8) {
         /* AC-3 Bit stream syntax */
@@ -5398,72 +5430,72 @@ int analyzeAc3(
 
         /* syncinfo() */
         Ac3SyncInfoParameters syncinfo;
-        if (_parseAc3SyncInfo(ac3Input, &syncinfo, ctx.checkCrc) < 0)
+        if (_parseAc3SyncInfo(bs, &syncinfo, ctx.perform_crc_checks) < 0)
           return -1;
 
-        if (0 < ctx.ac3Core.nbFrames) {
-          if (!_constantAc3SyncInfoCheck(&ctx.ac3Core.syncinfo, &syncinfo))
+        if (0 < ctx.ac3.nb_frames) {
+          if (!_constantAc3SyncInfoCheck(&ctx.ac3.syncinfo, &syncinfo))
             return -1;
         }
         else {
           if (_checkAc3SyncInfoCompliance(&syncinfo) < 0)
             return -1;
-          ctx.ac3Core.syncinfo = syncinfo;
+          ctx.ac3.syncinfo = syncinfo;
         }
 
         /* bsi() */
         Ac3BitStreamInfoParameters bsi;
-        if (_parseAc3BitStreamInfo(ac3Input, &bsi) < 0)
+        if (_parseAc3BitStreamInfo(bs, &bsi) < 0)
           return -1;
 
-        if (0 < ctx.ac3Core.nbFrames) {
-          if (!_constantAc3BitStreamInfoCheck(&ctx.ac3Core.bsi, &bsi))
+        if (0 < ctx.ac3.nb_frames) {
+          if (!_constantAc3BitStreamInfoCheck(&ctx.ac3.bsi, &bsi))
             return -1;
         }
         else {
           if (_checkAc3BitStreamInfoCompliance(&bsi) < 0)
             return -1;
-          ctx.ac3Core.bsi = bsi;
+          ctx.ac3.bsi = bsi;
         }
 
-        if (_parseRemainingAc3Frame(ac3Input, syncinfo, startOff, ctx.checkCrc) < 0)
+        if (_parseRemainingAc3Frame(bs, syncinfo, start_off, ctx.perform_crc_checks) < 0)
           return -1;
 
-        if (0 == ctx.ac3Core.nbFrames) {
-          if (_isPresentMlpMajorSyncFormatSyncWord(ac3Input)) {
+        if (0 == ctx.ac3.nb_frames) {
+          if (_isPresentMlpMajorSyncFormatSyncWord(bs)) {
             LIBBLU_DEBUG_COM("Detection of MLP major sync word.\n");
-            ctx.containsMlp = true;
+            ctx.contains_mlp = true;
           }
         }
 
-        ret = initEsmsAudioPesFrame(scriptHdl, false, false, ctx.ac3Core.pts, 0);
+        ret = initEsmsAudioPesFrame(script_hdl, false, false, ctx.ac3.pts, 0);
         if (ret < 0)
           return -1;
 
-        ret = appendAddPesPayloadCommand(scriptHdl, srcFileIdx, 0x0, startOff, syncinfo.frameSize);
+        ret = appendAddPesPayloadCommand(script_hdl, src_file_idx, 0x0, start_off, syncinfo.frameSize);
         if (ret < 0)
           return -1;
 
-        ctx.ac3Core.pts += ((uint64_t) MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME) / 48000;
-        ctx.ac3Core.nbFrames++;
+        ctx.ac3.pts += ((uint64_t) MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME) / 48000;
+        ctx.ac3.nb_frames++;
       }
       else if (10 < bsid && bsid <= 16) {
         /* E-AC-3 Bit stream syntax */
         LIBBLU_DEBUG_COM(" === E-AC3 Sync Frame ===\n");
 
         /* syncinfo() */
-        if (_parseEac3SyncInfo(ac3Input) < 0)
+        if (_parseEac3SyncInfo(bs) < 0)
           return -1;
 
-        if (ctx.checkCrc)
-          initCrcContext(crcCtxBitstream(ac3Input), AC3_CRC_PARAMS, 0);
+        if (ctx.perform_crc_checks)
+          initCrcContext(crcCtxBitstream(bs), AC3_CRC_PARAMS, 0);
 
         /* bsi() */
         Eac3BitStreamInfoParameters bsi;
-        if (_parseEac3BitStreamInfo(ac3Input, &bsi) < 0)
+        if (_parseEac3BitStreamInfo(bs, &bsi) < 0)
           return -1;
 
-        if (0 < ctx.eac3.nbFrames) {
+        if (0 < ctx.eac3.nb_frames) {
           if (!_constantEac3BitStreamInfoCheck(&ctx.eac3.bsi, &bsi))
             return -1;
         }
@@ -5473,32 +5505,32 @@ int analyzeAc3(
           ctx.eac3.bsi = bsi;
         }
 
-        if (_parseRemainingEac3Frame(ac3Input, bsi, startOff, ctx.checkCrc) < 0)
+        if (_parseRemainingEac3Frame(bs, bsi, start_off, ctx.perform_crc_checks) < 0)
           return -1;
 
-        if (ctx.extractCore)
+        if (ctx.extract_core)
           continue; // Skip extension frame.
 
-        ret = initEsmsAudioPesFrame(scriptHdl, true, false, ctx.eac3.pts, 0);
+        ret = initEsmsAudioPesFrame(script_hdl, true, false, ctx.eac3.pts, 0);
         if (ret < 0)
           return -1;
 
-        ret = appendAddPesPayloadCommand(scriptHdl, srcFileIdx, 0x0, startOff, bsi.frameSize);
+        ret = appendAddPesPayloadCommand(script_hdl, src_file_idx, 0x0, start_off, bsi.frameSize);
         if (ret < 0)
           return -1;
 
         ctx.eac3.pts += ((uint64_t) MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME) / 48000;
-        ctx.eac3.nbFrames++;
+        ctx.eac3.nb_frames++;
       }
       else
         LIBBLU_AC3_ERROR("Unknown or unsupported bsid value %u.\n", bsid);
 
-      if (writeEsmsPesPacket(scriptFd, scriptHdl) < 0)
+      if (writeEsmsPesPacket(script_bs, script_hdl) < 0)
         return -1;
       continue;
     }
 
-    if (ctx.containsMlp) {
+    if (ctx.contains_mlp) {
       /* MLP-TrueHD Access Unit(s) may be present. */
 
       LIBBLU_AC3_DEBUG(" === MLP Access Unit ===\n");
@@ -5507,19 +5539,19 @@ int analyzeAc3(
       /* mlp_sync_header */
       MlpSyncHeaderParameters mlp_sync_header;
       LIBBLU_MLP_DEBUG_PARSING_HDR(" MLP Sync, mlp_sync_header\n");
-      if (_parseMlpSyncHeader(ac3Input, &mlp_sync_header, &chk_nibble) < 0)
+      if (_parseMlpSyncHeader(bs, &mlp_sync_header, &chk_nibble) < 0)
         return -1;
 
-      if (0 < ctx.mlpExt.nbFrames) {
+      if (0 < ctx.mlp.nb_frames) {
         // TODO: Constant check
 
         updateMlpSyncHeaderParametersParameters(
-          &ctx.mlpExt.mlp_sync_header,
+          &ctx.mlp.mlp_sync_header,
           mlp_sync_header
         );
       }
       else {
-        if (_checkMlpSyncHeader(&mlp_sync_header, &ctx.mlpExt.info, true) < 0)
+        if (_checkMlpSyncHeader(&mlp_sync_header, &ctx.mlp.info, true) < 0)
           return -1;
 
         // TODO: Check compliance (only if !ctx.extractCore)
@@ -5527,26 +5559,26 @@ int analyzeAc3(
         if (MLP_MAX_NB_SS < mlp_sync_header.major_sync_info.substreams) {
           LIBBLU_ERROR_RETURN("Unsupported number of substreams.\n"); // TODO
         }
-        ctx.mlpExt.mlp_sync_header = mlp_sync_header;
+        ctx.mlp.mlp_sync_header = mlp_sync_header;
       }
 
       if (mlp_sync_header.major_sync) {
         for (unsigned i = 0; i < MLP_MAX_NB_SS; i++)
-          ctx.mlpExt.substreams[i].restart_header_seen = false;
+          ctx.mlp.substreams[i].restart_header_seen = false;
       }
 
       // major_sync_info
       const MlpMajorSyncInfoParameters * ms_info =
-        &ctx.mlpExt.mlp_sync_header.major_sync_info
+        &ctx.mlp.mlp_sync_header.major_sync_info
       ;
 
       /* substream_directory */
       for (unsigned i = 0; i < ms_info->substreams; i++) {
         MlpSubstreamDirectoryEntry entry;
-        if (_parseMlpSubstreamDirectoryEntry(ac3Input, &entry, &chk_nibble) < 0)
+        if (_parseMlpSubstreamDirectoryEntry(bs, &entry, &chk_nibble) < 0)
           return -1;
 
-        ctx.mlpExt.substream_directory[i] = entry;
+        ctx.mlp.substream_directory[i] = entry;
       }
 
       if (chk_nibble != 0xF)
@@ -5555,18 +5587,27 @@ int analyzeAc3(
           chk_nibble
         );
 
-      // unsigned syncLength = (unsigned) tellPos(ac3Input) - startOff;
-      // if (ctx.mlpExt.mlp_sync_header.accessUnitLength < syncLength)
-      //   LIBBLU_AC3_ERROR_RETURN(
-      //     "Unexpected MLP Sync length, "
-      //     "larger than expected Access Unit length (%u < %u).\n",
-      //     ctx.mlpExt.mlp_sync_header.accessUnitLength,
-      //     syncLength
-      //   );
+      unsigned access_unit_length = ctx.mlp.mlp_sync_header.access_unit_length;
+      unsigned mlp_sync_length = _computeLengthMlpSync(
+        &ctx.mlp.mlp_sync_header,
+        ctx.mlp.substream_directory
+      );
 
-      int ret = _checkAndComputeSizeMlpSubstreamDirectory(
-        ctx.mlpExt.substream_directory,
-        &ctx.mlpExt.mlp_sync_header
+      if (access_unit_length < mlp_sync_length)
+        LIBBLU_MLP_ERROR_RETURN(
+          "Too many words in access unit header, "
+          "header is longer than 'access_unit_length' (%u, actual %u words).\n",
+          access_unit_length,
+          mlp_sync_length
+        );
+
+      unsigned unit_end = access_unit_length - mlp_sync_length;
+
+      int ret = _checkAndComputeSSSizesMlpSubstreamDirectory(
+        ctx.mlp.substream_directory,
+        ms_info,
+        unit_end,
+        ctx.mlp.mlp_sync_header.major_sync
       );
       if (ret < 0)
         return -1;
@@ -5574,26 +5615,54 @@ int analyzeAc3(
       LIBBLU_MLP_DEBUG_PARSING_SS(
         "  Substream data, start\n"
       );
+
+      unsigned last_substream_end_ptr = 0;
       for (unsigned i = 0; i < ms_info->substreams; i++) {
-        const MlpSubstreamDirectoryEntry * entry = &ctx.mlpExt.substream_directory[i];
-        MlpSubstreamParameters * ss = &ctx.mlpExt.substreams[i];
+        const MlpSubstreamDirectoryEntry * entry = &ctx.mlp.substream_directory[i];
+        MlpSubstreamParameters * ss = &ctx.mlp.substreams[i];
 
         /* substream_segment(i) */
-        if (_decodeMlpSubstreamSegment(ac3Input, ss, entry, i) < 0)
+        if (_decodeMlpSubstreamSegment(bs, ss, entry, i) < 0)
           return -1;
         // substream_parity/substream_CRC in substream_segment.
+
+        last_substream_end_ptr = entry->substream_end_ptr;
       }
 
-      if (!ctx.extractCore) {
-        // TODO: Write AU
+      /* extra_start */
+      if (last_substream_end_ptr < unit_end) {
+        unsigned au_remaining_length = unit_end - last_substream_end_ptr;
+
+        if (_decodeMlpExtraData(bs, au_remaining_length) < 0)
+          return -1;
+      }
+      else {
+        LIBBLU_MLP_DEBUG_PARSING_SS(
+          "  No EXTRA_DATA.\n"
+        );
       }
 
-      ctx.mlpExt.pts += ((uint64_t) MAIN_CLOCK_27MHZ) / TRUE_HD_UNITS_PER_SEC;
-      ctx.mlpExt.nbFrames++;
+      if (!ctx.extract_core) {
+        ret = initEsmsAudioPesFrame(script_hdl, true, false, ctx.mlp.pts, 0);
+        if (ret < 0)
+          return -1;
+
+        ret = appendAddPesPayloadCommand(
+          script_hdl, src_file_idx, 0x0, start_off, 2 * access_unit_length
+        );
+        if (ret < 0)
+          return -1;
+
+        if (writeEsmsPesPacket(script_bs, script_hdl) < 0)
+          return -1;
+
+        ctx.mlp.pts += ((uint64_t) MAIN_CLOCK_27MHZ) / TRUE_HD_UNITS_PER_SEC;
+        ctx.mlp.nb_frames++;
+      }
       continue;
 
 #if 0
-      if (decodeMlpAccessUnit(ac3Input, &accessUnit) < 0)
+      if (decodeMlpAccessUnit(bs, &accessUnit) < 0)
         return -1;
 
       if (!accessUnit.checkMode) {
@@ -5642,15 +5711,15 @@ int analyzeAc3(
     /* else */
     LIBBLU_AC3_ERROR_RETURN(
       "Unexpected sync word 0x%08" PRIX32 ".\n",
-      nextUint32(ac3Input)
+      nextUint32(bs)
     );
   }
 
   /* lbc_printf(" === Parsing finished with success. ===\n"); */
-  closeBitstreamReader(ac3Input);
+  closeBitstreamReader(bs);
 
   /* [u8 endMarker] */
-  if (writeByte(scriptFd, ESMS_SCRIPT_END_MARKER) < 0)
+  if (writeByte(script_bs, ESMS_SCRIPT_END_MARKER) < 0)
     return -1;
 
   enum {
@@ -5659,48 +5728,48 @@ int analyzeAc3(
     EAC3_AUDIO          = STREAM_CODING_TYPE_EAC3,
     EAC3_AUDIO_SEC      = STREAM_CODING_TYPE_EAC3_SEC, /* Not supported yet */
     DOLBY_AUDIO_DEFAULT = 0xFF
-  } detectedStream;
+  } stream_type;
 
-  if (0 == ctx.ac3Core.nbFrames)
+  if (0 == ctx.ac3.nb_frames)
     LIBBLU_AC3_ERROR_RETURN("Missing mandatory AC-3 core.\n");
 
   // FIXME
-  if (0 < ctx.mlpExt.nbFrames && !ctx.extractCore)
-    detectedStream = TRUE_HD_AUDIO;
-  else if (0 < ctx.eac3.nbFrames && !ctx.extractCore)
-    detectedStream = EAC3_AUDIO;
+  if (0 < ctx.mlp.nb_frames && !ctx.extract_core)
+    stream_type = TRUE_HD_AUDIO;
+  else if (0 < ctx.eac3.nb_frames && !ctx.extract_core)
+    stream_type = EAC3_AUDIO;
   else
-    detectedStream = AC3_AUDIO;
+    stream_type = AC3_AUDIO;
 
-  scriptHdl->prop.codingType = (LibbluStreamCodingType) detectedStream;
+  script_hdl->prop.codingType = (LibbluStreamCodingType) stream_type;
 
   /* Register AC-3 infos : */
-  LibbluESAc3SpecProperties * param = scriptHdl->fmtSpecProp.ac3;
-  param->sample_rate_code = ctx.ac3Core.syncinfo.fscod;
-  param->bsid = ctx.ac3Core.bsi.bsid;
-  param->bit_rate_code = ctx.ac3Core.syncinfo.frmsizecod >> 1;
-  param->surround_mode = ctx.ac3Core.bsi.dsurmod;
-  param->bsmod = ctx.ac3Core.bsi.bsmod;
-  param->num_channels = ctx.ac3Core.bsi.acmod;
+  LibbluESAc3SpecProperties * param = script_hdl->fmtSpecProp.ac3;
+  param->sample_rate_code = ctx.ac3.syncinfo.fscod;
+  param->bsid = ctx.ac3.bsi.bsid;
+  param->bit_rate_code = ctx.ac3.syncinfo.frmsizecod >> 1;
+  param->surround_mode = ctx.ac3.bsi.dsurmod;
+  param->bsmod = ctx.ac3.bsi.bsmod;
+  param->num_channels = ctx.ac3.bsi.acmod;
   param->full_svc = 0; // FIXME
 
-  if (detectedStream == AC3_AUDIO || detectedStream == EAC3_AUDIO) {
-    switch (ctx.ac3Core.bsi.acmod) {
+  if (stream_type == AC3_AUDIO || stream_type == EAC3_AUDIO) {
+    switch (ctx.ac3.bsi.acmod) {
       case 0: /* Dual-Mono */
-        scriptHdl->prop.audioFormat = 0x02; break;
+        script_hdl->prop.audioFormat = 0x02; break;
       case 1: /* Mono */
-        scriptHdl->prop.audioFormat = 0x01; break;
+        script_hdl->prop.audioFormat = 0x01; break;
       case 2: /* Stereo */
-        scriptHdl->prop.audioFormat = 0x03; break;
+        script_hdl->prop.audioFormat = 0x03; break;
       default: /* Multi-channel */
-        scriptHdl->prop.audioFormat = 0x06; break;
+        script_hdl->prop.audioFormat = 0x06; break;
     }
-    scriptHdl->prop.sampleRate = 0x01; /* 48 kHz */
-    scriptHdl->prop.bitDepth = 16; /* 16 bits */
+    script_hdl->prop.sampleRate = 0x01; /* 48 kHz */
+    script_hdl->prop.bitDepth = 16; /* 16 bits */
   }
-  else if (detectedStream == TRUE_HD_AUDIO) {
+  else if (stream_type == TRUE_HD_AUDIO) {
     const MlpMajorSyncFormatInfo * format_info =
-      &ctx.mlpExt.mlp_sync_header.major_sync_info.format_info
+      &ctx.mlp.mlp_sync_header.major_sync_info.format_info
     ;
 
     unsigned nb_channels = getNbChannels6ChPresentationAssignment(
@@ -5710,14 +5779,14 @@ int analyzeAc3(
 
     switch (nb_channels) {
       case 1: /* Mono */
-        scriptHdl->prop.audioFormat = 0x01; break;
+        script_hdl->prop.audioFormat = 0x01; break;
       case 2: /* Stereo */
-        scriptHdl->prop.audioFormat = 0x03; break;
+        script_hdl->prop.audioFormat = 0x03; break;
       default:
-        if (ctx.ac3Core.bsi.acmod < 3)
-          scriptHdl->prop.audioFormat = 0x0C; /* Stereo + Multi-channel */
+        if (ctx.ac3.bsi.acmod < 3)
+          script_hdl->prop.audioFormat = 0x0C; /* Stereo + Multi-channel */
         else
-          scriptHdl->prop.audioFormat = 0x06; /* Multi-channel */
+          script_hdl->prop.audioFormat = 0x06; /* Multi-channel */
     }
 
     unsigned sample_rate = sampleRateMlpAudioSamplingFrequency(
@@ -5726,52 +5795,53 @@ int analyzeAc3(
 
     switch (sample_rate) {
       case 48000:  /* 48 kHz */
-        scriptHdl->prop.sampleRate = 0x01; break;
+        script_hdl->prop.sampleRate = 0x01; break;
       case 96000:  /* 96 kHz */
-        scriptHdl->prop.sampleRate = 0x04; break;
+        script_hdl->prop.sampleRate = 0x04; break;
       default: /* 192 kHz + 48kHz Core */
-        scriptHdl->prop.sampleRate = 0x0E; break;
+        script_hdl->prop.sampleRate = 0x0E; break;
     }
 
-    scriptHdl->prop.bitDepth = 16; /* 16, 20 or 24 bits (Does not matter, not contained in header) */
+    script_hdl->prop.bitDepth = 16; /* 16, 20 or 24 bits (Does not matter, not contained in header) */
   }
   else {
     LIBBLU_TODO();
   }
 
-  switch (detectedStream) {
+  switch (stream_type) {
     case AC3_AUDIO:
-      scriptHdl->bitrate = 640000;
+      script_hdl->bitrate = 640000;
       break;
     case TRUE_HD_AUDIO:
-      scriptHdl->bitrate = 18640000;
+      script_hdl->bitrate = 18640000;
       break;
     case EAC3_AUDIO:
-      scriptHdl->bitrate = 4736000;
+      script_hdl->bitrate = 4736000;
       break;
     default: /* EAC3_AUDIO_SEC */
-      scriptHdl->bitrate = 256000;
+      script_hdl->bitrate = 256000;
   }
 
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: ");
-  switch (detectedStream) {
+  switch (stream_type) {
     case AC3_AUDIO:
       lbc_printf("Audio/AC-3");
       break;
 
     case TRUE_HD_AUDIO:
-      if (ctx.containsAtmos)
+      if (ctx.mlp.info.atmos)
         lbc_printf("Audio/AC-3 (+ TrueHD/Dolby Atmos Extensions)");
       else
         lbc_printf("Audio/AC-3 (+ TrueHD Extension)");
       break;
 
     case EAC3_AUDIO:
-      if (ctx.containsAtmos)
-        lbc_printf("Audio/AC-3 (+ E-AC3/Dolby Atmos Extensions)");
-      else
+      // TODO
+      // if (ctx.eac3.info.atmos)
+      //   lbc_printf("Audio/AC-3 (+ E-AC3/Dolby Atmos Extensions)");
+      // else
         lbc_printf("Audio/AC-3 (+ E-AC3 Extension)");
       break;
 
@@ -5780,24 +5850,24 @@ int analyzeAc3(
   }
 
   lbc_printf(", Nb channels: %u, Sample rate: 48000 Hz, Bits per sample: 16bits.\n",
-    ctx.ac3Core.bsi.nbChannels
+    ctx.ac3.bsi.nbChannels
   );
   lbc_printf(
     "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
-    (ctx.ac3Core.pts / MAIN_CLOCK_27MHZ) / 60 / 60,
-    (ctx.ac3Core.pts / MAIN_CLOCK_27MHZ) / 60 % 60,
-    (ctx.ac3Core.pts / MAIN_CLOCK_27MHZ) % 60
+    (ctx.ac3.pts / MAIN_CLOCK_27MHZ) / 60 / 60,
+    (ctx.ac3.pts / MAIN_CLOCK_27MHZ) / 60 % 60,
+    (ctx.ac3.pts / MAIN_CLOCK_27MHZ) % 60
   );
   lbc_printf("=======================================================================================\n");
 
-  scriptHdl->endPts = ctx.ac3Core.pts;
+  script_hdl->endPts = ctx.ac3.pts;
 
-  if (addEsmsFileEnd(scriptFd, scriptHdl) < 0)
+  if (addEsmsFileEnd(script_bs, script_hdl) < 0)
     return -1;
-  closeBitstreamWriter(scriptFd);
+  closeBitstreamWriter(script_bs);
 
-  if (updateEsmsHeader(settings->scriptFilepath, scriptHdl) < 0)
+  if (updateEsmsHeader(settings->scriptFilepath, script_hdl) < 0)
     return -1;
-  destroyEsmsFileHandler(scriptHdl);
+  destroyEsmsFileHandler(script_hdl);
   return 0;
 }

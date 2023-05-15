@@ -72,9 +72,9 @@ typedef struct {
     Ac3SyncInfoParameters syncinfo;
     Ac3BitStreamInfoParameters bsi;
 
-    unsigned nbFrames;
+    unsigned nb_frames;
     uint64_t pts;
-  } ac3Core;
+  } ac3;
 
   struct {
     MlpSyncHeaderParameters mlp_sync_header;
@@ -82,21 +82,20 @@ typedef struct {
     MlpSubstreamParameters substreams[MLP_MAX_NB_SS];
     MlpInformations info;
 
-    unsigned nbFrames;
+    unsigned nb_frames;
     uint64_t pts;
-  } mlpExt;
+  } mlp;
 
   struct {
     Eac3BitStreamInfoParameters bsi;
 
-    unsigned nbFrames;
+    unsigned nb_frames;
     uint64_t pts;
   } eac3;
 
-  bool checkCrc;
-  bool extractCore;
-  bool containsMlp;
-  bool containsAtmos;
+  bool perform_crc_checks;
+  bool extract_core;
+  bool contains_mlp;
 } Ac3Context;
 
 int analyzeAc3(

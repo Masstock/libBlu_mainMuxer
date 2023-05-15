@@ -18,16 +18,16 @@ unsigned getNbChannels6ChPresentationAssignment(
     2  // Tfl/Tfr
   };
 
-  unsigned totalNbChannels = 0;
+  unsigned nb_ch = 0;
   for (unsigned i = 0; i < 5; i++) {
-    totalNbChannels += nb_channels[i] * ((u6ch_presentation_channel_assignment >> i) & 0x1);
+    nb_ch += nb_channels[i] * ((u6ch_presentation_channel_assignment >> i) & 0x1);
   }
-  return totalNbChannels;
+  return nb_ch;
 }
 
 unsigned getNbChannels8ChPresentationAssignment(
   uint8_t u8ch_presentation_channel_assignment,
-  bool alternateMeaning
+  bool alternate_meaning
 )
 {
   static const unsigned nb_channels[] = {
@@ -46,9 +46,9 @@ unsigned getNbChannels8ChPresentationAssignment(
     1  // LFE2
   };
 
-  unsigned totalNbChannels = 0;
-  for (unsigned i = 0; i < ((alternateMeaning) ? 5 : 13); i++) {
-    totalNbChannels += nb_channels[i] * ((u8ch_presentation_channel_assignment >> i) & 0x1);
+  unsigned nb_ch = 0;
+  for (unsigned i = 0; i < ((alternate_meaning) ? 5 : 13); i++) {
+    nb_ch += nb_channels[i] * ((u8ch_presentation_channel_assignment >> i) & 0x1);
   }
-  return totalNbChannels;
+  return nb_ch;
 }

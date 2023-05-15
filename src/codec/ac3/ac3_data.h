@@ -810,14 +810,14 @@ typedef enum {
  * Bitstream informations synthesis.
  */
 typedef struct {
-  unsigned samplingFrequency;
-  unsigned peakDataRate;
-  unsigned nbChannels;
+  unsigned sampling_frequency;
+  unsigned peak_data_rate;
+  unsigned nb_channels;
 
-  bool binauralAudioPresent;
-  bool monoAudioPresent;
-  bool atmosPresent;
-  MlpInformationsMatrixSurroundEncoding matrixSurround;
+  bool binaural_audio;
+  bool mono_audio;
+  bool atmos;
+  MlpInformationsMatrixSurroundEncoding matrix_surround;
 } MlpInformations;
 
 /** \~english
@@ -1025,9 +1025,9 @@ typedef enum {
 
 static inline const char * Mlp8ChPresentationChannelModifierStr(
   Mlp8ChPresentationChannelModifier u8ch_presentation_channel_modifier,
-  unsigned nbChannels,
-  bool mainLRChannelsPresent,
-  bool lsRsPres
+  unsigned nb_channels,
+  bool main_L_R_ch_present,
+  bool sur_Ls_Rs_present
 )
 {
   static const char * strings1[] = {
@@ -1045,16 +1045,16 @@ static inline const char * Mlp8ChPresentationChannelModifierStr(
 
   if (0x3 < u8ch_presentation_channel_modifier)
     return "Reserved value";
-  if (2 == nbChannels && mainLRChannelsPresent)
+  if (2 == nb_channels && main_L_R_ch_present)
     return strings1[u8ch_presentation_channel_modifier];
-  if (3 <= nbChannels && lsRsPres)
+  if (3 <= nb_channels && sur_Ls_Rs_present)
     return strings2[u8ch_presentation_channel_modifier];
   return "No meaning";
 }
 
 unsigned getNbChannels8ChPresentationAssignment(
   uint8_t u8ch_presentation_channel_assignment,
-  bool alternateMeaning
+  bool alternate_meaning
 );
 
 static inline bool mainLRPresent8ChPresentationAssignment(
@@ -1153,8 +1153,6 @@ static inline const char * MlpExtraChannelMeaningContentStr(
  * [2] 3.3.3-3.3.5, 4.4
  */
 typedef struct {
-  // uint8_t extra_channel_meaning_length;
-
   MlpExtraChannelMeaningContent type;
   union {
     Mlp16ChChannelMeaning v16ch_channel_meaning;
@@ -1325,10 +1323,12 @@ typedef struct {
   MlpMajorSyncFormatInfo format_info;
   uint16_t signature;
   MlpMajorSyncFlags flags;
+  uint16_t reserved_field_1;
 
   bool variable_bitrate;
   uint16_t peak_data_rate;
   uint8_t substreams;  /**< Number of substreams */
+  uint8_t reserved_field_2;
 
   MlpExtendedSubstreamInfo extended_substream_info;
   MlpSubstreamInfo substream_info;
