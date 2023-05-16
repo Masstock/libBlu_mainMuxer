@@ -25,8 +25,10 @@
 #include "../../esms/scriptCreation.h"
 #include "../common/esParsingSettings.h"
 
-#include "ac3_error.h"
 #include "ac3_data.h"
+#include "ac3_error.h"
+#include "mlp_check.h"
+#include "mlp_parser.h"
 
 /** \~english
  * \brief AC-3 syncframe CRC Checking parameters ([2] 7.10.1 CRC Checking).

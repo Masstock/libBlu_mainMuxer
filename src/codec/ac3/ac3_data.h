@@ -1357,8 +1357,6 @@ typedef struct {
 
   bool major_sync;
   MlpMajorSyncInfoParameters major_sync_info;
-
-  unsigned accessUnitLength;
 } MlpSyncHeaderParameters;
 
 static inline void updateMlpSyncHeaderParametersParameters(
@@ -1389,16 +1387,8 @@ typedef struct {
   uint8_t drc_time_update;
   uint8_t reserved_field_2;
 
-  unsigned substreamSize;
+  unsigned substream_size;  /**< Substream size in 16-bits words unit. */
 } MlpSubstreamDirectoryEntry;
-
-// typedef struct {
-
-// } MlpRestartHeader;
-
-// typedef struct {
-//   uint8_t block_header_content;
-// } MlpBlockHeader;
 
 /** \~english
  * \brief MLP restart header 'restart_sync_word' noise type mask.
