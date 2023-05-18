@@ -46,10 +46,12 @@ void applyNoTableLittleEndianCrcContext(
   uint32_t mask = ctx->param.mask;
   uint32_t buf  = ctx->buf;
 
+  buf ^= byte << (length - 8);
   for (unsigned i = 0; i < 8; i++) {
-    buf = (buf << 1) ^ (((byte >> (7 - i)) & 0x1) << length);
-    if (mask != (buf | mask))
-      buf ^= poly;
+    if (buf & (1 << (length - 1)))
+      buf = (buf << 1) ^ poly;
+    else
+      buf <<= 1;
   }
 
   ctx->buf = buf;
@@ -426,13 +428,6 @@ int nextBytes(
   return 0;
 }
 
-static inline bool _inUseCrcBitstream(
-  const BitstreamHandler * bs
-)
-{
-  return bs->crcCtx.in_use;
-}
-
 int readBit(
   BitstreamReaderPtr bitStream,
   bool * bit
@@ -450,8 +445,7 @@ int readBit(
 
   if (bitStream->bitCount == 0) {
     /* Applying CRC calculation if in use : */
-    if (_inUseCrcBitstream(bitStream))
-      applySingleByteCrcContext(&bitStream->crcCtx, byte);
+    applySingleByteCrcContext(&bitStream->crcCtx, byte);
 
     /* A complete byte as been readed, jumping to next one. */
     bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
@@ -501,10 +495,9 @@ int readBits(
   if (NULL != value)
     *value = (byte >> bitStream->bitCount) & bitmask[readedBitsNb];
 
-  if (bitStream->bitCount <= 0) {
+  if (bitStream->bitCount == 0) {
     /* Applying CRC calculation if in use : */
-    if (_inUseCrcBitstream(bitStream))
-      applySingleByteCrcContext(&bitStream->crcCtx, byte);
+    applySingleByteCrcContext(&bitStream->crcCtx, byte);
 
     /* A complete byte as been readed, jumping to next one. */
     bitStream->byteArrayOff++; /* Change reading offset to the next byte's one. */
@@ -590,8 +583,7 @@ int readByte(
   *data = byte;
 
   /* Applying CRC calculation if in use : */
-  if (_inUseCrcBitstream(bitStream))
-    applySingleByteCrcContext(&bitStream->crcCtx, byte);
+  applySingleByteCrcContext(&bitStream->crcCtx, byte);
   return 0;
 }
 
@@ -632,11 +624,7 @@ int readBytes(
   }
 
   /* Applying CRC calculation if in use : */
-  if (_inUseCrcBitstream(bs)) {
-    for (off = 0; off < size; off++)
-      applySingleByteCrcContext(&bs->crcCtx, data[off]);
-  }
-
+  applyCrcContext(&bs->crcCtx, data, size);
 #endif
 
   return 0;

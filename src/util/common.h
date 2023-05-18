@@ -20,10 +20,16 @@
 #if defined(ARCH_WIN32)
 #  include "../libs/cwalk/include/cwalk_wchar.h"
 #endif
-#include <stdarg.h>
-#include <string.h>
+
+#include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 
 #if defined(ARCH_WIN32)
 #  include <windef.h>
@@ -103,6 +109,14 @@ static inline uint32_t wfnv1aStrHash(
 }
 
 #endif
+
+static inline uint16_t bswap16(
+  uint16_t value
+)
+{
+  return (value << 8) | (value >> 8);
+}
+
 
 /** \~english
  * \brief Unsigned Greater Common Divisor.

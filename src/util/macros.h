@@ -86,15 +86,6 @@
 #define PING()  fprintf(stderr, "PING\n");
 #define PONG()  fprintf(stderr, "PONG\n");
 
-#include <signal.h>
-
-static inline void triggerSegfault(
-  void
-)
-{
-  raise(SIGSEGV);
-}
-
 #if defined(ARCH_WIN32)
 #  include <wchar.h>
 #  define lbc  wchar_t
@@ -316,26 +307,13 @@ static inline void triggerSegfault(
  *
  * \param x Numeric operand.
  *
- * \warning NEVER use this macro if x is not a side-effect-free expression. Use
- * #SQUARE_FUN function macro instead.
+ * \warning NEVER use this macro if x is not a side-effect-free expression.
  */
 #define SQUARE(x)  ((x) * (x))
 
-/** \~english
- * \brief Arithmetic square function macro.
- *
- * \param x_typ Type of the expression argument.
- * \param res Result destination L-value.
- * \param x Numeric operand.
- */
-#define SQUARE_FUN(x_typ, res, x)                                             \
-  {                                                                           \
-    x_typ _x = (x);                                                           \
-    (res) = _x * _x;                                                          \
-  }
+#define DIV_ROUND_UP(num, div)  (((num) + ((div) - 1)) / (div))
 
-#define DIV_ROUND_UP(num, div)                  (((num) + ((div) - 1)) / (div))
-#define DIV_ROUND(num, div)                    ((((num) + (div)) >> 1) / (div))
+#define DIV_ROUND(num, div)  ((((num) + (div)) >> 1) / (div))
 
 /** \~english
  * \brief Shift right and round up.

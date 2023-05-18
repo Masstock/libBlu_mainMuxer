@@ -53,7 +53,7 @@ static inline void resetCrcContext(
 static inline void initCrcContext(
   CrcContext * ctx,
   CrcParam param,
-  unsigned initial_value
+  uint32_t initial_value
 )
 {
   assert(initial_value < (1ull << param.length));
@@ -88,13 +88,15 @@ static inline void applySingleByteCrcContext(
 )
 {
   const uint32_t * table = ctx->param.table;
-  uint32_t mask = ctx->param.mask;
-  uint32_t buf = ctx->buf;
+  uint32_t buf           = ctx->buf;
+
+  if (!ctx->in_use)
+    return;
 
   if (NULL != table) {
     /* Applying CRC look-up table */
     assert(!ctx->param.big_endian); // FIXME Issue with big endian
-    ctx->buf = ((buf << 8) & mask) ^ table[byte ^ ((buf & mask) >> 8)];
+    ctx->buf = (buf >> 8) ^ table[(buf & 0xFF) ^ byte];
   }
   else {
     if (ctx->param.big_endian)
@@ -110,6 +112,9 @@ static inline void applyCrcContext(
   unsigned size
 )
 {
+  if (!ctx->in_use)
+    return;
+
   for (unsigned i = 0; i < size; i++) {
     applySingleByteCrcContext(ctx, array[i]);
   }
@@ -269,16 +274,11 @@ static inline int isEof(
 }
 
 static inline int64_t tellPos(
-  const BitstreamReaderPtr bitStream
+  const BitstreamReaderPtr bs
 )
 {
-  assert(NULL != bitStream);
-
-  return
-    bitStream->fileOffset
-    - bitStream->byteArraySize
-    + bitStream->byteArrayOff
-  ;
+  assert(NULL != bs);
+  return bs->fileOffset - bs->byteArraySize + bs->byteArrayOff;
 }
 
 static inline int64_t tellBinaryPos(

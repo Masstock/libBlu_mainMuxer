@@ -36,7 +36,7 @@
  * 16-bit CRC word, generator polynomial: 0x18005, little-endian.
  */
 #define AC3_CRC_PARAMS                                                        \
-  (CrcParam) {.length = 16, .mask = 0xFFFF, .poly = 0x18005}
+  (CrcParam) {.table = ac3CrcTable, .mask = 0xFFFF, .length = 16}
 
 #if 0
 typedef struct {
@@ -95,7 +95,6 @@ typedef struct {
     uint64_t pts;
   } eac3;
 
-  bool perform_crc_checks;
   bool extract_core;
   bool contains_mlp;
 } Ac3Context;

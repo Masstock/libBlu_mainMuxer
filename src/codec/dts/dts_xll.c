@@ -126,7 +126,7 @@ int decodeDtsXllCommonHeader(
     return -1;
   param->headerCrc = value;
 
-  if (param->headerCrc != headerCrcResult)
+  if (param->headerCrc != bswap16(headerCrcResult))
     LIBBLU_DTS_ERROR_RETURN(
       "DTS XLL frame Common Header CRC check failure.\n"
     );

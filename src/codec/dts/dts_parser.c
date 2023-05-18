@@ -1524,7 +1524,7 @@ int decodeDcaExtSSHeader(
   param->crcValue = value;
 
 #if !DCA_EXT_SS_DISABLE_CRC
-  if (param->crcValue != extSSCrcResult)
+  if (param->crcValue != bswap16(extSSCrcResult))
     LIBBLU_DTS_ERROR_RETURN(
       "DCA Extension Substream CRC check failure.\n"
     );

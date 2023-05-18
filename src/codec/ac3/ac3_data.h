@@ -24,10 +24,10 @@
 #define AC3_SYNCWORD  0x0B77
 
 typedef enum {
-  EAC3_FSCOD_48000_HZ  = 0x0,
-  EAC3_FSCOD_44100_HZ  = 0x1,
-  EAC3_FSCOD_32000_HZ  = 0x2,
-  EAC3_FSCOD_FSCOD2    = 0x3
+  EAC3_FSCOD_48000_HZ    = 0x0,
+  EAC3_FSCOD_44100_HZ    = 0x1,
+  EAC3_FSCOD_32000_HZ    = 0x2,
+  EAC3_FSCOD_RES_FSCOD2  = 0x3
 } Ac3Fscod;
 
 static inline bool notHalfSampleRateAc3Fscod(
@@ -74,9 +74,9 @@ typedef struct {
   Ac3Fscod fscod;
   uint8_t frmsizecod;
 
-  unsigned sampleRate;
-  size_t bitrate;
-  size_t frameSize;
+  // unsigned sampleRate;
+  // size_t bitrate;
+  // size_t frameSize;
 } Ac3SyncInfoParameters;
 
 typedef struct {
@@ -91,7 +91,7 @@ typedef struct {
   struct {
     uint8_t mixlevel2;
     uint8_t roomtyp2;
-  } audioProdInfo;
+  } audprodi2;
 } Ac3DualMonoBitStreamInfoParameters;
 
 typedef enum {
@@ -543,9 +543,9 @@ typedef struct {
   struct {
     uint8_t mixlevel;
     Ac3Roomtyp roomtyp;
-  } audioProdInfo;
+  } audprodi;
 
-  Ac3DualMonoBitStreamInfoParameters dualMonoParam;
+  Ac3DualMonoBitStreamInfoParameters dual_mono;
 
   bool copyrightb;
   bool origbs;
@@ -717,14 +717,14 @@ typedef struct {
     uint8_t mixlevel;
     Ac3Roomtyp roomtyp;
     bool adconvtyp;
-  } audioProdInfo;
+  } audprodi;
 
   bool audprodi2e;
   struct {
     uint8_t mixlevel2;
     Ac3Roomtyp roomtyp2;
     bool adconvtyp2;
-  } audioProdInfo2;
+  } audprodi2;
 
   bool sourcefscod;
 } Eac3Infomdat;
@@ -745,7 +745,7 @@ typedef struct {
   uint8_t dialnorm;
   bool compre;
   uint8_t compr;
-  Eac3DualMonoBitStreamInfoParameters dualMonoParam;
+  Eac3DualMonoBitStreamInfoParameters dual_mono;
 
   bool chanmape;
   uint16_t chanmap;
