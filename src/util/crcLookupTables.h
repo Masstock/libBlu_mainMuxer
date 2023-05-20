@@ -20,6 +20,13 @@ extern const uint32_t ansi_crc_16_table[256];
 extern const uint32_t mlp_ms_crc_16_table[256];
 
 /** \~english
+ * \brief MLP/TrueHD Restart Header CRC lookup table.
+ *
+ * 8-bit CRC word, poly: 0x1D, initial value: 0x00, shifted algorithm.
+ */
+extern const uint32_t mlp_rh_crc_8_table[256];
+
+/** \~english
  * \brief CRC-CCITT lookup table.
  *
  * Used in DTS Extension Substream.

@@ -1312,7 +1312,7 @@ typedef struct {
 /** \~english
  * \brief MLP/TrueHD Major Sync CRC-16 parameters.
  *
- * 16-bit CRC word, poly: 0x1002D, initial value: 0x0000, reversed algo.
+ * 16-bit CRC word, poly: 0x1002D, initial value: 0x0000, shifted algorithm.
  * Described in [3] 4.2.10 major_sync_info_CRC.
  */
 #define MLP_MS_CRC_PARAMS                                                     \
@@ -1389,6 +1389,15 @@ typedef struct {
 
   unsigned substream_size;  /**< Substream size in 16-bits words unit. */
 } MlpSubstreamDirectoryEntry;
+
+/** \~english
+ * \brief MLP/TrueHD Restart Header CRC-8 parameters.
+ *
+ * 8-bit CRC word, poly: 0x11D, initial value: 0x00, shifted algorithm.
+ * Described in [3] 4.7.2 restart_header_CRC.
+ */
+#define MLP_RH_CRC_PARAMS                                                     \
+  (CrcParam) {.table = mlp_rh_crc_8_table, .length = 8, .shifted = true}
 
 /** \~english
  * \brief MLP restart header 'restart_sync_word' noise type mask.

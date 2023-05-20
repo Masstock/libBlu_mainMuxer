@@ -89,10 +89,11 @@ static inline void applySingleByteTableCrcContext(
   uint8_t byte
 )
 {
-  uint32_t buf = ctx->buf;
+  unsigned length = ctx->param.length;
+  uint32_t buf    = ctx->buf;
 
   if (ctx->param.shifted)
-    ctx->buf = ((buf << 8) ^ byte) ^ table[(buf >> 8) & 0xFF];
+    ctx->buf = ((buf << 8) ^ byte) ^ table[(buf >> (length - 8)) & 0xFF];
   else
     ctx->buf = (buf >> 8) ^ table[(buf & 0xFF) ^ byte];
 }

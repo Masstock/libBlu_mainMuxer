@@ -503,15 +503,32 @@ static uint8_t _computeRestartHeaderChecksum(
 )
 {
   const uint8_t * buf = br->buf;
+  CrcContext crc_ctx;
 
-  unsigned crc = 0x00;
-  for (unsigned off = start_offset; off < end_offset; off++) {
-    crc = (crc << 1) ^ ((buf[off >> 3] >> (7 - (off & 0x7))) & 0x1);
-    if (crc & 0x100)
-      crc ^= 0x11D;
+  /**
+   * Perform CRC check on Restart Header bits in three steps:
+   *  - First last 6 bits from the first byte (just used as start value);
+   *  - Restart header middle whole bytes (using byte LUT);
+   *  - Remaining bits (up to 7, done bit per bit in this function).
+   */
+
+  /* Init CRC context with LUT and first 6 bits. */
+  initCrcContext(&crc_ctx, MLP_RH_CRC_PARAMS, buf[start_offset >> 3] & 0x3F);
+
+  /* Perform CRC on Restart Header whole bytes */
+  unsigned byte_size = (end_offset - start_offset - 6) >> 3;
+  applyCrcContext(&crc_ctx, &buf[(start_offset >> 3) + 1], byte_size);
+
+  /* Compute CRC for remaining bits (shifted algorithm) */
+  uint32_t crc = (completeCrcContext(&crc_ctx) << 8) | buf[end_offset >> 3];
+  for (unsigned off = end_offset & ~0x7; off < end_offset; off++) {
+    if (crc & 0x8000)
+      crc = (crc << 1) ^ 0x11D00;
+    else
+      crc <<= 1;
   }
 
-  return crc & 0xFF;
+  return (crc >> 8) & 0xFF; // Resulting CRC.
 }
 
 /** \~english
