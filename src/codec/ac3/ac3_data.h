@@ -1310,13 +1310,13 @@ typedef struct {
 } MlpMajorSyncFlags;
 
 /** \~english
- * \brief TrueHD Major Sync CRC parameters ([3] 4.2.10 major_sync_info_CRC).
+ * \brief MLP/TrueHD Major Sync CRC-16 parameters.
  *
- * 16-bit CRC word, generator polynomial: 0x1002D, big-endian.
+ * 16-bit CRC word, poly: 0x1002D, initial value: 0x0000, reversed algo.
+ * Described in [3] 4.2.10 major_sync_info_CRC.
  */
-#define TRUE_HD_MS_CRC_PARAMS                                                 \
-  (CrcParam) {.length = 16, .mask = 0xFFFF, .poly = 0x1002D,                  \
-              .big_endian = true}
+#define MLP_MS_CRC_PARAMS                                                     \
+  (CrcParam) {.table = mlp_ms_crc_16_table, .length = 16, .shifted = true}
 
 typedef struct {
   uint32_t format_sync;

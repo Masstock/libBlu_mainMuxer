@@ -2087,7 +2087,7 @@ static unsigned _getSizeMlpSyncHeader(
 
   if (param->major_sync) {
     const MlpChannelMeaning * chm = &param->major_sync_info.channel_meaning;
-    size += 10 + 4; // Major sync info (plus channel_meaning())
+    size += 10 + 3; // Major sync info (plus channel_meaning())
     if (chm->extra_channel_meaning_present)
       size += 1 + chm->extra_channel_meaning_length;
   }
@@ -2149,6 +2149,8 @@ int analyzeAc3(
   Ac3Context ctx = (Ac3Context) {
     .extract_core = settings->options.extractCore
   };
+  uint8_t * buffer = NULL;
+  size_t buffer_size = 0;
 
   while (!isEof(bs)) {
     int64_t start_off = tellPos(bs);
@@ -2276,7 +2278,7 @@ int analyzeAc3(
 
     if (ctx.contains_mlp) {
       /* MLP/TrueHD Access Unit */
-      uint8_t chk_nibble = 0x00;
+      LibbluBitReader br;
 
       LIBBLU_AC3_DEBUG(
         "0x%08" PRIX64 " === MLP/TrueHD Access Unit ===\n",
@@ -2286,7 +2288,7 @@ int analyzeAc3(
       /* mlp_sync_header */
       MlpSyncHeaderParameters mlp_sync_header;
       LIBBLU_MLP_DEBUG_PARSING_HDR(" MLP Sync, mlp_sync_header\n");
-      if (parseMlpSyncHeader(bs, &mlp_sync_header, &chk_nibble) < 0)
+      if (parseMlpSyncHeader(bs, &br, &buffer, &buffer_size, &mlp_sync_header) < 0)
         return -1;
 
       if (0 < ctx.mlp.nb_frames) {
@@ -2322,17 +2324,11 @@ int analyzeAc3(
       /* substream_directory */
       for (unsigned i = 0; i < ms_info->substreams; i++) {
         MlpSubstreamDirectoryEntry entry;
-        if (parseMlpSubstreamDirectoryEntry(bs, &entry, &chk_nibble) < 0)
+        if (parseMlpSubstreamDirectoryEntry(&br, &entry) < 0)
           return -1;
 
         ctx.mlp.substream_directory[i] = entry;
       }
-
-      if (chk_nibble != 0xF)
-        LIBBLU_AC3_ERROR_RETURN(
-          "Invalid minor sync check nibble (0x%" PRIX8 ").\n",
-          chk_nibble
-        );
 
       unsigned access_unit_length = ctx.mlp.mlp_sync_header.access_unit_length;
       unsigned mlp_sync_length = _computeLengthMlpSync(
@@ -2363,24 +2359,19 @@ int analyzeAc3(
         "  Substream data, start\n"
       );
 
-      unsigned last_substream_end_ptr = 0;
       for (unsigned i = 0; i < ms_info->substreams; i++) {
         const MlpSubstreamDirectoryEntry * entry = &ctx.mlp.substream_directory[i];
         MlpSubstreamParameters * ss = &ctx.mlp.substreams[i];
 
         /* substream_segment(i) */
-        if (decodeMlpSubstreamSegment(bs, ss, entry, i) < 0)
+        if (decodeMlpSubstreamSegment(&br, ss, entry, i) < 0)
           return -1;
         // substream_parity/substream_CRC in substream_segment.
-
-        last_substream_end_ptr = entry->substream_end_ptr;
       }
 
       /* extra_start */
-      if (last_substream_end_ptr < unit_end) {
-        unsigned au_remaining_length = unit_end - last_substream_end_ptr;
-
-        if (decodeMlpExtraData(bs, au_remaining_length) < 0)
+      if (remainingBitsLibbluBitReader(&br)) {
+        if (decodeMlpExtraData(&br) < 0)
           return -1;
       }
       else {
@@ -2465,6 +2456,7 @@ int analyzeAc3(
 
   /* lbc_printf(" === Parsing finished with success. ===\n"); */
   closeBitstreamReader(bs);
+  free(buffer);
 
   /* [u8 endMarker] */
   if (writeByte(script_bs, ESMS_SCRIPT_END_MARKER) < 0)

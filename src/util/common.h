@@ -110,6 +110,12 @@ static inline uint32_t wfnv1aStrHash(
 
 #endif
 
+/** \~english
+ * \brief Byte order swap a two bytes word.
+ *
+ * \param value Word to be byte order swapped.
+ * \return uint16_t Resulting byte order swapped word.
+ */
 static inline uint16_t bswap16(
   uint16_t value
 )
@@ -117,6 +123,102 @@ static inline uint16_t bswap16(
   return (value << 8) | (value >> 8);
 }
 
+/** \~english
+ * \brief Byte order swap a four bytes double word.
+ *
+ * \param value Dword to be byte order swapped.
+ * \return uint32_t Resulting byte order swapped dword.
+ */
+static inline uint32_t bswap32(
+  uint32_t value
+)
+{
+  return
+    (value << 24)
+    | ((value >> 8) & 0xFF00)
+    | ((value << 8) & 0xFF0000)
+    | (value >> 24)
+  ;
+}
+
+/** \~english
+ * \brief Swap byte order of each value in given four bytes double word.
+ *
+ * \param value Dword containing values.
+ * \param length Length of each value (8, 16 or 32 bits).
+ * \return uint32_t Resulting byte order swapped dword.
+ */
+static inline uint32_t bswapn32(
+  uint32_t value,
+  unsigned length
+)
+{
+  if (8 == length)
+    return value; // Do nothing.
+  if (16 == length)
+    return bswap16(value);
+  if (32 == length)
+    return bswap32(value);
+  LIBBLU_ERROR_EXIT(
+    "%s:%u: Invalid swap length %u.\n",
+    __func__, __LINE__, length
+  );
+}
+
+/** \~english
+ * \brief Swap bits from given byte.
+ *
+ * \param value Byte to swap bits from.
+ * \return uint8_t Resulting bit-reversed byte.
+ */
+static inline uint8_t binswap8(
+  uint8_t value
+)
+{
+  const uint8_t nibble_lut[] = {
+    0x0, 0x8, 0x4, 0xC,
+    0x2, 0xA, 0x6, 0xE,
+    0x1, 0x9, 0x5, 0xD,
+    0x3, 0xB, 0x7, 0xF
+  };
+  return (nibble_lut[value & 0xF] << 4) | nibble_lut[value >> 4];
+}
+
+/** \~english
+ * \brief Swap bits of each byte of a two bytes word.
+ *
+ * \param value Word of two bytes to binary swap.
+ * \return uint16_t Resulting binary swapped word.
+ *
+ * Bytes order is not touched.
+ */
+static inline uint16_t binswap16(
+  uint16_t value
+)
+{
+  return (binswap8(value >> 8) << 8) | binswap8(value);
+  ;
+}
+
+/** \~english
+ * \brief Swap bits of each byte of a four bytes dword.
+ *
+ * \param value Double word of four bytes to binary swap.
+ * \return uint32_t Resulting binary swapped dword.
+ *
+ * Bytes order is not touched.
+ */
+static inline uint32_t binswap32(
+  uint32_t value
+)
+{
+  return
+    (binswap8(value >> 24) << 24)
+    | (binswap8(value >> 16) << 16)
+    | (binswap8(value >>  8) <<  8)
+    | binswap8(value)
+  ;
+}
 
 /** \~english
  * \brief Unsigned Greater Common Divisor.

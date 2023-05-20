@@ -483,7 +483,11 @@ int main(
   start = clock();
 
 #if 0
-  CrcParam crc_param = TRUE_HD_MS_CRC_PARAMS;
+  CrcParam crc_param = (CrcParam) {
+    .shifted = true,
+    .length = 16,
+    .poly = 0x002D
+  };
 
   crcTableGenerator(crc_param);
   exit(0);

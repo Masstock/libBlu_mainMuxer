@@ -10,15 +10,16 @@
 #ifndef __LIBBLU_MUXER__UTIL_H__
 #define __LIBBLU_MUXER__UTIL_H__
 
-#include "util/common.h"
-#include "util/macros.h"
-#include "util/errorCodes.h"
-#include "util/crcLookupTables.h"
-#include "util/hashTables.h"
-#include "util/circularBuffer.h"
+#include "util/bitReader.h"
 #include "util/bitStreamHandling.h"
-#include "util/textFilesHandling.h"
+#include "util/circularBuffer.h"
+#include "util/common.h"
+#include "util/crcLookupTables.h"
+#include "util/errorCodes.h"
+#include "util/hashTables.h"
 #include "util/libraries.h"
+#include "util/macros.h"
+#include "util/textFilesHandling.h"
 
 #define PROG_INFOS  "libBlu Muxer Exp. 0.5"
 #define PROG_CONF_FILENAME  lbc_str("settings.ini")

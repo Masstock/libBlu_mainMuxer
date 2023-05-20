@@ -18,37 +18,38 @@
 #  include <sys/stat.h>
 #endif
 
-void applyNoTableBigEndianCrcContext(
+void applyNoTableShiftedCrcContext(
   CrcContext * ctx,
   uint8_t byte
 )
 {
-  uint32_t poly = ctx->param.poly;
-  uint32_t mask = ctx->param.mask;
-  uint32_t buf  = ctx->buf;
+  unsigned length = ctx->param.length + 7;
+  uint32_t poly = ctx->param.poly << 8;
+  uint64_t buf  = ctx->buf << 8;
 
+  buf ^= byte;
   for (unsigned i = 0; i < 8; i++) {
-    buf = (buf << 1) ^ ((byte >> (7 - i)) & 0x1);
-    if (mask != (buf | mask))
-      buf ^= poly;
+    if (buf & (1 << length))
+      buf = (buf << 1) ^ poly;
+    else
+      buf <<= 1;
   }
 
-  ctx->buf = buf;
+  ctx->buf = buf >> 8;
 }
 
-void applyNoTableLittleEndianCrcContext(
+void applyNoTableCrcContext(
   CrcContext * ctx,
   uint8_t byte
 )
 {
   unsigned length = ctx->param.length;
   uint32_t poly = ctx->param.poly;
-  uint32_t mask = ctx->param.mask;
-  uint32_t buf  = ctx->buf;
+  uint64_t buf  = ctx->buf;
 
   buf ^= byte << (length - 8);
   for (unsigned i = 0; i < 8; i++) {
-    if (buf & (1 << (length - 1)))
+    if (buf & (1 << length))
       buf = (buf << 1) ^ poly;
     else
       buf <<= 1;
@@ -474,8 +475,9 @@ int readBits(
   unsigned readedBitsNb;
 
   static const unsigned bitmask[9] = {
-    0x0, 0x1, 0x3, 0x7, 0xF,
-    0x1F, 0x3F, 0x7F, 0xFF
+    0x00, 0x01, 0x03, 0x07,
+    0x0F, 0x1F, 0x3F, 0x7F,
+    0xFF
   };
 
   assert(size <= 32); /* Can't read more than 32 bits using readBits() */
@@ -782,24 +784,28 @@ void crcTableGenerator(
 {
   /* Usage: crcTableGenerator(param); */
   unsigned length = param.length;
-  uint32_t mask   = param.mask;
   uint32_t poly   = param.poly;
-  lbc * indent = lbc_str("  ");
+  const lbc * eol = lbc_str("");
 
   lbc_printf("{\n");
   for (unsigned byte = 0; byte < 256; byte++) {
-    if (0x0 == (byte & 0x7))
-      lbc_printf("%s", indent);
+    if (!(byte & 0x7))
+      lbc_printf("%s  ", eol);
 
-    uint32_t crc = byte;
+    uint64_t crc = byte;
     for (unsigned bit = 0; bit < length; bit++) {
-      crc = crc << 1;
-      if (mask != (crc | mask))
-        crc ^= poly;
+      // if (crc & 0x1)
+      //   crc = (crc >> 1) ^ poly;
+      // else
+      //   crc >>= 1;
+      if (crc & (1ull << (length - 1)))
+        crc = (crc << 1) ^ poly;
+      else
+        crc <<= 1;
     }
 
-    lbc_printf("0x%04" PRIX32 ", ", crc);
-    indent = lbc_str("\n  ");
+    lbc_printf("0x%0*" PRIX32 ", ", length >> 2, crc);
+    eol = lbc_str("\n");
   }
 
   lbc_printf("\n}\n");

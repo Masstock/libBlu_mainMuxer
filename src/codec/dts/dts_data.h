@@ -454,7 +454,7 @@ typedef struct {
 #define DCA_EXT_SS_CRC_INITIAL_V 0xFFFF
 
 #define DCA_EXT_SS_CRC_PARAM()                                                \
-  (CrcParam) {.table = dtsExtSSCrcTable, .mask = 0xFFFF, .length = 16}
+  (CrcParam) {.table = ccitt_crc_16_table, .length = 16}
 
 #define DCA_EXT_SS_MAX_NB_INDEXES 4
 #define DCA_EXT_SS_MAX_NB_AUDIO_ASSETS 8

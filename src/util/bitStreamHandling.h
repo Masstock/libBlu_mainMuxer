@@ -29,10 +29,9 @@
 
 typedef struct {
   const uint32_t * table;
-  uint32_t poly;
-  uint32_t mask;
+  bool shifted;
   unsigned length;
-  bool big_endian;
+  uint32_t poly;
 } CrcParam;
 
 typedef struct {
@@ -56,7 +55,9 @@ static inline void initCrcContext(
   uint32_t initial_value
 )
 {
-  assert(initial_value < (1ull << param.length));
+  assert(NULL != param.table || 0x0 != param.poly);
+  assert(0 < param.length);
+
   *ctx = (CrcContext) {
     .in_use = true,
     .buf = initial_value,
@@ -72,37 +73,65 @@ static inline void setUseCrcContext(
   ctx->in_use = use;
 }
 
-void applyNoTableBigEndianCrcContext(
+void applyNoTableShiftedCrcContext(
   CrcContext * ctx,
   uint8_t byte
 );
 
-void applyNoTableLittleEndianCrcContext(
+void applyNoTableCrcContext(
   CrcContext * ctx,
   uint8_t byte
 );
+
+static inline void applySingleByteTableCrcContext(
+  CrcContext * ctx,
+  const uint32_t * table,
+  uint8_t byte
+)
+{
+  uint32_t buf = ctx->buf;
+
+  if (ctx->param.shifted)
+    ctx->buf = ((buf << 8) ^ byte) ^ table[(buf >> 8) & 0xFF];
+  else
+    ctx->buf = (buf >> 8) ^ table[(buf & 0xFF) ^ byte];
+}
 
 static inline void applySingleByteCrcContext(
   CrcContext * ctx,
   uint8_t byte
 )
 {
+  if (!ctx->in_use)
+    return;
+
+  if (NULL != ctx->param.table) {
+    /* Applying CRC look-up table */
+    applySingleByteTableCrcContext(ctx, ctx->param.table, byte);
+  }
+  else {
+    if (ctx->param.shifted)
+      applyNoTableShiftedCrcContext(ctx, byte);
+    else
+      applyNoTableCrcContext(ctx, byte);
+  }
+}
+
+static inline void applyTableCrcContext(
+  CrcContext * ctx,
+  const uint8_t * array,
+  unsigned size
+)
+{
   const uint32_t * table = ctx->param.table;
-  uint32_t buf           = ctx->buf;
+
+  assert(NULL != table);
 
   if (!ctx->in_use)
     return;
 
-  if (NULL != table) {
-    /* Applying CRC look-up table */
-    assert(!ctx->param.big_endian); // FIXME Issue with big endian
-    ctx->buf = (buf >> 8) ^ table[(buf & 0xFF) ^ byte];
-  }
-  else {
-    if (ctx->param.big_endian)
-      applyNoTableBigEndianCrcContext(ctx, byte);
-    else
-      applyNoTableLittleEndianCrcContext(ctx, byte);
+  for (unsigned i = 0; i < size; i++) {
+    applySingleByteTableCrcContext(ctx, table, array[i]);
   }
 }
 
@@ -127,7 +156,7 @@ static inline uint32_t completeCrcContext(
   assert(ctx->in_use);
 
   ctx->in_use = false;
-  return (ctx->buf & ctx->param.mask);
+  return (ctx->buf & ((1ull << ctx->param.length) - 1));
 }
 
 /** \~english
