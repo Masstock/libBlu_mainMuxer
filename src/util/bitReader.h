@@ -7,8 +7,8 @@
 
 typedef struct {
   const uint8_t * buf;  /**< Byte array content. */
-  size_t offset;  /**< Reading offset in bits. */
-  size_t size;    /**< Total buffer size in bits. */
+  size_t offset;        /**< Reading offset in bits. */
+  size_t size;          /**< Total buffer size in bits. */
 } LibbluBitReader, *LibbluBitReaderPtr;
 
 static inline void initLibbluBitReader(

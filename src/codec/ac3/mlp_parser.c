@@ -10,6 +10,60 @@
 #include "mlp_parser.h"
 
 
+int parseMlpMinorSyncHeader(
+  BitstreamReaderPtr bs,
+  MlpSyncHeaderParameters * sh
+)
+{
+  uint8_t mins_header[4];
+
+  /* Read minor sync header */
+  if (readBytes(bs, mins_header, 4) < 0)
+    return -1;
+
+  /* [v4 check_nibble] */
+  sh->check_nibble = (mins_header[0] >> 4);
+
+  /* [u12 access_unit_length] */
+  sh->access_unit_length = ((mins_header[0] & 0xF) << 8) | mins_header[1];
+
+  /* [u16 input_timing] */
+  sh->input_timing = (mins_header[2] << 8) | mins_header[3];
+
+  return 0;
+}
+
+
+int initMlpParsingContext(
+  MlpParsingContext * ctx,
+  BitstreamReaderPtr bs,
+  const MlpSyncHeaderParameters * sh
+)
+{
+
+  // TODO: Check minimal access_unit_length value.
+  unsigned access_unit_data_size = (sh->access_unit_length - 2) << 1;
+
+  /* Init bit reader */
+  if (ctx->buffer_size < access_unit_data_size) {
+    /* Reallocate backing buffer */
+    uint8_t * new_buf = realloc(ctx->buffer, access_unit_data_size);
+    if (NULL == new_buf)
+      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
+    ctx->buffer = new_buf;
+    ctx->buffer_size = access_unit_data_size;
+  }
+
+  /* Read Access Unit data */
+  if (readBytes(bs, ctx->buffer, access_unit_data_size) < 0)
+    LIBBLU_MLP_ERROR_RETURN("Unable to read access unit from source file.\n");
+  initLibbluBitReader(&ctx->br, ctx->buffer, access_unit_data_size << 3);
+
+  return 0;
+}
+
+
 #define MLP_READ_BITS(d, br, s, e)                                            \
   do {                                                                        \
     uint32_t _val;                                                            \
@@ -1770,6 +1824,18 @@ int decodeMlpExtraData(
 
   if (parity != EXTRA_DATA_parity)
     LIBBLU_MLP_ERROR_RETURN("Invalid EXTRA DATA parity check.\n");
+
+  return 0;
+}
+
+
+int decodeMlpAccessUnit(
+  BitstreamReaderPtr bs,
+  MlpParsingContext * ctx
+)
+{
+
+
 
   return 0;
 }

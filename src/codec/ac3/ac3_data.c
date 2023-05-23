@@ -6,6 +6,8 @@
 
 #include "ac3_data.h"
 
+/* ### TrueHD / MLP : ###################################################### */
+
 unsigned getNbChannels6ChPresentationAssignment(
   uint8_t u6ch_presentation_channel_assignment
 )

@@ -5,6 +5,12 @@
 
 #include "ac3_data.h"
 #include "ac3_error.h"
+#include "mlp_util.h"
+
+int parseMlpMinorSyncHeader(
+  BitstreamReaderPtr bs,
+  MlpSyncHeaderParameters * sh
+);
 
 int parseMlpSyncHeader(
   BitstreamReaderPtr bs,

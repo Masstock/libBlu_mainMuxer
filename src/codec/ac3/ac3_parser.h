@@ -50,8 +50,6 @@ typedef struct {
 } Ac3SyncFrameParameters;
 #endif
 
-#define MLP_MAX_NB_SS  4
-
 #if 0
 typedef struct {
   bool checkMode;

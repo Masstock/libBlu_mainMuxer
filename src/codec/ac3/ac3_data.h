@@ -1490,6 +1490,29 @@ typedef struct {
 
 #define TRUE_HD_SAMPLES_PER_FRAME  (48000 / TRUE_HD_UNITS_PER_SEC)
 
+/* ### AC-3 Audio Descriptor : ############################################# */
+
+static inline uint8_t get_sample_rate_code_ac3_descriptor(
+  Ac3Fscod fscod
+)
+{
+  return (uint8_t) fscod;
+}
+
+static inline uint8_t get_bit_rate_code_ac3_descriptor(
+  uint8_t frmsizecod
+)
+{
+  return frmsizecod >> 1u;
+}
+
+static inline uint8_t get_num_channels_ac3_descriptor(
+  Ac3Acmod acmod
+)
+{
+  return (uint8_t) acmod;
+}
+
 /* ### BDAV constraints : ################################################## */
 
 /* ###### AC-3 : ########################################################### */

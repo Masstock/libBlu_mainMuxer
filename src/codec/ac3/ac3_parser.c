@@ -54,29 +54,29 @@ static unsigned _frmsizecodToFrameSize(
   Ac3Fscod fscod
 )
 {
-  static const unsigned frmsizecod_list[][38] = {
-    { // fscod == 0, 48 KHz
-        64,   64,   80,   80,   96,   96,  112,  112,  128,  128,
-       160,  160,  192,  192,  224,  224,  256,  256,  320,  320,
-       384,  384,  448,  448,  512,  512,  640,  640,  768,  768,
-       896,  896, 1024, 1024, 1152, 1152, 1280, 1280
+  static const unsigned frmsizecod_list[][19] = {
+    { // fscod (factor): 48 kHz (2) / 32 kHz (3)
+       32,  40,  48,  56, 64,
+       80,  96, 112, 128, 160,
+      192, 224, 256, 320, 384,
+      448, 512, 576, 640
     },
-    { // fscod == 1, 44.1 KHz
-        69,   70,   87,   88,  104,  105,  121,  122,  139,  140,
-       174,  175,  209,  209,  243,  244,  278,  279,  348,  349,
-       417,  418,  487,  488,  557,  558,  696,  697,  835,  836,
-       975,  976, 1114, 1115, 1253, 1254, 1393, 1394
-    },
-    { // fscod == 2, 32 KHz
-        96,   96,  120,  120,  144,  144,  168,  168,  192,  192,
-       240,  240,  288,  288,  336,  336,  384,  384,  480,  480,
-       576,  576,  672,  672,  768,  768,  960,  960, 1152, 1152,
-      1344, 1344, 1536, 1536, 1728, 1728, 1920, 1920
+    { // fscod: 44.1 kHz
+       69,  87, 104, 121, 139,
+      174, 208, 243, 278, 348,
+      417, 487, 557, 696, 835,
+      975, 1114, 1253, 1393
     }
   };
 
-  if (fscod < ARRAY_SIZE(frmsizecod_list) && frmsizecod < 38)
-    return frmsizecod_list[fscod][frmsizecod];
+  if (frmsizecod < 38) {
+    if (EAC3_FSCOD_48000_HZ == fscod)
+      return 2 * frmsizecod_list[0][frmsizecod >> 1];
+    if (EAC3_FSCOD_44100_HZ == fscod)
+      return frmsizecod_list[1][frmsizecod >> 1] + (frmsizecod & 0x1);
+    if (EAC3_FSCOD_32000_HZ == fscod)
+      return 3 * frmsizecod_list[0][frmsizecod >> 1];
+  }
   return 0;
 }
 
