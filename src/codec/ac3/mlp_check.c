@@ -764,15 +764,11 @@ int checkAndComputeSSSizesMlpSubstreamDirectory(
 )
 {
 
-  LIBBLU_MLP_DEBUG_PARSING_HDR(
-    "  Substream directory, substream_directory\n"
-  );
-
   unsigned substream_start = 0;
   for (unsigned i = 0; i < msi->substreams; i++) {
     MlpSubstreamDirectoryEntry * entry = &directory[i];
 
-    LIBBLU_MLP_DEBUG_PARSING_HDR("   Substream %u:\n", i);
+    LIBBLU_MLP_DEBUG_PARSING_HDR("   Substream %u entry:\n", i);
     LIBBLU_MLP_DEBUG_PARSING_HDR(
       "    Extra 16-bit word (extra_substream_word): %s (0b%x).\n",
       BOOL_PRESENCE(entry->extra_substream_word),

@@ -160,6 +160,21 @@ typedef enum {
   SAMPLE_RATE_CODE_192000  = 0x05
 } SampleRateCode;
 
+static inline unsigned valueSampleRateCode(
+  const SampleRateCode code
+)
+{
+  switch (code) {
+    case SAMPLE_RATE_CODE_48000:
+      return 48000;
+    case SAMPLE_RATE_CODE_96000:
+      return 96000;
+    case SAMPLE_RATE_CODE_192000:
+      return 19200;
+  }
+  return 0;
+}
+
 static inline double sampleRateCodeToDouble(
   const SampleRateCode code
 )

@@ -10,9 +10,11 @@
 #ifndef __LIBBLU_MUXER__CODECS__AC3__ERROR_H__
 #define __LIBBLU_MUXER__CODECS__AC3__ERROR_H__
 
-#include "../../util/errorCodes.h"
+#include "../../util.h"
 
 #define LIBBLU_AC3_KEYWORD  "AC3"
+
+/* ### AC-3 Core : ######################################################### */
 
 #define LIBBLU_AC3_NAME  LIBBLU_AC3_KEYWORD
 #define LIBBLU_AC3_PREFIX  LIBBLU_AC3_NAME ": "
@@ -50,9 +52,28 @@
     ##__VA_ARGS__                                                             \
   )
 
+/* ### E-AC-3 Extension : ################################################## */
+
+#define LIBBLU_EAC3_NAME  "E-AC-3"
+#define LIBBLU_EAC3_PREFIX  LIBBLU_EAC3_NAME ": "
+
+#define LIBBLU_EAC3_ERROR(format, ...)                                        \
+  LIBBLU_ERROR(LIBBLU_EAC3_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_EAC3_ERROR_RETURN(format, ...)                                 \
+  LIBBLU_ERROR_RETURN(LIBBLU_EAC3_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_EAC3_COMPLIANCE_ERROR_RETURN(format, ...)                      \
+  LIBBLU_ERROR_RETURN("E-AC-3 Compliance issue: " format, ##__VA_ARGS__)
+
+#define LIBBLU_EAC3_DEBUG(format, ...)                                        \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_EAC3_PARSING, LIBBLU_EAC3_NAME,                              \
+    format, ##__VA_ARGS__                                                     \
+  )
+
 /* ### MLP/TrueHD : ######################################################## */
 
-#define LIBB
 #define LIBBLU_MLP_PREFIX  "MLP/TrueHD: "
 
 #define LIBBLU_MLP_ERROR(format, ...)                                         \
@@ -79,6 +100,14 @@
 #define LIBBLU_MLP_DEBUG_PARSING_SS(format, ...)                              \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_MLP_PARSING_SS, "MLP/TrueHD  Substream",                     \
+    format, ##__VA_ARGS__                                                     \
+  )
+
+/* ### Utils : ############################################################ */
+
+#define LIBBLU_AC3_DEBUG_UTIL(format, ...)                                    \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_AC3_OPERATIONS, "AC3/Utils",                                 \
     format, ##__VA_ARGS__                                                     \
   )
 

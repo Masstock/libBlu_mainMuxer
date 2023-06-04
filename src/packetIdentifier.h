@@ -10,7 +10,7 @@
 #ifndef __LIBBLU_MUXER__PACKET_IDENTIFIER_H__
 #define __LIBBLU_MUXER__PACKET_IDENTIFIER_H__
 
-#include "util/errorCodes.h"
+#include "util.h"
 
 typedef struct {
   unsigned primaryVideo;

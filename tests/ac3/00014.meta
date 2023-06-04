@@ -1,6 +1,6 @@
 MUXOPT
-# V_H264, "00014.track_4113.264"
-A_AC3, "00014.track_4352.ac3"
-# A_AC3, "00014.track_4353.ac3"
-# M_HDMV/PGS, "00037.track_4608.sup"
-# M_HDMV/PGS, "00037.track_4609.sup"
+V_H264, "00014.track_4113.264"
+A_AC3, "00014.track_4352.ac3" --force-esms
+A_AC3, "00014.track_4353.ac3" --force-esms
+M_HDMV/PGS, "00014.track_4608.sup"
+M_HDMV/PGS, "00014.track_4609.sup"

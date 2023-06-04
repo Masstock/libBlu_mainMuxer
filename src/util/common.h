@@ -13,14 +13,6 @@
 #ifndef __LIBBLU_MUXER__UTIL__COMMON_H__
 #define __LIBBLU_MUXER__UTIL__COMMON_H__
 
-#include "macros.h"
-#include "errorCodes.h"
-
-#include "../libs/cwalk/include/cwalk.h"
-#if defined(ARCH_WIN32)
-#  include "../libs/cwalk/include/cwalk_wchar.h"
-#endif
-
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -30,6 +22,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+#include "macros.h"
+#include "errorCodes.h"
+
+#include "../libs/cwalk/include/cwalk.h"
+#if defined(ARCH_WIN32)
+#  include "../libs/cwalk/include/cwalk_wchar.h"
+#endif
 
 #if defined(ARCH_WIN32)
 #  include <windef.h>
@@ -387,6 +387,18 @@ static inline void lb_str_cat(
   const char * src
 )
 {
+  while (*src != '\0')
+    *((*dst)++) = *(src++);
+}
+
+static inline void lb_str_cat_comma(
+  char ** dst,
+  const char * src,
+  bool append_prefix_comma
+)
+{
+  if (append_prefix_comma)
+    lb_str_cat(dst, ", ");
   while (*src != '\0')
     *((*dst)++) = *(src++);
 }

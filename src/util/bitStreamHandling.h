@@ -10,17 +10,12 @@
 #ifndef __LIBBLU_MUXER__UTIL__BIT_STREAM_HANDLING_H__
 #define __LIBBLU_MUXER__UTIL__BIT_STREAM_HANDLING_H__
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-#include <assert.h>
-#include <errno.h>
-
-#include "crcLookupTables.h"
 #include "common.h"
-#include "macros.h"
+#include "crcLookupTables.h"
 #include "errorCodes.h"
+#include "macros.h"
+
+#include <stdio.h>
 
 // #define DISABLE_WRITE_BUFFER
 // #define DISABLE_READ_BUFFER

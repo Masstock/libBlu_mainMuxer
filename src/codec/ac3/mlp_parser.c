@@ -34,36 +34,6 @@ int parseMlpMinorSyncHeader(
 }
 
 
-int initMlpParsingContext(
-  MlpParsingContext * ctx,
-  BitstreamReaderPtr bs,
-  const MlpSyncHeaderParameters * sh
-)
-{
-
-  // TODO: Check minimal access_unit_length value.
-  unsigned access_unit_data_size = (sh->access_unit_length - 2) << 1;
-
-  /* Init bit reader */
-  if (ctx->buffer_size < access_unit_data_size) {
-    /* Reallocate backing buffer */
-    uint8_t * new_buf = realloc(ctx->buffer, access_unit_data_size);
-    if (NULL == new_buf)
-      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-
-    ctx->buffer = new_buf;
-    ctx->buffer_size = access_unit_data_size;
-  }
-
-  /* Read Access Unit data */
-  if (readBytes(bs, ctx->buffer, access_unit_data_size) < 0)
-    LIBBLU_MLP_ERROR_RETURN("Unable to read access unit from source file.\n");
-  initLibbluBitReader(&ctx->br, ctx->buffer, access_unit_data_size << 3);
-
-  return 0;
-}
-
-
 #define MLP_READ_BITS(d, br, s, e)                                            \
   do {                                                                        \
     uint32_t _val;                                                            \
@@ -290,9 +260,9 @@ static void _unpackMlpMajorSyncFlags(
   };
 }
 
-static int _parseMlpMajorSyncInfo(
+int parseMlpMajorSyncInfo(
   LibbluBitReaderPtr br,
-  MlpMajorSyncInfoParameters * param
+  MlpMajorSyncInfoParameters * msi
 )
 {
   CrcContext crc_ctx;
@@ -301,20 +271,20 @@ static int _parseMlpMajorSyncInfo(
   assert(0 == offsetLibbluBitReader(br));
 
   /* [v32 format_sync] */
-  MLP_READ_BITS(&param->format_sync, br, 32, return -1);
+  MLP_READ_BITS(&msi->format_sync, br, 32, return -1);
 
-  if (MLP_SYNCWORD == param->format_sync) {
+  if (MLP_SYNCWORD == msi->format_sync) {
     LIBBLU_MLP_ERROR_RETURN(
       "Unexpected DVD Audio MLP format sync word "
       "(format_sync == 0x%08X).\n",
       MLP_SYNCWORD
     );
   }
-  else if (TRUE_HD_SYNCWORD != param->format_sync) {
+  else if (TRUE_HD_SYNCWORD != msi->format_sync) {
     LIBBLU_MLP_ERROR_RETURN(
       "Unexpected sync word in MLP Major Sync "
       "(format_sync == 0x%08" PRIX32 ").\n",
-      param->format_sync
+      msi->format_sync
     );
   }
 
@@ -324,13 +294,13 @@ static int _parseMlpMajorSyncInfo(
   /* Unpacking is delayed to flags field parsing */
 
   /* [v16 signature] */
-  MLP_READ_BITS(&param->signature, br, 16, return -1);
+  MLP_READ_BITS(&msi->signature, br, 16, return -1);
 
-  if (TRUE_HD_SIGNATURE != param->signature) {
+  if (TRUE_HD_SIGNATURE != msi->signature) {
     LIBBLU_MLP_ERROR_RETURN(
       "Invalid MLP Major Sync signature word "
       "(signature == 0x%04" PRIX32 ", expect 0x%04X).\n",
-      param->signature,
+      msi->signature,
       TRUE_HD_SIGNATURE
     );
   }
@@ -338,36 +308,36 @@ static int _parseMlpMajorSyncInfo(
   /* [v16 flags] */
   uint16_t flags_value;
   MLP_READ_BITS(&flags_value, br, 16, return -1);
-  _unpackMlpMajorSyncFlags(&param->flags, flags_value);
+  _unpackMlpMajorSyncFlags(&msi->flags, flags_value);
 
   /* Unpack format_info field using flags */
-  _unpackMlpMajorSyncFormatInfo(&param->format_info, format_info_value);
+  _unpackMlpMajorSyncFormatInfo(&msi->format_info, format_info_value);
 
   /* [v16 reserved] // ignored */
-  MLP_READ_BITS(&param->reserved_field_1, br, 16, return -1);
+  MLP_READ_BITS(&msi->reserved_field_1, br, 16, return -1);
 
   /* [b1 variable_rate] */
-  MLP_READ_BITS(&param->variable_bitrate, br, 1, return -1);
+  MLP_READ_BITS(&msi->variable_bitrate, br, 1, return -1);
 
   /* [u15 peak_data_rate] */
-  MLP_READ_BITS(&param->peak_data_rate, br, 15, return -1);
+  MLP_READ_BITS(&msi->peak_data_rate, br, 15, return -1);
 
   /* [u4 substreams] */
-  MLP_READ_BITS(&param->substreams, br, 4, return -1);
+  MLP_READ_BITS(&msi->substreams, br, 4, return -1);
 
   /* [v2 reserved] // ignored */
-  MLP_READ_BITS(&param->reserved_field_2, br, 2, return -1);
+  MLP_READ_BITS(&msi->reserved_field_2, br, 2, return -1);
 
   /* [u2 extended_substream_info] */
-  MLP_READ_BITS(&param->extended_substream_info, br, 2, return -1);
+  MLP_READ_BITS(&msi->extended_substream_info, br, 2, return -1);
 
   /* [v8 substream_info] */
   uint8_t substream_info_value;
   MLP_READ_BITS(&substream_info_value, br, 8, return -1);
-  _unpackMlpMajorSyncextSubstreamInfo(substream_info_value, &param->substream_info);
+  _unpackMlpMajorSyncextSubstreamInfo(substream_info_value, &msi->substream_info);
 
   /* [v64 channel_meaning()] */
-  if (_parseMlpChannelMeaning(br, &param->channel_meaning, param->substream_info) < 0)
+  if (_parseMlpChannelMeaning(br, &msi->channel_meaning, msi->substream_info) < 0)
     return -1;
 
   /* Compute CRC */
@@ -376,9 +346,9 @@ static int _parseMlpMajorSyncInfo(
   applyTableCrcContext(&crc_ctx, br->buf, ms_data_size);
 
   /* [u16 major_sync_info_CRC] */
-  MLP_READ_BITS(&param->major_sync_info_CRC, br, 16, return -1);
+  MLP_READ_BITS(&msi->major_sync_info_CRC, br, 16, return -1);
 
-  if (completeCrcContext(&crc_ctx) != param->major_sync_info_CRC)
+  if (completeCrcContext(&crc_ctx) != msi->major_sync_info_CRC)
     LIBBLU_MLP_ERROR_RETURN(
       "Unexpected Major Sync CRC value result.\n"
     );
@@ -505,14 +475,14 @@ int parseMlpSyncHeader(
   if (sh->major_sync) {
     LIBBLU_MLP_DEBUG_PARSING_HDR("  Major Sync present.\n");
 
-    if (_parseMlpMajorSyncInfo(br, &sh->major_sync_info) < 0)
+    if (parseMlpMajorSyncInfo(br, &sh->major_sync_info) < 0)
       return -1; /* Error happen during decoding. */
   }
 
   return 0;
 }
 
-int parseMlpSubstreamDirectoryEntry(
+static int _parseMlpSubstreamDirectoryEntry(
   LibbluBitReaderPtr br,
   MlpSubstreamDirectoryEntry * entry
 )
@@ -546,6 +516,86 @@ int parseMlpSubstreamDirectoryEntry(
     entry->drc_time_update  = (drc_fields >> 4) & 0x7;
     entry->reserved_field_2 = (drc_fields     ) & 0xF;
   }
+
+  return 0;
+}
+
+/** \~english
+ * \brief Return the size in 16-bits words of the 'mlp_sync' section.
+ *
+ * \param param 'mlp_sync' syntax object.
+ * \return unsigned Size in 16-bits words.
+ */
+static unsigned _getSizeMlpSyncHeader(
+  const MlpSyncHeaderParameters * param
+)
+{
+  unsigned size = 2; // Minor sync
+
+  if (param->major_sync) {
+    const MlpChannelMeaning * chm = &param->major_sync_info.channel_meaning;
+    size += 10 + 3; // Major sync info (plus channel_meaning())
+    if (chm->extra_channel_meaning_present)
+      size += 1 + chm->extra_channel_meaning_length;
+  }
+
+  return size;
+}
+
+static unsigned _computeLengthMlpSync(
+  const MlpSyncHeaderParameters * mlp_sync_header,
+  const MlpSubstreamDirectoryEntry * directory
+)
+{
+  /* Compute access_unit headers size (in 16-bits words unit) */
+  const MlpMajorSyncInfoParameters * msi = &mlp_sync_header->major_sync_info;
+
+  unsigned au_hdr_length = _getSizeMlpSyncHeader(mlp_sync_header);
+  for (unsigned i = 0; i < msi->substreams; i++)
+    au_hdr_length += 1 + directory[i].extra_substream_word;
+
+  return au_hdr_length;
+}
+
+int decodeMlpSubstreamDirectory(
+  LibbluBitReaderPtr br,
+  MlpParsingContext * ctx
+)
+{
+  const MlpMajorSyncInfoParameters * msi = &ctx->mlp_sync_header.major_sync_info;
+
+  for (unsigned i = 0; i < msi->substreams; i++) {
+    MlpSubstreamDirectoryEntry entry;
+    if (_parseMlpSubstreamDirectoryEntry(br, &entry) < 0)
+      return -1;
+
+    ctx->substream_directory[i] = entry;
+  }
+
+  unsigned access_unit_length = ctx->mlp_sync_header.access_unit_length;
+  unsigned mlp_sync_length = _computeLengthMlpSync(
+    &ctx->mlp_sync_header,
+    ctx->substream_directory
+  );
+
+  if (access_unit_length < mlp_sync_length)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Too many words in access unit header, "
+      "header is longer than 'access_unit_length' (%u, actual %u words).\n",
+      access_unit_length,
+      mlp_sync_length
+    );
+
+  unsigned unit_end = access_unit_length - mlp_sync_length;
+
+  int ret = checkAndComputeSSSizesMlpSubstreamDirectory(
+    ctx->substream_directory,
+    msi,
+    unit_end,
+    ctx->mlp_sync_header.major_sync
+  );
+  if (ret < 0)
+    return -1;
 
   return 0;
 }
@@ -1652,7 +1702,7 @@ static int _decodeMlpBlock(
   return 0;
 }
 
-int decodeMlpSubstreamSegment(
+static int _decodeMlpSubstreamSegment(
   LibbluBitReaderPtr br,
   MlpSubstreamParameters * substream,
   const MlpSubstreamDirectoryEntry * entry,
@@ -1776,6 +1826,34 @@ int decodeMlpSubstreamSegment(
   return 0;
 }
 
+
+int decodeMlpSubstreamSegments(
+  LibbluBitReaderPtr br,
+  MlpParsingContext * ctx
+)
+{
+  const MlpSyncHeaderParameters * sh = &ctx->mlp_sync_header;
+  const MlpMajorSyncInfoParameters * msi = &sh->major_sync_info;
+
+  if (sh->major_sync) {
+    for (unsigned i = 0; i < MLP_MAX_NB_SS; i++)
+      ctx->substreams[i].restart_header_seen = false;
+  }
+
+  for (unsigned i = 0; i < msi->substreams; i++) {
+    const MlpSubstreamDirectoryEntry * entry = &ctx->substream_directory[i];
+    MlpSubstreamParameters * ss = &ctx->substreams[i];
+
+    /* substream_segment(i) */
+    if (_decodeMlpSubstreamSegment(br, ss, entry, i) < 0)
+      return -1;
+    // substream_parity/substream_CRC parsed/checked in substream_segment.
+  }
+
+  return 0;
+}
+
+
 int decodeMlpExtraData(
   LibbluBitReaderPtr br
 )
@@ -1824,18 +1902,6 @@ int decodeMlpExtraData(
 
   if (parity != EXTRA_DATA_parity)
     LIBBLU_MLP_ERROR_RETURN("Invalid EXTRA DATA parity check.\n");
-
-  return 0;
-}
-
-
-int decodeMlpAccessUnit(
-  BitstreamReaderPtr bs,
-  MlpParsingContext * ctx
-)
-{
-
-
 
   return 0;
 }

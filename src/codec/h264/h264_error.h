@@ -10,7 +10,7 @@
 #ifndef __LIBBLU_MUXER__CODECS__H264__ERROR_H__
 #define __LIBBLU_MUXER__CODECS__H264__ERROR_H__
 
-#include "../../util/errorCodes.h"
+#include "../../util.h"
 
 #define LIBBLU_H264_PREFIX "H.264: "
 #define LIBBLU_H264_HRDV_PREFIX "H.264 HRD Verifier: "

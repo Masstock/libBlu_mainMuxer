@@ -1438,30 +1438,47 @@ static void _debugCompareComputedTimestampsDisplaySet(
   const HdmvEpochState * epoch
 )
 {
+  bool issue = false;
+
   for (hdmv_segtype_idx idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
     HdmvSequencePtr seq = epoch->sequences[idx].ds;
 
     for (unsigned i = 0; NULL != seq; seq = seq->nextSequenceDS, i++) {
       int64_t computedDts = seq->dts - ctx->param.referenceTimecode + ctx->param.initialDelay;
 
-      if (seq->dts != 0 && computedDts != seq->segments->param.header.dts)
+      if (seq->dts != 0 && computedDts != seq->segments->param.header.dts) {
         LIBBLU_HDMV_TSC_WARNING(
-          "Mismatch %s-%u DTS: exp %" PRId32 " got %" PRId64 ".\n",
+          " Mismatch %s-%u DTS: exp %" PRId32 " got %" PRId64 ".\n",
           HdmvSegmentTypeStr(seq->type), i,
           seq->segments->param.header.dts,
           computedDts
         );
+        issue = true;
+      }
 
       int64_t computedPts = seq->pts - ctx->param.referenceTimecode + ctx->param.initialDelay;
 
-      if (computedPts != seq->segments->param.header.pts)
+      if (computedPts != seq->segments->param.header.pts) {
         LIBBLU_HDMV_TSC_WARNING(
-          "Mismatch %s-%u PTS: exp %" PRId32 " got %" PRId64 ".\n",
+          " Mismatch %s-%u PTS: exp %" PRId32 " got %" PRId64 ".\n",
           HdmvSegmentTypeStr(seq->type), i,
           seq->segments->param.header.pts,
           computedPts
         );
+        issue = true;
+      }
     }
+  }
+
+  if (issue) {
+    LIBBLU_HDMV_TSC_WARNING(
+      "Issue with DS #%u, composition_number: %u, composition_state: %s.\n",
+      ctx->nbDisplaySets,
+      epoch->composition_descriptor.composition_number,
+      HdmvCompositionStateStr(epoch->composition_descriptor.composition_state)
+    );
+
+
   }
 }
 
@@ -1683,7 +1700,12 @@ int completeDisplaySetHdmvContext(
     return 0;
   }
 
-  if (ctx->duplicatedDS) {
+  if (
+    ctx->duplicatedDS
+    && ctx->epoch.composition_descriptor.composition_state != HDMV_COMPO_STATE_NORMAL
+  ) {
+    // FIXME: Implement accurate way to check same composition_number.
+    // Currently DTS/PTS is broken.
     /**
      * Special process for duplicated DS (DS sharing same ID as last one),
      * normal checks already be done on original DS, only check presence of

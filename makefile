@@ -59,11 +59,15 @@ endif
 ###############################################################################
 
 SOURCE_FILES =																\
-	codec/ac3/ac3_check.o													\
+	codec/ac3/ac3_core_check.o												\
+	codec/ac3/ac3_core_parser.o												\
 	codec/ac3/ac3_data.o													\
 	codec/ac3/ac3_parser.o													\
-	codec/ac3/mlp_parser.o													\
+	codec/ac3/ac3_util.o													\
+	codec/ac3/eac3_check.o													\
+	codec/ac3/eac3_parser.o													\
 	codec/ac3/mlp_check.o													\
+	codec/ac3/mlp_parser.o													\
 	codec/dts/dts_checks.o													\
 	codec/dts/dts_dtshd_file.o												\
 	codec/dts/dts_frame.o													\

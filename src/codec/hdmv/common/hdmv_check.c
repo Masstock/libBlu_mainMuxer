@@ -1348,7 +1348,7 @@ int checkAndBuildDisplaySetHdmvEpochState(
  *
  * \return size_t
  *
- * \bug Some commercial BD use larger values (e.g. Discotek Project AKO).
+ * \todo Use rather in T-STD buffer verifier.
  */
 static size_t _getCodedObjectBufferSize(
   HdmvStreamType type
@@ -1413,6 +1413,7 @@ int checkObjectsBufferingHdmvEpochState(
     decodedObjBufferUsage += objDecodedSize;
   }
 
+#if 0
   size_t codedObjBufferSize = _getCodedObjectBufferSize(type);
   LIBBLU_HDMV_CK_DEBUG(
     "    => Coded Object Buffer (EB) usage: %zu bytes / %zu bytes.\n",
@@ -1420,7 +1421,6 @@ int checkObjectsBufferingHdmvEpochState(
     codedObjBufferSize
   );
 
-#if 0
   if (codedObjBufferSize < codedObjBufferUsage)
     LIBBLU_HDMV_CK_WARNING(
       "Coded Object Buffer (EB) overflows, "
@@ -1429,6 +1429,11 @@ int checkObjectsBufferingHdmvEpochState(
       codedObjBufferSize
     );
 #endif
+
+  LIBBLU_HDMV_CK_DEBUG(
+    "    => Coded objects size: %zu bytes.\n",
+    decodedObjBufferUsage
+  );
 
   size_t decodedObjBufferSize = _getDecodedObjectBufferSize(type);
   LIBBLU_HDMV_CK_DEBUG(

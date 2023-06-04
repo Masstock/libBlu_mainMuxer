@@ -487,8 +487,8 @@ static int parsePropertiesEsmsPesPacketNode(
   LibbluStreamCodingType codingType
 )
 {
+  unsigned ptsFieldSize, dtsFieldSize, lengthFieldSize;
   uint8_t flags;
-  size_t ptsFieldSize, dtsFieldSize, lengthFieldSize;
 
   if (isAudioStreamCodingType(codingType)) {
     /* [b1 extensionFrame] [v7 reserved] */

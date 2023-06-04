@@ -69,6 +69,61 @@ static inline const char * Ac3FscodStr(
   return "Reserved value";
 }
 
+static inline unsigned norminalBitrate_frmsizecod(
+  uint8_t frmsizecod
+)
+{
+  static const unsigned frmsizecod_list[] = {
+     32,  40,  48,  56,  64,
+     80,  96, 112, 128, 160,
+    192, 224, 256, 320, 384,
+    448, 512, 576, 640
+  };
+
+  if ((frmsizecod >> 1) < ARRAY_SIZE(frmsizecod_list))
+    return frmsizecod_list[frmsizecod >> 1];
+  return 0;
+}
+
+/** \~english
+ * \brief Return
+ *
+ * \param frmsizecod Frame size code from syncinfo AC-3 header.
+ * \param fscod Sample rate code from syncinfo AC-3 header.
+ * \return unsigned Sync frame (syncframe) size in 16-bit words unit.
+ */
+static inline unsigned framesize_frmsizecod(
+  uint8_t frmsizecod,
+  Ac3Fscod fscod
+)
+{
+  static const unsigned frmsizecod_list[][19] = {
+    { // fscod (factor): 48 kHz (2) / 32 kHz (3)
+       32,  40,  48,  56, 64,
+       80,  96, 112, 128, 160,
+      192, 224, 256, 320, 384,
+      448, 512, 576, 640
+    },
+    { // fscod: 44.1 kHz
+       69,  87, 104, 121, 139,
+      174, 208, 243, 278, 348,
+      417, 487, 557, 696, 835,
+      975, 1114, 1253, 1393
+    }
+  };
+
+  if (frmsizecod < 38) {
+    if (EAC3_FSCOD_48000_HZ == fscod)
+      return 2 * frmsizecod_list[0][frmsizecod >> 1];
+    if (EAC3_FSCOD_44100_HZ == fscod)
+      return frmsizecod_list[1][frmsizecod >> 1] + (frmsizecod & 0x1);
+    if (EAC3_FSCOD_32000_HZ == fscod)
+      return 3 * frmsizecod_list[0][frmsizecod >> 1];
+  }
+
+  return 0;
+}
+
 typedef struct {
   uint16_t crc1;
   Ac3Fscod fscod;
@@ -577,6 +632,10 @@ typedef struct {
 
 /* ### E-AC3 : ############################################################# */
 
+typedef struct {
+  bool atmos;
+} Eac3Informations;
+
 typedef enum {
   EAC3_STRMTYP_TYPE_0  = 0x0,  /**< Independant substream.                   */
   EAC3_STRMTYP_TYPE_1  = 0x1,  /**< Dependant substream.                     */
@@ -680,19 +739,15 @@ static inline unsigned nbChannelsEac3Chanmap(
   uint16_t mask
 )
 {
-  unsigned i, nbChannels;
-
   static const unsigned maskEntries[] = {
     1, 1, 2, 1, 2, 2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 1
   };
 
-  nbChannels = 0;
-  for (i = 0; i < 16; i++) {
-    if (mask & (1 << i))
-      nbChannels += maskEntries[i];
-  }
+  unsigned nb_channels = 0;
+  for (unsigned i = 0; i < 16; i++)
+    nb_channels += ((mask >> i) & 0x1) * maskEntries[i];
 
-  return nbChannels;
+  return nb_channels;
 }
 
 #define EAC3_CHANMAP_STR_BUFSIZE  80
@@ -778,7 +833,7 @@ typedef struct {
   } Mixdata;
 
   bool infomdate;
-  Eac3Infomdat InformationalMetadata;
+  Eac3Infomdat infomdat;
 
   bool convsync;
   bool blkid;
@@ -787,11 +842,13 @@ typedef struct {
   bool addbsie;
   Ac3Addbsi addbsi;
 
-  unsigned sampleRate;
-  unsigned numBlksPerSync;
-  unsigned frameSize;
-  unsigned nbChannels;
-  unsigned nbChannelsFromMap;
+  unsigned numblks;
+
+  // unsigned sampleRate;
+  // unsigned numBlksPerSync;
+  // unsigned frameSize;
+  // unsigned nbChannels;
+  // unsigned nbChannelsFromMap;
 } Eac3BitStreamInfoParameters;
 
 /* ### TrueHD / MLP : ###################################################### */

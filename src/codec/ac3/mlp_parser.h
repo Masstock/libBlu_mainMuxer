@@ -5,11 +5,17 @@
 
 #include "ac3_data.h"
 #include "ac3_error.h"
+#include "mlp_check.h"
 #include "mlp_util.h"
 
 int parseMlpMinorSyncHeader(
   BitstreamReaderPtr bs,
   MlpSyncHeaderParameters * sh
+);
+
+int parseMlpMajorSyncInfo(
+  LibbluBitReaderPtr br,
+  MlpMajorSyncInfoParameters * param
 );
 
 int parseMlpSyncHeader(
@@ -20,16 +26,14 @@ int parseMlpSyncHeader(
   MlpSyncHeaderParameters * sh
 );
 
-int parseMlpSubstreamDirectoryEntry(
+int decodeMlpSubstreamDirectory(
   LibbluBitReaderPtr br,
-  MlpSubstreamDirectoryEntry * entry
+  MlpParsingContext * ctx
 );
 
-int decodeMlpSubstreamSegment(
+int decodeMlpSubstreamSegments(
   LibbluBitReaderPtr br,
-  MlpSubstreamParameters * substream,
-  const MlpSubstreamDirectoryEntry * entry,
-  unsigned ss_idx
+  MlpParsingContext * ctx
 );
 
 int decodeMlpExtraData(

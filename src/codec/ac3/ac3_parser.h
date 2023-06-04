@@ -27,6 +27,12 @@
 
 #include "ac3_data.h"
 #include "ac3_error.h"
+#include "ac3_util.h"
+
+#include "ac3_core_check.h"
+#include "ac3_core_parser.h"
+#include "eac3_check.h"
+#include "eac3_parser.h"
 #include "mlp_check.h"
 #include "mlp_parser.h"
 
@@ -67,6 +73,8 @@ typedef struct {
 } MlpAccessUnitParameters;
 #endif
 
+#if 0
+
 typedef struct {
   struct {
     Ac3SyncInfoParameters syncinfo;
@@ -96,6 +104,8 @@ typedef struct {
   bool extract_core;
   bool contains_mlp;
 } Ac3Context;
+
+#endif
 
 int analyzeAc3(
   LibbluESParsingSettings * settings

@@ -10,7 +10,7 @@
 #ifndef __LIBBLU_MUXER__CODECS__DTS__ERROR_H__
 #define __LIBBLU_MUXER__CODECS__DTS__ERROR_H__
 
-#include "../../util/errorCodes.h"
+#include "../../util.h"
 
 #define LIBBLU_DTS_PREFIX "DTS: "
 

@@ -3,7 +3,7 @@
 #ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__ERROR_H__
 #define __LIBBLU_MUXER__CODECS__HDMV__COMMON__ERROR_H__
 
-#include "../../../util/errorCodes.h"
+#include "../../../util.h"
 
 #define LIBBLU_HDMV_KEYWORD  "HDMV"
 

@@ -10,8 +10,7 @@
 #ifndef __LIBBLU_MUXER__ESMS__SCRIPT_DATA_H__
 #define __LIBBLU_MUXER__ESMS__SCRIPT_DATA_H__
 
-#include "../util/bitStreamHandling.h"
-#include "../util/errorCodes.h"
+#include "../util.h"
 
 /** \~english
  * \brief Elementary Stream Manipulation Script file header string.

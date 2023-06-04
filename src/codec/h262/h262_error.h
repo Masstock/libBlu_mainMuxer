@@ -10,7 +10,7 @@
 #ifndef __LIBBLU_MUXER__CODECS__H262__ERROR_H__
 #define __LIBBLU_MUXER__CODECS__H262__ERROR_H__
 
-#include "../../util/errorCodes.h"
+#include "../../util.h"
 
 #define LIBBLU_H262_KEYWORD  "H262"
 

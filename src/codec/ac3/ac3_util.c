@@ -32,6 +32,10 @@ int initAc3Context(
   if (appendSourceFileEsms(script, settings->esFilepath, &src_file_idx) < 0)
     LIBBLU_AC3_ERROR_FRETURN("Unable to add source file to script handler.\n");
 
+  /* Write script header */
+  if (writeEsmsHeader(script_bs) < 0)
+    return -1;
+
   /* Save in context */
   *ctx = (Ac3Context) {
     .src_file_idx = src_file_idx,
@@ -52,33 +56,239 @@ free_return:
   return -1;
 }
 
-typedef enum {
-  AC3,
-  TRUEHD,
-  EAC3
-} Ac3StreamType;
+static uint8_t _getSyncFrameBsid(
+  BitstreamReaderPtr bs
+)
+{
+  uint64_t value = nextUint64(bs);
 
-static LibbluStreamCodingType _codingTypeAc3StreamType(
-  Ac3StreamType stream_type
+  /* [v40 *variousBits*] [u5 bsid] ... */
+  return (value >> 19) & 0x1F;
+}
+
+Ac3ContentType initNextFrameAc3Context(
+  Ac3Context * ctx
+)
+{
+  Ac3ContentType type = -1;
+
+  if (nextUint16(ctx->bs) == AC3_SYNCWORD) {
+    /* AC-3 Core / E-AC-3 */
+    uint8_t bsid = _getSyncFrameBsid(ctx->bs);
+
+    if (bsid <= 8) {
+      /* AC-3 bit stream syntax */
+      type = AC3_CORE;
+    }
+
+    else if (11 <= bsid && bsid <= 16) {
+      /* Enhanced AC-3 bit stream syntax */
+      type = AC3_EAC3;
+    }
+
+    else {
+      /* Invalid/Unsupported bsid */
+      LIBBLU_AC3_ERROR_RETURN(
+        "Invalid/Unsupported 'bsid' value %u in AC-3 sync.\n",
+        bsid
+      );
+    }
+  }
+
+  else if (ctx->contains_mlp) {
+    /* Expect MLP/TrueHD Access Unit */
+    uint64_t next_words = nextUint64(ctx->bs);
+
+    if (!ctx->core.nb_frames) {
+      /* Expect first Access Unit to contain major sync */
+      if (((next_words >> 8) & 0xFFFFFF) == MLP_SYNCWORD_PREFIX) {
+        type = AC3_TRUEHD;
+      }
+      // TODO: Add support for Dolby_TrueHD_file syntax described in [3].
+    }
+    else {
+      /* Access Unit may contain minor sync, meaning no magic word */
+      type = AC3_TRUEHD;
+    }
+  }
+
+  if (type < 0)
+    LIBBLU_AC3_ERROR_RETURN(
+      "Unknown sync word 0x%016" PRIX64 " at 0x%" PRIX64 ".\n",
+      nextUint64(ctx->bs),
+      tellPos(ctx->bs)
+    );
+
+  ctx->cur_au = (Ac3AccessUnit) {
+    .type = type,
+    .start_offset = tellPos(ctx->bs)
+  };
+
+  return type;
+}
+
+
+static int _reallocBitReaderBuffer(
+  Ac3Context * ctx,
+  size_t new_size
+)
+{
+  /* Reallocate backing buffer */
+  uint8_t * new_buf = realloc(ctx->buffer, new_size);
+  if (NULL == new_buf)
+    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
+  ctx->buffer = new_buf;
+  ctx->buffer_size = new_size;
+
+  return 0;
+}
+
+
+int fillAc3BitReaderAc3Context(
+  Ac3Context * ctx,
+  const Ac3SyncInfoParameters * si
+)
+{
+  // TODO: Check minimal frame_size value.
+  unsigned frame_size = framesize_frmsizecod(si->frmsizecod, si->fscod) << 1;
+  unsigned frame_data_size = frame_size - 5; // minus syncinfo size.
+
+  if (ctx->buffer_size < frame_data_size) {
+    /* Reallocate backing buffer */
+    if (_reallocBitReaderBuffer(ctx, frame_data_size) < 0)
+      return -1;
+  }
+
+  /* Read Sync frame data */
+  if (readBytes(ctx->bs, ctx->buffer, frame_data_size) < 0)
+    LIBBLU_AC3_ERROR_RETURN("Unable to read sync frame from source file.\n");
+  initLibbluBitReader(&ctx->br, ctx->buffer, frame_data_size << 3);
+
+  ctx->cur_au.size = frame_size;
+  return 0;
+}
+
+
+static unsigned _getFrmsizEac3(
+  BitstreamReaderPtr bs
+)
+{
+  uint32_t value = nextUint32(bs);
+
+  /* [v21 *variousBits*] [u11 frmsiz] */
+  return (value & 0x7FF);
+}
+
+
+int fillEac3BitReaderAc3Context(
+  Ac3Context * ctx
+)
+{
+  // TODO: Check minimal frame_size value.
+  unsigned frame_size = (_getFrmsizEac3(ctx->bs) + 1) << 1; // 16-bit words.
+
+  if (ctx->buffer_size < frame_size) {
+    /* Reallocate backing buffer */
+    if (_reallocBitReaderBuffer(ctx, frame_size) < 0)
+      return -1;
+  }
+
+  /* Read Sync frame data */
+  if (readBytes(ctx->bs, ctx->buffer, frame_size) < 0)
+    LIBBLU_AC3_ERROR_RETURN("Unable to read sync frame from source file.\n");
+  initLibbluBitReader(&ctx->br, ctx->buffer, frame_size << 3);
+
+  ctx->cur_au.size = frame_size;
+  return 0;
+}
+
+
+int fillMlpBitReaderAc3Context(
+  Ac3Context * ctx,
+  const MlpSyncHeaderParameters * sh
+)
+{
+
+  // TODO: Check minimal access_unit_length value.
+  unsigned access_unit_size = sh->access_unit_length << 1;
+  unsigned access_unit_data_size = access_unit_size - 4;
+
+  if (ctx->buffer_size < access_unit_data_size) {
+    /* Reallocate backing buffer */
+    if (_reallocBitReaderBuffer(ctx, access_unit_data_size) < 0)
+      return -1;
+  }
+
+  /* Read Access Unit data */
+  if (readBytes(ctx->bs, ctx->buffer, access_unit_data_size) < 0)
+    LIBBLU_MLP_ERROR_RETURN("Unable to read access unit from source file.\n");
+  initLibbluBitReader(&ctx->br, ctx->buffer, access_unit_data_size << 3);
+
+  ctx->cur_au.size = access_unit_size;
+  return 0;
+}
+
+
+int completeFrameAc3Context(
+  Ac3Context * ctx
+)
+{
+  const Ac3AccessUnit * au = &ctx->cur_au;
+  unsigned sfile_idx = ctx->src_file_idx;
+
+  switch (au->type) {
+    case AC3_CORE:
+      if (initEsmsAudioPesFrame(ctx->script, false, false, ctx->core.pts, 0) < 0)
+        return -1;
+      break;
+
+    case AC3_EAC3:
+      if (ctx->skip_ext)
+        return 0; // Skip extensions.
+      if (initEsmsAudioPesFrame(ctx->script, true, false, ctx->eac3.pts, 0) < 0)
+        return -1;
+      break;
+
+    case AC3_TRUEHD:
+      if (ctx->skip_ext)
+        return 0; // Skip extensions.
+      if (initEsmsAudioPesFrame(ctx->script, true, false, ctx->mlp.pts, 0) < 0)
+        return -1;
+      break;
+  }
+
+  if (appendAddPesPayloadCommand(ctx->script, sfile_idx, 0x0, au->start_offset, au->size) < 0)
+    return -1;
+
+  if (writeEsmsPesPacket(ctx->script_bs, ctx->script) < 0)
+    return -1;
+
+  return 0;
+}
+
+
+static LibbluStreamCodingType _codingTypeAc3FrameType(
+  Ac3ContentType stream_type
 )
 {
   static LibbluStreamCodingType types[] = {
     STREAM_CODING_TYPE_AC3,
-    STREAM_CODING_TYPE_TRUEHD,
-    STREAM_CODING_TYPE_EAC3
+    STREAM_CODING_TYPE_EAC3,
+    STREAM_CODING_TYPE_TRUEHD
   };
 
   return types[stream_type];
 }
 
-static double _peakBitrateAc3StreamType(
-  Ac3StreamType stream_type
+static double _peakBitrateAc3FrameType(
+  Ac3ContentType stream_type
 )
 {
   static double bitrates[] = {
     64000.,     // AC-3
-    18640000.,  // TrueHD
     4736000.,   // EAC-3 as primary audio
+    18640000.,  // TrueHD
     256000.     // EAC-3 as secondary audio.
   };
 
@@ -87,17 +297,19 @@ static double _peakBitrateAc3StreamType(
 
 static int _detectStreamType(
   Ac3Context * ctx,
-  Ac3StreamType * type
+  Ac3ContentType * type
 )
 {
 
   if (!ctx->core.nb_frames) // TODO: Support secondary audio
     LIBBLU_AC3_ERROR_RETURN("Missing mandatory AC-3 core.\n");
 
-  if (ctx->mlp.nb_frames && !ctx->skip_ext)
-    *type = TRUEHD; // TrueHD
+  if (!ctx->skip_ext && ctx->mlp.nb_frames)
+    *type = AC3_TRUEHD; // TrueHD
+  else if (!ctx->skip_ext && ctx->eac3.nb_frames)
+    *type = AC3_EAC3; // EAC-3
   else
-    LIBBLU_TODO();
+    *type = AC3_CORE;
 
   return 0;
 }
@@ -114,12 +326,12 @@ static int _writeScriptEndMarker(
 
 static uint8_t _detectAudioFormat(
   Ac3Context * ctx,
-  Ac3StreamType stream_type
+  Ac3ContentType stream_type
 )
 {
   unsigned ext_nb_channels = 0;
 
-  if (stream_type == TRUEHD) {
+  if (stream_type == AC3_TRUEHD) {
     const MlpMajorSyncInfoParameters * msi = &ctx->mlp.mlp_sync_header.major_sync_info;
 
     ext_nb_channels = MAX(ext_nb_channels, getNbChannels6ChPresentationAssignment(
@@ -133,17 +345,12 @@ static uint8_t _detectAudioFormat(
 
   /* Core : */
   uint8_t audio_format;
-  switch (ctx->core.bsi.acmod) {
-    case AC3_ACMOD_CH1_CH2:
-      audio_format = 0x02; break;
-    case AC3_ACMOD_C:
-      audio_format = 0x01; break;
-    case AC3_ACMOD_L_R:
-    case AC3_ACMOD_L_C_R: // FIXME: Is L/C/R stereo?
-      audio_format = 0x03; break;
-    default:
-      audio_format = 0x06; // Multichannel
-  }
+  if (ctx->core.bsi.acmod == AC3_ACMOD_C)
+    audio_format = 0x01; // Mono
+  else if (ctx->core.bsi.acmod == AC3_ACMOD_L_R && !ctx->core.bsi.lfeon)
+    audio_format = 0x03; // Stereo
+  else
+    audio_format = 0x06; // Multichannel
 
   if (audio_format <= 0x03 && 2 < ext_nb_channels)
     return 0x0C; // Stereo core + Multichannel extension.
@@ -152,12 +359,12 @@ static uint8_t _detectAudioFormat(
 
 static SampleRateCode _detectSampleRateCode(
   Ac3Context * ctx,
-  Ac3StreamType stream_type
+  Ac3ContentType stream_type
 )
 {
   unsigned ext_audio_freq = 0;
 
-  if (stream_type == TRUEHD) {
+  if (stream_type == AC3_TRUEHD) {
     const MlpMajorSyncInfoParameters * msi = &ctx->mlp.mlp_sync_header.major_sync_info;
     ext_audio_freq = sampleRateMlpAudioSamplingFrequency(msi->format_info.audio_sampling_frequency);
   }
@@ -175,18 +382,16 @@ static SampleRateCode _detectSampleRateCode(
 static void _setLibbluESProperties(
   Ac3Context * ctx,
   LibbluESProperties * es_prop,
-  Ac3StreamType stream_type
+  Ac3ContentType stream_type
 )
 {
   *es_prop = (LibbluESProperties) {
-    .type = ES_AUDIO,
-    .codingType  = _codingTypeAc3StreamType(stream_type),
+    .type        = ES_AUDIO,
+    .codingType  = _codingTypeAc3FrameType(stream_type),
 
     .audioFormat = _detectAudioFormat(ctx, stream_type),
     .sampleRate  = _detectSampleRateCode(ctx, stream_type),
-    .bitDepth    = 16, // Always 16 bit core
-
-    .bitrate     = _peakBitrateAc3StreamType(stream_type)
+    .bitDepth    = 16 // Always 16 bit core
   };
 }
 
@@ -208,7 +413,7 @@ static void _setLibbluESAc3SpecProperties(
 
 static void _setScriptProperties(
   Ac3Context * ctx,
-  Ac3StreamType stream_type
+  Ac3ContentType stream_type
 )
 {
   EsmsFileHeaderPtr script = ctx->script;
@@ -219,13 +424,56 @@ static void _setScriptProperties(
   _setLibbluESAc3SpecProperties(ctx, script->fmtSpecProp.ac3);
 
   script->endPts = ctx->core.pts;
+  script->bitrate = _peakBitrateAc3FrameType(stream_type);
+}
+
+static const char * _streamFormatStr(
+  const Ac3Context * ctx,
+  Ac3ContentType stream_type
+)
+{
+  switch (stream_type) {
+    case AC3_CORE:
+      return "Audio/AC-3";
+    case AC3_TRUEHD:
+      if (ctx->mlp.info.atmos)
+        return "Audio/AC-3 (+ TrueHD/Dolby Atmos Extensions)";
+      return "Audio/AC-3 (+ TrueHD Extension)";
+    case AC3_EAC3:
+      if (ctx->eac3.info.atmos)
+        return "Audio/AC-3 (+ E-AC-3/Dolby Atmos Extensions)";
+      return "Audio/AC-3 (+ E-AC-3 Extension)";
+  }
+
+  return "Audio/Unknown";
+}
+
+static void _printStreamInfos(
+  const Ac3Context * ctx,
+  Ac3ContentType stream_type
+)
+{
+  /* Display infos : */
+  lbc_printf("== Stream Infos =======================================================================\n");
+  lbc_printf("Codec: %s, Nb channels: %u, Sample rate: %u Hz, Bits per sample: 16bits.\n",
+    _streamFormatStr(ctx, stream_type),
+    ctx->core.bsi.nbChannels,
+    valueSampleRateCode(ctx->script->prop.sampleRate)
+  );
+  lbc_printf(
+    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
+    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 / 60,
+    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 % 60,
+    (ctx->core.pts / MAIN_CLOCK_27MHZ) % 60
+  );
+  lbc_printf("=======================================================================================\n");
 }
 
 int completeAc3Context(
   Ac3Context * ctx
 )
 {
-  Ac3StreamType stream_type;
+  Ac3ContentType stream_type;
 
   if (_detectStreamType(ctx, &stream_type) < 0)
     return -1;
@@ -234,6 +482,7 @@ int completeAc3Context(
     return -1;
 
   _setScriptProperties(ctx, stream_type);
+  _printStreamInfos(ctx, stream_type);
 
   if (addEsmsFileEnd(ctx->script_bs, ctx->script) < 0)
     return -1;
@@ -254,6 +503,5 @@ void cleanAc3Context(
   closeBitstreamReader(ctx->bs);
   closeBitstreamWriter(ctx->script_bs);
   destroyEsmsFileHandler(ctx->script);
-
-  cleanMlpParsingContext(&ctx->mlp);
+  free(ctx->buffer);
 }
