@@ -29,7 +29,6 @@ bool isDuplicateHdmvSequence(
       // TODO
 
     case HDMV_SEGMENT_TYPE_END:
-    case HDMV_SEGMENT_TYPE_ERROR:
       break;
   }
 
@@ -139,14 +138,14 @@ HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
   INIT_POOL(&inv->sequences, sizeof(HdmvSequence));
   INIT_POOL(&inv->segments, sizeof(HdmvSegment));
   INIT_POOL(&inv->segments, sizeof(HdmvSegment));
-  INIT_POOL(&inv->interComposPages, sizeof(HdmvPageParameters));
-  INIT_POOL(&inv->effectsWindows, sizeof(HdmvWindowInfoParameters));
+  INIT_POOL(&inv->pages, sizeof(HdmvPageParameters));
+  INIT_POOL(&inv->windows, sizeof(HdmvWindowInfoParameters));
   INIT_POOL(&inv->effects, sizeof(HdmvEffectInfoParameters));
-  INIT_POOL(&inv->composition_objects, sizeof(HdmvCompositionObjectParameters));
+  INIT_POOL(&inv->compo_obj, sizeof(HdmvCompositionObjectParameters));
   INIT_POOL(&inv->bogs, sizeof(HdmvButtonOverlapGroupParameters));
   INIT_POOL(&inv->buttons, sizeof(HdmvButtonParam));
   INIT_POOL(&inv->commands, sizeof(HdmvNavigationCommand));
-  INIT_POOL(&inv->paletteEntries, sizeof(HdmvPaletteEntryParameters));
+  INIT_POOL(&inv->pal_entries, sizeof(HdmvPaletteEntryParameters));
 #undef INIT_POOL
 
   return inv;
@@ -200,13 +199,13 @@ HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
   return seg;
 }
 
-HdmvPageParameters * getHdmvPageParametersHdmvSegmentsInventory(
+HdmvPageParameters * getHdmvPageParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
   HdmvPageParameters * page;
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(page, HdmvPageParameters *, &inv->interComposPages);
+  GET_HDMV_SEGMENTS_INVENTORY_POOL(page, HdmvPageParameters *, &inv->pages);
   if (NULL == page)
     return NULL;
   initHdmvPageParameters(page);
@@ -214,13 +213,13 @@ HdmvPageParameters * getHdmvPageParametersHdmvSegmentsInventory(
   return page;
 }
 
-HdmvWindowInfoParameters * getHdmvWindowInfoParametersHdmvSegmentsInventory(
+HdmvWindowInfoParameters * getHdmvWinInfoParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
   HdmvWindowInfoParameters * win;
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(win, HdmvWindowInfoParameters *, &inv->effectsWindows);
+  GET_HDMV_SEGMENTS_INVENTORY_POOL(win, HdmvWindowInfoParameters *, &inv->windows);
   if (NULL == win)
     return NULL;
   initHdmvWindowInfoParameters(win);
@@ -228,7 +227,7 @@ HdmvWindowInfoParameters * getHdmvWindowInfoParametersHdmvSegmentsInventory(
   return win;
 }
 
-HdmvEffectInfoParameters * getHdmvEffectInfoParametersHdmvSegmentsInventory(
+HdmvEffectInfoParameters * getHdmvEffInfoParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
@@ -242,13 +241,13 @@ HdmvEffectInfoParameters * getHdmvEffectInfoParametersHdmvSegmentsInventory(
   return eff;
 }
 
-HdmvCompositionObjectParameters * getHdmvCompositionObjectParametersHdmvSegmentsInventory(
+HdmvCompositionObjectParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
   HdmvCompositionObjectParameters * compo;
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(compo, HdmvCompositionObjectParameters *, &inv->composition_objects);
+  GET_HDMV_SEGMENTS_INVENTORY_POOL(compo, HdmvCompositionObjectParameters *, &inv->compo_obj);
   if (NULL == compo)
     return NULL;
   initHdmvCompositionObjectParameters(compo);
@@ -256,7 +255,7 @@ HdmvCompositionObjectParameters * getHdmvCompositionObjectParametersHdmvSegments
   return compo;
 }
 
-HdmvButtonOverlapGroupParameters * getHdmvButtonOverlapGroupParametersHdmvSegmentsInventory(
+HdmvButtonOverlapGroupParameters * getHdmvBOGParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
@@ -270,7 +269,7 @@ HdmvButtonOverlapGroupParameters * getHdmvButtonOverlapGroupParametersHdmvSegmen
   return bog;
 }
 
-HdmvButtonParam * getHdmvButtonParamHdmvSegmentsInventory(
+HdmvButtonParam * getHdmvBtnParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
@@ -284,7 +283,7 @@ HdmvButtonParam * getHdmvButtonParamHdmvSegmentsInventory(
   return btn;
 }
 
-HdmvNavigationCommand * getHdmvNavigationCommandHdmvSegmentsInventory(
+HdmvNavigationCommand * getHdmvNaviComHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
@@ -298,13 +297,13 @@ HdmvNavigationCommand * getHdmvNavigationCommandHdmvSegmentsInventory(
   return com;
 }
 
-HdmvPaletteEntryParameters * getHdmvPaletteEntryParametersHdmvSegmentsInventory(
+HdmvPaletteEntryParameters * getHdmvPalEntryParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 )
 {
   HdmvPaletteEntryParameters * entry;
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(entry, HdmvPaletteEntryParameters *, &inv->paletteEntries);
+  GET_HDMV_SEGMENTS_INVENTORY_POOL(entry, HdmvPaletteEntryParameters *, &inv->pal_entries);
   if (NULL == entry)
     return NULL;
   initHdmvPaletteEntryParameters(entry);

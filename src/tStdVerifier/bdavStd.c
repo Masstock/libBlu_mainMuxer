@@ -186,7 +186,7 @@ int addESToBdavStd(
   if (NULL == (strmBufList = createBufModelBuffersList()))
     return -1;
 
-  switch (es->prop.codingType) {
+  switch (es->prop.coding_type) {
     case STREAM_CODING_TYPE_AVC:
       ret = createH264BufferingChainBdavStd(
         &streamNode, es, initialTimestamp, strmBufList
@@ -225,7 +225,7 @@ int addESToBdavStd(
       LIBBLU_INFO(
         "BDAV-STD implementation does not support "
         "es coding type 0x%02" PRIX8 ".\n",
-        es->prop.codingType
+        es->prop.coding_type
       );
 
       destroyBufModelBuffersList(strmBufList);
@@ -298,7 +298,7 @@ int addESPesFrameToBdavStd(
 
   curPesPacket = es->curPesPacket.prop;
   if (
-    es->prop.codingType == STREAM_CODING_TYPE_AVC
+    es->prop.coding_type == STREAM_CODING_TYPE_AVC
     && curPesPacket.extDataPresent
     && 0
   ) {

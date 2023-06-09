@@ -2081,11 +2081,16 @@ int analyzeDts(
     return -1;
 
   /* Display infos : */
+  // TODO: Cleanup, check nbChannels (support secondary audio case)
   lbc_printf("== Stream Infos =======================================================================\n");
-  /* lbc_printf(
-    "Codec: %s, Nb channels: %d, Sample rate: %u Hz, "
-    "Bits per sample: %ubits.\n",
-  ); */
+  lbc_printf(
+    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
+    streamCodingTypeStr(esmsInfos->prop.coding_type),
+    AudioFormatCodeStr(esmsInfos->prop.audio_format),
+    ctx->core.curFrame.header.nbChannels,
+    valueSampleRateCode(esmsInfos->prop.sample_rate),
+    valueBitDepthCode(esmsInfos->prop.bit_depth)
+  );
   if (ctx->corePresent)
     lbc_printf("Core frames: %u frame(s).\n", ctx->core.nbFrames);
   if (ctx->extSSPresent)

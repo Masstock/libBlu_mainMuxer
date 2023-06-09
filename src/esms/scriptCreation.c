@@ -22,7 +22,7 @@ EsmsFileHeaderPtr createEsmsFileHandler(
 
   handler->streamType = type;
   handler->flags = computeFlagsLibbluESSettingsOptions(options);
-  handler->fmtSpecProp.sharedPtr = NULL;
+  handler->fmtSpecProp.shared_ptr = NULL;
 
   /* Get the allocation size required by format specific properties */
   fmtSpecPropAllocationSize = sizeofLibbluESFmtSpecPropType(
@@ -35,7 +35,7 @@ EsmsFileHeaderPtr createEsmsFileHandler(
 
     if (NULL == (fmtSpecPropPtr = malloc(fmtSpecPropAllocationSize)))
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-    handler->fmtSpecProp.sharedPtr = fmtSpecPropPtr;
+    handler->fmtSpecProp.shared_ptr = fmtSpecPropPtr;
   }
 
   return handler;
@@ -294,7 +294,7 @@ int writeEsmsEsPropertiesSection(
   if (writeBytes(esmsFile, (uint8_t *) ES_PROPERTIES_HEADER, 4) < 0)
     return -1;
 
-  script->streamType = determineLibbluESType(script->prop.codingType);
+  script->streamType = determineLibbluESType(script->prop.coding_type);
   if (0xFF == script->streamType)
     LIBBLU_ERROR_RETURN(
       "ESMS file is corrupted or stream type is unsupported.\n"
@@ -304,11 +304,11 @@ int writeEsmsEsPropertiesSection(
   if (writeByte(esmsFile, script->streamType) < 0)
     return -1;
 
-  /* [u8 streamCodingType] */
-  if (writeByte(esmsFile, script->prop.codingType) < 0)
+  /* [u8 stream_coding_type] */
+  if (writeByte(esmsFile, script->prop.coding_type) < 0)
     return -1;
 
-  /* [u64 PTSreference] */
+  /* [u64 PTS_reference] */
   if (writeUint64(esmsFile, script->ptsRef) < 0)
     return -1;
 
@@ -316,15 +316,15 @@ int writeEsmsEsPropertiesSection(
   if (writeUint32(esmsFile, script->bitrate) < 0)
     return -1;
 
-  /* [u64 endPts] */
+  /* [u64 PTS_final] */
   if (writeUint64(esmsFile, script->endPts) < 0)
     return -1;
 
-  /* [u64 scriptingFlags] */
+  /* [u64 scripting_flags] */
   if (writeUint64(esmsFile, script->flags) < 0)
     return -1;
 
-  /* [u8 nbSourceFiles] */
+  /* [u8 nb_source_files] */
   if (writeByte(esmsFile, script->sourceFiles.nbUsedFiles) < 0)
     return -1;
 
@@ -345,15 +345,15 @@ int writeEsmsEsPropertiesSection(
         filepathOrig
       );
 
-    /* [u16 sourceFileNameLength] */
+    /* [u16 src_filepath_size] */
     if (writeUint16(esmsFile, filepathSize) < 0)
       goto free_return;
 
-    /* [u<sourceFileNameLength> sourceFileName] */
+    /* [u<src_filepath_size> src_filepath] */
     if (writeBytes(esmsFile, (uint8_t *) filepathConv, filepathSize) < 0)
       goto free_return;
 
-    /* [u16 crcCheckedBytes] */
+    /* [u16 crc_checked_bytes] */
     if (writeUint16(esmsFile, fileProp.crcCheckedBytes) < 0)
       goto free_return;
 
@@ -716,7 +716,7 @@ int writeEsmsPesPacket(
 
   if (flagsByte & ESMS_FFLAG_EXT_DATA_PRESENT) {
     ret = writeEsmsPesPacketExtensionData(
-      esmsFile, curFrame.extParam, script->prop.codingType
+      esmsFile, curFrame.extParam, script->prop.coding_type
     );
     if (ret < 0)
       return -1;
@@ -786,7 +786,7 @@ int writeH264FmtSpecificInfos(
   assert(NULL != param);
 
   /* [v8 constraint_flags] */
-  if (writeByte(esmsFile, param->constraintFlags) < 0)
+  if (writeByte(esmsFile, param->constraint_flags) < 0)
     return -1;
 
   /* [u32 cpbSize] */
@@ -837,7 +837,7 @@ int writeEsmsEsCodecSpecParametersSection(
   assert(NULL != esmsFile);
   assert(NULL != script);
 
-  switch (script->prop.codingType) {
+  switch (script->prop.coding_type) {
     case STREAM_CODING_TYPE_H262:
     case STREAM_CODING_TYPE_AVC:
       /* [v64 videoSpecificCodecParamHeader] */
@@ -845,32 +845,32 @@ int writeEsmsEsCodecSpecParametersSection(
       if (writeBytes(esmsFile, specificCodecHeader, 8) < 0)
         return -1;
 
-      /* [u4 videoFormat] [u4 frameRate] */
+      /* [u4 video_format] [u4 frame_rate] */
       ret = writeByte(
         esmsFile,
-        ((script->prop.videoFormat & 0xF) << 4)
-        | (script->prop.frameRate  & 0xF)
+        ((script->prop.video_format & 0xF) << 4)
+        | (script->prop.frame_rate  & 0xF)
       );
       if (ret < 0)
         return -1;
 
-      /* [u8 profileIDC] */
-      if (writeByte(esmsFile, script->prop.profileIDC) < 0)
+      /* [u8 profile_IDC] */
+      if (writeByte(esmsFile, script->prop.profile_idc) < 0)
         return -1;
 
-      /* [u8 levelIDC] */
-      if (writeByte(esmsFile, script->prop.levelIDC) < 0)
+      /* [u8 level_IDC] */
+      if (writeByte(esmsFile, script->prop.level_idc) < 0)
         return -1;
 
-      /* [b1 stillPicture] [v7 reserved] */
+      /* [b1 still_picture] [v7 reserved] */
       ret = writeByte(
         esmsFile,
-        script->prop.stillPicture << 7
+        script->prop.still_picture << 7
       );
       if (ret < 0)
         return -1;
 
-      if (script->prop.codingType == STREAM_CODING_TYPE_AVC) {
+      if (script->prop.coding_type == STREAM_CODING_TYPE_AVC) {
         if (writeH264FmtSpecificInfos(esmsFile, script->fmtSpecProp.h264) < 0)
           return -1;
       }
@@ -890,17 +890,17 @@ int writeEsmsEsCodecSpecParametersSection(
       if (writeBytes(esmsFile, specificCodecHeader, 8) < 0)
         return -1;
 
-      /* [u4 audioFormat] [u4 sampleRate] */
+      /* [u4 audio_format] [u4 sample_rate] */
       ret = writeByte(
         esmsFile,
-        ((script->prop.audioFormat & 0xF) << 4)
-        | (script->prop.sampleRate & 0xF)
+        ((script->prop.audio_format & 0xF) << 4)
+        | (script->prop.sample_rate & 0xF)
       );
       if (ret < 0)
         return -1;
 
-      /* [u8 bitDepth] */
-      if (writeByte(esmsFile, script->prop.bitDepth) < 0)
+      /* [u8 bit_depth] */
+      if (writeByte(esmsFile, script->prop.bit_depth) < 0)
         return -1;
 
       /* [v8 reserved] // 0x00 */
@@ -908,10 +908,10 @@ int writeEsmsEsCodecSpecParametersSection(
         return -1;
 
       if (
-        script->prop.codingType == STREAM_CODING_TYPE_AC3
-        || script->prop.codingType == STREAM_CODING_TYPE_TRUEHD
-        || script->prop.codingType == STREAM_CODING_TYPE_EAC3
-        || script->prop.codingType == STREAM_CODING_TYPE_EAC3_SEC
+        script->prop.coding_type == STREAM_CODING_TYPE_AC3
+        || script->prop.coding_type == STREAM_CODING_TYPE_TRUEHD
+        || script->prop.coding_type == STREAM_CODING_TYPE_EAC3
+        || script->prop.coding_type == STREAM_CODING_TYPE_EAC3_SEC
       ) {
         if (writeAc3FmtSpecificInfos(esmsFile, script->fmtSpecProp.ac3) < 0)
           return -1;
@@ -925,7 +925,7 @@ int writeEsmsEsCodecSpecParametersSection(
     default:
       LIBBLU_ERROR_RETURN(
         "Unknown codec specific informations for stream coding type 0x%x.\n",
-        script->prop.codingType
+        script->prop.coding_type
       );
   }
 
@@ -1090,7 +1090,7 @@ bool isEsmsPesPacketExtensionDataSupported(
   EsmsFileHeaderPtr script
 )
 {
-  switch (script->prop.codingType) {
+  switch (script->prop.coding_type) {
     case STREAM_CODING_TYPE_AVC:
       return true;
 

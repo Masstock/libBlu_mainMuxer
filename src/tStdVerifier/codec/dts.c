@@ -19,7 +19,7 @@ int createDtsBufferingChainBdavStd(
   BufModelNode tb, b;
   BufModelBufferParameters tbParam, bParam;
 
-  switch (stream->prop.codingType) {
+  switch (stream->prop.coding_type) {
     case STREAM_CODING_TYPE_DTS:
       rx = BDAV_STD_DTS_RX_DCA;
       bs = BDAV_STD_DTS_BS_DCA;

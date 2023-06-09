@@ -162,6 +162,7 @@ int analyzeIgs(
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: HDMV/IGS Menu format.\n");
   lbc_printf("Number of Display Sets: %u.\n", ctx->nbDisplaySets);
+  lbc_printf("Number of Epochs: %u.\n", ctx->nbEpochs);
   lbc_printf("Total number of segments per type:\n");
   printContentHdmvContext(ctx);
   lbc_printf("=======================================================================================\n");

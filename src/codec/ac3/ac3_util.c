@@ -386,12 +386,12 @@ static void _setLibbluESProperties(
 )
 {
   *es_prop = (LibbluESProperties) {
-    .type        = ES_AUDIO,
-    .codingType  = _codingTypeAc3FrameType(stream_type),
+    .type         = ES_AUDIO,
+    .coding_type  = _codingTypeAc3FrameType(stream_type),
 
-    .audioFormat = _detectAudioFormat(ctx, stream_type),
-    .sampleRate  = _detectSampleRateCode(ctx, stream_type),
-    .bitDepth    = 16 // Always 16 bit core
+    .audio_format = _detectAudioFormat(ctx, stream_type),
+    .sample_rate  = _detectSampleRateCode(ctx, stream_type),
+    .bit_depth    = BIT_DEPTH_16_BITS // Always 16 bit core
   };
 }
 
@@ -455,10 +455,12 @@ static void _printStreamInfos(
 {
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
-  lbc_printf("Codec: %s, Nb channels: %u, Sample rate: %u Hz, Bits per sample: 16bits.\n",
+  lbc_printf(
+    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: 16bits.\n",
     _streamFormatStr(ctx, stream_type),
+    AudioFormatCodeStr(ctx->script->prop.audio_format),
     ctx->core.bsi.nbChannels,
-    valueSampleRateCode(ctx->script->prop.sampleRate)
+    valueSampleRateCode(ctx->script->prop.sample_rate)
   );
   lbc_printf(
     "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",

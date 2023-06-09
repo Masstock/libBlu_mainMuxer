@@ -87,7 +87,7 @@ static void _initSequencesLimit(
 
   static const unsigned segNbLimitsEpoch[][HDMV_NB_SEGMENT_TYPES] = {
     {1, 0, 0, 256, 4096, 1}, /* IG */
-    {0, 1, 8,   8,   64, 1}  /* PG */
+    {0, 1, 8,   8,   64, 8}  /* PG */
   };
   static const unsigned segNbLimitsDS[][HDMV_NB_SEGMENT_TYPES] = {
     {1, 0, 0, 256, 4096, 1}, /* IG */
@@ -282,8 +282,8 @@ void _setEsmsHeader(
 {
   script->ptsRef  = param.referenceTimecode * 300;
   script->bitrate = HDMV_RX_BITRATE;
-  script->endPts  = (param.referenceTimecode + param.lastPresTimestamp) * 300;
-  script->prop.codingType = codingTypeHdmvStreamType(type);
+  script->endPts  = (param.referenceTimecode + param.last_ds_pres_time) * 300;
+  script->prop.coding_type = codingTypeHdmvStreamType(type);
 }
 
 int closeHdmvContext(
@@ -310,7 +310,7 @@ static HdmvSequencePtr _getPendingSequence(
   hdmv_segtype_idx idx
 )
 {
-  return ctx->epoch.sequences[idx].pending;
+  return ctx->epoch.cur_ds.sequences[idx].pending;
 }
 
 static void _setPendingSequence(
@@ -319,7 +319,7 @@ static void _setPendingSequence(
   HdmvSequencePtr seq
 )
 {
-  ctx->epoch.sequences[idx].pending = seq;
+  ctx->epoch.cur_ds.sequences[idx].pending = seq;
 }
 
 static int _checkNewDisplaySetTransition(
@@ -328,16 +328,16 @@ static int _checkNewDisplaySetTransition(
   bool * duplicatedDS
 )
 {
-  HdmvCDParameters prev_composition_desc = epoch->composition_descriptor;
+  HdmvCDParameters prev_composition_desc = epoch->cur_ds.composition_descriptor;
 
   /* composition_number */
   uint16_t prev_composition_number = prev_composition_desc.composition_number;
   uint16_t new_composition_number = new_composition_desc.composition_number;
-  bool sameCompoNb = (prev_composition_number == new_composition_number);
+  bool same_cnb = (prev_composition_number == new_composition_number);
 
   if (
     ((prev_composition_number + 1) & 0xFFFF) != new_composition_number
-    && !sameCompoNb
+    && !same_cnb
   ) {
     LIBBLU_HDMV_COM_ERROR_RETURN(
       "Unexpected 'composition_number'==0x%" PRIX16 ", %" PRIu16 " in new DS "
@@ -350,7 +350,7 @@ static int _checkNewDisplaySetTransition(
   }
 
   /* Same composition_number, the DS shall be a duplicate of previous one */
-  *duplicatedDS = sameCompoNb;
+  *duplicatedDS = same_cnb;
 
   return 0;
 }
@@ -373,8 +373,9 @@ static int _clearEpochHdmvContext(
   }
 
   for (unsigned i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
-    assert(NULL == ctx->epoch.sequences[i].pending); // This shall be ensured at DS completion.
-    ctx->epoch.sequences[i].ds = NULL;
+    assert(NULL == ctx->epoch.cur_ds.sequences[i].pending);
+      // This shall be ensured at DS completion.
+    ctx->epoch.cur_ds.sequences[i].ds = NULL;
   }
 
   resetHdmvContextSegmentTypesCounter(&ctx->epoch.nbSequences);
@@ -448,7 +449,7 @@ int initEpochHdmvContext(
     );
   }
 
-  if (HDMV_DS_INITIALIZED == epoch->initUsage) {
+  if (HDMV_DS_INITIALIZED == epoch->cur_ds.init_usage) {
     /* Presence of an already initialized DS without completion. */
     // TODO: Complete and add END segment
     LIBBLU_HDMV_COM_ERROR_RETURN(
@@ -456,7 +457,7 @@ int initEpochHdmvContext(
     );
   }
 
-  if (HDMV_DS_COMPLETED <= epoch->initUsage) {
+  if (HDMV_DS_COMPLETED <= epoch->cur_ds.init_usage) {
     /* Check new DS composition descriptor continuation with previous one. */
     if (_checkNewDisplaySetTransition(epoch, composition_descriptor, &ctx->duplicatedDS) < 0)
       return -1;
@@ -476,9 +477,13 @@ int initEpochHdmvContext(
     // TODO: Check initial video_descriptor
   }
 
-  epoch->composition_descriptor = composition_descriptor;
   epoch->video_descriptor = video_descriptor;
-  epoch->initUsage = HDMV_DS_INITIALIZED;
+
+  epoch->cur_ds.init_usage = HDMV_DS_INITIALIZED;
+  epoch->cur_ds.composition_descriptor = composition_descriptor;
+
+  if (composition_descriptor.composition_state == HDMV_COMPO_STATE_EPOCH_START)
+    ctx->nbEpochs++;
   return 0;
 }
 
@@ -521,7 +526,7 @@ static int _checkCompletionOfEachSequence(
   bool notNull = false;
 
   for (hdmv_segtype_idx i = 0; i < HDMV_NB_SEGMENT_TYPES; i++)
-    notNull |= (NULL != epoch.sequences[i].pending);
+    notNull |= (NULL != epoch.cur_ds.sequences[i].pending);
 
   return (notNull) ? -1 : 0;
 }
@@ -532,7 +537,7 @@ static void _getNonCompletedSequencesNames(
 )
 {
   for (hdmv_segtype_idx i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
-    if (NULL != epoch.sequences[i].pending) {
+    if (NULL != epoch.cur_ds.sequences[i].pending) {
       const char * name = segmentTypeIndexStr(i);
       strcpy(dst, name);
       dst += strlen(name);
@@ -549,14 +554,14 @@ static int _getDisplaySetPts(
   int64_t pts;
 
   switch (ctx->type) {
-#define GET_PTS(idx)  epoch->sequences[idx].ds->segments->param.header.pts
+#define GET_PTS(idx)  epoch->cur_ds.sequences[idx].ds->segments->param.header.pts
 
     case HDMV_STREAM_TYPE_IGS:
-      assert(NULL != epoch->sequences[HDMV_SEGMENT_TYPE_ICS_IDX].ds);
+      assert(NULL != epoch->cur_ds.sequences[HDMV_SEGMENT_TYPE_ICS_IDX].ds);
       pts = GET_PTS(HDMV_SEGMENT_TYPE_ICS_IDX); break;
 
     case HDMV_STREAM_TYPE_PGS:
-      assert(NULL != epoch->sequences[HDMV_SEGMENT_TYPE_PCS_IDX].ds);
+      assert(NULL != epoch->cur_ds.sequences[HDMV_SEGMENT_TYPE_PCS_IDX].ds);
       pts = GET_PTS(HDMV_SEGMENT_TYPE_PCS_IDX); break;
 
 #undef GET_PTS
@@ -795,7 +800,7 @@ static int64_t _computeICDecodeDuration(
     objDecodeDuration
   );
 
-  if (HDMV_COMPO_STATE_EPOCH_START == epoch->composition_descriptor.composition_state) {
+  if (isCompoStateHdmvEpochState(epoch, HDMV_COMPO_STATE_EPOCH_START)) {
     int64_t planeClearTime = _computePlaneClearTime(epoch, HDMV_STREAM_TYPE_IGS);
 
     LIBBLU_HDMV_TSC_DEBUG(
@@ -993,26 +998,26 @@ static int64_t _computeIGDisplaySetDecodeDuration(
 
 static void _applyTimestampsIGDisplaySet(
   HdmvEpochState * epoch,
-  int64_t presentationTimestamp,
-  int64_t decodeDuration,
-  int64_t referenceTimecode
+  int64_t pres_time,
+  int64_t decode_duration,
+  int64_t ref_tc,
+  int64_t *end_time
 )
 {
-  int64_t decodeTimestamp = presentationTimestamp - decodeDuration;
-  (void) referenceTimecode;
+  int64_t decode_time = pres_time - decode_duration;
 
   /* ICS */ {
     LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_ICS));
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX);
     assert(isUniqueInDisplaySetHdmvSequence(seq));
-    seq->pts = presentationTimestamp;
-    seq->dts = decodeTimestamp;
+    seq->pts = ref_tc + pres_time;
+    seq->dts = ref_tc + decode_time;
 
     LIBBLU_HDMV_COM_DEBUG(
       "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
+      seq->pts - ref_tc,
+      seq->dts - ref_tc
     );
   }
 
@@ -1024,13 +1029,13 @@ static void _applyTimestampsIGDisplaySet(
       NULL != seq;
       seq = seq->nextSequenceDS
     ) {
-      seq->pts = decodeTimestamp;
+      seq->pts = ref_tc + decode_time;
       seq->dts = 0;
 
       LIBBLU_HDMV_COM_DEBUG(
       "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
+      seq->pts - ref_tc,
+      seq->dts - ref_tc
     );
     }
   }
@@ -1043,19 +1048,19 @@ static void _applyTimestampsIGDisplaySet(
       NULL != seq;
       seq = seq->nextSequenceDS
     ) {
-      seq->dts = decodeTimestamp;
-      decodeTimestamp += seq->decodeDuration;
-      seq->pts = decodeTimestamp;
-      decodeTimestamp += seq->transferDuration;
+      seq->dts = ref_tc + decode_time;
+      decode_time += seq->decodeDuration;
+      seq->pts = ref_tc + decode_time;
+      decode_time += seq->transferDuration;
 
       LIBBLU_HDMV_COM_DEBUG(
       "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
+      seq->pts - ref_tc,
+      seq->dts - ref_tc
     );
     }
 
-    assert(decodeTimestamp <= presentationTimestamp); // Might be less
+    assert(decode_time <= pres_time); // Might be less
   }
 
   /* END */ {
@@ -1063,15 +1068,17 @@ static void _applyTimestampsIGDisplaySet(
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
     assert(isUniqueInDisplaySetHdmvSequence(seq));
-    seq->pts = decodeTimestamp;
+    seq->pts = ref_tc + decode_time;
     seq->dts = 0;
 
     LIBBLU_HDMV_COM_DEBUG(
       "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
+      seq->pts - ref_tc,
+      seq->dts - ref_tc
     );
   }
+
+  *end_time = decode_time;
 }
 
 /* Presentation Graphics Stream : */
@@ -1109,42 +1116,65 @@ static int64_t _computePlaneInitializationTime(
    *  256000000     : Pixel Transfer Rate (256 Mb/s for PG).
    */
 
-  HdmvCompositionState composition_state = epoch->composition_descriptor.composition_state;
-  if (HDMV_COMPO_STATE_EPOCH_START == composition_state) {
+  if (isCompoStateHdmvEpochState(epoch, HDMV_COMPO_STATE_EPOCH_START)) {
     /* Epoch start, clear whole graphical plane */
     return _computePlaneClearTime(epoch, HDMV_STREAM_TYPE_PGS);
   }
 
   /* Not epoch start, clear only empty windows */
-  HdmvPCParameters pc = epoch->sequences[HDMV_SEGMENT_TYPE_PCS_IDX].ds->data.pc;
-  HdmvWDParameters wd = epoch->sequences[HDMV_SEGMENT_TYPE_WDS_IDX].ds->data.wd;
+  HdmvPCParameters pc = epoch->sequences[HDMV_SEGMENT_TYPE_PCS_IDX].last->data.pc;
+  HdmvWDParameters wd = epoch->sequences[HDMV_SEGMENT_TYPE_WDS_IDX].last->data.wd;
 
+#if 1
   int64_t initialize_duration = 0;
-  int64_t clearing_delay = 0;
 
   for (unsigned i = 0; i < wd.number_of_windows; i++) {
     HdmvWindowInfoParameters * window = wd.windows[i];
+    bool empty_window = true;
 
-    bool empty = true;
     for (unsigned j = 0; j < pc.number_of_composition_objects; j++) {
       if (window->window_id == pc.composition_objects[j]->window_id_ref) {
         /* A composition object use the window, mark as not empty */
-        empty = false;
+        empty_window = false;
         break;
       }
     }
 
-    if (empty) {
+    if (empty_window) {
       /* Empty window, clear it */
       initialize_duration += DIV_ROUND_UP(
         9LL * window->window_width * window->window_height,
         3200
       );
-      clearing_delay = 1; // Extra clearing room observed
     }
   }
 
-  return initialize_duration + clearing_delay;
+  // Add 1 tick delay, observed to avoid WDS DTS being equal to its PTS.
+  return initialize_duration + 1;
+#else
+  int64_t od_size = 0; // Size in bytes.
+
+  for (unsigned i = 0; i < wd.number_of_windows; i++) {
+    HdmvWindowInfoParameters * window = wd.windows[i];
+    bool empty_window = true;
+
+    for (unsigned j = 0; j < pc.number_of_composition_objects; j++) {
+      if (window->window_id == pc.composition_objects[j]->window_id_ref) {
+        /* A composition object use the window, mark as not empty */
+        empty_window = false;
+        break;
+      }
+    }
+
+    if (empty_window) {
+      /* Empty window, clear it */
+      od_size += window->window_width * window->window_height;
+    }
+  }
+
+  // Add 1 tick delay, observed to avoid WDS DTS being equal to its PTS.
+  return DIV_ROUND_UP(9LL * od_size, 3200) + 1;
+#endif
 }
 
 static int64_t _computeAndSetODSDecodeDuration(
@@ -1175,7 +1205,7 @@ static int64_t _computeWindowTransferDuration(
   uint16_t window_id
 )
 {
-  HdmvWDParameters wd = epoch->sequences[HDMV_SEGMENT_TYPE_WDS_IDX].ds->data.wd;
+  HdmvWDParameters wd = epoch->sequences[HDMV_SEGMENT_TYPE_WDS_IDX].last->data.wd;
 
   HdmvWindowInfoParameters * window = NULL;
   for (unsigned i = 0; i < wd.number_of_windows; i++) {
@@ -1197,7 +1227,7 @@ static int64_t _setWindowDrawingDuration(
   const HdmvEpochState * epoch
 )
 {
-  HdmvSequencePtr wds = epoch->sequences[HDMV_SEGMENT_TYPE_WDS_IDX].ds;
+  HdmvSequencePtr wds = epoch->sequences[HDMV_SEGMENT_TYPE_WDS_IDX].last;
   assert(isUniqueInDisplaySetHdmvSequence(wds));
 
   const HdmvWDParameters wd = wds->data.wd;
@@ -1241,7 +1271,7 @@ static int64_t _computePGDisplaySetDecodeDuration(
     decode_duration
   );
 
-  HdmvPCParameters pc = epoch->sequences[HDMV_SEGMENT_TYPE_PCS_IDX].ds->data.pc;
+  HdmvPCParameters pc = epoch->sequences[HDMV_SEGMENT_TYPE_PCS_IDX].last->data.pc;
 
   if (2 == pc.number_of_composition_objects) {
     const HdmvCompositionObjectParameters * obj0 = pc.composition_objects[0];
@@ -1333,26 +1363,26 @@ static int64_t _computePGDisplaySetDecodeDuration(
 
 static void _applyTimestampsPGDisplaySet(
   HdmvEpochState * epoch,
-  int64_t presentationTimestamp,
-  int64_t decodeDuration,
-  int64_t referenceTimecode
+  int64_t pres_time,
+  int64_t decode_duration,
+  int64_t ref_tc,
+  int64_t *end_time
 )
 {
-  int64_t decodeTimestamp = presentationTimestamp - decodeDuration;
-  (void) referenceTimecode;
+  int64_t decode_time = pres_time - decode_duration;
 
   /* PCS */ {
     LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_PCS));
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX);
     assert(isUniqueInDisplaySetHdmvSequence(seq));
-    seq->pts = presentationTimestamp;
-    seq->dts = decodeTimestamp;
+    seq->pts = ref_tc + pres_time;
+    seq->dts = ref_tc + decode_time;
 
     LIBBLU_HDMV_COM_DEBUG(
       "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
+      seq->pts - ref_tc,
+      seq->dts - ref_tc
     );
   }
 
@@ -1360,15 +1390,17 @@ static void _applyTimestampsPGDisplaySet(
     LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_WDS));
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX);
-    assert(isUniqueInDisplaySetHdmvSequence(seq));
-    seq->pts = presentationTimestamp - seq->decodeDuration;
-    seq->dts = decodeTimestamp;
+    if (NULL != seq) {
+      assert(isUniqueInDisplaySetHdmvSequence(seq));
+      seq->pts = ref_tc + pres_time - seq->decodeDuration;
+      seq->dts = ref_tc + decode_time;
 
-    LIBBLU_HDMV_COM_DEBUG(
-      "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
-    );
+      LIBBLU_HDMV_COM_DEBUG(
+        "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+        seq->pts - ref_tc,
+        seq->dts - ref_tc
+      );
+    }
   }
 
   /* PDS */ {
@@ -1379,13 +1411,13 @@ static void _applyTimestampsPGDisplaySet(
       NULL != seq;
       seq = seq->nextSequenceDS
     ) {
-      seq->pts = decodeTimestamp;
+      seq->pts = ref_tc + decode_time;
       seq->dts = 0;
 
       LIBBLU_HDMV_COM_DEBUG(
         "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-        seq->pts - referenceTimecode,
-        seq->dts - referenceTimecode
+        seq->pts - ref_tc,
+        seq->dts - ref_tc
       );
     }
   }
@@ -1398,19 +1430,19 @@ static void _applyTimestampsPGDisplaySet(
       NULL != seq;
       seq = seq->nextSequenceDS
     ) {
-      seq->dts = decodeTimestamp;
-      decodeTimestamp += seq->decodeDuration;
-      seq->pts = decodeTimestamp;
-      decodeTimestamp += seq->transferDuration;
+      seq->dts = ref_tc + decode_time;
+      decode_time += seq->decodeDuration;
+      seq->pts = ref_tc + decode_time;
+      decode_time += seq->transferDuration;
 
       LIBBLU_HDMV_COM_DEBUG(
         "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-        seq->pts - referenceTimecode,
-        seq->dts - referenceTimecode
+        seq->pts - ref_tc,
+        seq->dts - ref_tc
       );
     }
 
-    assert(decodeTimestamp <= presentationTimestamp); // Might be less
+    assert(decode_time <= pres_time); // Might be less
   }
 
   /* END */ {
@@ -1418,15 +1450,17 @@ static void _applyTimestampsPGDisplaySet(
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
     assert(isUniqueInDisplaySetHdmvSequence(seq));
-    seq->pts = decodeTimestamp;
+    seq->pts = ref_tc + decode_time;
     seq->dts = 0;
 
     LIBBLU_HDMV_COM_DEBUG(
       "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
-      seq->pts - referenceTimecode,
-      seq->dts - referenceTimecode
+      seq->pts - ref_tc,
+      seq->dts - ref_tc
     );
   }
+
+  *end_time = decode_time;
 }
 
 #define ENABLE_DEBUG_TIMESTAMPS  true
@@ -1441,29 +1475,29 @@ static void _debugCompareComputedTimestampsDisplaySet(
   bool issue = false;
 
   for (hdmv_segtype_idx idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
-    HdmvSequencePtr seq = epoch->sequences[idx].ds;
+    HdmvSequencePtr seq = epoch->cur_ds.sequences[idx].ds;
 
     for (unsigned i = 0; NULL != seq; seq = seq->nextSequenceDS, i++) {
-      int64_t computedDts = seq->dts - ctx->param.referenceTimecode + ctx->param.initialDelay;
+      int64_t dts = seq->dts - ctx->param.referenceTimecode + ctx->param.initialDelay;
 
-      if (seq->dts != 0 && computedDts != seq->segments->param.header.dts) {
+      if (seq->dts != 0 && dts != seq->segments->param.header.dts) {
         LIBBLU_HDMV_TSC_WARNING(
           " Mismatch %s-%u DTS: exp %" PRId32 " got %" PRId64 ".\n",
           HdmvSegmentTypeStr(seq->type), i,
           seq->segments->param.header.dts,
-          computedDts
+          dts
         );
         issue = true;
       }
 
-      int64_t computedPts = seq->pts - ctx->param.referenceTimecode + ctx->param.initialDelay;
+      int64_t pts = seq->pts - ctx->param.referenceTimecode + ctx->param.initialDelay;
 
-      if (computedPts != seq->segments->param.header.pts) {
+      if (pts != seq->segments->param.header.pts) {
         LIBBLU_HDMV_TSC_WARNING(
           " Mismatch %s-%u PTS: exp %" PRId32 " got %" PRId64 ".\n",
           HdmvSegmentTypeStr(seq->type), i,
           seq->segments->param.header.pts,
-          computedPts
+          pts
         );
         issue = true;
       }
@@ -1474,11 +1508,9 @@ static void _debugCompareComputedTimestampsDisplaySet(
     LIBBLU_HDMV_TSC_WARNING(
       "Issue with DS #%u, composition_number: %u, composition_state: %s.\n",
       ctx->nbDisplaySets,
-      epoch->composition_descriptor.composition_number,
-      HdmvCompositionStateStr(epoch->composition_descriptor.composition_state)
+      epoch->cur_ds.composition_descriptor.composition_number,
+      HdmvCompositionStateStr(epoch->cur_ds.composition_descriptor.composition_state)
     );
-
-
   }
 }
 
@@ -1489,66 +1521,74 @@ static int _computeTimestampsDisplaySet(
 )
 {
   HdmvEpochState * epoch = &ctx->epoch;
-  int64_t presTime;
+  int64_t pres_time;
   int ret;
 
   /* get Display Set presentation timecode */
   if (ctx->param.rawStreamInputMode)
-    ret = getHdmvTimecodes(&ctx->timecodes, &presTime);
+    ret = getHdmvTimecodes(&ctx->timecodes, &pres_time);
   else
-    ret = _getDisplaySetPts(ctx, epoch, &presTime);
+    ret = _getDisplaySetPts(ctx, epoch, &pres_time);
   if (ret < 0)
     return -1;
 
   LIBBLU_HDMV_COM_DEBUG(
     "   Requested presentation time: %" PRId64 " ticks.\n",
-    presTime
+    pres_time
   );
 
-  int64_t decodeDuration;
+  int64_t decode_dur;
   switch (ctx->type) {
     case HDMV_STREAM_TYPE_IGS:
-      decodeDuration = _computeIGDisplaySetDecodeDuration(epoch);
+      decode_dur = _computeIGDisplaySetDecodeDuration(epoch);
       break;
     case HDMV_STREAM_TYPE_PGS:
-      decodeDuration = _computePGDisplaySetDecodeDuration(epoch);
+      decode_dur = _computePGDisplaySetDecodeDuration(epoch);
       break;
   }
 
   LIBBLU_HDMV_COM_DEBUG(
     "   DS decode duration: %" PRId64 " ticks.\n",
-    decodeDuration
+    decode_dur
   );
 
   if (0 == ctx->nbDisplaySets) {
     /* First display set, init reference clock to handle negative timestamps. */
-    if (presTime < decodeDuration) {
+    if (pres_time < decode_dur) {
       LIBBLU_HDMV_COM_DEBUG(
         "   Set reference timecode: %" PRId64 " ticks.\n",
-        decodeDuration - presTime
+        decode_dur - pres_time
       );
 
-      ctx->param.referenceTimecode = decodeDuration - presTime;
+      ctx->param.referenceTimecode = decode_dur - pres_time;
     }
   }
   else {
     /* Not the first DS, check its decoding period does not overlap previous DS one. */
-    if (presTime - decodeDuration < ctx->param.lastPresTimestamp)
-      LIBBLU_HDMV_COM_ERROR_RETURN(
-        "Invalid timecode, decoding period of current DS overlaps previous DS.\n"
-      );
+    if (pres_time - decode_dur < ctx->param.last_ds_pres_time) {
+      if (ctx->type == HDMV_STREAM_TYPE_IGS)
+        LIBBLU_HDMV_COM_ERROR_RETURN(
+          "Invalid timecode, decoding periods overlap is forbidden for IGS.\n"
+        );
+
+      if (pres_time - decode_dur < ctx->param.last_ds_end_time)
+        LIBBLU_HDMV_COM_ERROR_RETURN(
+          "Invalid timecode, decoding period starts before the end of the "
+          "previous DS one.\n"
+        );
+    }
   }
 
-  int64_t presTs = ctx->param.referenceTimecode + presTime;
-  int64_t refTc = ctx->param.referenceTimecode;
+  int64_t ref_tc = ctx->param.referenceTimecode;
+  int64_t end_time;
 
   switch (ctx->type) {
     case HDMV_STREAM_TYPE_IGS:
-      _applyTimestampsIGDisplaySet(epoch, presTs, decodeDuration, refTc);
+      _applyTimestampsIGDisplaySet(epoch, pres_time, decode_dur, ref_tc, &end_time);
       break;
 
     case HDMV_STREAM_TYPE_PGS:
-      _applyTimestampsPGDisplaySet(epoch, presTs, decodeDuration, refTc);
+      _applyTimestampsPGDisplaySet(epoch, pres_time, decode_dur, ref_tc, &end_time);
       break;
   }
 
@@ -1557,7 +1597,8 @@ static int _computeTimestampsDisplaySet(
     _debugCompareComputedTimestampsDisplaySet(ctx, epoch);
 #endif
 
-  ctx->param.lastPresTimestamp = presTime;
+  ctx->param.last_ds_pres_time = pres_time;
+  ctx->param.last_ds_end_time  = end_time;
   return 0;
 }
 
@@ -1566,7 +1607,7 @@ static void _copySegmentsTimestampsDisplaySetHdmvContext(
 )
 {
   int64_t timeOffset = ctx->param.referenceTimecode - ctx->param.initialDelay;
-  int64_t lastPts = ctx->param.lastPresTimestamp;
+  int64_t lastPts = ctx->param.last_ds_pres_time;
 
   for (hdmv_segtype_idx idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
     bool displayedListName = false;
@@ -1593,7 +1634,7 @@ static void _copySegmentsTimestampsDisplaySetHdmvContext(
     }
   }
 
-  ctx->param.lastPresTimestamp = lastPts;
+  ctx->param.last_ds_pres_time = lastPts;
 }
 
 int _setTimestampsDisplaySet(
@@ -1678,7 +1719,7 @@ int completeDisplaySetHdmvContext(
 )
 {
 
-  if (ctx->epoch.initUsage == HDMV_DS_COMPLETED)
+  if (ctx->epoch.cur_ds.init_usage == HDMV_DS_COMPLETED)
     return 0; /* Already completed */
 
   LIBBLU_HDMV_COM_DEBUG("Processing complete Display Set...\n");
@@ -1695,14 +1736,14 @@ int completeDisplaySetHdmvContext(
     );
   }
 
-  if (!getNbSequencesHdmvEpochState(ctx->epoch)) {
+  if (!getNbSequencesHdmvEpochState(&ctx->epoch)) {
     LIBBLU_HDMV_COM_DEBUG(" Empty Display Set, skipping.\n");
     return 0;
   }
 
   if (
     ctx->duplicatedDS
-    && ctx->epoch.composition_descriptor.composition_state != HDMV_COMPO_STATE_NORMAL
+    && !isCompoStateHdmvEpochState(&ctx->epoch, HDMV_COMPO_STATE_NORMAL)
   ) {
     // FIXME: Implement accurate way to check same composition_number.
     // Currently DTS/PTS is broken.
@@ -1753,7 +1794,7 @@ int completeDisplaySetHdmvContext(
   if (_registeringSegmentsDisplaySet(ctx, &ctx->epoch) < 0)
     return -1;
 
-  ctx->epoch.initUsage = HDMV_DS_COMPLETED;
+  ctx->epoch.cur_ds.init_usage = HDMV_DS_COMPLETED;
 
   LIBBLU_HDMV_COM_DEBUG(" Done.\n");
   ctx->nbDisplaySets++;
@@ -1854,7 +1895,7 @@ HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
 }
 
 static uint32_t _getIdSequence(
-  HdmvSequencePtr sequence
+  const HdmvSequencePtr sequence
 )
 {
   assert(NULL != sequence);
@@ -1922,41 +1963,36 @@ static int _insertDuplicatedSequence(
 
 static int _updateSequence(
   HdmvSequencePtr dst,
-  HdmvSequencePtr src
+  const HdmvSequencePtr src
 )
 {
   assert(dst->type == src->type);
 
   switch (dst->type) {
     case HDMV_SEGMENT_TYPE_PDS: {
-      if (updateHdmvPdsSegmentParameters(&dst->data.pd, src->data.pd) < 0)
+      if (updateHdmvPdsSegmentParameters(&dst->data.pd, &src->data.pd) < 0)
         return -1;
       break;
     }
-
     case HDMV_SEGMENT_TYPE_ODS: {
-      if (updateHdmvObjectDataParameters(&dst->data.od, src->data.od) < 0)
+      if (updateHdmvObjectDataParameters(&dst->data.od, &src->data.od) < 0)
         return -1;
       break;
     }
-
-    case HDMV_SEGMENT_TYPE_PCS:
-      dst->data.pc = src->data.pc;
-      break;
-
     case HDMV_SEGMENT_TYPE_WDS:
-      dst->data.wd = src->data.wd;
+      if (updateHdmvWDParameters(&dst->data.wd, &src->data.wd) < 0)
+        return -1;
       break;
-
     case HDMV_SEGMENT_TYPE_ICS: {
-      if (updateHdmvICParameters(&dst->data.ic, src->data.ic) < 0)
+      if (updateHdmvICParameters(&dst->data.ic, &src->data.ic) < 0)
         return -1;
       break;
     }
-
-    case HDMV_SEGMENT_TYPE_END:
-    case HDMV_SEGMENT_TYPE_ERROR:
-      break;
+    default:
+      LIBBLU_HDMV_COM_ERROR_RETURN(
+        "Broken program, shall not attempt to update segment of type %s.\n",
+        HdmvSegmentTypeStr(dst->type)
+      );
   }
 
   dst->nextSequenceDS = NULL;
@@ -1967,22 +2003,45 @@ static int _updateSequence(
   return 0;
 }
 
-static int _applySequenceUpdate(
-  HdmvSequencePtr dst,
-  HdmvSequencePtr seq
+static bool _isUpdatableSequence(
+  const HdmvSequencePtr dst,
+  const HdmvSequencePtr src
 )
 {
-  uint32_t lstSeqId;
+  assert(dst->type == src->type);
 
-  lstSeqId = _getIdSequence(seq);
+  switch (dst->type) {
+    case HDMV_SEGMENT_TYPE_PDS:
+      return _getIdSequence(dst) == _getIdSequence(src);
+    case HDMV_SEGMENT_TYPE_ODS:
+      return _getIdSequence(dst) == _getIdSequence(src);
+    case HDMV_SEGMENT_TYPE_PCS:
+      return false;
+    case HDMV_SEGMENT_TYPE_WDS:
+      return true;
+    case HDMV_SEGMENT_TYPE_ICS:
+      return false;
+    case HDMV_SEGMENT_TYPE_END:
+      return false;
+    default:
+      break;
+  }
 
-  /* Apply update on the segment sharing the same ID */
+  LIBBLU_HDMV_COM_ERROR_RETURN(
+    "Broken program, unknown segment type 0x%02" PRIX8 ".\n",
+    dst->type
+  );
+}
+
+static int _applySequenceUpdate(
+  HdmvSequencePtr dst,
+  const HdmvSequencePtr src
+)
+{
+
   for (; NULL != dst; dst = dst->nextSequence) {
-    assert(dst->type == seq->type);
-
-    if (_getIdSequence(dst) == lstSeqId) {
-      /* Current sequence shares same ID as the last one */
-      if (_updateSequence(dst, seq) < 0)
+    if (_isUpdatableSequence(dst, src)) {
+      if (_updateSequence(dst, src) < 0)
         return -1;
       return 1;
     }
@@ -2004,6 +2063,8 @@ static int _checkNumberOfSequencesInEpoch(
     ctx->nbSequences,
     idx
   );
+
+  fprintf(stderr, "%s) %u/%u\n", segmentTypeIndexStr(idx), curSeqTypeNb, seqTypeNbUpLimitEpoch);
 
   if (seqTypeNbUpLimitEpoch <= curSeqTypeNb) {
     if (!seqTypeNbUpLimitEpoch)
@@ -2065,9 +2126,11 @@ int completeSeqDisplaySetHdmvContext(
   if (!ret) {
     /* The sequence is not an update, insert in list */
 
+#if 0
     /* Check the number of sequences in current Epoch */
     if (_checkNumberOfSequencesInEpoch(ctx, idx, sequenceListHdr->type) < 0)
       return -1;
+#endif
 
     ctx->epoch.sequences[idx].last->nextSequence = sequence;
     ctx->epoch.sequences[idx].last = sequence;

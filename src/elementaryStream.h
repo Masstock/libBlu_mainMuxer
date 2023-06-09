@@ -215,8 +215,8 @@ static inline void initLibbluES(
   *dst = (LibbluES) {
     .settings = settings,
     .prop = {
-      .type = -1,
-      .codingType = -1
+      .type        = -1,
+      .coding_type = -1
     },
   };
 
@@ -230,7 +230,7 @@ static inline void cleanLibbluES(
   LibbluES es
 )
 {
-  free(es.fmtSpecProp.sharedPtr);
+  free(es.fmtSpecProp.shared_ptr);
   destroyBufModelBuffersList(es.lnkdBufList);
   closeBitstreamReader(es.scriptFile);
   cleanEsmsESSourceFiles(es.sourceFiles);

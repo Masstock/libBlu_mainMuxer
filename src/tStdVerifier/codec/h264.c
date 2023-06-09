@@ -23,17 +23,17 @@ int createH264BufferingChainBdavStd(
   size_t maxCpb, maxBr, cpb_size, bit_rate;
   size_t mbs, bsmux, bsoh;
 
-  if (!(maxCpb = getH264MaxCPB(stream->prop.levelIDC)))
+  if (!(maxCpb = getH264MaxCPB(stream->prop.level_idc)))
     LIBBLU_ERROR_RETURN(
       "Unable to define input stream buffering parameters, "
       "unknown level_idc %u for getH264MaxCPB().\n",
-      stream->prop.levelIDC
+      stream->prop.level_idc
     );
-  if (!(maxBr = getH264MaxBR(stream->prop.levelIDC)))
+  if (!(maxBr = getH264MaxBR(stream->prop.level_idc)))
     LIBBLU_ERROR_RETURN(
       "Unable to define input stream buffering parameters, "
       "unknown level_idc %u for getH264MaxCPB().\n",
-      stream->prop.levelIDC
+      stream->prop.level_idc
     );
 
   if (NULL == stream->fmtSpecProp.h264) {

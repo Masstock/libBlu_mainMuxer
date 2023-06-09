@@ -607,15 +607,15 @@ static int _initProperties(
     );
 
   esms->prop = (LibbluESProperties) {
-    .codingType  = STREAM_CODING_TYPE_AVC,
-    .videoFormat = videoFormat,
-    .frameRate   = frameRate,
-    .profileIDC  = sps->profile_idc,
-    .levelIDC    = sps->level_idc
+    .coding_type   = STREAM_CODING_TYPE_AVC,
+    .video_format  = videoFormat,
+    .frame_rate    = frameRate,
+    .profile_idc   = sps->profile_idc,
+    .level_idc     = sps->level_idc
   };
 
   LibbluESH264SpecProperties * param = esms->fmtSpecProp.h264;
-  param->constraintFlags = valueH264ContraintFlags(sps->constraint_set_flags);
+  param->constraint_flags = valueH264ContraintFlags(sps->constraint_set_flags);
   if (
     sps->vui_parameters_present_flag
     && sps->vui_parameters.nal_hrd_parameters_present_flag

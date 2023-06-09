@@ -36,7 +36,7 @@ typedef struct {
  * Elementary Streams properties specific for H.264 formats.
  */
 typedef struct {
-  uint8_t constraintFlags;
+  uint8_t constraint_flags;
 
   uint32_t cpbSize;  /**< CpbSize[cpb_cnt_minus1] value from SPS VUI.        */
   uint32_t bitrate;  /**< BitRate[0] value from SPS VUI.                     */
@@ -47,7 +47,7 @@ typedef struct {
  *
  */
 typedef union {
-  void * sharedPtr;                   /**< Shared pointer for manipulations. */
+  void * shared_ptr;                  /**< Shared pointer for manipulations. */
   LibbluESAc3SpecProperties * ac3;    /**< AC-3 audio and
     derived.                                                                 */
   LibbluESH264SpecProperties * h264;  /**< H.264 video.                      */
@@ -58,26 +58,24 @@ typedef union {
  *
  */
 typedef enum {
-  FMT_SPEC_INFOS_NONE,
-  FMT_SPEC_INFOS_AC3,
-  FMT_SPEC_INFOS_H264,
-
-  NB_FMT_SPEC_PROP_TYPES
+  FMT_SPEC_INFOS_NONE,  /**< No format specific properties.                  */
+  FMT_SPEC_INFOS_AC3,   /**< Dolby audio formats specific properties.        */
+  FMT_SPEC_INFOS_H264,  /**< H.264 video format specific properties.         */
 } LibbluESFmtSpecPropType;
 
 static inline size_t sizeofLibbluESFmtSpecPropType(
   const LibbluESFmtSpecPropType type
 )
 {
-  static const size_t typeAllocationSizes[] = {
+  static const size_t type_alloc_sizes[] = {
     0,
     sizeof(LibbluESAc3SpecProperties),
     sizeof(LibbluESH264SpecProperties)
   };
 
-  if (NB_FMT_SPEC_PROP_TYPES <= type)
+  if (sizeof(type_alloc_sizes) <= type)
     return 0;
-  return typeAllocationSizes[type];
+  return type_alloc_sizes[type];
 }
 
 int initLibbluESFmtSpecProp(
@@ -86,7 +84,6 @@ int initLibbluESFmtSpecProp(
 );
 
 typedef enum {
-  HDMV_VIDEO_FORMAT_RES    = 0x0,
   HDMV_VIDEO_FORMAT_480I   = 0x1,
   HDMV_VIDEO_FORMAT_576I   = 0x2,
   HDMV_VIDEO_FORMAT_480P   = 0x3,
@@ -100,7 +97,7 @@ typedef enum {
 HdmvVideoFormat getHdmvVideoFormat(
   unsigned width,
   unsigned height,
-  bool isInterlaced
+  bool is_interlaced
 );
 
 /** \~english
@@ -120,12 +117,12 @@ typedef enum {
 /** \~english
  * \brief Convert a frame-rate value to its HDMV code.
  *
- * \param frameRate Floating point frame-rate value.
+ * \param frame_rate Floating point frame-rate value.
  * \return HdmvFrameRateCode If value is part of HDMV allowed frame-rate values,
  * assigned code is returned. Otherwise, a negative value is returned.
  */
 HdmvFrameRateCode getHdmvFrameRateCode(
-  float frameRate
+  float frame_rate
 );
 
 /** \~english
@@ -155,9 +152,33 @@ static inline float frameRateCodeToFloat(
 }
 
 typedef enum {
-  SAMPLE_RATE_CODE_48000   = 0x01,
-  SAMPLE_RATE_CODE_96000   = 0x04,
-  SAMPLE_RATE_CODE_192000  = 0x05
+  AUDIO_FORMAT_MONO                  = 0x1,
+  AUDIO_FORMAT_STEREO                = 0x3,
+  AUDIO_FORMAT_MULTI_CHANNEL         = 0x6,
+  AUDIO_FORMAT_STEREO_MULTI_CHANNEL  = 0xC
+} AudioFormatCode;
+
+static inline const char * AudioFormatCodeStr(
+  const AudioFormatCode code
+)
+{
+  switch (code) {
+    case AUDIO_FORMAT_MONO:
+      return "Mono";
+    case AUDIO_FORMAT_STEREO:
+      return "Stereo";
+    case AUDIO_FORMAT_MULTI_CHANNEL:
+      return "Multi-channel";
+    case AUDIO_FORMAT_STEREO_MULTI_CHANNEL:
+      return "Stereo core + Multi-channel extension";
+  }
+  return 0;
+}
+
+typedef enum {
+  SAMPLE_RATE_CODE_48000   = 0x1,
+  SAMPLE_RATE_CODE_96000   = 0x4,
+  SAMPLE_RATE_CODE_192000  = 0x5
 } SampleRateCode;
 
 static inline unsigned valueSampleRateCode(
@@ -187,8 +208,28 @@ static inline double sampleRateCodeToDouble(
     case SAMPLE_RATE_CODE_192000:
       return 19200.0;
   }
-
   return -1.0;
+}
+
+typedef enum {
+  BIT_DEPTH_16_BITS  = 0x1,
+  BIT_DEPTH_20_BITS  = 0x2,
+  BIT_DEPTH_24_BITS  = 0x3
+} BitDepthCode;
+
+static inline unsigned valueBitDepthCode(
+  const BitDepthCode code
+)
+{
+  switch (code) {
+    case BIT_DEPTH_16_BITS:
+      return 16u;
+    case BIT_DEPTH_20_BITS:
+      return 20u;
+    case BIT_DEPTH_24_BITS:
+      return 24u;
+  }
+  return 0u;
 }
 
 typedef enum {
@@ -204,14 +245,14 @@ typedef enum {
 CheckVideoConfigurationRet checkPrimVideoConfiguration(
   unsigned width,
   unsigned height,
-  HdmvFrameRateCode frameRate,
+  HdmvFrameRateCode frame_rate,
   bool interlaced
 );
 
 CheckVideoConfigurationRet checkSecVideoConfiguration(
   unsigned width,
   unsigned height,
-  HdmvFrameRateCode frameRate,
+  HdmvFrameRateCode frame_rate,
   bool interlaced
 );
 
@@ -221,35 +262,35 @@ CheckVideoConfigurationRet checkSecVideoConfiguration(
  */
 typedef struct {
   LibbluESType type;
-  LibbluStreamCodingType codingType;        /**< Effective stream coding type.     */
+  LibbluStreamCodingType coding_type;  /**< Effective stream coding type.    */
 
   union {
     struct {
-      HdmvVideoFormat videoFormat;    /**< Video stream format value.        */
-      HdmvFrameRateCode frameRate;        /**< Video stream frame-rate value.    */
-      bool stillPicture;              /**< Video stream is a still picture.  */
+      HdmvVideoFormat video_format;   /**< Video stream format value.        */
+      HdmvFrameRateCode frame_rate;   /**< Video stream frame-rate value.    */
+      bool still_picture;             /**< Video stream is a still picture.  */
 
-      uint8_t profileIDC;             /**< Video stream profile indice.      */
-      uint8_t levelIDC;               /**< Video stream level indice.        */
+      uint8_t profile_idc;            /**< Video stream profile indice.      */
+      uint8_t level_idc;              /**< Video stream level indice.        */
     };  /**< If type == VIDEO.                                               */
 
     struct {
-      uint8_t audioFormat;            /**< Audio stream format value.        */
-      SampleRateCode sampleRate;      /**< Audio stream sample-rate value.   */
-      uint8_t bitDepth;               /**< Audio stream bit-depth value.     */
+      AudioFormatCode audio_format;   /**< Audio stream format value.        */
+      SampleRateCode sample_rate;     /**< Audio stream sample-rate value.   */
+      BitDepthCode bit_depth;         /**< Audio stream bit-depth value.     */
     };  /**< If type == AUDIO.                                               */
   };
 
   double bitrate;                     /**< Stream nominal max bitrate in bits
     per second.                                                              */
-  double pesNb;                       /**< Constant number of PES frames per
+  double nb_pes_per_sec;              /**< Constant number of PES frames per
     second.  */
-  double pesNbSec;                    /**< Constant number of secondary PES
+  double nb_ped_sec_per_sec;          /**< Constant number of secondary PES
     frames per second used when secStream == true.                           */
-  bool bitRateBasedDurationAlternativeMode;  /**< If true, pesNb and pesNbSec
-    fields are used to know how many PES frames are used per second.
-    Otherwise, this value is defined according to current PES frame size
-    compared to bitrate.                                                     */
+  bool br_based_on_duration;          /**< When true, nb_pes_per_sec and
+    nb_ped_sec_per_sec fields are used to define how many PES frames are
+    present per second. Otherwise, the number of PES frames is estimated
+    according to current PES frame size compared to bitrate.                 */
 } LibbluESProperties;
 
 #endif

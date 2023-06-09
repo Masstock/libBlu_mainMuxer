@@ -37,7 +37,7 @@ typedef struct {
   /* Used for computation parameters: */
   uint64_t pesDuration; /**< PES packet duration (commonly frame-rate for
     video, a fixed number of samples for audio...)                           */
-  double pesNb;         /**< Number of PES frames per second. Rounded up.    */
+  double nb_pes_per_sec;         /**< Number of PES frames per second. Rounded up.    */
   double bitrate;       /**< Stream bit-rate in bps (Max bitrate for VBR,
     bitrate for CBR streams).                                                */
   uint64_t pesTsNb;     /**< Maximum number of TP per PES packet.            */

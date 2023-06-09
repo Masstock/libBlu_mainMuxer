@@ -704,22 +704,22 @@ int updateDtsEsmsHeader(
   EsmsFileHeaderPtr dtsInfos
 )
 {
-  LibbluStreamCodingType codingType;
+  LibbluStreamCodingType coding_type;
 
   if (ctx->extSSPresent && ctx->extSS.content.xllExtSS)
-    codingType = STREAM_CODING_TYPE_HDMA, dtsInfos->bitrate = 24500000;
+    coding_type = STREAM_CODING_TYPE_HDMA, dtsInfos->bitrate = 24500000;
   else if (ctx->extSSPresent && ctx->extSS.content.xbrExtSS)
-    codingType = STREAM_CODING_TYPE_HDHR, dtsInfos->bitrate = 24500000;
+    coding_type = STREAM_CODING_TYPE_HDHR, dtsInfos->bitrate = 24500000;
   else if (ctx->extSSPresent && ctx->extSS.content.lbrExtSS)
-    codingType = STREAM_CODING_TYPE_DTSE_SEC, dtsInfos->bitrate = 256000;
+    coding_type = STREAM_CODING_TYPE_DTSE_SEC, dtsInfos->bitrate = 256000;
   else if (ctx->corePresent)
-    codingType = STREAM_CODING_TYPE_DTS, dtsInfos->bitrate = 2000000;
+    coding_type = STREAM_CODING_TYPE_DTS, dtsInfos->bitrate = 2000000;
   else
     LIBBLU_DTS_ERROR_RETURN(
       "Unexpected empty input stream.\n"
     );
 
-  dtsInfos->prop.codingType = codingType;
+  dtsInfos->prop.coding_type = coding_type;
 
   if (ctx->corePresent) {
     dtsInfos->endPts = ctx->core.frameDts;
@@ -727,40 +727,36 @@ int updateDtsEsmsHeader(
     switch (ctx->core.curFrame.header.audioChannelArrangement) {
       case DTS_AMODE_A:
         /* Mono */
-        dtsInfos->prop.audioFormat = 0x01;
+        dtsInfos->prop.audio_format = 0x01;
         break;
 
       case DTS_AMODE_A_B:
         /* Dual-Mono */
-        dtsInfos->prop.audioFormat = 0x02;
+        dtsInfos->prop.audio_format = 0x02;
         break;
 
       case DTS_AMODE_L_R:
       case DTS_AMODE_L_R_SUMDIF:
       case DTS_AMODE_LT_LR:
         /* Stereo */
-        dtsInfos->prop.audioFormat = 0x03;
+        dtsInfos->prop.audio_format = 0x03;
         break;
 
       default:
         /* Multi-channel */
-        dtsInfos->prop.audioFormat = 0x06;
+        dtsInfos->prop.audio_format = 0x06;
     }
 
     switch (ctx->core.curFrame.header.audioFreq) {
       case 48000: /* 48 kHz */
-        dtsInfos->prop.sampleRate = 0x1;
-        break;
-
+        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
       case 96000: /* 96 kHz */
-        dtsInfos->prop.sampleRate = 0x4;
-        break;
-
+        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
       default: /* 192 kHz */
-        dtsInfos->prop.sampleRate = 0x5;
+        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
-    dtsInfos->prop.bitDepth = ctx->core.curFrame.header.bitDepth;
+    dtsInfos->prop.bit_depth = ctx->core.curFrame.header.bitDepth;
   }
   else {
     assert(ctx->extSSPresent);
@@ -774,26 +770,22 @@ int updateDtsEsmsHeader(
     dtsInfos->endPts = ctx->extSS.frameDts;
 
     if (ctx->extSS.content.nbChannels <= 1)
-      dtsInfos->prop.audioFormat = 0x01; /* Mono */
+      dtsInfos->prop.audio_format = 0x01; /* Mono */
     else if (ctx->extSS.content.nbChannels == 2)
-      dtsInfos->prop.audioFormat = 0x03; /* Stereo */
+      dtsInfos->prop.audio_format = 0x03; /* Stereo */
     else
-      dtsInfos->prop.audioFormat = 0x06; /* Multi-channel */
+      dtsInfos->prop.audio_format = 0x06; /* Multi-channel */
 
     switch (ctx->extSS.content.audioFreq) {
       case 48000: /* 48 kHz */
-        dtsInfos->prop.sampleRate = 0x1;
-        break;
-
+        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
       case 96000: /* 96 kHz */
-        dtsInfos->prop.sampleRate = 0x4;
-        break;
-
+        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
       default: /* 192 kHz */
-        dtsInfos->prop.sampleRate = 0x5;
+        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
-    dtsInfos->prop.bitDepth = ctx->extSS.content.bitDepth;
+    dtsInfos->prop.bit_depth = ctx->extSS.content.bitDepth;
   }
 
   return 0;

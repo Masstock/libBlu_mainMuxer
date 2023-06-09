@@ -153,7 +153,7 @@ static inline void destroyEsmsFileHandler(
 
   cleanEsmsESSourceFiles(handler->sourceFiles);
   cleanEsmsDataBlocks(handler->dataBlocks);
-  free(handler->fmtSpecProp.sharedPtr);
+  free(handler->fmtSpecProp.shared_ptr);
   free(handler);
 }
 
@@ -170,7 +170,7 @@ static inline void setStillPicture(
 )
 {
   assert(NULL != handler);
-  handler->prop.stillPicture = true;
+  handler->prop.still_picture = true;
 }
 
 /** \~english

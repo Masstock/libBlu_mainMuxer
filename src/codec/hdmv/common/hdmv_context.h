@@ -34,7 +34,8 @@ typedef struct {
 
   HdmvParsingOptions parsingOptions;
 
-  int64_t lastPresTimestamp;
+  int64_t last_ds_pres_time;
+  int64_t last_ds_end_time;
 } HdmvContextParameters;
 
 typedef struct {
@@ -70,6 +71,7 @@ typedef struct {
     HdmvContextSegmentTypesCounter nbSegments;
   } globalCounters;
   unsigned nbDisplaySets;
+  unsigned nbEpochs;
 } HdmvContext, *HdmvContextPtr;
 
 HdmvContextPtr createHdmvContext(
@@ -122,34 +124,6 @@ static inline void printContentHdmvContext(
     ctx->globalCounters.nbSegments,
     ctx->type
   );
-}
-
-static inline HdmvStreamType streamTypeHdmvContext(
-  const HdmvContextPtr ctx
-)
-{
-  return ctx->type;
-}
-
-static inline int64_t referenceTimecodeHdmvContext(
-  const HdmvContextPtr ctx
-)
-{
-  return ctx->param.referenceTimecode;
-}
-
-static inline int64_t initialDelayHdmvContext(
-  const HdmvContextPtr ctx
-)
-{
-  return ctx->param.initialDelay;
-}
-
-static inline HdmvSegmentsInventoryPtr segInvHdmvContext(
-  HdmvContextPtr ctx
-)
-{
-  return ctx->segInv;
 }
 
 static inline BitstreamReaderPtr inputHdmvContext(

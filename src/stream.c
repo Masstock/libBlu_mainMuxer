@@ -101,21 +101,21 @@ int requestESPIDLibbluStream(
       selectedTypeStr = "Secondary Audio";
     }
   }
-  else if (streamProperties.codingType == STREAM_CODING_TYPE_PG) {
+  else if (streamProperties.coding_type == STREAM_CODING_TYPE_PG) {
     basePid = PG_PID;
     curEsTypeNb = &values->nbStreams.pg;
     limitEsTypeNb = values->limits.pg;
 
     selectedTypeStr = "Presentation Graphics (PG) subtitles";
   }
-  else if (streamProperties.codingType == STREAM_CODING_TYPE_IG) {
+  else if (streamProperties.coding_type == STREAM_CODING_TYPE_IG) {
     basePid = IG_PID;
     curEsTypeNb = &values->nbStreams.ig;
     limitEsTypeNb = values->limits.ig;
 
     selectedTypeStr = "Interactive Graphics (IG) menus";
   }
-  else if (streamProperties.codingType == STREAM_CODING_TYPE_TEXT) {
+  else if (streamProperties.coding_type == STREAM_CODING_TYPE_TEXT) {
     basePid = TXT_SUB_PID;
     curEsTypeNb = &values->nbStreams.txtSubtitles;
     limitEsTypeNb = values->limits.txtSubtitles;

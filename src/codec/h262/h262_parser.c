@@ -2319,13 +2319,17 @@ int analyzeH262(
         &sequenceValues, &sequenceHeader, &sequenceExtension
       );
 
-      h262Infos->prop.codingType = STREAM_CODING_TYPE_H262; /* MPEG-2 */
-      h262Infos->prop.videoFormat = sequenceValues.videoFormat;
-      h262Infos->prop.frameRate = sequenceValues.frameRateCode;
-      h262Infos->prop.profileIDC = sequenceValues.profile;
-      h262Infos->prop.levelIDC = sequenceValues.level;
+      h262Infos->prop = (LibbluESProperties) {
+        .type          = ES_VIDEO,
+        .coding_type   = STREAM_CODING_TYPE_H262,
 
-      frameDuration = MAIN_CLOCK_27MHZ / frameRateCodeToFloat(h262Infos->prop.frameRate);
+        .video_format  = sequenceValues.videoFormat,
+        .frame_rate    = sequenceValues.frameRateCode,
+        .profile_idc   = sequenceValues.profile,
+        .level_idc     = sequenceValues.level
+      };
+
+      frameDuration = MAIN_CLOCK_27MHZ / frameRateCodeToFloat(h262Infos->prop.frame_rate);
       startPts = (uint64_t) ceil(frameDuration);
 
       h262Infos->ptsRef = startPts;
@@ -2485,7 +2489,7 @@ int analyzeH262(
     );
 
   if (pictNo == 1) /* Only one I picture in signal: Still picture. */
-    h262Infos->prop.stillPicture = true;
+    h262Infos->prop.still_picture = true;
 
   closeBitstreamReader(m2vInput);
 

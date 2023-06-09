@@ -111,9 +111,7 @@ typedef enum {
   HDMV_SEGMENT_TYPE_PCS   = 0x16,
   HDMV_SEGMENT_TYPE_WDS   = 0x17,
   HDMV_SEGMENT_TYPE_ICS   = 0x18,
-  HDMV_SEGMENT_TYPE_END   = 0x80,
-
-  HDMV_SEGMENT_TYPE_ERROR = 0xFF
+  HDMV_SEGMENT_TYPE_END   = 0x80
 } HdmvSegmentType;
 
 static inline const char * HdmvSegmentTypeStr(
@@ -133,8 +131,6 @@ static inline const char * HdmvSegmentTypeStr(
       return "Interactive Composition Segment";
     case HDMV_SEGMENT_TYPE_END:
       return "End of Display Set Segment";
-    case HDMV_SEGMENT_TYPE_ERROR:
-      return "Error value type segment";
   }
 
   return "Unknown type segment";
@@ -144,9 +140,10 @@ bool isValidHdmvSegmentType(
   uint8_t type
 );
 
-HdmvSegmentType checkHdmvSegmentType(
-  uint8_t type,
-  HdmvStreamType streamType
+int checkHdmvSegmentType(
+  uint8_t segment_type_value,
+  HdmvStreamType stream_type,
+  HdmvSegmentType * segment_type
 );
 
 /* ###### HDMV Common structures : ######################################### */
@@ -454,6 +451,11 @@ typedef struct HdmvWindowDefinitionParameters {
     HDMV_MAX_NB_WDS_WINDOWS
   ];
 } HdmvWDParameters;
+
+int updateHdmvWDParameters(
+  HdmvWDParameters * dst,
+  const HdmvWDParameters * src
+);
 
 /* ######################################################################### */
 
@@ -945,7 +947,7 @@ typedef struct HdmvInteractiveCompositionParameters {
 
 int updateHdmvICParameters(
   HdmvICParameters * dst,
-  HdmvICParameters src
+  const HdmvICParameters * src
 );
 
 /** \~english
@@ -1137,7 +1139,7 @@ static inline bool constantHdmvPdsSegmentParameters(
 
 int updateHdmvPdsSegmentParameters(
   HdmvPdsSegmentParameters * dst,
-  HdmvPdsSegmentParameters src
+  const HdmvPdsSegmentParameters * src
 );
 
 /* ###### HDMV Object Definition Segment : ################################# */
@@ -1185,7 +1187,7 @@ static inline void setHdmvObjectDataParameters(
 
 int updateHdmvObjectDataParameters(
   HdmvODParameters * dst,
-  HdmvODParameters src
+  const HdmvODParameters * src
 );
 
 /** \~english
@@ -1236,7 +1238,7 @@ typedef struct {
 
   uint64_t inputFileOffset;
 
-  HdmvSegmentType type;
+  uint8_t type;
   size_t length;
 } HdmvSegmentParameters;
 

@@ -240,7 +240,7 @@ static int _getAndCollectPresentationCompositionHdmvEpochState(
 {
   HdmvSequencePtr sequence;
 
-  sequence = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX);
+  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing PCS.\n");
 
@@ -252,16 +252,20 @@ static int _getAndCollectPresentationCompositionHdmvEpochState(
 
 static int _getAndCollectWindowDefinitionHdmvEpochState(
   HdmvEpochState * epoch,
-  HdmvWDParameters * window_definition
+  HdmvWDParameters * window_definition,
+  unsigned dsIdx
 )
 {
   HdmvSequencePtr sequence;
 
-  sequence = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX);
+  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing WDS.\n");
 
-  setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX, sequence);
+  if (dsIdx == sequence->displaySetIdx) {
+    // WDS is from current DS.
+    setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX, sequence);
+  }
 
   *window_definition = sequence->data.wd;
 
@@ -328,7 +332,7 @@ static int _getAndCollectInteractiveCompositionHdmvEpochState(
 {
   HdmvSequencePtr sequence;
 
-  sequence = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX);
+  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing ICS.\n");
 
@@ -344,7 +348,7 @@ static int _checkAndCollectEndSequenceHdmvEpochState(
 {
   HdmvSequencePtr sequence;
 
-  sequence = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
+  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing END.\n");
 
@@ -1306,7 +1310,7 @@ static int _checkAndBuildPgsDisplaySetHdmvEpochState(
 
   /* WDS */
   HdmvWDParameters wd;
-  if (_getAndCollectWindowDefinitionHdmvEpochState(epoch, &wd) < 0)
+  if (_getAndCollectWindowDefinitionHdmvEpochState(epoch, &wd, dsIdx) < 0)
     return -1;
 
   if (_checkHdmvWindowDefinitionParameters(epoch->video_descriptor, wd) < 0)
@@ -1432,7 +1436,7 @@ int checkObjectsBufferingHdmvEpochState(
 
   LIBBLU_HDMV_CK_DEBUG(
     "    => Coded objects size: %zu bytes.\n",
-    decodedObjBufferUsage
+    codedObjBufferUsage
   );
 
   size_t decodedObjBufferSize = _getDecodedObjectBufferSize(type);

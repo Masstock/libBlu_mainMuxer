@@ -313,7 +313,7 @@ int setPartialTSDescriptor(
 
 typedef struct {
   uint8_t profileIdc;       /**< 'profile_idc' field.                        */
-  uint8_t constraintFlags;  /**<
+  uint8_t constraint_flags;  /**<
     From bits 0 to 5, 'constraint_set*n*_flag'. Bits 6 and 7 covers
     'AVC_compatible_flags' field.                                            */
   uint8_t levelIdc;         /**< 'level_idc' field.                          */

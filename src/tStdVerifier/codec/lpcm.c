@@ -27,7 +27,7 @@ int createLpcmBufferingChainBdavStd(
     .instantFilling = true,
     .dontOverflowOutput = false,
     .bufferSize = (
-      (stream->prop.sampleRate != SAMPLE_RATE_CODE_192000) ?
+      (stream->prop.sample_rate != SAMPLE_RATE_CODE_192000) ?
         BDAV_STD_LPCM_BS_48_96
       :
         BDAV_STD_LPCM_BS_192
@@ -41,7 +41,7 @@ int createLpcmBufferingChainBdavStd(
       tbParam,
       initialTimestamp,
       (
-        (stream->prop.sampleRate != SAMPLE_RATE_CODE_192000) ?
+        (stream->prop.sample_rate != SAMPLE_RATE_CODE_192000) ?
           BDAV_STD_LPCM_RX_192
         :
           BDAV_STD_LPCM_RX_48_96

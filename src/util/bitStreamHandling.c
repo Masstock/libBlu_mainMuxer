@@ -804,7 +804,7 @@ void crcTableGenerator(
         crc <<= 1;
     }
 
-    lbc_printf("0x%0*" PRIX32 ", ", length >> 2, crc);
+    lbc_printf("0x%0*" PRIX64 ", ", length >> 2, crc);
     eol = lbc_str("\n");
   }
 

@@ -182,8 +182,7 @@ static inline void initHdmvSegment(
 typedef struct HdmvSequence {
   struct HdmvSequence * nextSequence;
   struct HdmvSequence * nextSequenceDS;
-  unsigned displaySetIdx;  /**< Associated DS number from which this
-    sequence is from. */
+  unsigned displaySetIdx;  /**< Associated DS number from which this sequence is from. */
 
   HdmvSegmentType type;
   HdmvSegmentPtr segments;
@@ -291,16 +290,23 @@ typedef enum {
  *
  */
 typedef struct {
-  HdmvCDParameters composition_descriptor;  /**< Current Display Set composition_descriptor. */
   HdmvVDParameters video_descriptor;
-  HdmvDisplaySetUsageState initUsage;
 
   struct {
-    HdmvSequencePtr head;       /**< Sequences linked list. */
-    HdmvSequencePtr last;       /**< Pointer to the last sequence in the linked list.  */
-    HdmvSequencePtr pending;    /**< Pending decoded sequence. */
-    HdmvSequencePtr ds;         /**< Sequences present in pending display set. */
+    HdmvSequencePtr head;  /**< Sequences linked list. */
+    HdmvSequencePtr last;  /**< Pointer to the last sequence in the linked list.  */
   } sequences[HDMV_NB_SEGMENT_TYPES];
+
+  struct {
+    HdmvDisplaySetUsageState init_usage;
+
+    HdmvCDParameters composition_descriptor;
+
+    struct {
+      HdmvSequencePtr pending;    /**< Pending decoded sequence. */
+      HdmvSequencePtr ds;         /**< Sequences present in pending display set. */
+    } sequences[HDMV_NB_SEGMENT_TYPES];
+  } cur_ds;
 
   HdmvContextSegmentTypesCounter nbSequences;  /**< Number of sequences in the pending DS. */
 } HdmvEpochState;
@@ -329,13 +335,21 @@ static inline HdmvSequencePtr getSequenceByIdxHdmvEpochState(
   return epoch->sequences[idx].head;
 }
 
+static inline HdmvSequencePtr getLastSequenceByIdxHdmvEpochState(
+  const HdmvEpochState * epoch,
+  hdmv_segtype_idx idx
+)
+{
+  return epoch->sequences[idx].last;
+}
+
 static inline void setDSSequenceByIdxHdmvEpochState(
   HdmvEpochState * epoch,
   hdmv_segtype_idx idx,
   HdmvSequencePtr sequence
 )
 {
-  epoch->sequences[idx].ds = sequence;
+  epoch->cur_ds.sequences[idx].ds = sequence;
 }
 
 static inline HdmvSequencePtr getDSSequenceByIdxHdmvEpochState(
@@ -343,16 +357,24 @@ static inline HdmvSequencePtr getDSSequenceByIdxHdmvEpochState(
   hdmv_segtype_idx idx
 )
 {
-  return epoch->sequences[idx].ds;
+  return epoch->cur_ds.sequences[idx].ds;
 }
 
 #define getfirstDOSequenceByIdxHdmvEpochState 0
 
 static inline unsigned getNbSequencesHdmvEpochState(
-  const HdmvEpochState ds
+  const HdmvEpochState * epoch
 )
 {
-  return getTotalHdmvContextSegmentTypesCounter(ds.nbSequences);
+  return getTotalHdmvContextSegmentTypesCounter(epoch->nbSequences);
+}
+
+static inline bool isCompoStateHdmvEpochState(
+  const HdmvEpochState * epoch,
+  HdmvCompositionState expected
+)
+{
+  return (expected == epoch->cur_ds.composition_descriptor.composition_state);
 }
 
 /* ### HDMV Segments Inventory Pool : ###################################### */
@@ -430,14 +452,14 @@ static inline void resetHdmvSegmentsInventoryPool(
 typedef struct {
   HdmvSegmentsInventoryPool sequences;
   HdmvSegmentsInventoryPool segments;
-  HdmvSegmentsInventoryPool interComposPages;
-  HdmvSegmentsInventoryPool effectsWindows;
+  HdmvSegmentsInventoryPool pages;
+  HdmvSegmentsInventoryPool windows;
   HdmvSegmentsInventoryPool effects;
-  HdmvSegmentsInventoryPool composition_objects;
+  HdmvSegmentsInventoryPool compo_obj;
   HdmvSegmentsInventoryPool bogs;
   HdmvSegmentsInventoryPool buttons;
   HdmvSegmentsInventoryPool commands;
-  HdmvSegmentsInventoryPool paletteEntries;
+  HdmvSegmentsInventoryPool pal_entries;
 } HdmvSegmentsInventory, *HdmvSegmentsInventoryPtr;
 
 HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
@@ -470,14 +492,14 @@ static inline void destroyHdmvSegmentsInventory(
 #define CLEAN_POOL(p)  cleanHdmvSegmentsInventoryPool(p)
   CLEAN_POOL(inv->sequences);
   CLEAN_POOL(inv->segments);
-  CLEAN_POOL(inv->interComposPages);
-  CLEAN_POOL(inv->effectsWindows);
+  CLEAN_POOL(inv->pages);
+  CLEAN_POOL(inv->windows);
   CLEAN_POOL(inv->effects);
-  CLEAN_POOL(inv->composition_objects);
+  CLEAN_POOL(inv->compo_obj);
   CLEAN_POOL(inv->bogs);
   CLEAN_POOL(inv->buttons);
   CLEAN_POOL(inv->commands);
-  CLEAN_POOL(inv->paletteEntries);
+  CLEAN_POOL(inv->pal_entries);
 #undef CLEAN_POOL
 
   free(inv);
@@ -490,14 +512,14 @@ static inline void resetHdmvSegmentsInventory(
 #define RESET_POOL(d)  resetHdmvSegmentsInventoryPool(d)
   RESET_POOL(&inv->sequences);
   RESET_POOL(&inv->segments);
-  RESET_POOL(&inv->interComposPages);
-  RESET_POOL(&inv->effectsWindows);
+  RESET_POOL(&inv->pages);
+  RESET_POOL(&inv->windows);
   RESET_POOL(&inv->effects);
-  RESET_POOL(&inv->composition_objects);
+  RESET_POOL(&inv->compo_obj);
   RESET_POOL(&inv->bogs);
   RESET_POOL(&inv->buttons);
   RESET_POOL(&inv->commands);
-  RESET_POOL(&inv->paletteEntries);
+  RESET_POOL(&inv->pal_entries);
 #undef RESET_POOL
 }
 
@@ -511,35 +533,35 @@ HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvPageParameters * getHdmvPageParametersHdmvSegmentsInventory(
+HdmvPageParameters * getHdmvPageParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvWindowInfoParameters * getHdmvWindowInfoParametersHdmvSegmentsInventory(
+HdmvWindowInfoParameters * getHdmvWinInfoParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvEffectInfoParameters * getHdmvEffectInfoParametersHdmvSegmentsInventory(
+HdmvEffectInfoParameters * getHdmvEffInfoParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvCompositionObjectParameters * getHdmvCompositionObjectParametersHdmvSegmentsInventory(
+HdmvCompositionObjectParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvButtonOverlapGroupParameters * getHdmvButtonOverlapGroupParametersHdmvSegmentsInventory(
+HdmvButtonOverlapGroupParameters * getHdmvBOGParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvButtonParam * getHdmvButtonParamHdmvSegmentsInventory(
+HdmvButtonParam * getHdmvBtnParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvNavigationCommand * getHdmvNavigationCommandHdmvSegmentsInventory(
+HdmvNavigationCommand * getHdmvNaviComHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 
-HdmvPaletteEntryParameters * getHdmvPaletteEntryParametersHdmvSegmentsInventory(
+HdmvPaletteEntryParameters * getHdmvPalEntryParamHdmvSegmentsInventory(
   HdmvSegmentsInventoryPtr inv
 );
 

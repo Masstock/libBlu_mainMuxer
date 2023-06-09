@@ -400,24 +400,24 @@ static int _computePesTiming(
   if (0 == (timing->bitrate = es->prop.bitrate))
     LIBBLU_ERROR_RETURN("Unable to get ES bitrate, broken script.");
 
-  if (!es->prop.bitRateBasedDurationAlternativeMode) {
+  if (!es->prop.br_based_on_duration) {
     if (!es->curPesPacket.prop.extensionFrame)
-      timing->pesNb = es->prop.pesNb;
+      timing->nb_pes_per_sec = es->prop.nb_pes_per_sec;
     else
-      timing->pesNb = es->prop.pesNbSec;
+      timing->nb_pes_per_sec = es->prop.nb_ped_sec_per_sec;
   }
   else {
     /**
      * Variable number of PES frames per second,
      * use rather PES size compared to bit-rate to compute PES frame duration.
      */
-    timing->pesNb = es->prop.bitrate / (
+    timing->nb_pes_per_sec = es->prop.bitrate / (
       es->curPesPacket.data.dataUsedSize * 8
     );
   }
 
-  if (0 == timing->pesNb)
-    LIBBLU_ERROR_RETURN("Unable to get ES pesNb, broken script.\n");
+  if (0 == timing->nb_pes_per_sec)
+    LIBBLU_ERROR_RETURN("Unable to get ES nb_pes_per_sec, broken script.\n");
 
 #if USE_AVERAGE_PES_SIZE
   if (0 == (avgPesPacketSize = averageSizePesPacketLibbluES(es, 10)))
@@ -426,13 +426,13 @@ static int _computePesTiming(
   avgPesPacketSize = remainingPesDataLibbluES(*es);
 #endif
 
-  avgPesPacketSize = MAX(es->prop.bitrate / timing->pesNb / 8, avgPesPacketSize);
+  avgPesPacketSize = MAX(es->prop.bitrate / timing->nb_pes_per_sec / 8, avgPesPacketSize);
 
   /** Compute timing values:
    * NOTE: Performed at each PES frame, preventing introduction
    * of variable parameters issues.
    */
-  timing->pesDuration = floor(MAIN_CLOCK_27MHZ / timing->pesNb);
+  timing->pesDuration = floor(MAIN_CLOCK_27MHZ / timing->nb_pes_per_sec);
   timing->pesTsNb = DIV_ROUND_UP(avgPesPacketSize, TP_PAYLOAD_SIZE);
   timing->tsDuration = timing->pesDuration / MAX(1, timing->pesTsNb);
 

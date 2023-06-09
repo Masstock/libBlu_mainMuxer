@@ -174,7 +174,7 @@ typedef struct {
 } H264Param;
 
 typedef union {
-  void * sharedPtr;
+  void * shared_ptr;
   Ac3Param * ac3Param;
   H264Param * h264Param;
 } CodecSpecInfos;
@@ -230,11 +230,11 @@ typedef struct {
 
   double bitrate;                     /**< Stream nominal max bitrate in bits
     per second.                                                              */
-  double pesNb;                       /**< Constant number of PES frames per
+  double nb_pes_per_sec;                       /**< Constant number of PES frames per
     second.  */
-  double pesNbSec;                    /**< Constant number of secondary PES
+  double nb_ped_sec_per_sec;                    /**< Constant number of secondary PES
     frames per second used when secStream == true.                           */
-  bool bitRateBasedDurationAlternativeMode;  /**< If true, pesNb and pesNbSec
+  bool br_based_on_duration;  /**< If true, nb_pes_per_sec and nb_ped_sec_per_sec
     fields are used to know how many PES frames are used per second.
     Otherwise, this value is defined according to current PES frame size
     compared to bitrate.                                                     */

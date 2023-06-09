@@ -253,7 +253,7 @@ int setAVCVideoDescriptorParameters(
   /* [u8 profile_idc] */
   WB_DESC(dst, param.profileIdc);
 
-  /** u8 constraintFlags
+  /** u8 constraint_flags
    * -> b1  : constraint_set0_flag
    * -> b1  : constraint_set1_flag
    * -> b1  : constraint_set2_flag
@@ -262,7 +262,7 @@ int setAVCVideoDescriptorParameters(
    * -> b1  : constraint_set5_flag
    * -> u2  : AVC_compatible_flags
    */
-  WB_DESC(dst, param.constraintFlags);
+  WB_DESC(dst, param.constraint_flags);
 
   /* [u8 level_idc] */
   WB_DESC(dst, param.levelIdc);
@@ -410,7 +410,7 @@ static int prepareElementDescriptorsPMTParam(
   Descriptor * desc;
 
   /* Stream registration descriptors : */
-  switch (prop.codingType) {
+  switch (prop.coding_type) {
     /* Audio: DTS, DTS-HDMA, DTS-HDHR */
     case STREAM_CODING_TYPE_DTS:
     case STREAM_CODING_TYPE_HDHR:
@@ -427,7 +427,7 @@ static int prepareElementDescriptorsPMTParam(
       /* VC-1 Additional Identification */
       /* [u8 subDescriptorTag] [v8 VC1ProfileLevel] */
       addFmtIdInfo[0] = 0x01; /* Profile and Level sub-descriptor */
-      addFmtIdInfo[1] = (prop.profileIDC << 4) | (prop.levelIDC & 0xF);
+      addFmtIdInfo[1] = (prop.profile_idc << 4) | (prop.level_idc & 0xF);
       addFmtIdInfoLen = 2;
       break;
 
@@ -450,9 +450,9 @@ static int prepareElementDescriptorsPMTParam(
       /* [v8 reserved] */
       addFmtIdInfo[0] = 0xFF;
       /* [u8 streamCodingType] */
-      addFmtIdInfo[1] = prop.codingType;
+      addFmtIdInfo[1] = prop.coding_type;
       /* [u4 videoFormat] [u4 frameRate] */
-      addFmtIdInfo[2] = (prop.videoFormat << 4) | (prop.frameRate & 0xF);
+      addFmtIdInfo[2] = (prop.video_format << 4) | (prop.frame_rate & 0xF);
       /* MPEG-2/AVC/HEVC Additional Identification */
       /* [v2 reserved 0x0] [v6 reserved 0x1] */
       addFmtIdInfo[3] = 0x3F;
@@ -466,11 +466,11 @@ static int prepareElementDescriptorsPMTParam(
       /* [v8 reserved] */
       addFmtIdInfo[0] = 0xFF;
       /* [u8 streamCodingType] */
-      addFmtIdInfo[1] = prop.codingType;
+      addFmtIdInfo[1] = prop.coding_type;
       /* [u4 audioFormat] [u4 sampleRate] */
-      addFmtIdInfo[2] = (prop.audioFormat << 4) | (prop.sampleRate & 0xF);
+      addFmtIdInfo[2] = (prop.audio_format << 4) | (prop.sample_rate & 0xF);
       /* [u2 bitDepth] [v6 reserved] */
-      addFmtIdInfo[3] = (prop.bitDepth << 6) | 0x3F;
+      addFmtIdInfo[3] = (prop.bit_depth << 6) | 0x3F;
       addFmtIdInfoLen = 4;
       break;
 
@@ -478,8 +478,8 @@ static int prepareElementDescriptorsPMTParam(
       LIBBLU_ERROR_RETURN(
         "Unable to define the PMT content for a program element "
         "of type '%s' ('stream_coding_type' == 0x%02" PRIX8 ").\n",
-        streamCodingTypeStr(prop.codingType),
-        prop.codingType
+        streamCodingTypeStr(prop.coding_type),
+        prop.coding_type
       );
   }
 
@@ -511,27 +511,27 @@ static int prepareElementDescriptorsPMTParam(
   /* Additional descriptors : */
   /* Some formats requires more descriptors */
   if (
-    prop.codingType == STREAM_CODING_TYPE_AVC
-    && prop.stillPicture
+    prop.coding_type == STREAM_CODING_TYPE_AVC
+    && prop.still_picture
   ) {
     /* H.264 video with still picture */
 
     /* AVC video descriptor */
     descTag = DESC_TAG_AVC_VIDEO_DESCRIPTOR;
     descParam.avcVideoDescriptor = (AVCVideoDescriptorParameters) {
-      .profileIdc = prop.profileIDC,
-      .constraintFlags = fmtSpecProp.h264->constraintFlags,
-      .levelIdc = prop.stillPicture,
+      .profileIdc = prop.profile_idc,
+      .constraint_flags = fmtSpecProp.h264->constraint_flags,
+      .levelIdc = prop.still_picture,
       .avc24HourPictureFlag = false,
       .framePackingSetNotPresentFlag = true
     };
     descSetFun = setAVCVideoDescriptorParameters;
   }
   else if (
-    prop.codingType == STREAM_CODING_TYPE_AC3
-    || prop.codingType == STREAM_CODING_TYPE_TRUEHD
-    || prop.codingType == STREAM_CODING_TYPE_EAC3
-    || prop.codingType == STREAM_CODING_TYPE_EAC3_SEC
+    prop.coding_type == STREAM_CODING_TYPE_AC3
+    || prop.coding_type == STREAM_CODING_TYPE_TRUEHD
+    || prop.coding_type == STREAM_CODING_TYPE_EAC3
+    || prop.coding_type == STREAM_CODING_TYPE_EAC3_SEC
   ) {
     /* Dolby Digital or Dolby TrueHD audio */
 
@@ -674,7 +674,7 @@ int preparePMTParam(
     PmtProgramElement * progElem;
     LibbluStreamCodingType codingType;
 
-    codingType = esStreamsProp[i].codingType;
+    codingType = esStreamsProp[i].coding_type;
 
     progElem = getNewProgramElementPmtParameters(
       dst, codingType, esStreamsPids[i]

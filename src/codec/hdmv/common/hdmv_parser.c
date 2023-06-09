@@ -12,14 +12,12 @@ static void _initReferenceClockFromHdmvHeader(
   int32_t firstSegmentDtsValue
 )
 {
-  int64_t firstDts, reference;
-
-  firstDts = firstSegmentDtsValue - ctx->param.initialDelay;
+  int64_t first_DTS = firstSegmentDtsValue - ctx->param.initialDelay;
 
   /* Update reference timecode */
-  reference = referenceTimecodeHdmvContext(ctx);
-  if (firstDts < 0)
-    reference += 0 - firstDts;
+  int64_t reference = ctx->param.referenceTimecode;
+  if (first_DTS < 0)
+    reference += 0 - first_DTS;
 
   LIBBLU_HDMV_COM_DEBUG(
     "  Used reference start clock: %" PRId64 ".\n",
@@ -42,7 +40,7 @@ static int _parseHdmvHeader(
   LIBBLU_HDMV_PARSER_DEBUG(
     "0x%08" PRIX64 ": %s Header.\n",
     headerOffset,
-    HdmvStreamTypeStr(streamTypeHdmvContext(ctx))
+    HdmvStreamTypeStr(ctx->type)
   );
 
   /* [u16 format_identifier] */
@@ -56,12 +54,12 @@ static int _parseHdmvHeader(
     value
   );
 
-  if (!checkFormatIdentifierHdmvStreamType(value, streamTypeHdmvContext(ctx)))
+  if (!checkFormatIdentifierHdmvStreamType(value, ctx->type))
     LIBBLU_HDMV_COM_ERROR_RETURN(
       "Unexpected %s magic word, expect 0x%02X, "
       "got 0x%02X at offset 0x%08" PRIX64 ".\n",
-      HdmvStreamTypeStr(streamTypeHdmvContext(ctx)),
-      expectedFormatIdentifierHdmvStreamType(streamTypeHdmvContext(ctx)),
+      HdmvStreamTypeStr(ctx->type),
+      expectedFormatIdentifierHdmvStreamType(ctx->type),
       value,
       headerOffset
     );
@@ -123,7 +121,7 @@ static int _parseHdmvSegmentDescriptor(
   LIBBLU_HDMV_PARSER_DEBUG(
     "0x%08" PRIX64 ": %s.\n",
     param->inputFileOffset,
-    HdmvSegmentTypeStr(value)
+    HdmvSegmentTypeStr(param->type)
   );
 
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -221,15 +219,18 @@ static int _parseHdmvPaletteEntry(
     return -1;
   entry->t_value = value;
 
+  entry->updated = true;
+
 #if 0
   LIBBLU_HDMV_PAL_DEBUG(
     "   Palette_entry(%u): palette_entry_id=%03u (0x%02X), "
     "Y=%03u (0x%02X), Cr=%03u (0x%02X), Cb=%03u (0x%02X), T=%03u (0x%02X);\n",
-    i, palette_entry_id,
-    entry->y_value,
-    entry->cr_value,
-    entry->cb_value,
-    entry->t_value
+    i,
+    palette_entry_id, palette_entry_id,
+    entry->y_value  , entry->y_value,
+    entry->cr_value , entry->cr_value,
+    entry->cb_value , entry->cb_value,
+    entry->t_value  , entry->t_value
   );
 #else
   (void) i;
@@ -820,7 +821,7 @@ static int _parseHdmvPresentationComposition(
       i
     );
 
-    if (NULL == (obj = getHdmvCompositionObjectParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (obj = getHdmvCompoObjParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* Composition_objects() */
@@ -987,7 +988,7 @@ static int _parseHdmvWindowsDefinition(
       i
     );
 
-    if (NULL == (win = getHdmvWindowInfoParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (win = getHdmvWinInfoParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* Window_info() */
@@ -1321,7 +1322,7 @@ static int _decodeHdmvEffectInfo(
       i
     );
 
-    if (NULL == (obj = getHdmvCompositionObjectParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (obj = getHdmvCompoObjParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     if (_decodeHdmvCompositionObject(sequence, obj) < 0)
@@ -1374,7 +1375,7 @@ static int _decodeHdmvEffectSequence(
       i
     );
 
-    if (NULL == (win = getHdmvWindowInfoParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (win = getHdmvWinInfoParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* Window_info() */
@@ -1410,7 +1411,7 @@ static int _decodeHdmvEffectSequence(
       i
     );
 
-    if (NULL == (eff = getHdmvEffectInfoParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (eff = getHdmvEffInfoParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* Effect_info() */
@@ -1671,7 +1672,7 @@ static int _decodeHdmvButtonCommands(
   for (i = 0; i < button->number_of_navigation_commands; i++) {
     HdmvNavigationCommand * com;
 
-    if (NULL == (com = getHdmvNavigationCommandHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (com = getHdmvNaviComHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* [u32 opcode] */
@@ -1867,7 +1868,7 @@ static int _decodeHdmvButtonOverlapGroup(
       i
     );
 
-    if (NULL == (btn = getHdmvButtonParamHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (btn = getHdmvBtnParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* Button() */
@@ -2012,7 +2013,7 @@ static int _decodeHdmvPage(
       i
     );
 
-    if (NULL == (bog = getHdmvButtonOverlapGroupParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (bog = getHdmvBOGParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     if (_decodeHdmvButtonOverlapGroup(ctx, sequence, bog) < 0)
@@ -2147,7 +2148,7 @@ static int _decodeHdmvInteractiveCompositionData(
       i
     );
 
-    if (NULL == (page = getHdmvPageParametersHdmvSegmentsInventory(segInvHdmvContext(ctx))))
+    if (NULL == (page = getHdmvPageParamHdmvSegmentsInventory(ctx->segInv)))
       return -1;
 
     /* Page() */
@@ -2276,13 +2277,14 @@ int parseHdmvSegment(
   if (_parseHdmvSegmentDescriptor(ctx, &segment) < 0)
     return -1;
 
-  switch (checkHdmvSegmentType(segment.type, streamTypeHdmvContext(ctx))) {
-    case HDMV_SEGMENT_TYPE_ERROR:
-      LIBBLU_HDMV_PARSER_ERROR_RETURN(
-        "Invalid segment header at offset 0x%" PRIX64 ".\n",
-        segment.inputFileOffset
-      );
+  HdmvSegmentType segment_type;
+  if (checkHdmvSegmentType(segment.type, ctx->type, &segment_type) < 0)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid segment header at offset 0x%" PRIX64 ".\n",
+      segment.inputFileOffset
+    );
 
+  switch (segment_type) {
     case HDMV_SEGMENT_TYPE_PDS:
       /* Palette Definition Segment */
       return _parseHdmvPdsSegment(ctx, segment);

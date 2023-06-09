@@ -236,98 +236,98 @@ static int setPesPacketsDurationLibbluES(
   settings = es->settings;
   prop = &es->prop;
 
-  prop->pesNb = prop->pesNbSec = 0;
-  prop->bitRateBasedDurationAlternativeMode = false;
+  prop->nb_pes_per_sec = prop->nb_ped_sec_per_sec = 0;
+  prop->br_based_on_duration = false;
 
   frameRate = sampleRate = -1.0;
 
   if (prop->type == ES_VIDEO) {
-    if ((frameRate = frameRateCodeToDouble(prop->frameRate)) <= 0)
+    if ((frameRate = frameRateCodeToDouble(prop->frame_rate)) <= 0)
       LIBBLU_ERROR_RETURN(
         "Broken script '%" PRI_LBCS "', unknown frame-rate.\n",
         settings->scriptFilepath
       );
   }
   else if (prop->type == ES_AUDIO) {
-    if ((sampleRate = sampleRateCodeToDouble(prop->sampleRate)) <= 0)
+    if ((sampleRate = sampleRateCodeToDouble(prop->sample_rate)) <= 0)
       LIBBLU_ERROR_RETURN(
         "Broken script '%" PRI_LBCS "', unknown sample-rate.\n",
         settings->scriptFilepath
       );
   }
 
-  switch (prop->codingType) {
+  switch (prop->coding_type) {
     case STREAM_CODING_TYPE_MPEG1: /* H.261 / MPEG-1 */
     case STREAM_CODING_TYPE_H262: /* H.262 / MPEG-2 */
     case STREAM_CODING_TYPE_AVC:   /* H.264 / AVC    */
     case STREAM_CODING_TYPE_VC1:   /* VC-1           */
     case STREAM_CODING_TYPE_HEVC:  /* H.265 / HEVC   */
       assert(0 < frameRate);
-      prop->pesNb = frameRate;
+      prop->nb_pes_per_sec = frameRate;
       break;
 
     case STREAM_CODING_TYPE_LPCM:  /* LPCM */
       /* Frame duration: 1/200s */
-      prop->pesNb = LPCM_PES_FRAMES_PER_SECOND;
+      prop->nb_pes_per_sec = LPCM_PES_FRAMES_PER_SECOND;
       break;
 
     case STREAM_CODING_TYPE_AC3:   /* AC-3 */
       /* Frame duration: 1536 samples */
       assert(0 < sampleRate);
-      prop->pesNb = sampleRate / 1536;
+      prop->nb_pes_per_sec = sampleRate / 1536;
       break;
 
     case STREAM_CODING_TYPE_DTS:   /* DTS Coherent Acoustics */
       /* Frame duration: 512 samples */
       assert(0 < sampleRate);
-      prop->pesNb = sampleRate / 512;
+      prop->nb_pes_per_sec = sampleRate / 512;
       break;
 
     case STREAM_CODING_TYPE_HDHR:  /* DTS-HDHR */
     case STREAM_CODING_TYPE_HDMA:  /* DTS-HDMA */
       /* Frame duration: 512 samples (2 consecutive frames) */
       assert(0 < sampleRate);
-      prop->pesNb = sampleRate / 512;
-      prop->pesNbSec = sampleRate / 512;
+      prop->nb_pes_per_sec = sampleRate / 512;
+      prop->nb_ped_sec_per_sec = sampleRate / 512;
       break;
 
     case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD (+AC3 Core) */
       /* Frame duration: 1536 samples & 1/200s */
       assert(0 < sampleRate);
-      prop->pesNb = sampleRate / 1536;
-      prop->pesNbSec = 200;
+      prop->nb_pes_per_sec = sampleRate / 1536;
+      prop->nb_ped_sec_per_sec = 200;
       break;
 
     case STREAM_CODING_TYPE_EAC3:  /* EAC-3 (+AC3 Core) */
       /* Frame duration: 1536 samples (2 consecutive frames) */
       assert(0 < sampleRate);
-      prop->pesNb = sampleRate / 1536;
-      prop->pesNbSec = sampleRate / 1536;
+      prop->nb_pes_per_sec = sampleRate / 1536;
+      prop->nb_ped_sec_per_sec = sampleRate / 1536;
       break;
 
     case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express (Secondary track) */
       /* Frame duration: 4096 samples */
       assert(0 < sampleRate);
-      prop->pesNb = sampleRate / 4096;
-      prop->pesNbSec = sampleRate / 4096;
+      prop->nb_pes_per_sec = sampleRate / 4096;
+      prop->nb_ped_sec_per_sec = sampleRate / 4096;
       break;
 
     case STREAM_CODING_TYPE_IG: /* Interactive Graphic Stream (IGS, Menus) */
     case STREAM_CODING_TYPE_PG: /* Presentation Graphic Stream (PGS, Subs) */
-      prop->bitRateBasedDurationAlternativeMode = true;
+      prop->br_based_on_duration = true;
       break;
 
     default:
       LIBBLU_ERROR_RETURN(
         "Missing PES packets timing information specification "
         "for %s stream coding type.\n",
-        streamCodingTypeStr(prop->codingType)
+        streamCodingTypeStr(prop->coding_type)
       );
   }
 
   assert(
-    0 < prop->pesNb
-    || prop->bitRateBasedDurationAlternativeMode
+    0 < prop->nb_pes_per_sec
+    || prop->br_based_on_duration
   );
 
   return 0;
@@ -357,7 +357,7 @@ int prepareLibbluES(
   if (!utilities.initialized) {
     /* No script generation done, use script content */
     /* Init format utilities according to script stream coding type. */
-    if (initLibbluESFormatUtilities(&utilities, es->prop.codingType) < 0)
+    if (initLibbluESFormatUtilities(&utilities, es->prop.coding_type) < 0)
       return -1;
   }
 
@@ -397,7 +397,7 @@ static int addPesPacketToBdavStdLibbluES(
   assert(NULL != es->lnkdBufList);
 
   if (
-    es->prop.codingType == STREAM_CODING_TYPE_AVC
+    es->prop.coding_type == STREAM_CODING_TYPE_AVC
     && prop.extDataPresent
   ) {
     removalTimestamp = prop.extData.h264.cpbRemovalTime + refPcr;
@@ -482,7 +482,7 @@ int buildAndQueueNextPesPacketPropertiesLibbluES(
 
       esmsNode = parseFrameNodeESPesCuttingEsms(
         es->scriptFile,
-        es->prop.codingType,
+        es->prop.coding_type,
         &es->scriptCommandParsing
       );
       if (NULL == esmsNode)
@@ -510,7 +510,7 @@ int buildAndQueueNextPesPacketPropertiesLibbluES(
     refPcr,
     es->refPts,
     preparePesHeader,
-    es->prop.codingType
+    es->prop.coding_type
   );
   if (NULL == node)
     return -1;

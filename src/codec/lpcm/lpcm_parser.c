@@ -391,35 +391,35 @@ int analyzeLpcm(
       WAVE_RIFF, nextUint32(waveInput)
     );
 
-  lpcmInfos->prop.codingType = STREAM_CODING_TYPE_LPCM; /* LPCM */
+  lpcmInfos->prop.coding_type = STREAM_CODING_TYPE_LPCM; /* LPCM */
 
   switch (waveChunks.fmt.nbChannels) {
     case 1:
-      lpcmInfos->prop.audioFormat = 0x01;
+      lpcmInfos->prop.audio_format = 0x01;
       break;
 
     case 2:
-      lpcmInfos->prop.audioFormat = 0x03;
+      lpcmInfos->prop.audio_format = 0x03;
       break;
 
     default:
-      lpcmInfos->prop.audioFormat = 0x06;
+      lpcmInfos->prop.audio_format = 0x06;
   }
 
   switch (waveChunks.fmt.sampleRate) {
     case 48000:
-      lpcmInfos->prop.sampleRate = SAMPLE_RATE_CODE_48000;
+      lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000;
       break;
 
     case 96000:
-      lpcmInfos->prop.sampleRate = SAMPLE_RATE_CODE_96000;
+      lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000;
       break;
 
     default:
-      lpcmInfos->prop.sampleRate = SAMPLE_RATE_CODE_192000;
+      lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
   }
 
-  lpcmInfos->prop.bitDepth = ((waveChunks.fmt.bitsPerSample - 12) / 4);
+  lpcmInfos->prop.bit_depth = ((waveChunks.fmt.bitsPerSample - 12) >> 2);
 
   /* Prepare Script Parameters : */
 
@@ -429,11 +429,11 @@ int analyzeLpcm(
   lpcmPesHeaderData[1] = (waveChunks.pesPacketLength     ) & 0xFF;
   /* [u4 AudioFormat] [u4 SampleRate] */
   lpcmPesHeaderData[2] =
-   (((lpcmInfos->prop.audioFormat)  & 0xF) << 4) +
-    ((lpcmInfos->prop.sampleRate)   & 0xF);
+   (((lpcmInfos->prop.audio_format)  & 0xF) << 4) +
+    ((lpcmInfos->prop.sample_rate)   & 0xF);
   /* [u2 BitDepth] [u6 RESERVED] */
   lpcmPesHeaderData[3] =
-    ((lpcmInfos->prop.bitDepth      & 0x3) << 6);
+    ((lpcmInfos->prop.bit_depth      & 0x3) << 6);
 
   if (
     appendDataBlockEsms(

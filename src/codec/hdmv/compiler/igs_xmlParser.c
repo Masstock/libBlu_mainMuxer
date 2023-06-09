@@ -995,7 +995,7 @@ int parsePageBogIgsXmlFile(
     HdmvButtonParam * btn;
     int nbNavigationCommands;
 
-    btn = getHdmvButtonParamHdmvSegmentsInventory(ctx->inv);
+    btn = getHdmvBtnParamHdmvSegmentsInventory(ctx->inv);
     if (NULL == btn)
       return -1;
 
@@ -1523,7 +1523,7 @@ int parsePageBogIgsXmlFile(
       for (j = 0; j < nbNavigationCommands; j++) {
         HdmvNavigationCommand * com;
 
-        if (NULL == (com = getHdmvNavigationCommandHdmvSegmentsInventory(ctx->inv)))
+        if (NULL == (com = getHdmvNaviComHdmvSegmentsInventory(ctx->inv)))
           return -1;
 
         if (NULL != last)
@@ -1780,7 +1780,7 @@ int parsePageIgsXmlFile(
       i
     );
 
-    if (NULL == (bog = getHdmvButtonOverlapGroupParametersHdmvSegmentsInventory(ctx->inv)))
+    if (NULL == (bog = getHdmvBOGParamHdmvSegmentsInventory(ctx->inv)))
       goto free_return;
 
     /* page/bog[i] */
@@ -1860,7 +1860,7 @@ int parsePagesIgsXmlFile(
       i
     );
 
-    if (NULL == (page = getHdmvPageParametersHdmvSegmentsInventory(ctx->inv)))
+    if (NULL == (page = getHdmvPageParamHdmvSegmentsInventory(ctx->inv)))
       return -1;
 
     if (parsePageIgsXmlFile(ctx, page, i, &page_id) < 0)

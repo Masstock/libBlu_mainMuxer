@@ -22,7 +22,7 @@ int initLibbluESFmtSpecProp(
     if (0 == (propSize = sizeofLibbluESFmtSpecPropType(type)))
       LIBBLU_ERROR_RETURN("Unknown ES Format properties type %u.\n", type);
 
-    if (NULL == (prop.sharedPtr = malloc(propSize)))
+    if (NULL == (prop.shared_ptr = malloc(propSize)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
   }
 
@@ -66,7 +66,7 @@ HdmvVideoFormat getHdmvVideoFormat(
     }
   }
 
-  return HDMV_VIDEO_FORMAT_RES;
+  return 0;
 }
 
 HdmvFrameRateCode getHdmvFrameRateCode(

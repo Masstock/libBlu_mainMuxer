@@ -59,19 +59,18 @@ int parseESPropertiesHeaderEsms(
   READ_VALUE(script, 1, &esType, return -1);
 
   /* [u8 streamCodingType] */
-  READ_VALUE(script, 1, &dst->codingType, return -1);
-
-  if (!isSupportedStreamCodingType(dst->codingType))
+  READ_VALUE(script, 1, &dst->coding_type, return -1);
+  if (!isSupportedStreamCodingType(dst->coding_type))
     LIBBLU_ERROR_RETURN(
       "Unsupported stream coding type 0x%02" PRIX8 ".\n",
-      dst->codingType
+      dst->coding_type
     );
 
   /* Check accordance between streamCodingType and type for security : */
-  if ((esTypeExpected = determineLibbluESType(dst->codingType)) < 0)
+  if ((esTypeExpected = determineLibbluESType(dst->coding_type)) < 0)
     LIBBLU_ERROR_RETURN(
       "Unable to identify stream coding type 0x%02" PRIX8 ".\n",
-      dst->codingType
+      dst->coding_type
     );
   if (esType != esTypeExpected)
     LIBBLU_ERROR_RETURN(
@@ -218,7 +217,7 @@ static int parseH264VideoESFmtPropertiesEsms(
   LibbluESH264SpecProperties * prop = dst->h264;
 
   /* [v8 constraint_flags] */
-  READ_VALUE(script, 1, &prop->constraintFlags, return -1);
+  READ_VALUE(script, 1, &prop->constraint_flags, return -1);
 
   /* [u32 cpbSize] */
   READ_VALUE(script, 4, &prop->cpbSize, return -1);
@@ -241,23 +240,23 @@ static int parseVideoESFmtPropertiesEsms(
   if (checkDirectoryMagic(script, ES_CODEC_SPEC_PARAM_HEADER_VIDEO, 8) < 0)
     return -1;
 
-  /* [u4 videoFormat] */
-  READ_BIN_VALUE(script, 4, &dst->videoFormat, return -1);
+  /* [u4 video_format] */
+  READ_BIN_VALUE(script, 4, &dst->video_format, return -1);
 
-  /* [u4 frameRate] */
-  READ_BIN_VALUE(script, 4, &dst->frameRate, return -1);
+  /* [u4 frame_rate] */
+  READ_BIN_VALUE(script, 4, &dst->frame_rate, return -1);
 
-  /* [u8 profileIDC] */
-  READ_VALUE(script, 1, &dst->profileIDC, return -1);
+  /* [u8 profile_IDC] */
+  READ_VALUE(script, 1, &dst->profile_idc, return -1);
 
-  /* [u8 levelIDC] */
-  READ_VALUE(script, 1, &dst->levelIDC, return -1);
+  /* [u8 level_IDC] */
+  READ_VALUE(script, 1, &dst->level_idc, return -1);
 
-  /* [b1 stillPicture] [v7 reserved] */
+  /* [b1 still_picture] [v7 reserved] */
   READ_VALUE(script, 1, &flags, return -1);
-  dst->stillPicture = (flags & 0x80);
+  dst->still_picture = (flags & 0x80);
 
-  if (dst->codingType == STREAM_CODING_TYPE_AVC) {
+  if (dst->coding_type == STREAM_CODING_TYPE_AVC) {
     if (initLibbluESFmtSpecProp(fmtSpecDst, FMT_SPEC_INFOS_H264) < 0)
       return -1;
 
@@ -310,19 +309,19 @@ static int parseAudioESFmtPropertiesEsms(
   if (checkDirectoryMagic(script, ES_CODEC_SPEC_PARAM_HEADER_AUDIO, 8) < 0)
     return -1;
 
-  /* [u4 audioFormat] */
-  READ_BIN_VALUE(script, 4, &dst->audioFormat, return -1);
+  /* [u4 audio_format] */
+  READ_BIN_VALUE(script, 4, &dst->audio_format, return -1);
 
-  /* [u4 sampleRate] */
-  READ_BIN_VALUE(script, 4, &dst->sampleRate, return -1);
+  /* [u4 sample_rate] */
+  READ_BIN_VALUE(script, 4, &dst->sample_rate, return -1);
 
-  /* [u8 bitDepth] */
-  READ_VALUE(script, 1, &dst->bitDepth, return -1);
+  /* [u8 bit_depth] */
+  READ_VALUE(script, 1, &dst->bit_depth, return -1);
 
   /* [v8 reserved] */
   SKIP_VALUE(script, 1);
 
-  if (isAc3AudioStreamCodingType(dst->codingType)) {
+  if (isAc3AudioStreamCodingType(dst->coding_type)) {
     if (initLibbluESFmtSpecProp(fmtSpecDst, FMT_SPEC_INFOS_AC3) < 0)
       return -1;
 
