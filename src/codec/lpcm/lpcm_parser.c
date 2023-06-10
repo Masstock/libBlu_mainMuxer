@@ -344,6 +344,133 @@ static int decodeWaveHeaders(
   return 0;
 }
 
+static int _getChannelAssignment(
+  const WaveFmtChunk * fmt,
+  uint8_t * result
+)
+{
+  uint8_t assignment = 0x00;
+
+  /* Assignment according to the number of channels */
+  if (2 == fmt->nbChannels)
+    assignment = 0x3; // 2ch, Stereo
+  else if (4 == fmt->nbChannels)
+    assignment = 0x4; // 4ch, L,C,R (3/0)
+  else if (6 == fmt->nbChannels)
+    assignment = 0x9; // 6ch, L,C,R,Ls,Rs,LFE (3/2 + LFE)
+  else if (8 == fmt->nbChannels)
+    assignment = 0xB; // 8ch, L,C,R,Ls,Cs_1,Cs_2,Rs,LFE (3/4 + LFE)
+
+  /* Assignment according to format extensions */
+  // TODO
+
+  if (0x00 != assignment) {
+    *result = assignment;
+    return 0;
+  }
+
+  LIBBLU_LPCM_ERROR_RETURN(
+    "Unable to determine channel assignment (nbChannels = %u).\n",
+    fmt->nbChannels
+  );
+}
+
+static int _getSamplingFrequency(
+  const WaveFmtChunk * fmt,
+  uint8_t * result
+)
+{
+  uint8_t sampling_frequency = 0x00;
+
+  if (48000 == fmt->sampleRate)
+    sampling_frequency = 0x1; // 48kHz
+  if (96000 == fmt->sampleRate)
+    sampling_frequency = 0x2; // 96kHz
+  if (192000 == fmt->sampleRate)
+    sampling_frequency = 0x3; // 192kHz
+
+  if (0x00 != sampling_frequency) {
+    *result = sampling_frequency;
+    return 0;
+  }
+
+  LIBBLU_LPCM_ERROR_RETURN(
+    "Unable to determine sampling frequency (sampleRate = %u).\n",
+    fmt->sampleRate
+  );
+}
+
+static int _getBitsPerSample(
+  const WaveFmtChunk * fmt,
+  uint8_t * result
+)
+{
+  uint8_t bits_per_sample;
+
+  if (16 == fmt->bitsPerSample)
+    bits_per_sample = 0x1; // 16 bits/sample
+  if (20 == fmt->bitsPerSample)
+    bits_per_sample = 0x2; // 20 bits/sample
+  if (24 == fmt->bitsPerSample)
+    bits_per_sample = 0x3; // 24 bits/sample
+
+  if (0x00 != bits_per_sample) {
+    *result = bits_per_sample;
+    return 0;
+  }
+
+  LIBBLU_LPCM_ERROR_RETURN(
+    "Unable to determine bit depth (bitsPerSample = %u).\n",
+    fmt->bitsPerSample
+  );
+}
+
+static int _setLPCMAudioDataHeader(
+  uint8_t header[static 4],
+  const WaveChunksParameters * chunks
+)
+{
+  const WaveFmtChunk * fmt = &chunks->fmt;
+
+  uint16_t audio_data_payload_size = (
+    fmt->bytesPerBlock * fmt->sampleRate / LPCM_PES_FRAMES_PER_SECOND
+  );
+
+  uint8_t channel_assignment;
+  if (_getChannelAssignment(fmt, &channel_assignment) < 0)
+    return -1;
+
+  uint8_t sampling_frequency;
+  if (_getSamplingFrequency(fmt, &sampling_frequency) < 0)
+    return -1;
+
+  uint8_t bits_per_sample;
+  if (_getBitsPerSample(fmt, &bits_per_sample) < 0)
+    return -1;
+
+  header[0] = audio_data_payload_size >> 8;
+  header[1] = audio_data_payload_size & 0xFF;
+  header[2] = (channel_assignment << 4) | sampling_frequency;
+  header[3] = bits_per_sample << 6;
+  return 0;
+}
+
+static int _setPesHeader(
+  EsmsFileHeaderPtr script,
+  const WaveChunksParameters * chunks,
+  unsigned * header_block_idx
+)
+{
+  uint8_t header[4]; // LPCM_audio_data_header
+
+  if (_setLPCMAudioDataHeader(header, chunks) < 0)
+    return -1;
+
+  if (appendDataBlockEsms(script, header, 4, header_block_idx) < 0)
+    return -1;
+  return 0;
+}
+
 int analyzeLpcm(
   LibbluESParsingSettings * settings
 )
@@ -356,11 +483,8 @@ int analyzeLpcm(
 
   WaveChunksParameters waveChunks = {0};
 
-  uint64_t startOff, remainingLength;
   uint64_t lpcmPts, frameDuration;
   long duration;
-
-  uint8_t lpcmPesHeaderData[LPCM_PES_HEADER_LENGTH];
 
   if (NULL == (lpcmInfos = createEsmsFileHandler(ES_AUDIO, settings->options, FMT_SPEC_INFOS_NONE)))
     return -1;
@@ -392,65 +516,57 @@ int analyzeLpcm(
     );
 
   lpcmInfos->prop.coding_type = STREAM_CODING_TYPE_LPCM; /* LPCM */
+  if (1 == waveChunks.fmt.nbChannels)
+    lpcmInfos->prop.audio_format = AUDIO_FORMAT_MONO;
+  else if (2 == waveChunks.fmt.nbChannels)
+    lpcmInfos->prop.audio_format = AUDIO_FORMAT_STEREO;
+  else
+    lpcmInfos->prop.audio_format = AUDIO_FORMAT_MULTI_CHANNEL;
 
-  switch (waveChunks.fmt.nbChannels) {
-    case 1:
-      lpcmInfos->prop.audio_format = 0x01;
-      break;
+  if (48000 == waveChunks.fmt.sampleRate)
+    lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000;
+  else if (96000 == waveChunks.fmt.sampleRate)
+    lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000;
+  else if (192000 == waveChunks.fmt.sampleRate)
+    lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
+  else
+    LIBBLU_LPCM_ERROR_RETURN(
+      "Invalid audio sampling rate value %u, "
+      "shall be one of 48000, 96000 or 1920000.\n",
+      waveChunks.fmt.sampleRate
+    );
 
-    case 2:
-      lpcmInfos->prop.audio_format = 0x03;
-      break;
-
-    default:
-      lpcmInfos->prop.audio_format = 0x06;
-  }
-
-  switch (waveChunks.fmt.sampleRate) {
-    case 48000:
-      lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000;
-      break;
-
-    case 96000:
-      lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000;
-      break;
-
-    default:
-      lpcmInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
-  }
+  if (16 == waveChunks.fmt.bitsPerSample)
+    lpcmInfos->prop.bit_depth = BIT_DEPTH_16_BITS;
+  else if (20 == waveChunks.fmt.bitsPerSample)
+    lpcmInfos->prop.bit_depth = BIT_DEPTH_20_BITS;
+  else if (24 == waveChunks.fmt.bitsPerSample)
+    lpcmInfos->prop.bit_depth = BIT_DEPTH_24_BITS;
+  else
+    LIBBLU_LPCM_ERROR_RETURN(
+      "Invalid audio bit depth value %u, "
+      "shall be one of 16, 20 or 24.\n",
+      waveChunks.fmt.bitsPerSample
+    );
 
   lpcmInfos->prop.bit_depth = ((waveChunks.fmt.bitsPerSample - 12) >> 2);
 
   /* Prepare Script Parameters : */
 
   /* Build PES Header : */
-  /* [u16 Audio_data_payload_size] */
-  lpcmPesHeaderData[0] = (waveChunks.pesPacketLength >> 8) & 0xFF;
-  lpcmPesHeaderData[1] = (waveChunks.pesPacketLength     ) & 0xFF;
-  /* [u4 AudioFormat] [u4 SampleRate] */
-  lpcmPesHeaderData[2] =
-   (((lpcmInfos->prop.audio_format)  & 0xF) << 4) +
-    ((lpcmInfos->prop.sample_rate)   & 0xF);
-  /* [u2 BitDepth] [u6 RESERVED] */
-  lpcmPesHeaderData[3] =
-    ((lpcmInfos->prop.bit_depth      & 0x3) << 6);
-
-  if (
-    appendDataBlockEsms(
-      lpcmInfos, lpcmPesHeaderData, LPCM_PES_HEADER_LENGTH, &lpcmHeaderBckIdx
-    ) < 0
-  )
+  if (_setPesHeader(lpcmInfos, &waveChunks, &lpcmHeaderBckIdx) < 0)
     return -1;
 
   lpcmPts = 0;
   frameDuration = MAIN_CLOCK_27MHZ / LPCM_PES_FRAMES_PER_SECOND;
 
-  remainingLength = waveChunks.dataSize;
-  startOff = tellPos(waveInput);
+  size_t remainingLength = waveChunks.dataSize;
   /* Define common PES frames cutting parameters : */
 
   while (0 < remainingLength) {
     /* Writing PES frames cutting commands : */
+    printFileParsingProgressionBar(waveInput);
+    int64_t start_off = tellPos(waveInput);
 
     if (
       initEsmsAudioPesFrame(
@@ -463,7 +579,7 @@ int analyzeLpcm(
 
       || appendAddPesPayloadCommand(
         lpcmInfos,
-        lpcmSourceFileIdx, LPCM_PES_HEADER_LENGTH, startOff,
+        lpcmSourceFileIdx, LPCM_PES_HEADER_LENGTH, start_off,
         MIN(waveChunks.pesPacketLength, remainingLength)
       ) < 0
 
@@ -497,11 +613,10 @@ int analyzeLpcm(
 
     lpcmPts += frameDuration;
 
-    /* if (skipBytes(waveInput, MIN(waveChunks.pesPacketLength, remainingLength)) < 0) */
-      /* return -1; */
-
-    remainingLength -= MIN(remainingLength, waveChunks.pesPacketLength);
-    startOff += waveChunks.pesPacketLength;
+    size_t frame_size = MIN(remainingLength, waveChunks.pesPacketLength);
+    if (skipBytes(waveInput, frame_size) < 0)
+      return -1;
+    remainingLength -= frame_size;
   }
 
   closeBitstreamReader(waveInput);

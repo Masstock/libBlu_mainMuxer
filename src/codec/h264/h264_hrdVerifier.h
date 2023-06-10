@@ -21,6 +21,7 @@
 
 #include "h264_error.h"
 #include "h264_data.h"
+#include "h264_util.h"
 
 #define HRD_VERIFIER_VERBOSE_LEVEL 1
 
@@ -30,8 +31,6 @@
 #define H264_HRD_VERIFIER_PREFIX H264_HRD_VERIFIER_NAME lbc_str(": ")
 #define H264_CPB_HRD_MSG_PREFIX  H264_CPB_HRD_MSG_NAME  lbc_str(": ")
 #define H264_DPB_HRD_MSG_PREFIX  H264_DPB_HRD_MSG_NAME  lbc_str(": ")
-
-#define H264_90KHZ_CLOCK  SUB_CLOCK_90KHZ
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
   H264CurrentProgressParam currentState,
@@ -67,7 +66,8 @@ typedef enum {
 } H264DpbHrdRefUsage;
 
 typedef struct {
-  int64_t frameDisplayNum;
+  int64_t frame_display_num;
+
   unsigned frame_num;
   bool field_pic_flag;
   bool bottom_field_flag;
@@ -76,60 +76,45 @@ typedef struct {
   uint64_t dpb_output_delay;
   H264DpbHrdRefUsage usage;
   H264MemMngmntCtrlOpBlk MemMngmntCtrlOp[H264_MAX_SUPPORTED_MEM_MGMNT_CTRL_OPS];
-  unsigned nbMemMngmntCtrlOp; /* 0: No op. */
+  unsigned nb_MemMngmntCtrlOp; /* 0: No op. */
 
   /* Computed values: */
-  unsigned longTermFrameIdx;
+  unsigned LongTermFrameIdx;
 } H264DpbHrdPicInfos; /* Used when decoded picture enters DPB. */
 
 typedef struct {
-  unsigned AUIdx; /* For debug output. */
+  unsigned AU_idx; /* For debug output. */
 
   int64_t size; /* In bits. */
 
-  uint64_t removalTime; /* t_r in c ticks. */
+  uint64_t removal_time; /* t_r in c ticks. */
 
-  H264DpbHrdPicInfos picInfos;
+  H264DpbHrdPicInfos infos;
 } H264CpbHrdAU;
 
 #define H264_MAX_AU_IN_CPB  1024 /* pow(2) ! */
 #define H264_AU_CPB_MOD_MASK  (H264_MAX_AU_IN_CPB - 1)
 
 typedef struct {
-  unsigned AUIdx; /* For debug output. */
+  unsigned AU_idx; /* For debug output. */
+  int64_t frame_display_num; /* Derivated from picOrderCnt */
 
-  int64_t frameDisplayNum; /* Derivated from picOrderCnt */
   unsigned frame_num; /* SliceHeader() frame_num */
   bool field_pic_flag;
   bool bottom_field_flag;
 
-  uint64_t outputTime; /* t_o,dpb in c ticks. */
+  uint64_t output_time; /* t_o,dpb in c ticks. */
   H264DpbHrdRefUsage usage;
 
-  unsigned longTermFrameIdx;
+  unsigned LongTermFrameIdx;
 } H264DpbHrdPic;
 
 typedef struct {
-  FILE * cpbFd;
-  FILE * dpbFd;
+  FILE * cpb_fd;
+  FILE * dpb_fd;
 } H264HrdVerifierDebug;
 
-#if 0
-typedef struct {
-  bool abortOnError;
-} H264HrdVerifierOptions;
-
-static inline void defaultH264HrdVerifierOptions(
-  H264HrdVerifierOptions * dst
-)
-{
-  *dst = (H264HrdVerifierOptions) {
-    .abortOnError = false
-  };
-}
-#endif
-
-#define H264_MAX_DPB_SIZE  32 /* pow(2) ! */
+#define H264_MAX_DPB_SIZE  (1u << 5) /* pow(2) ! */
 #define H264_DPB_MOD_MASK  (H264_MAX_DPB_SIZE - 1)
 
 typedef struct {
@@ -140,22 +125,22 @@ typedef struct {
 
   double bitrate; /* In bits per c tick. */
   bool cbr; /* true: CRB stream, false: VBR stream. */
-  int64_t cpbSize; /* In bits. */
-  unsigned dpbSize; /* In frames. */
+  int64_t cpb_size; /* In bits. */
+  unsigned dpb_size; /* In frames. */
 
-  uint64_t clockTime; /* Current time on t_c Hz clock */
+  uint64_t clock_time; /* Current time on t_c Hz clock */
 
-  int64_t cpbBitsOccupancy; /* Current CPB state in bits. */
+  int64_t cpb_occupancy; /* Current CPB state in bits. */
 
   /* Access Units currently in CPB: */
-  H264CpbHrdAU AUInCpb[H264_MAX_AU_IN_CPB]; /* Circular buffer list (FIFO). */
-  H264CpbHrdAU * AUInCpbHeap; /* Oldest AU added. */
-  unsigned nbAUInCpb; /* Nb of AU currently in CPB. */
+  H264CpbHrdAU cpb_content[H264_MAX_AU_IN_CPB]; /* Circular buffer list (FIFO). */
+  H264CpbHrdAU * cpb_content_heap; /* Oldest AU added. */
+  unsigned nb_au_cpb_content; /* Nb of AU currently in CPB. */
 
   /* Frames currently in DPB: */
-  H264DpbHrdPic picInDpb[H264_MAX_DPB_SIZE]; /* Circular buffer list (FIFO). */
-  H264DpbHrdPic * picInDpbHeap; /* Oldest decoded picture added. */
-  unsigned nbPicInDpb; /* Nb of pictures currently in DPB. */
+  H264DpbHrdPic dpb_content[H264_MAX_DPB_SIZE]; /* Circular buffer list (FIFO). */
+  H264DpbHrdPic * dpb_content_heap; /* Oldest decoded picture added. */
+  unsigned nb_au_dpb_content; /* Nb of pictures currently in DPB. */
 
   unsigned numShortTerm;
   unsigned numLongTerm;
@@ -170,7 +155,7 @@ typedef struct {
   uint64_t outputTimeAU; /* Current AU DPB removal time in #MAIN_CLOCK_27MHZ ticks */
   int64_t pesNbAlreadyProcessedBytes;
 
-  int maxLongTermFrameIdx;
+  int MaxLongTermFrameIdx;  /**< If -1, means "no long-term frame indices".  */
 
   struct {
     unsigned frame_num;
@@ -178,7 +163,7 @@ typedef struct {
     unsigned PicSizeInMbs;
     uint8_t level_idc;
 
-    uint64_t removalTime;
+    uint64_t removal_time;
 
     uint64_t initial_cpb_removal_delay;
     uint64_t initial_cpb_removal_delay_offset;
@@ -227,6 +212,7 @@ void echoDebugH264HrdVerifierContext(
     ctx, LIBBLU_DEBUG_H264_HRD_DPB, lbc_str(format), ##__VA_ARGS__            \
   )
 
+#if 0
 int processAUH264HrdContext(
   H264HrdVerifierContextPtr ctx,
   H264CurrentProgressParam * curState,
@@ -238,5 +224,12 @@ int processAUH264HrdContext(
   const bool isNewBufferingPeriod,
   const int64_t accessUnitSize
 );
+#else
+int processAUH264HrdContext(
+  H264HrdVerifierContextPtr ctx,
+  H264ParametersHandlerPtr handle,
+  const int64_t accessUnitSize
+);
+#endif
 
 #endif

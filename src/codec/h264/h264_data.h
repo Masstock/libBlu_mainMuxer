@@ -21,6 +21,10 @@
 
 #define H264_MAX_CHROMA_CHANNELS_NB  2
 
+/** \~english
+ * \brief 90 kHz clock ticks per second.
+ */
+#define H264_90KHZ_CLOCK  SUB_CLOCK_90KHZ
 
 /** \~english
  * \brief Maximum supported number of Picture Parameters Sets.

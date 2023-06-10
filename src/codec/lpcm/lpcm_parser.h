@@ -149,8 +149,8 @@ typedef struct {
 } WaveFmtChunk;
 
 typedef struct {
-  size_t fileSize;
-  size_t dataSize;
+  uint32_t fileSize;
+  uint32_t dataSize;
   uint32_t pesPacketLength;
 
   WaveFmtChunk fmt;

@@ -328,6 +328,7 @@ int updateHdmvPdsSegmentParameters(
   for (i = 0; i < src->number_of_palette_entries; i++) {
     if (src->palette_entries[i].updated)
       dst->palette_entries[i] = src->palette_entries[i];
+    dst->palette_entries[i].updated = false;
   }
   dst->palette_descriptor = src->palette_descriptor;
 

@@ -1186,14 +1186,13 @@ static int64_t _computeAndSetODSDecodeDuration(
   HdmvSequencePtr ods = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
   for (; NULL != ods; ods = ods->nextSequenceDS) {
     if (object_id == ods->data.od.object_descriptor.object_id)
-      break;
+      break; // Found!
   }
 
   if (NULL == ods)
     return 0; // !EXISTS(object_id, DS_n)
 
   int32_t decode_duration = _computeODDecodeDuration(ods->data.od, HDMV_STREAM_TYPE_PGS);
-
   ods->decodeDuration = decode_duration;
   ods->transferDuration = 0;
 
@@ -1995,10 +1994,14 @@ static int _updateSequence(
       );
   }
 
-  dst->nextSequenceDS = NULL;
-  dst->displaySetIdx  = src->displaySetIdx;
-  dst->segments       = src->segments;
-  dst->lastSegment    = src->lastSegment;
+  dst->nextSequenceDS   = NULL;
+  dst->displaySetIdx    = src->displaySetIdx;
+  dst->segments         = src->segments;
+  dst->lastSegment      = src->lastSegment;
+  dst->pts              = 0;
+  dst->dts              = 0;
+  dst->decodeDuration   = 0;
+  dst->transferDuration = 0;
 
   return 0;
 }

@@ -1,5 +1,5 @@
 MUXOPT
-A_LPCM, "00000.track_4352.wav"
+A_LPCM, "00000.track_4352.wav" # --force-esms
 M_HDMV/PGS, "00000.track_4608.sup" --force-esms --hdmv-force-retiming
 M_HDMV/PGS, "00000.track_4609.sup" --force-esms --hdmv-force-retiming
 M_HDMV/PGS, "00000.track_4610.sup" --force-esms --hdmv-force-retiming

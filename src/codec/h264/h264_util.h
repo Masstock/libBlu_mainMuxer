@@ -10,10 +10,10 @@
 #ifndef __LIBBLU_MUXER__CODECS__H264__UTIL_H__
 #define __LIBBLU_MUXER__CODECS__H264__UTIL_H__
 
-#include "../../util.h"
 #include "../../elementaryStreamOptions.h"
 #include "../../esms/scriptCreation.h"
-#include "h264_hrdVerifier.h"
+#include "../../util.h"
+#include "../common/esParsingSettings.h"
 #include "h264_error.h"
 #include "h264_data.h"
 

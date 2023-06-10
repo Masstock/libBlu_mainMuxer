@@ -970,15 +970,20 @@ static int _processHrdVerifierAccessUnit(
     - hrdVerifierCtx->pesNbAlreadyProcessedBytes
   ;
 
+  // return processAUH264HrdContext(
+  //   hrdVerifierCtx,
+  //   &handle->curProgParam,
+  //   &handle->sequenceParametersSet.data,
+  //   &handle->slice.header,
+  //   &handle->sei.picTiming,
+  //   &handle->sei.bufferingPeriod,
+  //   &handle->constraints,
+  //   handle->sei.bufferingPeriodValid,
+  //   frameSize
+  // );
   return processAUH264HrdContext(
     hrdVerifierCtx,
-    &handle->curProgParam,
-    &handle->sequenceParametersSet.data,
-    &handle->slice.header,
-    &handle->sei.picTiming,
-    &handle->sei.bufferingPeriod,
-    &handle->constraints,
-    handle->sei.bufferingPeriodValid,
+    handle,
     frameSize
   );
 }
