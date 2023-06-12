@@ -566,9 +566,7 @@ static inline int skipBytes(
   size_t size
 )
 {
-  uint8_t vlArray[size];
-
-  return readBytes(bs, vlArray, size);
+  return readBytes(bs, NULL, size);
 }
 
 static inline int paddingByte(
@@ -583,20 +581,20 @@ static inline int paddingByte(
 }
 
 static inline int paddingBoundary(
-  BitstreamReaderPtr bitStream,
-  unsigned size
+  BitstreamReaderPtr br,
+  unsigned size_in_bytes
 )
 {
-  int64_t curOffset;
-  size_t paddingSize;
+  int64_t offset, alignment;
+  int64_t size = size_in_bytes;
 
-  if ((curOffset = tellBinaryPos(bitStream)) < 0)
+  if ((offset = tellPos(br)) < 0)
     LIBBLU_ERROR_RETURN("Unexpected negative file offset.\n");
-  paddingSize = size - (curOffset % size);
+  alignment = size - (offset % size);
 
-  if (paddingSize == size)
+  if (alignment == size)
     return 0; /* Already aligned */
-  return skipBits(bitStream, paddingSize);
+  return skipBytes(br, alignment);
 }
 
 int writeByte(

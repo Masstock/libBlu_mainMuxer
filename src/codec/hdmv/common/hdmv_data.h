@@ -4,19 +4,7 @@
  * \author Massimo "Masstock" EYNARD
  * \version 0.5
  *
- * \brief HDMV bitstreams data structures.
- *
- * \xrefitem references "References" "References list"
- *  [1] Patent US 8,849,102 B2\n // IGS semantics
- *  [2] Patent US 8,638,861 B2\n // PGS semantics
- *  [3] Patent US 7,634,739 B2\n // IGS timings
- *  [4] Patent US 7,680,394 B2\n // PGS timings
- */
-
-/** \~english
- * \dir hdmv
- *
- * \brief HDMV menus and subtitles (IGS, PGS) bitstreams handling modules.
+ * \brief HDMV IG/PG bitstreams data structures.
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__DATA_H__

@@ -595,39 +595,24 @@ int readBytes(
   size_t size
 )
 {
-#if 0
-  size_t i;
-
-  for (i = 0; i < size; i++) {
-    if (readByte(bs, data++) < 0)
-      return -1;
-  }
-#else
-  size_t off = 0;
 
   while (0 < size) {
-    size_t availableSize = bs->byteArraySize - bs->byteArrayOff;
-
-    if (availableSize < size) {
-      memcpy(data + off, bs->byteArray + bs->byteArrayOff, availableSize);
-
-      off += availableSize;
-      bs->byteArrayOff += availableSize;
-      size -= availableSize;
-
+    if (bs->byteArraySize <= bs->byteArrayOff) {
       if (_fillBitstreamReader(bs) < 0)
         return -1;
     }
-    else {
-      memcpy(data + off, bs->byteArray + bs->byteArrayOff, size);
-      bs->byteArrayOff += size;
-      break;
-    }
-  }
 
-  /* Applying CRC calculation if in use : */
-  applyCrcContext(&bs->crcCtx, data, size);
-#endif
+    size_t read_size = MIN(bs->byteArraySize - bs->byteArrayOff, size);
+
+    if (NULL != data) {
+      memcpy(data, bs->byteArray + bs->byteArrayOff, read_size);
+      data += read_size;
+    }
+
+    applyCrcContext(&bs->crcCtx, bs->byteArray + bs->byteArrayOff, read_size);
+    bs->byteArrayOff += read_size;
+    size -= read_size;
+  }
 
   return 0;
 }

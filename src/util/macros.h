@@ -445,6 +445,20 @@
     | ((uint64_t) UINT8A_TO_UINT32((array)+4))                                \
   )
 
+
+#define LB_DECL_GUID(label)  uint8_t label[16]
+
+#define LB_PRIGUID                                                            \
+  "02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X"
+
+#define LB_PRIGUID_EXTENDER(field)                                            \
+  field[ 0], field[ 1], field[ 2], field[ 3],                                 \
+  field[ 4], field[ 5], field[ 6], field[ 7],                                 \
+  field[ 8], field[ 9], field[10], field[11],                                 \
+  field[12], field[13], field[14], field[15]
+
+#define lb_guid_equal(l, r)  lb_data_equal(l, r, 16)
+
 /* Multiplexer Macros :                                                      */
 #define READ_BUFFER_LEN                                                    8192
 #define WRITE_BUFFER_LEN                                                   4096

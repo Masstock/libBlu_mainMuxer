@@ -5,6 +5,12 @@
  * \version 0.5
  *
  * \brief LPCM audio (Uncompressed) bitstreams handling module.
+ */
+
+/** \~english
+ * \dir lpcm
+ *
+ * \brief LPCM audio bitstreams handling modules.
  *
  * \todo Cleanup
  * \todo Split module in sub-modules to increase readability.
@@ -25,25 +31,8 @@
 #define __LIBBLU_MUXER_CODECS__LCPM__PARSER_H__
 
 #include "lpcm_error.h"
-
-#include "../../esms/scriptCreation.h"
-#include "../../pesPackets.h"
-#include "../../util.h"
-#include "../common/esParsingSettings.h"
-
-#define WAVE_RIFF                0x52494646
-#define WAVE_WAVE                0x57415645
-#define WAVE_FMT                 0x666D7420
-#define WAVE_JUNK                0x4A554E4B
-#define WAVE_DATA                0x64617461
-
-#define WAVE_FORMAT_PCM              0x0001
-#define WAVE_FORMAT_EXTENSIBLE       0xFFFE
-
-/* SubFormat GUID */
-#define WAVE_SUB_FORMAT_PCM                        \
-  {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, \
-   0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71}
+#include "lpcm_data.h"
+#include "lpcm_util.h"
 
 #define LPCM_PES_HEADER_LENGTH 0x04
 #define LPCM_PES_FRAMES_PER_SECOND 200
@@ -134,27 +123,68 @@ typedef struct {
   } content;
 } WaveFmtExtensible;
 
+typedef enum {
+  WAVE_FORMAT_PCM         = 0x0001,
+  WAVE_FORMAT_EXTENSIBLE  = 0xFFFE
+} WaveFmtFormatTag;
+
+static inline const char * WaveFmtFormatTagStr(
+  WaveFmtFormatTag wFormatTag
+)
+{
+  switch (wFormatTag) {
+    case WAVE_FORMAT_PCM:
+      return "Microsoft Pulse Code Modulation (PCM)";
+    case WAVE_FORMAT_EXTENSIBLE:
+      return "Extensible";
+  }
+  return "Unknown";
+}
+
 typedef struct {
-  size_t ckSize;
+  WaveFmtFormatTag wFormatTag;
+  uint16_t wChannels;
+  uint32_t nSamplesPerSec;
+  uint32_t dwAvgBytesPerSec;
+  uint16_t wBlockAlign;
+} WaveFmtChunkCommonFields;
 
-  uint16_t formatTag;
-  unsigned nbChannels;
-  unsigned sampleRate;
+typedef struct {
+  uint16_t wBitsPerSample;
+} WaveFmtPCMFormatSpecific;
 
-  unsigned bytesPerSec;
-  unsigned bytesPerBlock;
-  unsigned bitsPerSample;
+typedef struct {
+  WaveFmtPCMFormatSpecific pcm;  /**< PCM format specific common. Placed
+    at structure start to ensure correct memory mapping on parsing/checking. */
+  union {
+    uint16_t wValidBitsPerSample;
+    uint16_t wSamplesPerBlock;
+  } samples;
+  uint16_t cbSize;
+  uint32_t dwChannelMask;
+  LB_DECL_GUID(SubFormat);
+} WaveFmtExtensibleSpecific;
 
-  WaveFmtExtensible extension;
+typedef union {
+  WaveFmtPCMFormatSpecific pcm;
+  WaveFmtExtensibleSpecific extensible;
+} WaveFmtChunkFormatSpecificFields;
+
+typedef struct {
+  WaveFmtChunkCommonFields common_fields;
+  WaveFmtChunkFormatSpecificFields fmt_spec;
 } WaveFmtChunk;
 
 typedef struct {
-  uint32_t fileSize;
-  uint32_t dataSize;
-  uint32_t pesPacketLength;
+  // uint32_t fileSize;
+  // uint32_t dataSize;
+  // uint32_t pesPacketLength;
+  RiffFormHeader riff_form;
 
   WaveFmtChunk fmt;
-} WaveChunksParameters;
+  bool fmt_present;
+  RiffChunkHeader data;
+} WaveFile;
 
 int analyzeLpcm(
   LibbluESParsingSettings * settings
