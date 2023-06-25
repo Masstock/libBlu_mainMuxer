@@ -917,20 +917,20 @@ static bool _areEnoughDataToInitHrdVerifier(
 
 static bool _areSupportedParametersToInitHrdVerifier(
   const H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options
+  const LibbluESSettingsOptions * options
 )
 {
   return checkH264CpbHrdVerifierAvailablity(
-    handle->curProgParam,
+    &handle->curProgParam,
     options,
-    handle->sequenceParametersSet.data
+    &handle->sequenceParametersSet.data
   );
 }
 
 static int _checkInitializationHrdVerifier(
   H264HrdVerifierContextPtr * dst,
   const H264ParametersHandlerPtr handle,
-  const LibbluESSettingsOptions options,
+  LibbluESSettingsOptions * options,
   bool * disable
 )
 {
@@ -998,7 +998,7 @@ static int _checkAndProcessHrdVerifierAccessUnit(
     /* Check availability and initialize HRD Verifier */
     bool disable = false;
 
-    if (_checkInitializationHrdVerifier(hrdVerCtxPtr, handle, settings->options, &disable) < 0)
+    if (_checkInitializationHrdVerifier(hrdVerCtxPtr, handle, &settings->options, &disable) < 0)
       return -1;
 
     if (disable) { // Unable to initialize, disabled HRD Verifier.
@@ -1605,7 +1605,7 @@ static int _parseH264SequenceParametersSetData(
     LIBBLU_H264_READING_FAIL_RETURN();
   param->seq_parameter_set_id = value;
 
-  if (H264_PROFILE_IS_HIGH(param->profile_idc)) {
+  if (isHighScalableMultiviewH264ProfileIdcValue(param->profile_idc)) {
     /* High profiles linked-properties */
 
     /* [ue chroma_format_idc] */
@@ -3454,11 +3454,11 @@ static int _parseH264SliceHeader(
   /* [u<log2_max_frame_num_minus4 + 4> frame_num] */
   if (readBitsNal(handle, &value, sps->log2_max_frame_num_minus4 + 4) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
-  param->frameNum = value;
+  param->frame_num = value;
 
 #if 0
   if (IdrPicFlag) {
-    if (0 != param->frameNum) {
+    if (0 != param->frame_num) {
       LIBBLU_H264_ERROR_RETURN(
         "Broken picture identifier, unexpected value 'frame_num' == %u for "
         "an IDR picture, shall be equal to 0.\n"
@@ -3470,7 +3470,7 @@ static int _parseH264SliceHeader(
   else {
     /* Non-IDR pict */
     frameNumEqualPrevRefFrameNum =
-      (param->frameNum == handle->curProgParam.PrevRefFrameNum)
+      (param->frame_num == handle->curProgParam.PrevRefFrameNum)
     ;
 
     if (frameNumEqualPrevRefFrameNum) {
@@ -3479,7 +3479,7 @@ static int _parseH264SliceHeader(
 
     if (!frameNumEqualPrevRefFrameNum) {
       handle->curProgParam.gapsInFrameNum = (
-        param->frameNum
+        param->frame_num
         != (
           (handle->curProgParam.PrevRefFrameNum + 1)
           % spsData->MaxFrameNum
@@ -3496,13 +3496,13 @@ static int _parseH264SliceHeader(
           "Forbidden gaps in 'frame_num' value "
           "(last: %" PRIu16 ", cur: %" PRIu16 ").\n",
           handle->curProgParam.PrevRefFrameNum,
-          param->frameNum
+          param->frame_num
         );
       }
     }
 
 #if 0
-    else if (param->frameNum != handle->curProgParam.PrevRefFrameNum) {
+    else if (param->frame_num != handle->curProgParam.PrevRefFrameNum) {
       /* Update if required PrevRefFrameNum */
       /* Next picture to the last referential one is marked as the new one. */
       handle->curProgParam.PrevRefFrameNum =
@@ -3847,10 +3847,10 @@ static H264FirstVclNaluPCPRet _detectFirstVclNalUnitOfPrimCodedPicture(
 {
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'frame_num' differs in value ? : %u => %u.\n",
-    last.frameNum, cur.frameNum
+    last.frame_num, cur.frame_num
   );
 
-  if (last.frameNum != cur.frameNum)
+  if (last.frame_num != cur.frame_num)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(

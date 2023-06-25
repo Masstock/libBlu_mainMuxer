@@ -50,18 +50,18 @@ static int _outputDpbStatisticsHeader(
 
 static int _initH264HrdVerifierDebug(
   H264HrdVerifierDebug * dst,
-  LibbluESSettingsOptions options
+  LibbluESSettingsOptions * options
 )
 {
-  *dst = (H264HrdVerifierDebug) {0};
+  memset(dst, 0, sizeof(H264HrdVerifierDebug));
 
   /* CPB stats */
-  if (NULL != options.hrdCpbStatsFilepath) {
+  if (NULL != options->hrdCpbStatsFilepath) {
     /* Open debug output file: */
-    if (NULL == (dst->cpb_fd = lbc_fopen(options.hrdCpbStatsFilepath, "w")))
+    if (NULL == (dst->cpb_fd = lbc_fopen(options->hrdCpbStatsFilepath, "w")))
       LIBBLU_H264_HRDV_ERROR_RETURN(
         "Unable to open CPB statistics output file '%s', %s (errno %d).\n",
-        options.hrdCpbStatsFilepath,
+        options->hrdCpbStatsFilepath,
         strerror(errno),
         errno
       );
@@ -71,12 +71,12 @@ static int _initH264HrdVerifierDebug(
   }
 
   /* DPB stats */
-  if (NULL != options.hrdDpbStatsFilepath) {
+  if (NULL != options->hrdDpbStatsFilepath) {
     /* Open debug output file: */
-    if (NULL == (dst->dpb_fd = lbc_fopen(options.hrdDpbStatsFilepath, "w")))
+    if (NULL == (dst->dpb_fd = lbc_fopen(options->hrdDpbStatsFilepath, "w")))
       LIBBLU_H264_HRDV_ERROR_RETURN(
         "Unable to open DPB statistics output file '%s', %s (errno %d).\n",
-        options.hrdDpbStatsFilepath,
+        options->hrdDpbStatsFilepath,
         strerror(errno),
         errno
       );
@@ -122,6 +122,12 @@ static int _initH264HrdVerifierOptions(
 }
 #endif
 
+#define WARN_COUNT_CHECK(warn, name)                                          \
+  (((warn)->name) < (warn)->max_amount || 0 == (warn)->max_amount)
+
+#define WARN_COUNT_CHECK_INC(warn, name)                                      \
+  (((warn)->name)++ < (warn)->max_amount || 0 == (warn)->max_amount)
+
 static unsigned _selectSchedSelIdx(
   const H264SPSDataParameters * sps
 )
@@ -131,8 +137,9 @@ static unsigned _selectSchedSelIdx(
 }
 
 static int _checkInitConstaints(
+  H264HrdVerifierWarnings * warn,
   const H264SPSDataParameters * sps,
-  const H264ConstraintsParam * constraints,
+  const H264ConstraintsParam * cnstr,
   unsigned SchedSelIdx
 )
 {
@@ -142,42 +149,37 @@ static int _checkInitConstaints(
   /* TODO: Low Delay not supported */
 
   if (
-    H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc)
-
-    || sps->profile_idc == H264_PROFILE_HIGH
-    || sps->profile_idc == H264_PROFILE_HIGH_10
-    || sps->profile_idc == H264_PROFILE_HIGH_422
-    || sps->profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
-    || sps->profile_idc == H264_PROFILE_CAVLC_444_INTRA
+    isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc)
+    || isHighH264ProfileIdcValue(sps->profile_idc)
   ) {
     int64_t BitRate = BitRateH264HrdParameters(vui->nal_hrd_parameters, SchedSelIdx);
     int64_t CpbSize = CpbSizeH264HrdParameters(vui->nal_hrd_parameters, SchedSelIdx);
 
-    assert(0 < constraints->cpbBrNalFactor);
+    assert(0 < cnstr->cpbBrNalFactor);
 
-    /* Rec. ITU-T H.264 A.3.1.j) */
-    /* Rec. ITU-T H.264 A.3.3.g) */
-    if (constraints->MaxBR * constraints->cpbBrNalFactor < BitRate) {
+    /* ITU-T Rec. H.264 A.3.1.j) / A.3.3.g) */
+    if (cnstr->MaxBR * cnstr->cpbBrNalFactor < BitRate) {
+
       const char * name, * coeff;
-
-      if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
+      if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
         name = "A.3.1.j)", coeff = "1200";
-      else
+      else // isHighH264ProfileIdcValue
         name = "A.3.3.g)", coeff = "cpbBrNalFactor";
 
-      LIBBLU_H264_HRDV_FAIL_RETURN(
-        "Rec. ITU-T H.264 %s constraint is not satisfied "
+      LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+        WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
+        "ITU-T Rec. H.264 %s constraint is not satisfied "
         "(%s * MaxBR = %u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
-        name,
-        coeff,
-        constraints->MaxBR * constraints->cpbBrNalFactor,
+        name, coeff,
+        cnstr->MaxBR * cnstr->cpbBrNalFactor,
         SchedSelIdx,
         BitRate
       );
     }
 
     if (H264_BDAV_MAX_BITRATE < BitRate) {
-      LIBBLU_H264_HRDV_BD_FAIL_RETURN(
+      LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(
+        WARN_COUNT_CHECK_INC(warn, bdav_maxbr),
         "Bitrate value exceed BDAV limits "
         "(%u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
         H264_BDAV_MAX_BITRATE,
@@ -186,28 +188,29 @@ static int _checkInitConstaints(
       );
     }
 
-
-    if (constraints->MaxCPB * constraints->cpbBrNalFactor < CpbSize) {
+    if (cnstr->MaxCPB * cnstr->cpbBrNalFactor < CpbSize) {
       const char * name, * coeff;
 
-      if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
+      if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
         name = "A.3.1.j)", coeff = "1200";
       else
         name = "A.3.3.g)", coeff = "cpbBrNalFactor";
 
-      LIBBLU_H264_HRDV_FAIL_RETURN(
-        "Rec. ITU-T H.264 %s constraint is not satisfied "
+      LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+        WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
+        "ITU-T Rec. H.264 %s constraint is not satisfied "
         "(%s * MaxCPB = %u bits < NAL HRD CpbSize[%u] = %u bits).\n",
         name,
         coeff,
-        constraints->MaxCPB * constraints->cpbBrNalFactor,
+        cnstr->MaxCPB * cnstr->cpbBrNalFactor,
         SchedSelIdx,
         CpbSize
       );
     }
 
     if (H264_BDAV_MAX_CPB_SIZE < CpbSize) {
-      LIBBLU_H264_HRDV_BD_FAIL_RETURN(
+      LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(
+        WARN_COUNT_CHECK_INC(warn, bdav_cpbsize),
         "Bitrate value exceed BDAV limits "
         "(%u bits < NAL HRD CpbSize[%u] = %u bits).\n",
         H264_BDAV_MAX_CPB_SIZE,
@@ -216,47 +219,46 @@ static int _checkInitConstaints(
       );
     }
 
-    /* Rec. ITU-T H.264 A.3.1.i) */
-    /* Rec. ITU-T H.264 A.3.3.h) */
+    /* ITU-T Rec. H.264 A.3.1.i) / A.3.3.h) */
     if (vui->vcl_hrd_parameters_present_flag) {
       int64_t BitRate = BitRateH264HrdParameters(vui->vcl_hrd_parameters, SchedSelIdx);
       int64_t CpbSize = CpbSizeH264HrdParameters(vui->vcl_hrd_parameters, SchedSelIdx);
 
-      assert(0 < constraints->cpbBrVclFactor);
+      assert(0 < cnstr->cpbBrVclFactor);
 
-      if (constraints->MaxBR * constraints->cpbBrVclFactor < BitRate) {
+      if (cnstr->MaxBR * cnstr->cpbBrVclFactor < BitRate) {
+
         const char * name, * coeff;
-
-        if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
+        if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
           name = "A.3.1.i)", coeff = "1000";
         else
           name = "A.3.3.h)", coeff = "cpbBrVclFactor";
 
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          "Rec. ITU-T H.264 %s constraint is not satisfied"
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
+          "ITU-T Rec. H.264 %s constraint is not satisfied"
           "(%s * MaxBR = %u b/s < VCL HRD BitRate[%u] = %u b/s).\n",
-          name,
-          coeff,
-          constraints->MaxBR * constraints->cpbBrVclFactor,
+          name, coeff,
+          cnstr->MaxBR * cnstr->cpbBrVclFactor,
           SchedSelIdx,
           BitRate
         );
       }
 
-      if (constraints->MaxCPB * constraints->cpbBrVclFactor < CpbSize) {
+      if (cnstr->MaxCPB * cnstr->cpbBrVclFactor < CpbSize) {
         const char * name, * coeff;
 
-        if (H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(sps->profile_idc))
+        if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
           name = "A.3.1.i)", coeff = "1000";
         else
           name = "A.3.3.h)", coeff = "cpbBrVclFactor";
 
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          "Rec. ITU-T H.264 %s constraint is not satisfied"
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
+          "ITU-T Rec. H.264 %s constraint is not satisfied"
           "(%s * MaxCPB = %u b/s < VCL HRD CpbSize[%u] = %u b/s).\n",
-          name,
-          coeff,
-          constraints->MaxCPB * constraints->cpbBrVclFactor,
+          name, coeff,
+          cnstr->MaxCPB * cnstr->cpbBrVclFactor,
           SchedSelIdx,
           CpbSize
         );
@@ -276,12 +278,12 @@ static int _checkInitConstaints(
  * \return double
  */
 static double _computeBitratePerTick(
-  H264HrdParameters hrd_parameters,
+  const H264HrdParameters * hrd_parameters,
   unsigned SchedSelIdx,
   double second
 )
 {
-  return BitRateH264HrdParameters(hrd_parameters, SchedSelIdx) / second;
+  return BitRateH264HrdParameters(*hrd_parameters, SchedSelIdx) / second;
 }
 
 /** \~english
@@ -294,50 +296,64 @@ static double _computeBitratePerTick(
  * Equation from [1] A.3.2.f)
  */
 static unsigned _computeMaxDpbFrames(
-  const H264ConstraintsParam * constraints,
+  const H264ConstraintsParam * cnstr,
   const H264SPSDataParameters * sps
 )
 {
   return MIN(
-    constraints->MaxDpbMbs / (sps->PicWidthInMbs * sps->FrameHeightInMbs),
+    cnstr->MaxDpbMbs / (sps->PicWidthInMbs * sps->FrameHeightInMbs),
     16
   );
 }
 
-H264HrdVerifierContextPtr createH264HrdVerifierContext(
-  LibbluESSettingsOptions options,
-  const H264SPSDataParameters * sps,
-  const H264ConstraintsParam * constraints
+static void _initH264HrdVerifierWarnings(
+  H264HrdVerifierWarnings * warnings,
+  LibbluESSettingsOptions * options
 )
 {
-  /* Only operating at SchedSelIdx = cpb_cnt_minus1 */
-  H264HrdVerifierContextPtr ctx;
-  unsigned SchedSelIdx;
+  memset(warnings, 0, sizeof(H264HrdVerifierWarnings));
 
-  H264VuiParameters vui;
-  H264HrdParameters nal_hrd_parameters;
+  const IniFileContextPtr conf = options->confHandle;
+  lbc * string;
 
+  if (NULL != (string = lookupIniFile(conf, "HRD.MAXNUMBEROFWARNINGS"))) {
+    warnings->max_amount = lbc_strtoul(string, NULL, 10);
+    errno = 0; // Ignore errors
+  }
+}
+
+H264HrdVerifierContextPtr createH264HrdVerifierContext(
+  LibbluESSettingsOptions * options,
+  const H264SPSDataParameters * sps,
+  const H264ConstraintsParam * cnstr
+)
+{
   assert(sps->vui_parameters_present_flag);
-  assert(sps->vui_parameters.nal_hrd_parameters_present_flag);
-  assert(!sps->vui_parameters.low_delay_hrd_flag);
-  assert(sps->vui_parameters.timing_info_present_flag);
 
-  assert(0 < constraints->MaxBR);
-  assert(0 < constraints->MaxCPB);
-  assert(0 < constraints->MaxDpbMbs);
+  const H264VuiParameters * vui = &sps->vui_parameters;
+  assert(vui->nal_hrd_parameters_present_flag);
+  const H264HrdParameters * nal_hrd_parameters = &vui->nal_hrd_parameters;
+  assert(!vui->low_delay_hrd_flag);
+  assert(vui->timing_info_present_flag);
 
-  vui = sps->vui_parameters;
-  nal_hrd_parameters = vui.nal_hrd_parameters;
+  assert(0 < cnstr->MaxBR);
+  assert(0 < cnstr->MaxCPB);
+  assert(0 < cnstr->MaxDpbMbs);
+
+  H264HrdVerifierWarnings warnings;
+  _initH264HrdVerifierWarnings(&warnings, options);
 
   /* Select the SchedSelIdx used for initial tests : */
-  SchedSelIdx = _selectSchedSelIdx(sps);
-  if (_checkInitConstaints(sps, constraints, SchedSelIdx) < 0)
+  // TODO: Currently only checking last SchedSelIdx
+  unsigned SchedSelIdx = _selectSchedSelIdx(sps);
+  if (_checkInitConstaints(&warnings, sps, cnstr, SchedSelIdx) < 0)
     return NULL;
 
   /* Allocate the context: */
-  ctx = (H264HrdVerifierContextPtr) calloc(1, sizeof(H264HrdVerifierContext));
-  if (NULL == ctx)
+  H264HrdVerifierContextPtr ctx;
+  if (NULL == (ctx = calloc(1, sizeof(H264HrdVerifierContext))))
     LIBBLU_H264_HRDV_ERROR_FRETURN("Memory allocation error.\n");
+  ctx->warnings = warnings;
 
   /* Prepare FIFO: */
   assert((H264_MAX_AU_IN_CPB & (H264_MAX_AU_IN_CPB - 1)) == 0);
@@ -349,14 +365,13 @@ H264HrdVerifierContextPtr createH264HrdVerifierContext(
   ctx->dpb_content_heap = ctx->dpb_content; /* Place head on first cell. */
 
   /* Define timing values: */
-  ctx->second = (double) H264_90KHZ_CLOCK * vui.time_scale;
-  ctx->c90 = vui.time_scale;
-  ctx->num_units_in_tick = vui.num_units_in_tick;
-  ctx->t_c = H264_90KHZ_CLOCK * ctx->num_units_in_tick;
+  ctx->second = 90000.0 * vui->time_scale;
+  ctx->c90 = vui->time_scale;
+  ctx->num_units_in_tick = vui->num_units_in_tick;
+  ctx->t_c = 90000 * ctx->num_units_in_tick;
   ctx->bitrate = _computeBitratePerTick(nal_hrd_parameters, SchedSelIdx, ctx->second);
-  ctx->cbr = cbr_flagH264HrdParameters(nal_hrd_parameters, SchedSelIdx);
-  ctx->cpb_size = CpbSizeH264HrdParameters(nal_hrd_parameters, SchedSelIdx);
-  ctx->dpb_size = _computeMaxDpbFrames(constraints, sps);
+  ctx->cpb_size = CpbSizeH264HrdParameters(*nal_hrd_parameters, SchedSelIdx);
+  ctx->dpb_size = _computeMaxDpbFrames(cnstr, sps);
   ctx->max_num_ref_frames = sps->max_num_ref_frames;
   ctx->MaxFrameNum = sps->MaxFrameNum;
 
@@ -397,17 +412,6 @@ void echoDebugH264HrdVerifierContext(
   (void) ctx;
 
   va_start(args, format);
-
-#if 0
-  if (ctx->debug.fileOutput) {
-    va_list args_copy;
-
-    va_copy(args_copy, args);
-    lbc_vfprintf(ctx->debug.fd, format, args_copy);
-    va_end(args_copy);
-  }
-#endif
-
   echoMessageVa(status, format, args);
   va_end(args);
 }
@@ -452,36 +456,28 @@ static uint64_t _uTimeH264HrdVerifierContext(
 
 static int _outputCpbStatistics(
   const H264HrdVerifierContextPtr ctx,
-  uint64_t initialTime,
-  uint64_t duration
+  uint64_t initial_arrival_time,
+  uint64_t transfer_duration
 )
 {
   if (NULL == ctx->debug.cpb_fd)
     return 0;
 
-  uint64_t initialTimeTicks = _uTimeH264HrdVerifierContext(
-    ctx, initialTime, TIME_EXP
-  );
-
-  lbc initialTimeExpr[STRT_H_M_S_MS_LEN];
+  lbc initial_arrival_time_str[STRT_H_M_S_MS_LEN];
   str_time(
-    initialTimeExpr, STRT_H_M_S_MS_LEN, STRT_H_M_S_MS,
-    initialTime * MAIN_CLOCK_27MHZ / (ctx->c90 * H264_90KHZ_CLOCK)
+    initial_arrival_time_str,
+    STRT_H_M_S_MS_LEN,
+    STRT_H_M_S_MS,
+    initial_arrival_time * MAIN_CLOCK_27MHZ / (ctx->c90 * 90000)
   );
-
-  uint64_t durationTicks = _uTimeH264HrdVerifierContext(
-    ctx, duration, TIME_EXP
-  );
-
-  uint64_t cpbFullness = ctx->cpb_occupancy;
 
   int ret = lbc_fprintf(
     ctx->debug.cpb_fd,
-    "%" PRIu64 ";%" PRI_LBCS ";%" PRIu64 ";%" PRIu64 ";\n",
-    initialTimeTicks,
-    initialTimeExpr,
-    durationTicks,
-    cpbFullness
+    "%" PRIu64 ";%" PRI_LBCS ";%" PRId64 ";%" PRIu64 ";\n",
+    _uTimeH264HrdVerifierContext(ctx, initial_arrival_time, TIME_EXP),
+    initial_arrival_time_str,
+    _uTimeH264HrdVerifierContext(ctx, transfer_duration, TIME_EXP),
+    ctx->cpb_occupancy
   );
 
   if (ret < 0)
@@ -519,8 +515,8 @@ static int _addAUToCPBH264HrdVerifierContext(
 
   if (H264_MAX_AU_IN_CPB <= ctx->nb_au_cpb_content)
     LIBBLU_H264_HRDV_ERROR_RETURN(
-      "More access units in CPB than supported (%u).\n",
-      H264_MAX_AU_IN_CPB
+      "Too many AUs in CPB, unable to continue HRD verification, "
+      "input bitstream is too much broken.\n"
     );
 
   /* Get the next cell index in the FIFO using a modulo (and increase nb) */
@@ -616,20 +612,20 @@ static H264DpbHrdPic * _getDPByIdxH264HrdContext(
 
 static H264DpbHrdPic * _initDpbPicH264HrdVerifierContext(
   H264HrdVerifierContextPtr ctx,
-  H264CpbHrdAU cpbPicture,
+  H264CpbHrdAU au_from_cpb,
   uint64_t output_time
 )
 {
   H264DpbHrdPic * last = _getDPByIdxH264HrdContext(ctx, ctx->nb_au_dpb_content);
 
   *last = (H264DpbHrdPic) {
-    .AU_idx = cpbPicture.AU_idx,
-    .frame_display_num = cpbPicture.infos.frame_display_num,
-    .frame_num = cpbPicture.infos.frame_display_num,
-    .field_pic_flag = cpbPicture.infos.field_pic_flag,
-    .bottom_field_flag = cpbPicture.infos.bottom_field_flag,
+    .AU_idx = au_from_cpb.AU_idx,
+    .frame_display_num = au_from_cpb.infos.frame_display_num,
+    .frame_num = au_from_cpb.infos.frame_display_num,
+    .field_pic_flag = au_from_cpb.infos.field_pic_flag,
+    .bottom_field_flag = au_from_cpb.infos.bottom_field_flag,
     .output_time = output_time,
-    .usage = cpbPicture.infos.usage
+    .usage = au_from_cpb.infos.usage
   };
 
   return last;
@@ -637,14 +633,15 @@ static H264DpbHrdPic * _initDpbPicH264HrdVerifierContext(
 
 static int _addDecodedPictureToH264HrdContext(
   H264HrdVerifierContextPtr ctx,
-  H264CpbHrdAU cpbPicture,
+  H264CpbHrdAU au_from_cpb,
   uint64_t output_time
 )
 {
   assert(NULL != ctx);
 
   if (H264_MAX_DPB_SIZE <= ctx->nb_au_dpb_content) {
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+    LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+      WARN_COUNT_CHECK_INC(&ctx->warnings, dpb_au_overflow),
       "More pictures in DPB than supported (%u).\n",
       H264_MAX_DPB_SIZE
     );
@@ -652,10 +649,10 @@ static int _addDecodedPictureToH264HrdContext(
   }
 
   H264DpbHrdPic * newPicture = _initDpbPicH264HrdVerifierContext(
-    ctx, cpbPicture, output_time
+    ctx, au_from_cpb, output_time
   );
 
-  H264DpbHrdPicInfos infos = cpbPicture.infos;
+  H264DpbHrdPicInfos infos = au_from_cpb.infos;
 
   switch (infos.usage) {
     case H264_USED_AS_LONG_TERM_REFERENCE:
@@ -671,11 +668,10 @@ static int _addDecodedPictureToH264HrdContext(
         ) {
           /* NOTE: Shall NEVER happen, means broken longTermFrameIdx
             management. */
-          LIBBLU_H264_HRDV_FAIL_RETURN(
+          LIBBLU_H264_HRDV_ERROR_RETURN(
             "LongTermFrameIdx = %u is already used in DPB.\n",
             infos.LongTermFrameIdx
           );
-          return 0; // If explode on fail disabled.
         }
       }
       newPicture->LongTermFrameIdx = infos.LongTermFrameIdx;
@@ -702,44 +698,33 @@ static int _setDecodedPictureAsRefUnusedInH264HrdContext(
 {
   assert(NULL != ctx);
 
-  if (!ctx->nb_au_dpb_content) {
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+  if (!ctx->nb_au_dpb_content)
+    LIBBLU_H264_HRDV_ERROR_RETURN(
       "Unable to set a decoded reference picture as unused, "
       "empty DPB.\n"
     );
-    return 0; // If explode on fail disabled.
-  }
 
-  if (ctx->nb_au_dpb_content <= idx) {
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+  if (ctx->nb_au_dpb_content <= idx)
+    LIBBLU_H264_HRDV_ERROR_RETURN(
       "Unable to set a decoded reference picture as unused, "
       "out of range index %u.\n",
       idx
     );
-    return 0; // If explode on fail disabled.
-  }
 
-  H264DpbHrdPic * picture = &ctx->dpb_content[
+  H264DpbHrdPic * pic = &ctx->dpb_content[
     (ctx->dpb_content_heap - ctx->dpb_content + idx)
     & H264_DPB_MOD_MASK
   ];
 
-  switch (picture->usage) {
-    case H264_USED_AS_LONG_TERM_REFERENCE:
-      ctx->numLongTerm--;
-      break;
-
-    case H264_USED_AS_SHORT_TERM_REFERENCE:
-      ctx->numShortTerm--;
-      break;
-
-    case H264_NOT_USED_AS_REFERENCE:
-      break; /* Non-used as reference picture, no counter to update rather than
-        nb_au_dpb_content. */
+  switch (pic->usage) {
+    case H264_USED_AS_LONG_TERM_REFERENCE: ctx->numLongTerm--; break;
+    case H264_USED_AS_SHORT_TERM_REFERENCE: ctx->numShortTerm--; break;
+    case H264_NOT_USED_AS_REFERENCE: break;
+      // Non-used as reference picture,
+      // no counter to update rather than nb_au_dpb_content.
   }
 
-  picture->usage = H264_NOT_USED_AS_REFERENCE;
-
+  pic->usage = H264_NOT_USED_AS_REFERENCE;
   return 0;
 }
 
@@ -750,20 +735,16 @@ static int _popDecodedPictureFromH264HrdContext(
 {
   assert(NULL != ctx);
 
-  if (!ctx->nb_au_dpb_content) {
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+  if (!ctx->nb_au_dpb_content)
+    LIBBLU_H264_HRDV_ERROR_RETURN(
       "No picture to pop from DPB, empty FIFO.\n"
     );
-    return 0; // If explode on fail disabled.
-  }
 
-  if (ctx->nb_au_dpb_content <= idx) {
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+  if (ctx->nb_au_dpb_content <= idx)
+    LIBBLU_H264_HRDV_ERROR_RETURN(
       "No picture to pop from DPB, out of range index %u.\n",
       idx
     );
-    return 0; // If explode on fail disabled.
-  }
 
   unsigned array_abs_idx = (ctx->dpb_content_heap - ctx->dpb_content + idx);
   switch (ctx->dpb_content[array_abs_idx & H264_DPB_MOD_MASK].usage) {
@@ -836,7 +817,7 @@ static void _printDPBStatusH264HrdContext(
 
 static int _outputDpbStatistics(
   const H264HrdVerifierContextPtr ctx,
-  H264CpbHrdAU * accessUnitFromCpb
+  H264CpbHrdAU * au_from_cpb
 )
 {
   if (NULL == ctx->debug.dpb_fd)
@@ -849,13 +830,13 @@ static int _outputDpbStatistics(
   lbc clockTimeExpr[STRT_H_M_S_MS_LEN];
   str_time(
     clockTimeExpr, STRT_H_M_S_MS_LEN, STRT_H_M_S_MS,
-    ctx->clock_time * MAIN_CLOCK_27MHZ / (ctx->c90 * H264_90KHZ_CLOCK)
+    ctx->clock_time * MAIN_CLOCK_27MHZ / (ctx->c90 * 90000)
   );
 
   int ret = lbc_fprintf(
     ctx->debug.dpb_fd,
     "%u;%" PRIu64 ";%" PRI_LBCS ";",
-    accessUnitFromCpb->AU_idx,
+    au_from_cpb->AU_idx,
     clockTimeTicks,
     clockTimeExpr
   );
@@ -894,13 +875,12 @@ static int _manageSlidingWindowProcessDPBH264Context(
   /* 8.2.5.3 Sliding window decoded reference picture marking process */
 
   if (MAX(ctx->max_num_ref_frames, 1) <= ctx->numShortTerm + ctx->numLongTerm) {
-    if (!ctx->numShortTerm) {
-      LIBBLU_H264_HRDV_FAIL_RETURN(
+    if (!ctx->numShortTerm)
+      LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+        WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
         "DPB reference pictures shall no be only used as long-term reference "
         "(Not enought space available).\n"
       );
-      return 0; // If explode on fail disabled.
-    }
 
     bool oldest_frame_init = false;
     unsigned minFrameNumWrap = 0;
@@ -982,7 +962,7 @@ static unsigned _computePicNum(
  */
 static int _markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
   H264HrdVerifierContextPtr ctx,
-  unsigned difference_of_pic_nums_minus1,
+  unsigned diff_of_pic_nums_minus1,
   H264DpbHrdPicInfos * infos
 )
 {
@@ -997,7 +977,7 @@ static int _markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
 
   assert(NULL != ctx);
 
-  unsigned picNumX = _computePicNum(infos) - (difference_of_pic_nums_minus1 + 1);
+  unsigned picNumX = _computePicNum(infos) - (diff_of_pic_nums_minus1 + 1);
 
   for (unsigned i = 0; i < ctx->nb_au_dpb_content; i++) {
     H264DpbHrdPic * picture;
@@ -1028,7 +1008,7 @@ static int _markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
 #if 0
 static int _markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
   H264HrdVerifierContextPtr ctx,
-  unsigned frameNum
+  unsigned frame_num
 )
 {
   /* memory_management_control_operation == 0x2 usage. */
@@ -1041,13 +1021,13 @@ static int _markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
     if (NULL == (picture = _getDPByIdxH264HrdContext(ctx, i)))
       return -1; /* Unable to get i-index picture, broken FIFO. */
 
-    if (picture->frame_num == frameNum) {
+    if (picture->frame_num == frame_num) {
       if (H264_USED_AS_LONG_TERM_REFERENCE != picture->usage)
         LIBBLU_H264_HRDV_ERROR_RETURN(
           H264_DPB_HRD_MSG_PREFIX
           "frame_num %u index does not correspond to a "
           "'long-term reference' picture.\n",
-          frameNum
+          frame_num
         );
 
       assert(0 < ctx->numLongTerm);
@@ -1061,13 +1041,13 @@ static int _markLongTermRefPictureAsUnusedForReferenceH264HrdContext(
   LIBBLU_H264_HRDV_ERROR_RETURN(
     "Unable to mark long term reference picture num %u, "
     "unknown frame number.\n",
-    frameNum
+    frame_num
   );
 }
 
 static int _markShortTermRefPictureAsUsedForLongTermReferenceH264HrdContext(
   H264HrdVerifierContextPtr ctx,
-  unsigned frameNum,
+  unsigned frame_num,
   unsigned longTermFrameIdx
 )
 {
@@ -1092,12 +1072,12 @@ static int _markShortTermRefPictureAsUsedForLongTermReferenceH264HrdContext(
     if (NULL == (picture = _getDPByIdxH264HrdContext(ctx, i)))
       return -1; /* Unable to get i-index picture, broken FIFO. */
 
-    if (picture->frame_num == frameNum) {
+    if (picture->frame_num == frame_num) {
       if (H264_USED_AS_SHORT_TERM_REFERENCE != picture->usage)
         LIBBLU_H264_HRDV_ERROR_RETURN(
           "frame_num %u index does not correspond to a "
           "'long-term reference' picture.\n",
-          frameNum
+          frame_num
         );
 
       for (i = 0; i < ctx->nb_au_dpb_content; i++) {
@@ -1130,7 +1110,7 @@ static int _markShortTermRefPictureAsUsedForLongTermReferenceH264HrdContext(
   LIBBLU_H264_HRDV_ERROR_RETURN(
     "Unable to mark short term reference picture num %u, "
     "unknown frame number.\n",
-    frameNum
+    frame_num
   );
 }
 #endif
@@ -1218,11 +1198,13 @@ static int _applyDecodedReferencePictureMarkingProcess(
       /* Check if adaptive_ref_pic_marking_mode_flag can be set to 0b0. */
       /* => MAX(max_num_ref_frames, 1) < numLongTerm */
       if (MAX(ctx->max_num_ref_frames, 1) <= ctx->numLongTerm) {
-        LIBBLU_H264_HRDV_ERROR(
+        LIBBLU_H264_HRDV_FAIL_WCOND(
+          WARN_COUNT_CHECK(&ctx->warnings, invalid_memmng),
           "Parameter 'adaptive_ref_pic_marking_mode_flag' shall be defined "
           "to 0b1 (Max(max_num_ref_frames, 1) <= numLongTerm).\n"
         );
-        LIBBLU_H264_HRDV_FAIL_RETURN(
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
           " -> Too many long-term pictures in DPB, causing an overflow "
           "(%u over %u max ref frames).\n",
           ctx->numLongTerm,
@@ -1243,19 +1225,19 @@ static int _applyDecodedReferencePictureMarkingProcess(
     }
   }
 
-#if 1
   if (MAX(ctx->max_num_ref_frames, 1) < ctx->numShortTerm + ctx->numLongTerm) {
-    LIBBLU_H264_HRDV_ERROR(
+    LIBBLU_H264_HRDV_FAIL_WCOND(
+      WARN_COUNT_CHECK(&ctx->warnings, invalid_memmng),
       "DPB reference pictures shall be less than "
       "Max(max_num_ref_frames, 1).\n"
     );
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+    LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+      WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
       " => Currently: %u (Max: %u).\n",
       ctx->numShortTerm + ctx->numLongTerm,
       MAX(ctx->max_num_ref_frames, 1)
     );
   }
-#endif
 
   return 0;
 }
@@ -1362,50 +1344,37 @@ int clearAllReferencePicturesH264HrdContext(
 
 #endif
 
-#if 0
-static int _checkH264CpbHrdConformanceTests(
-  const H264ConstraintsParam * constraints,
-  H264HrdVerifierContextPtr ctx,
-  int64_t AUlength,
-  bool AUIsNewBufferingPeriod,
-  const H264HrdBufferingPeriodParameters * AUNalHrdParam,
-  const H264SPSDataParameters * AUSpsData,
-  const H264SliceHeaderParameters * AUSliceHeader,
-  uint64_t Tr_n,
-  unsigned AUNbSlices
-)
-#else
 static int _checkH264CpbHrdConformanceTests(
   H264HrdVerifierContextPtr ctx,
   H264ParametersHandlerPtr handle,
   const int64_t au_size,
   uint64_t Tr_n
-
-  // const H264ConstraintsParam * constraints,
-  // H264HrdVerifierContextPtr ctx,
-  // int64_t AUlength,
-  // bool AUIsNewBufferingPeriod,
-  // const H264HrdBufferingPeriodParameters * AUNalHrdParam,
-  // const H264SPSDataParameters * AUSpsData,
-  // const H264SliceHeaderParameters * AUSliceHeader,
-  // uint64_t Tr_n,
-  // unsigned AUNbSlices
 )
-#endif
 {
-  /* Rec. ITU-T H.264 - Annex C.3 Bitstream conformance */
+  /* ITU-T Rec. H.264 - Annex C.3 Bitstream conformance */
+  H264HrdVerifierWarnings * warn = &ctx->warnings;
 
-  bool is_new_buffering_period         = handle->sei.bufferingPeriodValid;
-  const H264SPSDataParameters * sps    = &handle->sequenceParametersSet.data;
-  const H264SliceHeaderParameters * sh = &handle->slice.header;
-  const H264ConstraintsParam * constraints = &handle->constraints;
-  unsigned au_nb_slices = handle->curProgParam.nbSlicesInPic;
+  const H264SPSDataParameters * sps     = &handle->sequenceParametersSet.data;
+  const H264VuiParameters * vui         = &sps->vui_parameters;
+  const H264SliceHeaderParameters * sh  = &handle->slice.header;
+  const H264SeiBufferingPeriod * sei_bp = &handle->sei.bufferingPeriod;
+  const H264ConstraintsParam * cnstr    = &handle->constraints;
+
+  const H264HrdVerifierAUProperties * prev_au = &ctx->prev_AU;
+
+  unsigned SchedSelIdx = _selectSchedSelIdx(sps);
+  bool first_au_in_buf_period = handle->sei.bufferingPeriodValid;
+  unsigned NumSlicesAU = handle->curProgParam.nbSlicesInPic;
+  int64_t NumBytesInAU = DIV_ROUND_UP(au_size, 8);
 
   // NAL HRD parameters
-  const H264HrdBufferingPeriodParameters * nhrd_p;
-  nhrd_p = &handle->sei.bufferingPeriod.nal_hrd_parameters[0];
+  const H264SchedSel * nalhrd = &vui->nal_hrd_parameters.schedSel[SchedSelIdx];
+  const H264SeiBufferingPeriodSchedSel * nalhrd_bp = &sei_bp->nal_hrd_parameters[SchedSelIdx];
 
-  uint64_t initial_cpb_removal_delay = nhrd_p->initial_cpb_removal_delay;
+  // initial_cpb_removal_delay
+  uint64_t init_cpb_rem_d     = nalhrd_bp->initial_cpb_removal_delay;
+  // initial_cpb_removal_delay_offset
+  uint64_t init_cpb_rem_d_off = nalhrd_bp->initial_cpb_removal_delay_offset;
 
   double fR;
   if (60 <= sps->level_idc && sps->level_idc <= 62)
@@ -1415,93 +1384,87 @@ static int _checkH264CpbHrdConformanceTests(
   else
     fR = 1.0 / 344.0;
 
-  if (0 < ctx->nbProcessedAU) {
-    uint64_t Tf_nMinusOne = ctx->clock_time;
-    uint64_t Tr_nMinusOne = ctx->nMinusOneAUParameters.removal_time;
-    /* At every process, clock_time stops on AU final arrival time. */
+  if (0 < ctx->nbProcessedAU) { // 0 < n
+    uint64_t Taf_n_mo = prev_au->final_arrival_time; // t_af(n-1)
+    uint64_t Tr_n_mo  = prev_au->removal_time; // t_r(n-1)
+
+    assert(Taf_n_mo == ctx->clock_time);
+      // At every process, clock_time shall stops on AU final arrival time.
 
     /* H.264 C.3.1. */
     if (
-      is_new_buffering_period
-      && (
-        ctx->nMinusOneAUParameters.initial_cpb_removal_delay
-          == initial_cpb_removal_delay
-      )
+      first_au_in_buf_period
+      && prev_au->initial_cpb_removal_delay == init_cpb_rem_d
+      && prev_au->initial_cpb_removal_delay_offset == init_cpb_rem_d_off
     ) {
-      /* C-15/C-16 equation check. */
+      /* ITU-T Rec. H.264 C-15/C-16 equation check. */
       /* No check if new buffering period introduce different buffering from
         last period. */
 
       /* H.264 C-14 equation. */
-      double delta_tg90 =
-        _dTimeH264HrdVerifierContext(ctx, Tr_n - Tf_nMinusOne)
-        * H264_90KHZ_CLOCK
-      ;
-      double ceil_delta_tg90 = ceil(delta_tg90);
+      double delta_tg90 = 90000 * _dTimeH264HrdVerifierContext(ctx, Tr_n - Taf_n_mo);
 
       /* H.264 C-15/C-16 ceil equation conformance : */
-      if (ceil_delta_tg90 < initial_cpb_removal_delay) {
-        const char * equation = (ctx->cbr) ? "C-16" : "C-15";
-
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          "Rec. ITU-T H.264 %s equation is not satisfied "
+      double ceil_delta_tg90 = ceil(delta_tg90);
+      if (ceil_delta_tg90 < init_cpb_rem_d) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, C_15__C_16_ceil),
+          "ITU-T Rec. H.264 %s equation is not satisfied "
           "(ceil(delta_tg90) = %.0f "
           "< initial_cpb_removal_delay = %" PRIu64 ").\n",
-          equation,
+          (nalhrd->cbr_flag) ? "C-16" : "C-15",
           ceil_delta_tg90,
-          initial_cpb_removal_delay
+          init_cpb_rem_d
         );
       }
 
       /* H.264 C-16 floor equation conformance : */
-      if (ctx->cbr) {
+      if (nalhrd->cbr_flag) {
         double floor_delta_tg90 = floor(delta_tg90);
-
-        if (initial_cpb_removal_delay < floor_delta_tg90)
-          LIBBLU_H264_HRDV_FAIL_RETURN(
-            "Rec. ITU-T H.264 C-16 equation is not satisfied "
-            "(initial_cpb_removal_delay = %" PRIu64 " "
-            "< floor(delta_tg90) = %.0f).\n",
-            initial_cpb_removal_delay,
-            floor_delta_tg90
+        if (init_cpb_rem_d < floor_delta_tg90) {
+          LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+            WARN_COUNT_CHECK_INC(warn, C_16_floor),
+            "ITU-T Rec. H.264 C-16 equation is not satisfied (initial_cpb_"
+            "removal_delay = %" PRIu64 " < floor(delta_tg90) = %.0f, "
+            "Tr,n(n) = %u ms; Taf(n-1) = %u ms).\n",
+            init_cpb_rem_d,
+            floor_delta_tg90,
+            _msTimeH264HrdVerifierContext(ctx, Tr_n),
+            _msTimeH264HrdVerifierContext(ctx, Taf_n_mo)
           );
+        }
       }
     }
 
-
     /* NOTE: A.3.1, A.3.2 and A.3.3 conformance verifications are undue by C.3.4 constraint. */
 
-    /* H.264 A.3.1.a) and A.3.2.a) */
-    unsigned maxMBPS = getH264MaxMBPS(ctx->nMinusOneAUParameters.level_idc);
-    if (0 == maxMBPS)
-      LIBBLU_H264_HRDV_ERROR_RETURN(
-        "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
-        ctx->nMinusOneAUParameters.level_idc
-      );
+    /* H.264 A.3.1.a) and A.3.2.a) */ {
+      unsigned prev_au_MaxMBPS;
+      if (0 == (prev_au_MaxMBPS = getH264MaxMBPS(prev_au->level_idc)))
+        LIBBLU_H264_HRDV_ERROR_RETURN(
+          "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
+          prev_au->level_idc
+        );
 
-    double minCpbRemovalDelay = MAX(
-      (double) ctx->nMinusOneAUParameters.PicSizeInMbs / maxMBPS,
-      fR
-    ); // /* H.264 C.3.4. A.3.1/2.a) Max(PicSizeInMbs ÷ MaxMBPS, fR) result */
+      double minCpbRemovalDelay = MAX(1.0 * prev_au->PicSizeInMbs / prev_au_MaxMBPS, fR);
+        // H.264 C.3.4. A.3.1/2.a) Max(PicSizeInMbs ÷ MaxMBPS, fR) result
 
-    if ((double) (Tr_n - Tr_nMinusOne) < minCpbRemovalDelay * ctx->second) {
-      const char * name;
-      double timestamp;
+      if ((1.0 * Tr_n - Tr_n_mo) < floor(minCpbRemovalDelay * ctx->second)) {
 
-      if (H264_PROFILE_IS_HIGH(sps->profile_idc))
-        name = "A.3.2.a)";
-      else
-        name = "A.3.1.a)";
+        const char * name;
+        if (isHighScalableMultiviewH264ProfileIdcValue(sps->profile_idc))
+          name = "A.3.2.a)";
+        else
+          name = "A.3.1.a)";
 
-      timestamp = _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne);
-
-      LIBBLU_H264_HRDV_FAIL_RETURN(
-        "Rec. ITU-T H.264 %s constraint is not satisfied "
-        "(t_r,n(n) - t_t(n-1) = %f < Max(PicSizeInMbs / MaxMBPS, fR) = %f).\n",
-        name,
-        timestamp,
-        minCpbRemovalDelay
-      );
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_1_A__A_3_2_A),
+          "ITU-T Rec. H.264 %s constraint is not satisfied "
+          "(t_r,n(n) - t_t(n-1) = %f < Max(PicSizeInMbs / MaxMBPS, fR) = %f).\n",
+          name, _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_n_mo),
+          minCpbRemovalDelay
+        );
+      }
     }
 
     /* H.264 A.3.1.d) and A.3.3.j) */
@@ -1514,29 +1477,23 @@ static int _checkH264CpbHrdConformanceTests(
     ) {
       assert(0 != sh->PicSizeInMbs);
 
-      if (0 == (maxMBPS = constraints->MaxMBPS))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
-          ctx->nMinusOneAUParameters.level_idc
-        );
-
-      int64_t maxAULength = (size_t) ABS(
-        384.0
-        * (double) maxMBPS
-        * _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne)
-        / (double) getH264MinCR(sps->level_idc)
-        * 8.0
+      int64_t MaxNumBytesInAU = (int64_t) floor(
+        384.0 * cnstr->MaxMBPS
+        * _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_n_mo)
+        / getH264MinCR(sps->level_idc)
       );
-      /* NOTE: This formula miss the part induced by low_delay flag. */
+      // TODO: This formula miss the part induced by low_delay flag.
 
-      if (maxAULength < au_size)
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          "Rec. ITU-T H.264 A.3.1.d) constraint is not satisfied "
+      if (MaxNumBytesInAU < NumBytesInAU) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_1_D),
+          "ITU-T Rec. H.264 A.3.1.d) constraint is not satisfied "
           "(MaxNumBytesInNALunit = %" PRId64 " "
           "< NumBytesInNALunit = %" PRId64 ").\n",
-          maxAULength,
-          au_size
+          MaxNumBytesInAU,
+          NumBytesInAU
         );
+      }
     }
 
     /* H.264 A.3.3.b) */
@@ -1548,30 +1505,16 @@ static int _checkH264CpbHrdConformanceTests(
       || sps->profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
       || sps->profile_idc == H264_PROFILE_CAVLC_444_INTRA
     ) {
-      double duration, maxNbSlices;
+      double duration = _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_n_mo);
+      double MaxNumSlices = duration * cnstr->MaxMBPS / cnstr->SliceRate;
 
-      if (0 == (maxMBPS = constraints->MaxMBPS))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
-          sps->level_idc
-        );
-
-      unsigned sliceRate; // H.264 A.3.3.a)
-      if (0 == (sliceRate = constraints->SliceRate))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Unable to find a SliceRate value for level_idc = 0x%" PRIx8 ".\n",
-          sps->level_idc
-        );
-
-      duration = _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_nMinusOne);
-      maxNbSlices = duration * maxMBPS / sliceRate;
-
-      if (floor(maxNbSlices) < (double) au_nb_slices) {
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          "Rec. ITU-T H.264 A.3.3.b) constraint is not satisfied "
+      if (floor(MaxNumSlices) < 1.0 * NumSlicesAU) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_3_B),
+          "ITU-T Rec. H.264 A.3.3.b) constraint is not satisfied "
           "(maxNbSlices = %f < nbSlices = %u).\n",
-          maxNbSlices,
-          au_nb_slices
+          MaxNumSlices,
+          NumSlicesAU
         );
       }
     }
@@ -1589,28 +1532,20 @@ static int _checkH264CpbHrdConformanceTests(
     ) {
       assert(0 != sh->PicSizeInMbs);
 
-      unsigned maxMBPS;
-      if (0 == (maxMBPS = constraints->MaxMBPS))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
-          ctx->nMinusOneAUParameters.level_idc
-        );
-
-      int64_t maxAULength = (size_t) ABS(
-        384.0
-        * MAX((double) sh->PicSizeInMbs, fR * maxMBPS)
-        / (double) getH264MinCR(sps->level_idc)
-        * 8.0
+      int64_t MaxNumBytesInFirstAU = (int64_t) floor(
+        384.0 * MAX(1.0 * sh->PicSizeInMbs, fR * cnstr->MaxMBPS)
+        / getH264MinCR(sps->level_idc)
       );
-      /* NOTE: This formula miss the part induce by low_delay flag. */
+      // TODO: This formula miss the part induce by low_delay flag.
 
-      if (maxAULength < au_size) {
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          H264_HRD_VERIFIER_NAME
-          "Rec. ITU-T H.264 A.3.1.c) constraint is not satisfied "
-          "(MaxNumBytesInFirstAU = %zu < NumBytesInFirstAU = %zu).\n",
-          maxAULength / 8,
-          au_size / 8
+      if (MaxNumBytesInFirstAU < NumBytesInAU) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_1_C),
+          "ITU-T Rec. H.264 A.3.1.c) constraint is not satisfied "
+          "(MaxNumBytesInFirstAU = %" PRId64
+          " < NumBytesInFirstAU = %" PRId64 ").\n",
+          MaxNumBytesInFirstAU,
+          NumBytesInAU
         );
       }
     }
@@ -1624,31 +1559,18 @@ static int _checkH264CpbHrdConformanceTests(
       || sps->profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
       || sps->profile_idc == H264_PROFILE_CAVLC_444_INTRA
     ) {
-      unsigned maxMBPS;
-      if (0 == (maxMBPS = constraints->MaxMBPS))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Unable to find a MaxMBPS value for level_idc = 0x%" PRIx8 ".\n",
-          ctx->nMinusOneAUParameters.level_idc
-        );
-
-      unsigned sliceRate;
-      if (0 == (sliceRate = constraints->SliceRate))
-        LIBBLU_H264_HRDV_ERROR_RETURN(
-          "Unable to find a SliceRate value for level_idc = 0x%" PRIx8 ".\n",
-          ctx->nMinusOneAUParameters.level_idc
-        );
-
-      unsigned maxNbSlices = (unsigned) ceil(
-        MAX((double) sh->PicSizeInMbs, fR * maxMBPS)
-        / sliceRate
+      double MaxNumSlices = ceil(
+        MAX(1.0 * sh->PicSizeInMbs, fR * cnstr->MaxMBPS)
+        / cnstr->SliceRate
       );
 
-      if (maxNbSlices < au_nb_slices) {
-        LIBBLU_H264_HRDV_FAIL_RETURN(
-          "Rec. ITU-T H.264 A.3.3.a) constraint is not satisfied "
-          "(maxNbSlices = %u < nbSlices = %u).\n",
-          maxNbSlices,
-          au_nb_slices
+      if (MaxNumSlices < 1.0 * NumSlicesAU) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, A_3_3_A),
+          "ITU-T Rec. H.264 A.3.3.a) constraint is not satisfied "
+          "(maxNbSlices = %.0f < nbSlices = %u).\n",
+          MaxNumSlices,
+          NumSlicesAU
         );
       }
     }
@@ -1657,105 +1579,88 @@ static int _checkH264CpbHrdConformanceTests(
   return 0; /* OK */
 }
 
-#if 0
-int processAUH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  H264CurrentProgressParam * curState,
-  const H264SPSDataParameters * spsData,
-  const H264SliceHeaderParameters * sliceHeader,
-  const H264SeiPicTiming * pic_timing_sei,
-  const H264SeiBufferingPeriod * bufPeriodSei,
-  const H264ConstraintsParam * constraints,
-  const bool isNewBufferingPeriod,
-  const int64_t accessUnitSize
-)
-#else
 int processAUH264HrdContext(
   H264HrdVerifierContextPtr ctx,
   H264ParametersHandlerPtr handle,
-  const int64_t accessUnitSize
+  int64_t au_size
 )
-#endif
 {
-  assert(NULL != ctx);
-  // assert(NULL != spsData);
-  // assert(NULL != sliceHeader);
-  // assert(NULL != pic_timing_sei);
+  H264HrdVerifierWarnings * warn = &ctx->warnings;
 
-
-  /* Check for required parameters : */
-
-  bool is_new_buffering_period          = handle->sei.bufferingPeriodValid;
   const H264SPSDataParameters * sps     = &handle->sequenceParametersSet.data;
+  const H264HrdParameters * hrd         = &sps->vui_parameters.nal_hrd_parameters;
   const H264SliceHeaderParameters * sh  = &handle->slice.header;
   const H264DecRefPicMarking * dec_ref_pic_marking = &sh->dec_ref_pic_marking;
+  const H264SeiBufferingPeriod * bp_sei = &handle->sei.bufferingPeriod;
+  const H264SeiPicTiming * pt_sei       = &handle->sei.picTiming;
+  bool first_au_in_buf_period           = handle->sei.bufferingPeriodValid;
 
   // NAL HRD parameters
-  const H264HrdBufferingPeriodParameters * nhrd_p;
-  nhrd_p = &handle->sei.bufferingPeriod.nal_hrd_parameters[0];
+  unsigned SchedSelIdx = _selectSchedSelIdx(sps);
+  const H264SchedSel * nalhrd = &hrd->schedSel[SchedSelIdx];
+  const H264SeiBufferingPeriodSchedSel * nalhrd_bp = &bp_sei->nal_hrd_parameters[SchedSelIdx];
 
   /* Parse required parameters from signal : */
-  uint64_t initial_cpb_removal_delay = nhrd_p->initial_cpb_removal_delay;
-  uint64_t initial_cpb_removal_delay_offset = nhrd_p->initial_cpb_removal_delay_offset;
-  uint64_t cpb_removal_delay = handle->sei.picTiming.cpb_removal_delay;
-  uint64_t dpb_output_delay  = handle->sei.picTiming.dpb_output_delay;
+  uint64_t initial_cpb_removal_delay = nalhrd_bp->initial_cpb_removal_delay;
+  uint64_t initial_cpb_removal_delay_offset = nalhrd_bp->initial_cpb_removal_delay_offset;
+  uint64_t cpb_removal_delay = pt_sei->cpb_removal_delay;
+  uint64_t dpb_output_delay  = pt_sei->dpb_output_delay;
 
-  uint64_t Tf_nMinusOne = ctx->clock_time;
+  uint64_t Taf_n_mo = ctx->prev_AU.final_arrival_time;
     // At every process, clock_time stops on AU final arrival time.
 
   /* Compute AU timing values: */
 
+  /* C.1.2 Timing of coded picture removal */
   uint64_t Tr_n; // t_r(n) - removal time
-  if (ctx->nbProcessedAU == 0)
-    Tr_n = initial_cpb_removal_delay * ctx->c90; /* C-7 */
-  else
+  if (0 == ctx->nbProcessedAU)
+    Tr_n = initial_cpb_removal_delay * ctx->c90; // C-7
+  else {
     Tr_n = ctx->nominalRemovalTimeFirstAU + ctx->t_c * cpb_removal_delay; /* C-8 / C-9 */
+  }
 
   /* Since low_delay_hrd_flag is not supported, C-10 and C-11 equations are not used. */
 
   /* Saving CPB removal time */
-  ctx->removalTimeAU = (uint64_t) (
-    _dTimeH264HrdVerifierContext(ctx, Tr_n)
-    * MAIN_CLOCK_27MHZ
-  );
+  ctx->removalTimeAU = (uint64_t) ceil(_dTimeH264HrdVerifierContext(ctx, Tr_n) * MAIN_CLOCK_27MHZ);
   handle->curProgParam.auCpbRemovalTime = ctx->removalTimeAU;
 
-  ctx->outputTimeAU = (uint64_t) (
-    _dTimeH264HrdVerifierContext(
-      ctx,
-      Tr_n + ctx->t_c * dpb_output_delay
-    ) * MAIN_CLOCK_27MHZ
-  );
+  uint64_t To_dpb_n = Tr_n + ctx->t_c * dpb_output_delay;
+  ctx->outputTimeAU = (uint64_t) ceil(_dTimeH264HrdVerifierContext(ctx, To_dpb_n) * MAIN_CLOCK_27MHZ);
   handle->curProgParam.auDpbOutputTime = ctx->outputTimeAU;
 
-  if (is_new_buffering_period) /* n_b = n */
+  if (first_au_in_buf_period) /* n_b = n */
     ctx->nominalRemovalTimeFirstAU = Tr_n; /* Saving new t_r(n_b) */
 
-  uint64_t Ta_n; // t_a(n)/t_ai(n) - initial arrival time
-  if (!ctx->cbr) {
-    /* VBR case */
-
-    /* t_e(n)/t_ai,earliest(n) - earliest initial arrival time: */
-    uint64_t delay = initial_cpb_removal_delay;
-    if (!is_new_buffering_period) // FIXME: Check the NOT
-      delay += initial_cpb_removal_delay_offset;
-    uint64_t init_cpb_total_removal_delay = ctx->c90 * delay;
-
-    uint64_t Te_n;
-    if (init_cpb_total_removal_delay < Tr_n)
-      Te_n = Tr_n - init_cpb_total_removal_delay;
-    else
-      Te_n = 0; /* Rounding to 0, avoid negative unsigned error. */
-
-    Ta_n = MAX(Tf_nMinusOne, Te_n);
+  /* C.1.1 Timing of bitstream arrival */
+  uint64_t Tai_n; // t_ai(n) - initial arrival time
+  if (0 == ctx->nbProcessedAU) {
+    Tai_n = 0; // t_ai(0) = 0
   }
-  else
-    Ta_n = Tf_nMinusOne; /* CBR case */
+  else {
+    if (nalhrd->cbr_flag) {
+      Tai_n = Taf_n_mo;
+    }
+    else {
+      /* VBR case */
+      /* t_ai,earliest(n) - earliest initial arrival time: */
+      uint64_t total_init_cpb_removal_delay = initial_cpb_removal_delay;
+      if (!first_au_in_buf_period)
+        total_init_cpb_removal_delay += initial_cpb_removal_delay_offset;
+      total_init_cpb_removal_delay *= ctx->c90;
 
-  /* t_f(n)/t_af(n) - final arrival time: */
-  uint64_t Tf_n = Ta_n + (uint64_t) ceil(accessUnitSize / ctx->bitrate);
+      uint64_t Tai_earliest_n = 0;
+      if (total_init_cpb_removal_delay < Tr_n) // Avoid negative
+        Tai_earliest_n = Tr_n - total_init_cpb_removal_delay;
 
-  if (Tr_n < Tf_n) {
+      Tai_n = MAX(Taf_n_mo, Tai_earliest_n);
+    }
+  }
+
+  /* t_af(n) - final arrival time: */
+  uint64_t Taf_n = Tai_n + (uint64_t) ceil(au_size / ctx->bitrate);
+
+  if (Tr_n < Taf_n) {
     /**
      * Final arrival time is bigger than removal time, only a part of AU will
      * be currently in CPB at removal time.
@@ -1763,122 +1668,105 @@ int processAUH264HrdContext(
      */
 
     LIBBLU_H264_DEBUG_HRD(
-      "CPB Underflow, Tr_n = %" PRIu64 " Tf_n = %" PRIu64 ".\n",
+      "CPB Underflow, Tr_n = %" PRIu64 " Taf_n = %" PRIu64 ".\n",
       Tr_n,
-      Tf_n
+      Taf_n
     );
 
-    LIBBLU_H264_HRDV_FAIL_RETURN(
-      "Rec. ITU-T H.264 C.3.3 constraint is not satisfied "
-      "(CPB Underflow, Tr_n = %u ms < Tf_n = %u ms "
+    LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+      WARN_COUNT_CHECK_INC(&ctx->warnings, C_3_3),
+      "ITU-T Rec. H.264 C.3.3 constraint is not satisfied "
+      "(CPB Underflow, Tr_n = %u ms < Taf_n = %u ms "
       "on Access Unit %u, initial arrival time: %u ms).\n",
       _msTimeH264HrdVerifierContext(ctx, Tr_n),
-      _msTimeH264HrdVerifierContext(ctx, Tf_n),
+      _msTimeH264HrdVerifierContext(ctx, Taf_n),
       ctx->nbProcessedAU,
-      _msTimeH264HrdVerifierContext(ctx, Ta_n)
+      _msTimeH264HrdVerifierContext(ctx, Tai_n)
     );
 
-    Tr_n = Tf_n; // Remove at final arrival time to avoid underflow.
+    Tr_n = Taf_n; // Remove at final arrival time to avoid underflow.
   }
 
-  /* Rec. ITU-T H.264 - C.3 Bitstream conformance Checks: */
-#if 0
-  if (
-    _checkH264CpbHrdConformanceTests(
-      constraints,
-      ctx,
-      accessUnitSize,
-      isNewBufferingPeriod,
-      nhrd_p,
-      spsData,
-      sliceHeader,
-      Tr_n,
-      curState->nbSlicesInPic
-    ) < 0
-  )
+  /* ITU-T Rec. H.264 - C.3 Bitstream conformance Checks: */
+  if (_checkH264CpbHrdConformanceTests(ctx, handle, au_size, Tr_n) < 0)
     return -1;
-#else
-  if (_checkH264CpbHrdConformanceTests(ctx, handle, accessUnitSize, Tr_n) < 0)
-    return -1;
-#endif
 
   /* Remove AU with releaseClockTime reached: */
   for (;;) {
-    H264CpbHrdAU * cpbExtractedAU = _getOldestAccessUnitFromCPB(ctx);
-
-    if (NULL == cpbExtractedAU || Tf_n < cpbExtractedAU->removal_time)
+    H264CpbHrdAU * cpb_removed_AU = _getOldestAccessUnitFromCPB(ctx);
+    if (NULL == cpb_removed_AU || Taf_n < cpb_removed_AU->removal_time)
       break;
-    ctx->clock_time = cpbExtractedAU->removal_time;
 
-    int64_t instantaneousAlreadyTransferedCpbBits = 0;
-    if (Ta_n < ctx->clock_time) {
-      instantaneousAlreadyTransferedCpbBits = ceil(
-        ctx->bitrate * (ctx->clock_time - Ta_n)
-      ); /* Adds bits from current AU already buffered according to bitrate. */
+    ctx->clock_time = cpb_removed_AU->removal_time;
+
+    int64_t already_transfered_bits = 0;
+    if (Tai_n < ctx->clock_time) {
+      /* Adds bits from current AU already buffered according to bitrate. */
+      already_transfered_bits = ceil(ctx->bitrate * (ctx->clock_time - Tai_n));
     }
 
-    if (
-      ctx->cpb_size
-      < ctx->cpb_occupancy + instantaneousAlreadyTransferedCpbBits
-    ) {
+    if (ctx->cpb_size < ctx->cpb_occupancy + already_transfered_bits) {
       /* cpb_occupancy + number of bits from current AU already buffered */
       /* exceed CPB size. => Buffer overflow */
 
-      LIBBLU_H264_HRDV_ERROR(
-        "Rec. ITU-T H.264 C.3.2 constraint is not satisfied "
+      LIBBLU_H264_HRDV_FAIL_WCOND(
+        WARN_COUNT_CHECK(warn, C_3_2),
+        "ITU-T Rec. H.264 C.3.2 constraint is not satisfied "
         "(CPB Overflow happen, CPB size = %" PRId64 " bits < %" PRId64 " bits).\n",
         ctx->cpb_size,
-        ctx->cpb_occupancy + instantaneousAlreadyTransferedCpbBits
+        ctx->cpb_occupancy + already_transfered_bits
       );
-      LIBBLU_H264_HRDV_ERROR(
+      LIBBLU_H264_HRDV_FAIL_WCOND(
+        WARN_COUNT_CHECK(warn, C_3_2),
         " => Affect while trying to remove Access Unit %u, "
         "at removal time: %u ms.\n",
-        cpbExtractedAU->AU_idx,
+        cpb_removed_AU->AU_idx,
         _msTimeH264HrdVerifierContext(ctx, ctx->clock_time)
       );
 
-      if (Ta_n < ctx->clock_time) {
-        LIBBLU_H264_HRDV_FAIL_RETURN(
+      if (Tai_n < ctx->clock_time) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, C_3_2),
           " => Access Unit %u was in transfer "
-          "(%" PRId64 " bits already in CPB over %" PRId64 " total bits).\n",
+          "(%.0f bits already in CPB over %" PRId64 " total bits).\n",
           ctx->nbProcessedAU,
-          (int64_t) ceil(ctx->bitrate * (double) (ctx->clock_time - Ta_n)),
-          accessUnitSize
+          ceil(ctx->bitrate * (double) (ctx->clock_time - Tai_n)),
+          au_size
         );
       }
-
-      if (0 < ctx->nbProcessedAU) {
-        LIBBLU_H264_HRDV_FAIL_RETURN(
+      else if (0 < ctx->nbProcessedAU) {
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, C_3_2),
           " => Happen during final arrival time of Access Unit %u "
           "and initial arrival time of Access Unit %u interval.\n",
           ctx->nbProcessedAU - 1,
           ctx->nbProcessedAU
         );
       }
-
-      LIBBLU_H264_HRDV_FAIL_RETURN(
-        " => Happen at stream start.\n"
-      );
+      else
+        LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+          WARN_COUNT_CHECK_INC(warn, C_3_2),
+          " => Happen at stream start.\n"
+        );
     }
 
     /* Else AU can be removed safely. */
-    assert(0 <= ctx->cpb_occupancy - cpbExtractedAU->size);
+    assert(0 <= ctx->cpb_occupancy - cpb_removed_AU->size);
       /* Buffer underflow shouldn't happen here. */
 
     ECHO_DEBUG_CPB_HRDV_CTX(
-      ctx, "Removing %" PRId64 " bits from CPB "
-      "(picture %u) at %u ms.\n",
-      cpbExtractedAU->size,
-      cpbExtractedAU->AU_idx,
+      ctx, "Removing %" PRId64 " bits from CPB (picture %u) at %u ms.\n",
+      cpb_removed_AU->size,
+      cpb_removed_AU->AU_idx,
       _msTimeH264HrdVerifierContext(ctx, ctx->clock_time)
     );
-    ctx->cpb_occupancy -= cpbExtractedAU->size;
+    ctx->cpb_occupancy -= cpb_removed_AU->size;
 
     if (_outputCpbStatistics(ctx, ctx->clock_time, 0) < 0)
       return -1;
 
     /* Transfer decoded picture to DPB: */
-    H264DpbHrdPicInfos pic_infos = cpbExtractedAU->infos;
+    H264DpbHrdPicInfos pic_infos = cpb_removed_AU->infos;
     if (_applyDecodedReferencePictureMarkingProcess(ctx, &pic_infos) < 0)
       return -1;
 
@@ -1886,7 +1774,7 @@ int processAUH264HrdContext(
 
     ECHO_DEBUG_DPB_HRDV_CTX(
       ctx, "Adding picture %u to DPB (display: %u) at %u ms.\n",
-      cpbExtractedAU->AU_idx,
+      cpb_removed_AU->AU_idx,
       pic_infos.frame_display_num,
       _msTimeH264HrdVerifierContext(ctx, ctx->clock_time)
     );
@@ -1894,44 +1782,42 @@ int processAUH264HrdContext(
     if (_updateDPBH264HrdContext(ctx, ctx->clock_time) < 0) /* Update before insertion. */
       return -1;
 
-    if (_outputDpbStatistics(ctx, cpbExtractedAU) < 0)
+    if (_outputDpbStatistics(ctx, cpb_removed_AU) < 0)
       return -1;
 
     uint64_t Tout_n = ctx->clock_time + ctx->c90 * pic_infos.dpb_output_delay;
 
-    bool storePicFlag = true;
-    if (pic_infos.usage == H264_NOT_USED_AS_REFERENCE) {
-      /* C.2.4.2 Storage of a non-reference picture into the DPB */
-      storePicFlag = (Tout_n > ctx->clock_time);
-    }
+    /* C.2.4.2 Storage of a non-reference picture into the DPB */
+    bool StorePicFlag = (ctx->clock_time < Tout_n);
+    // if (pic_infos.usage != H264_NOT_USED_AS_REFERENCE)
+    //   StorePicFlag = (ctx->clock_time < Tout_n);
+    // TODO: Add OutputFlag computation
 
-    if (storePicFlag) {
-      if (_addDecodedPictureToH264HrdContext(ctx, *cpbExtractedAU, Tout_n) < 0)
+    if (StorePicFlag) {
+      if (_addDecodedPictureToH264HrdContext(ctx, *cpb_removed_AU, Tout_n) < 0)
         return -1;
     }
     else
       ECHO_DEBUG_DPB_HRDV_CTX(
-        ctx, " -> Not stored in DPB (according to Rec. ITU-T H.264 C.2.4.2).\n"
+        ctx, " -> Not stored in DPB (according to ITU-T Rec. H.264 C.2.4.2).\n"
       );
 
     _printDPBStatusH264HrdContext(ctx);
 
-#if 1
     if (ctx->dpb_size < ctx->nb_au_dpb_content) {
-      LIBBLU_ERROR(
-        H264_DPB_HRD_MSG_PREFIX
-        "Rec. ITU-T H.264 C.3.5 constraint is not satisfied "
+      LIBBLU_H264_HRDV_FAIL_WCOND(
+        WARN_COUNT_CHECK(warn, C_3_5),
+        "ITU-T Rec. H.264 C.3.5 constraint is not satisfied "
         "(DPB Overflow happen, DPB size = %u pictures < %u pictures).\n",
         ctx->dpb_size, ctx->nb_au_dpb_content
       );
-      LIBBLU_ERROR(
-        H264_DPB_HRD_MSG_NAME
+      LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+        WARN_COUNT_CHECK_INC(warn, C_3_5),
         " => Affect while trying to add Access Unit %u, at removal time: %u ms.\n",
-        cpbExtractedAU->AU_idx,
+        cpb_removed_AU->AU_idx,
         _msTimeH264HrdVerifierContext(ctx, ctx->clock_time)
       );
     }
-#endif
 
     if (_popAUFromCPBH264HrdVerifierContext(ctx))
       return -1;
@@ -1940,7 +1826,7 @@ int processAUH264HrdContext(
   /* Adding current AU : */
   H264DpbHrdPicInfos infos = (H264DpbHrdPicInfos) {
     .frame_display_num = handle->curProgParam.PicOrderCnt,
-    .frame_num = sh->frameNum,
+    .frame_num = sh->frame_num,
     .field_pic_flag = sh->field_pic_flag,
     .bottom_field_flag = sh->bottom_field_flag,
     .IdrPicFlag = (
@@ -1985,19 +1871,19 @@ int processAUH264HrdContext(
   else
     infos.nb_MemMngmntCtrlOp = 0;
 
-  if (ctx->clock_time < Tf_n)
-    ctx->clock_time = Tf_n;  /* Align clock to Tf_n for next AU process. */
+  if (ctx->clock_time < Taf_n)
+    ctx->clock_time = Taf_n;  /* Align clock to Taf_n for next AU process. */
 
   ECHO_DEBUG_CPB_HRDV_CTX(
     ctx, "Adding %zu bits to CPB (picture %u) at %u ms (during %u ms).\n",
-    accessUnitSize,
+    au_size,
     ctx->nbProcessedAU,
-    _msTimeH264HrdVerifierContext(ctx, Ta_n),
-    _msTimeH264HrdVerifierContext(ctx, ctx->clock_time - Ta_n)
+    _msTimeH264HrdVerifierContext(ctx, Tai_n),
+    _msTimeH264HrdVerifierContext(ctx, ctx->clock_time - Tai_n)
   );
 
-  ctx->cpb_occupancy += accessUnitSize;
-  if (_addAUToCPBH264HrdVerifierContext(ctx, accessUnitSize, Tr_n, ctx->nbProcessedAU, infos) < 0)
+  ctx->cpb_occupancy += au_size;
+  if (_addAUToCPBH264HrdVerifierContext(ctx, au_size, Tr_n, ctx->nbProcessedAU, infos) < 0)
     return -1;
 
   ECHO_DEBUG_CPB_HRDV_CTX(
@@ -2005,20 +1891,22 @@ int processAUH264HrdContext(
     ctx->cpb_occupancy
   );
 
-  if (_outputCpbStatistics(ctx, Ta_n, ctx->clock_time - Ta_n) < 0)
+  if (_outputCpbStatistics(ctx, Tai_n, ctx->clock_time - Tai_n) < 0)
     return -1;
 
   if (ctx->cpb_size < ctx->cpb_occupancy) {
     /* cpb_occupancy exceed CPB size. */
     /* => Buffer overflow */
 
-    LIBBLU_H264_HRDV_ERROR(
-      "Rec. ITU-T H.264 C.3.2 constraint is not satisfied "
+    LIBBLU_H264_HRDV_FAIL_WCOND(
+      WARN_COUNT_CHECK(warn, C_3_2),
+      "ITU-T Rec. H.264 C.3.2 constraint is not satisfied "
       "(CPB Overflow happen, CPB size = %" PRId64 " bits < %" PRId64 " bits).\n",
       ctx->cpb_size,
       ctx->cpb_occupancy
     );
-    LIBBLU_H264_HRDV_FAIL_RETURN(
+    LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
+      WARN_COUNT_CHECK_INC(warn, C_3_2),
       " => Affect while trying to append Access Unit %u, "
       "at final arrival time: %u ms.\n",
       ctx->nbProcessedAU,
@@ -2030,17 +1918,18 @@ int processAUH264HrdContext(
   assert(0 < sh->PicSizeInMbs);
   assert(0x00 != sps->level_idc);
 
-  ctx->nMinusOneAUParameters.frame_num    = sh->frameNum;
-  ctx->nMinusOneAUParameters.PicSizeInMbs = sh->PicSizeInMbs;
-  ctx->nMinusOneAUParameters.level_idc    = sps->level_idc;
-  ctx->nMinusOneAUParameters.removal_time  = Tr_n;
-  ctx->nMinusOneAUParameters.initial_cpb_removal_delay =
-    initial_cpb_removal_delay;
-  ctx->nMinusOneAUParameters.initial_cpb_removal_delay_offset =
-    initial_cpb_removal_delay_offset;
+  ctx->prev_AU = (H264HrdVerifierAUProperties) {
+    .frame_num = sh->frame_num,
+    .PicSizeInMbs = sh->PicSizeInMbs,
+    .level_idc = sps->level_idc,
+    .final_arrival_time = Taf_n,
+    .removal_time = Tr_n,
+    .initial_cpb_removal_delay = initial_cpb_removal_delay,
+    .initial_cpb_removal_delay_offset = initial_cpb_removal_delay_offset
+  };
 
   ctx->nbProcessedAU++;
-  ctx->pesNbAlreadyProcessedBytes += accessUnitSize;
+  ctx->pesNbAlreadyProcessedBytes += au_size;
 
   return 0; /* OK */
 }

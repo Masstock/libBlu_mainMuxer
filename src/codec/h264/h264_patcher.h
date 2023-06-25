@@ -101,8 +101,8 @@ int patchH264SeiBufferingPeriodMessageParameters(
   H264ParametersHandlerPtr handle,
   H264SeiMessageParameters * seiMessage,
   const unsigned seq_parameter_set_id,
-  const H264HrdBufferingPeriodParameters * hrdParam,
-  const H264HrdBufferingPeriodParameters * vclParam
+  const H264SeiBufferingPeriodSchedSel * hrdParam,
+  const H264SeiBufferingPeriodSchedSel * vclParam
 );
 
 int insertH264SeiBufferingPeriodPlaceHolder(

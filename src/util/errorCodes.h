@@ -98,17 +98,24 @@ int isDisabledExplodeLevel(
   LibbluExplodeLevel level
 );
 
-#define __LIBBLU_FAIL_INSTR_(instr, level, format, ...)                       \
+#define __LIBBLU_FAIL_INSTR_(fail_instr, level, warn_expr, format, ...)       \
   do {                                                                        \
     if (!isDisabledExplodeLevel(level)) {                                     \
       LIBBLU_ERROR(format, ##__VA_ARGS__);                                    \
-      instr;                                                                  \
+      fail_instr;                                                             \
     }                                                                         \
-    LIBBLU_WARNING(format, ##__VA_ARGS__);                                    \
+    else if (warn_expr)                                                       \
+      LIBBLU_WARNING(format, ##__VA_ARGS__);                                  \
   } while (0)
 
+#define LIBBLU_FAIL_WCOND(level, warn_expr, format, ...)                      \
+  __LIBBLU_FAIL_INSTR_((void) 0, level, warn_expr, format, ##__VA_ARGS__)
+
 #define LIBBLU_FAIL_RETURN(level, format, ...)                                \
-  __LIBBLU_FAIL_INSTR_(return -1, level, format, ##__VA_ARGS__)
+  __LIBBLU_FAIL_INSTR_(return -1, level, 1, format, ##__VA_ARGS__)
+
+#define LIBBLU_FAIL_WCOND_RETURN(level, warn_expr, format, ...)               \
+  __LIBBLU_FAIL_INSTR_(return -1, level, warn_expr, format, ##__VA_ARGS__)
 
 /** \~english
  * \brief Error printing and goto 'free_return' label macro.

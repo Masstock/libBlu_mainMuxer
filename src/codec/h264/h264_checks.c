@@ -1181,7 +1181,7 @@ int checkH264SequenceParametersSetCompliance(
       "only 'seq_parameter_set_id' == 0x0 supported.\n"
     );
 
-  if (H264_PROFILE_IS_HIGH(param.profile_idc)) {
+  if (isHighScalableMultiviewH264ProfileIdcValue(param.profile_idc)) {
     LIBBLU_H264_DEBUG_SPS(
       "  Chroma sampling format (chroma_format_idc): %s (0x%X).\n",
       H264ChromaFormatIdcValueStr(param.chroma_format_idc),
@@ -1590,7 +1590,7 @@ int checkH264SequenceParametersSetCompliance(
       "(Sqrt(MaxFS * 8) = %u < PicWidthInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 "), "
       "leading a violation of bitstream profile/level conformance.\n",
-      H264_PROFILE_IS_HIGH(param.profile_idc) ? "A.3.2.d)" : "A.3.1.f)",
+      isHighScalableMultiviewH264ProfileIdcValue(param.profile_idc) ? "A.3.2.d)" : "A.3.1.f)",
       (unsigned) sqrt(MaxFS * 8),
       param.PicWidthInMbs,
       param.level_idc / 10, param.level_idc % 10
@@ -1681,7 +1681,7 @@ int checkH264SequenceParametersSetCompliance(
       "(Sqrt(MaxFS * 8) = %u < FrameHeightInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 ") "
       "leading a violation of bitstream profile/level conformance.\n",
-      H264_PROFILE_IS_HIGH(param.profile_idc) ? "A.3.2.e)" : "A.3.1.g)",
+      isHighScalableMultiviewH264ProfileIdcValue(param.profile_idc) ? "A.3.2.e)" : "A.3.1.g)",
       (unsigned) sqrt(MaxFS * 8),
       param.FrameHeightInMbs,
       param.level_idc / 10, param.level_idc % 10
@@ -1701,7 +1701,7 @@ int checkH264SequenceParametersSetCompliance(
       "(MaxFS = %u < PicWidthInMbs * FrameHeightInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 ") "
       "leading a violation of bitstream profile/level conformance.\n",
-      H264_PROFILE_IS_HIGH(param.profile_idc) ? "A.3.2.c)" : "A.3.1.e)",
+      isHighScalableMultiviewH264ProfileIdcValue(param.profile_idc) ? "A.3.2.c)" : "A.3.1.e)",
       MaxFS,
       param.PicWidthInMbs * param.FrameHeightInMbs,
       param.level_idc / 10, param.level_idc % 10
@@ -2549,7 +2549,7 @@ int checkH264SeiBufferingPeriodCompliance(
   int type;
   bool present;
   const H264HrdParameters * hrdParam;
-  const H264HrdBufferingPeriodParameters * hrdBufPerd;
+  const H264SeiBufferingPeriodSchedSel * hrdBufPerd;
 
   assert(NULL != handle);
 
@@ -2631,7 +2631,7 @@ int checkH264SeiBufferingPeriodCompliance(
           "(initial_cpb_removal_delay).\n"
         );
 
-      maxDelay = H264_90KHZ_CLOCK * (
+      maxDelay = 90000 * (
         (double) hrdParam->schedSel[SchedSelIdx].CpbSize /
         (double) hrdParam->schedSel[SchedSelIdx].BitRate
       );
@@ -2689,7 +2689,7 @@ bool constantH264SeiBufferingPeriodCheck(
       first.nal_hrd_parameters,
       second.nal_hrd_parameters,
       (vuiParam->nal_hrd_parameters.cpb_cnt_minus1 + 1)
-        * sizeof(H264HrdBufferingPeriodParameters)
+        * sizeof(H264SeiBufferingPeriodSchedSel)
     );
     if (ret != 0)
       return false;
@@ -2700,7 +2700,7 @@ bool constantH264SeiBufferingPeriodCheck(
       first.vcl_hrd_parameters,
       second.vcl_hrd_parameters,
       (vuiParam->vcl_hrd_parameters.cpb_cnt_minus1 + 1)
-        * sizeof(H264HrdBufferingPeriodParameters)
+        * sizeof(H264SeiBufferingPeriodSchedSel)
     );
     if (ret != 0)
       return false;
@@ -3568,15 +3568,15 @@ int checkH264SliceHeaderCompliance(
 
   LIBBLU_H264_DEBUG_SLICE(
     "   Frame number (frame_num): %" PRIu16 " (0x%04" PRIX8 ").\n",
-    param.frameNum,
-    param.frameNum
+    param.frame_num,
+    param.frame_num
   );
 
-  if (handle->sequenceParametersSet.data.MaxFrameNum <= param.frameNum)
+  if (handle->sequenceParametersSet.data.MaxFrameNum <= param.frame_num)
     LIBBLU_H264_ERROR_RETURN(
       "Unexpected too high frame number 'frame_num' == %" PRIu16 ", "
       "according to SPS, this value shall not exceed %u.\n",
-      param.frameNum,
+      param.frame_num,
       handle->sequenceParametersSet.data.MaxFrameNum
     );
 
@@ -3597,11 +3597,11 @@ int checkH264SliceHeaderCompliance(
 
   if (param.isIdrPic) {
     /* IDR picture */
-    if (param.frameNum != 0x0) {
+    if (param.frame_num != 0x0) {
       LIBBLU_H264_ERROR_RETURN(
         "Unexpected 'frame_num' == %" PRIu16 " for IDR picture, "
         "shall be equal to 0.\n",
-        param.frameNum
+        param.frame_num
       );
     }
   }
@@ -3971,7 +3971,7 @@ int checkH264SliceHeaderChangeCompliance(
     }
   }
   if (second.first_mb_in_slice != 0x0) {
-    if (first.frameNum != second.frameNum)
+    if (first.frame_num != second.frame_num)
       LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
         "Unallowed different 'frame_num' in the same picture.\n"
       );

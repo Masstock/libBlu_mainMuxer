@@ -22,11 +22,6 @@
 #define H264_MAX_CHROMA_CHANNELS_NB  2
 
 /** \~english
- * \brief 90 kHz clock ticks per second.
- */
-#define H264_90KHZ_CLOCK  SUB_CLOCK_90KHZ
-
-/** \~english
  * \brief Maximum supported number of Picture Parameters Sets.
  *
  * This value is defined according to the Rec. ITU-T H.264 7.4.2.2 syntax.
@@ -301,28 +296,47 @@ typedef enum {
   H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH = 139,
 } H264ProfileIdcValue;
 
-#define H264_PROFILE_IS_BASELINE_MAIN_EXTENDED(profile_idc)                    \
-  (                                                                           \
-    (profile_idc) == H264_PROFILE_BASELINE                                     \
-    || (profile_idc) == H264_PROFILE_MAIN                                      \
-    || (profile_idc) == H264_PROFILE_EXTENDED                                  \
-  )
+static inline bool isBaselineMainExtendedH264ProfileIdcValue(
+  H264ProfileIdcValue profile_idc
+)
+{
+  return (
+    profile_idc == H264_PROFILE_BASELINE
+    || profile_idc == H264_PROFILE_MAIN
+    || profile_idc == H264_PROFILE_EXTENDED
 
-#define H264_PROFILE_IS_HIGH(profile_idc)                                      \
-  (                                                                           \
-    (profile_idc) == H264_PROFILE_CAVLC_444_INTRA                              \
-    || (profile_idc) == H264_PROFILE_SCALABLE_HIGH                             \
-    || (profile_idc) == H264_PROFILE_HIGH                                      \
-    || (profile_idc) == H264_PROFILE_MULTIVIEW_HIGH                            \
-    || (profile_idc) == H264_PROFILE_HIGH_10                                   \
-    || (profile_idc) == H264_PROFILE_HIGH_422                                  \
-    || (profile_idc) == H264_PROFILE_STEREO_HIGH                               \
-    || (profile_idc) == H264_PROFILE_MFC_HIGH                                  \
-    || (profile_idc) == H264_PROFILE_DEPTH_MFC_HIGH                            \
-    || (profile_idc) == H264_PROFILE_MULTIVIEW_DEPTH_HIGH                      \
-    || (profile_idc) == H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH             \
-    || (profile_idc) == H264_PROFILE_HIGH_444_PREDICTIVE                       \
-  )
+    || profile_idc == H264_PROFILE_SCALABLE_BASELINE
+  );
+}
+
+static inline bool isHighH264ProfileIdcValue(
+  H264ProfileIdcValue profile_idc
+)
+{
+  return (
+    profile_idc == H264_PROFILE_HIGH
+    || profile_idc == H264_PROFILE_HIGH_10
+    || profile_idc == H264_PROFILE_HIGH_422
+    || profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
+    || profile_idc == H264_PROFILE_CAVLC_444_INTRA
+  );
+}
+
+static inline bool isHighScalableMultiviewH264ProfileIdcValue(
+  H264ProfileIdcValue profile_idc
+)
+{
+  return (
+    isHighH264ProfileIdcValue(profile_idc)
+    || profile_idc == H264_PROFILE_SCALABLE_HIGH
+    || profile_idc == H264_PROFILE_MULTIVIEW_HIGH
+    || profile_idc == H264_PROFILE_STEREO_HIGH
+    || profile_idc == H264_PROFILE_MFC_HIGH
+    || profile_idc == H264_PROFILE_DEPTH_MFC_HIGH
+    || profile_idc == H264_PROFILE_MULTIVIEW_DEPTH_HIGH
+    || profile_idc == H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH
+  );
+}
 
 #define H264_LEVEL_1B 9 /* BUG: This value is not fixed. */
 
@@ -405,9 +419,7 @@ typedef struct {
   uint8_t bit_rate_scale;
   uint8_t cpb_size_scale;
 
-  H264SchedSel schedSel[
-    H264_MAX_CPB_CONFIGURATIONS
-  ];
+  H264SchedSel schedSel[H264_MAX_CPB_CONFIGURATIONS];
 
   uint8_t initial_cpb_removal_delay_length_minus1;
   uint8_t cpb_removal_delay_length_minus1;
@@ -956,13 +968,13 @@ typedef struct {
 typedef struct {
   uint32_t initial_cpb_removal_delay;
   uint32_t initial_cpb_removal_delay_offset;
-} H264HrdBufferingPeriodParameters;
+} H264SeiBufferingPeriodSchedSel;
 
 typedef struct {
   unsigned seq_parameter_set_id;
 
-  H264HrdBufferingPeriodParameters nal_hrd_parameters[H264_MAX_CPB_CONFIGURATIONS];
-  H264HrdBufferingPeriodParameters vcl_hrd_parameters[H264_MAX_CPB_CONFIGURATIONS];
+  H264SeiBufferingPeriodSchedSel nal_hrd_parameters[H264_MAX_CPB_CONFIGURATIONS];
+  H264SeiBufferingPeriodSchedSel vcl_hrd_parameters[H264_MAX_CPB_CONFIGURATIONS];
 } H264SeiBufferingPeriod;
 
 typedef enum {
@@ -1507,7 +1519,7 @@ typedef struct {
   H264SliceTypeValue slice_type;
   uint8_t pic_parameter_set_id;
   H264ColourPlaneIdValue colour_plane_id;
-  uint16_t frameNum;
+  uint16_t frame_num;
 
   bool field_pic_flag;
   bool bottom_field_flag;  /**< bottom_field_flag field value. If true,

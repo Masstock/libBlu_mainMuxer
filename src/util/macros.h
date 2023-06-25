@@ -125,6 +125,7 @@
 #  define lbc_strndup  lb_wstrn_dup
 
 #  define lbc_atob  lb_watob
+#  define lbc_strtoul  wcstoul
 
 #  define lbc_equal  lb_wstr_equal
 #  define lbc_equaln  lb_wstrn_equal
@@ -196,6 +197,7 @@
 #  define lbc_strncpy  strncpy
 
 #  define lbc_atob  lb_atob
+#  define lbc_strtoul  strtoul
 
 #  define lbc_access_fp  lb_access_fp
 #  define lbc_chdir  chdir

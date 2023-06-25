@@ -237,7 +237,7 @@ size_t appendH264SequenceParametersSet(
       if (writeH264NalByteArrayExpGolombCode(spsNal, param->seq_parameter_set_id) < 0)
         goto free_return;
 
-      if (H264_PROFILE_IS_HIGH(param->profile_idc)) {
+      if (isHighScalableMultiviewH264ProfileIdcValue(param->profile_idc)) {
         /* [ue chroma_format_idc] */
         if (writeH264NalByteArrayExpGolombCode(spsNal, param->chroma_format_idc) < 0)
           goto free_return;
@@ -892,7 +892,7 @@ int buildH264SeiBufferingPeriodMessage(
   unsigned fieldLength;
 
   H264VuiParameters * vuiParam;
-  H264HrdBufferingPeriodParameters * hrdParam;
+  H264SeiBufferingPeriodSchedSel * hrdParam;
 
   assert(NULL != handle);
   assert(NULL != seiNal);
@@ -1201,8 +1201,8 @@ int patchH264SeiBufferingPeriodMessageParameters(
   H264ParametersHandlerPtr handle,
   H264SeiMessageParameters * seiMessage,
   const unsigned seq_parameter_set_id,
-  const H264HrdBufferingPeriodParameters * hrdParam,
-  const H264HrdBufferingPeriodParameters * vclParam
+  const H264SeiBufferingPeriodSchedSel * hrdParam,
+  const H264SeiBufferingPeriodSchedSel * vclParam
 )
 {
   size_t messageLen;
@@ -1288,8 +1288,8 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
   H264SeiRbspParameters newSeiNalParam;
 
-  H264HrdBufferingPeriodParameters nalHrd[1];
-  H264HrdBufferingPeriodParameters vclHrd[1];
+  H264SeiBufferingPeriodSchedSel nalHrd[1];
+  H264SeiBufferingPeriodSchedSel vclHrd[1];
 
   H264AUNalUnitPtr nalUnit;
 
@@ -1298,11 +1298,11 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
   /* Setting default empty SEI parameters : */
 
-  nalHrd[0] = (H264HrdBufferingPeriodParameters) {
+  nalHrd[0] = (H264SeiBufferingPeriodSchedSel) {
     .initial_cpb_removal_delay = 0,
     .initial_cpb_removal_delay_offset = 0,
   };
-  vclHrd[0] = (H264HrdBufferingPeriodParameters) {
+  vclHrd[0] = (H264SeiBufferingPeriodSchedSel) {
     .initial_cpb_removal_delay = 0,
     .initial_cpb_removal_delay_offset = 0,
   };
@@ -1361,8 +1361,8 @@ int completeH264SeiBufferingPeriodComputation(
 
   H264SeiRbspParameters newSeiNalParam;
 
-  H264HrdBufferingPeriodParameters nalHrd[1];
-  H264HrdBufferingPeriodParameters vclHrd[1];
+  H264SeiBufferingPeriodSchedSel nalHrd[1];
+  H264SeiBufferingPeriodSchedSel vclHrd[1];
 
   /* Pointer to saved parameter in H264ParametersHandlerPtr struct : */
   H264ModifiedNalUnit * seiModNalUnit;
@@ -1399,15 +1399,15 @@ int completeH264SeiBufferingPeriodComputation(
     nalMaxCpbBufferingDelay = handle->curProgParam.largestAUSize * 8l / nalBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", nalMaxCpbBufferingDelay);
 
-    nalResultInitCpbRemovalDelay = ceil(nalMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
+    nalResultInitCpbRemovalDelay = ceil(nalMaxCpbBufferingDelay * 90000);
     lbc_printf("Result computed initial CPB removal delay: %f.\n", nalResultInitCpbRemovalDelay);
 
     nalCpbSize = vuiParam->nal_hrd_parameters.schedSel[0].CpbSize;
 
-    if (nalCpbSize < nalResultInitCpbRemovalDelay * nalBitRate / H264_90KHZ_CLOCK)
+    if (nalCpbSize < nalResultInitCpbRemovalDelay * nalBitRate / 90000)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
 
-    if (H264_90KHZ_CLOCK < nalResultInitCpbRemovalDelay) {
+    if (90000 < nalResultInitCpbRemovalDelay) {
       /* Considering initial CPB buffering cannot be superior to one second. */
       LIBBLU_ERROR_RETURN("Computed initial_cpb_removal_delay exceed one second.\n");
     }
@@ -1434,20 +1434,20 @@ int completeH264SeiBufferingPeriodComputation(
     vclMaxCpbBufferingDelay = handle->curProgParam.largestAUSize * 8l / vclBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", vclMaxCpbBufferingDelay);
 
-    vclResultInitCpbRemovalDelay = ceil(vclMaxCpbBufferingDelay * H264_90KHZ_CLOCK);
+    vclResultInitCpbRemovalDelay = ceil(vclMaxCpbBufferingDelay * 90000);
     lbc_printf("Result computed initial CPB removal delay: %f.\n", vclResultInitCpbRemovalDelay);
 
     vclCpbSize = vuiParam->vcl_hrd_parameters.schedSel[0].CpbSize;
 
-    if (vclCpbSize < vclResultInitCpbRemovalDelay * vclBitRate / H264_90KHZ_CLOCK)
+    if (vclCpbSize < vclResultInitCpbRemovalDelay * vclBitRate / 90000)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
 
-    if (H264_90KHZ_CLOCK < vclResultInitCpbRemovalDelay)
+    if (90000 < vclResultInitCpbRemovalDelay)
       /* Considering initial CPB buffering cannot be superior to one second. */
       LIBBLU_H264_ERROR_RETURN(
         "Computed 'initial_cpb_removal_delay' exceed one second "
         "(%.2f second(s), %f ticks).\n",
-        vclResultInitCpbRemovalDelay / H264_90KHZ_CLOCK,
+        vclResultInitCpbRemovalDelay / 90000,
         vclResultInitCpbRemovalDelay
       );
 

@@ -33,31 +33,60 @@
 #define H264_DPB_HRD_MSG_PREFIX  H264_DPB_HRD_MSG_NAME  lbc_str(": ")
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
-  H264CurrentProgressParam currentState,
-  LibbluESSettingsOptions options,
-  H264SPSDataParameters sps
+  const H264CurrentProgressParam * cur_state,
+  const LibbluESSettingsOptions * options,
+  const H264SPSDataParameters * sps
 )
 {
 
-  if (currentState.stillPictureTolerance) // TODO: Check still pictures.
+  if (cur_state->stillPictureTolerance) // TODO: Check still pictures.
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of still pictures.\n");
 
-  if (options.discardSei)
+  if (options->discardSei)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI discarding.\n");
-  if (options.forceRebuildSei)
+  if (options->forceRebuildSei)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI rebuilding.\n");
 
-  if (!sps.vui_parameters_present_flag)
+  if (!sps->vui_parameters_present_flag)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing VUI parameters.\n");
-  if (!sps.vui_parameters.nal_hrd_parameters_present_flag)
+  if (!sps->vui_parameters.nal_hrd_parameters_present_flag)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing NAL HRD parameters.\n");
-  if (sps.vui_parameters.low_delay_hrd_flag)  // TODO: Low Delay not supported
+  if (sps->vui_parameters.low_delay_hrd_flag)  // TODO: Low Delay not supported
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of Low Delay.\n");
-  if (!sps.vui_parameters.timing_info_present_flag)
+  if (!sps->vui_parameters.timing_info_present_flag)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing timing info in VUI parameters.\n");
 
   return true; /* Available */
 }
+
+typedef struct {
+  unsigned max_amount;
+
+  unsigned A_3_1_j__A_3_3_g;  /**< ITU-T Rec. H.264 A.3.1.j) / A.3.3.g)      */
+  unsigned A_3_1_i__A_3_3_h;  /**< ITU-T Rec. H.264 A.3.1.i) / A.3.3.h)      */
+  unsigned C_15__C_16_ceil;   /**< ITU-T Rec. H.264 C-15/C-16 ceil equation  */
+  unsigned C_16_floor;        /**< ITU-T Rec. H.264 C-16 floor equation      */
+  unsigned C_3_2;             /**< ITU-T Rec. H.264 C.3.2      */
+  unsigned C_3_3;             /**< ITU-T Rec. H.264 C.3.3      */
+  unsigned C_3_5;             /**< ITU-T Rec. H.264 C.3.5      */
+  unsigned A_3_1_C;           /**< ITU-T Rec. H.264 A.3.1.c)      */
+  unsigned A_3_1_D;           /**< ITU-T Rec. H.264 A.3.1.d)      */
+  unsigned A_3_1_A__A_3_2_A;  /**< ITU-T Rec. H.264 A.3.1.a) / A.3.2.a)      */
+  unsigned A_3_3_B;           /**< ITU-T Rec. H.264 A.3.3.b)      */
+  unsigned A_3_3_A;           /**< ITU-T Rec. H.264 A.3.3.a)      */
+
+  unsigned invalid_memmng;
+
+  unsigned bdav_maxbr;
+  unsigned bdav_cpbsize;
+
+  unsigned dpb_au_overflow;   /**< More AU in DPB than supported. */
+} H264HrdVerifierWarnings;
+
+typedef struct {
+  FILE * cpb_fd;
+  FILE * dpb_fd;
+} H264HrdVerifierDebug;
 
 typedef enum {
   H264_NOT_USED_AS_REFERENCE         = 0x0,
@@ -92,7 +121,7 @@ typedef struct {
   H264DpbHrdPicInfos infos;
 } H264CpbHrdAU;
 
-#define H264_MAX_AU_IN_CPB  1024 /* pow(2) ! */
+#define H264_MAX_AU_IN_CPB  4096 /* pow(2) ! */
 #define H264_AU_CPB_MOD_MASK  (H264_MAX_AU_IN_CPB - 1)
 
 typedef struct {
@@ -109,13 +138,21 @@ typedef struct {
   unsigned LongTermFrameIdx;
 } H264DpbHrdPic;
 
-typedef struct {
-  FILE * cpb_fd;
-  FILE * dpb_fd;
-} H264HrdVerifierDebug;
-
 #define H264_MAX_DPB_SIZE  (1u << 5) /* pow(2) ! */
 #define H264_DPB_MOD_MASK  (H264_MAX_DPB_SIZE - 1)
+
+typedef struct {
+  unsigned frame_num;
+
+  unsigned PicSizeInMbs;
+  uint8_t level_idc;
+
+  uint64_t final_arrival_time;
+  uint64_t removal_time;
+
+  uint64_t initial_cpb_removal_delay;
+  uint64_t initial_cpb_removal_delay_offset;
+} H264HrdVerifierAUProperties;
 
 typedef struct {
   double second; /* c = time_scale * 90000. */
@@ -124,7 +161,6 @@ typedef struct {
   uint64_t t_c; /* t_c = num_units_in_tick * 90000. */
 
   double bitrate; /* In bits per c tick. */
-  bool cbr; /* true: CRB stream, false: VBR stream. */
   int64_t cpb_size; /* In bits. */
   unsigned dpb_size; /* In frames. */
 
@@ -157,25 +193,15 @@ typedef struct {
 
   int MaxLongTermFrameIdx;  /**< If -1, means "no long-term frame indices".  */
 
-  struct {
-    unsigned frame_num;
+  H264HrdVerifierAUProperties prev_AU;
 
-    unsigned PicSizeInMbs;
-    uint8_t level_idc;
-
-    uint64_t removal_time;
-
-    uint64_t initial_cpb_removal_delay;
-    uint64_t initial_cpb_removal_delay_offset;
-  } nMinusOneAUParameters;
-
+  H264HrdVerifierWarnings warnings;
   H264HrdVerifierDebug debug;
-  // H264HrdVerifierOptions options;
 } H264HrdVerifierContext, *H264HrdVerifierContextPtr;
 
 H264HrdVerifierContextPtr createH264HrdVerifierContext(
-  LibbluESSettingsOptions options,
-  const H264SPSDataParameters * spsData,
+  LibbluESSettingsOptions * options,
+  const H264SPSDataParameters * sps,
   const H264ConstraintsParam * constraints
 );
 
@@ -212,24 +238,10 @@ void echoDebugH264HrdVerifierContext(
     ctx, LIBBLU_DEBUG_H264_HRD_DPB, lbc_str(format), ##__VA_ARGS__            \
   )
 
-#if 0
-int processAUH264HrdContext(
-  H264HrdVerifierContextPtr ctx,
-  H264CurrentProgressParam * curState,
-  const H264SPSDataParameters * spsData,
-  const H264SliceHeaderParameters * sliceHeader,
-  const H264SeiPicTiming * picTimingSei,
-  const H264SeiBufferingPeriod * bufPeriodSei,
-  const H264ConstraintsParam * constraints,
-  const bool isNewBufferingPeriod,
-  const int64_t accessUnitSize
-);
-#else
 int processAUH264HrdContext(
   H264HrdVerifierContextPtr ctx,
   H264ParametersHandlerPtr handle,
-  const int64_t accessUnitSize
+  int64_t accessUnitSize
 );
-#endif
 
 #endif

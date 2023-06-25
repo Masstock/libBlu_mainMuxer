@@ -60,16 +60,26 @@
 #define LIBBLU_H264_HRDV_ERROR_FRETURN(format, ...)                           \
   LIBBLU_ERROR_FRETURN(LIBBLU_H264_HRDV_PREFIX format, ##__VA_ARGS__)
 
-#define LIBBLU_H264_HRDV_FAIL_RETURN(format, ...)                             \
-  LIBBLU_FAIL_RETURN(                                                         \
+#define LIBBLU_H264_HRDV_FAIL_WCOND(expr, format, ...)                        \
+  LIBBLU_FAIL_WCOND(                                                          \
     LIBBLU_EXPLODE_STD_COMPLIANCE,                                            \
+    expr,                                                                     \
     LIBBLU_H264_HRDV_PREFIX format,                                           \
     ##__VA_ARGS__                                                             \
   )
 
-#define LIBBLU_H264_HRDV_BD_FAIL_RETURN(format, ...)                          \
-  LIBBLU_FAIL_RETURN(                                                         \
+#define LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(expr, format, ...)                 \
+  LIBBLU_FAIL_WCOND_RETURN(                                                   \
+    LIBBLU_EXPLODE_STD_COMPLIANCE,                                            \
+    expr,                                                                     \
+    LIBBLU_H264_HRDV_PREFIX format,                                           \
+    ##__VA_ARGS__                                                             \
+  )
+
+#define LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(expr, format, ...)              \
+  LIBBLU_FAIL_WCOND_RETURN(                                                   \
     LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE,                                       \
+    expr,                                                                     \
     LIBBLU_H264_HRDV_PREFIX format,                                           \
     ##__VA_ARGS__                                                             \
   )
