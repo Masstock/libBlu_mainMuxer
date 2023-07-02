@@ -33,46 +33,27 @@ int parseDtshdChunk(
   DtsContextPtr ctx
 )
 {
-  int ret;
-
-  DtshdFileHandlerPtr handle = ctx->dtshdFileHandle;
-
-  ret = decodeDtshdFileChunk(
-    ctx->file,
-    handle,
-    DTS_CTX_FAST_2ND_PASS(ctx)
-  );
+  DtshdFileHandlerPtr hdlr = ctx->dtshdFileHandle;
+  int ret = decodeDtshdFileChunk(ctx->file, hdlr, DTS_CTX_FAST_2ND_PASS(ctx));
 
   if (0 == ret) {
     /* Successfully decoded chunk, collect parameters : */
-
-    if (!handle->headerPresent)
+    if (!hdlr->DTSHDHDR_present)
       LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
         "Expect DTSHDHDR to be the first chunk of DTSHD formatted file.\n"
       );
 
-    if (
-      handle->headerPresent
-      && handle->audioPresHeaderMetadataPresent
-    ) {
-      if (
-        !handle->warningFlags.missingRequiredPbrFile
-        && !handle->header.peakBitRateSmoothingPerformed
-        && handle->audioPresHeaderMetadata.losslessComponentPresent
-        && !isInitPbrFileHandler()
-      ) {
+    if (canBePerformedPBRSDtshdFileHandler(hdlr)) {
+      if (!isInitPbrFileHandler()) {
         LIBBLU_WARNING(
           "Missing PBR file in parameters, "
           "unable to process PBR smoothing as request by input file.\n"
         );
-        handle->warningFlags.missingRequiredPbrFile = true;
+        hdlr->warningFlags.missingRequiredPbrFile = true;
       }
     }
 
-    getDtshdInitialDelay(
-      ctx->dtshdFileHandle,
-      &ctx->skippedFramesControl
-    );
+    ctx->skippedFramesControl = getInitialSkippingDelayDtshdFileHandler(hdlr);
   }
 
   return ret;
@@ -339,19 +320,19 @@ int decodeDcaCoreSS(
     ctx->core = INIT_DTS_DCA_CORE_SS_CTX();
 
     /* First Sync Frame */
-    if (checkDcaCoreSSCompliance(syncFrame, &ctx->core.warningFlags) < 0)
+    if (checkDcaCoreSSCompliance(&syncFrame, &ctx->core.warningFlags) < 0)
       return -1;
 
     ctx->core.curFrame = syncFrame;
     ctx->corePresent = true;
   }
   else if (!DTS_CTX_FAST_2ND_PASS(ctx)) {
-    constantSyncFrame = constantDcaCoreSS(ctx->core.curFrame, syncFrame);
+    constantSyncFrame = constantDcaCoreSS(&ctx->core.curFrame, &syncFrame);
 
     if (!constantSyncFrame) {
       if (
         checkDcaCoreSSChangeCompliance(
-          ctx->core.curFrame, syncFrame, &ctx->core.warningFlags
+          &ctx->core.curFrame, &syncFrame, &ctx->core.warningFlags
         ) < 0
       )
         return -1;
@@ -1202,9 +1183,9 @@ int decodeDcaExtSSAssetDescriptorDecNavData(
       /* [u4 DRCversion_Rev2] */
       if (readBits(file, &value, 4) < 0)
         return -1;
-      param->drcRev2.version = value;
+      param->drcRev2.Hdr_Version = value;
 
-      if (param->drcRev2.version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
+      if (param->drcRev2.Hdr_Version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
         /* [0 nRev2_DRCs] */
         drcCoeffNb = staticFieldsParam->frameDurationCodeValue / 256;
 
@@ -1637,10 +1618,10 @@ int patchDcaExtSSHeader(
 
   if (
     NULL != ctx->dtshdFileHandle
-    && ctx->dtshdFileHandle->extMetadataPresent
+    && ctx->dtshdFileHandle->EXTSS_MD_present
   ) {
     pbrSmoothingBufSize =
-      ctx->dtshdFileHandle->extMetadata.peakBitRateSmoothingBufSizeKb
+      ctx->dtshdFileHandle->EXTSS_MD.vbr.Pbr_Smooth_Buff_Size_Kb
     ;
   }
   else
@@ -1781,7 +1762,7 @@ int decodeDcaExtSS(
 
     if (
       checkDcaExtSSHeaderCompliance(
-        extFrame.header,
+        &extFrame.header,
         ctx->isSecondaryStream,
         &ctx->extSS.warningFlags
       ) < 0
@@ -1984,6 +1965,8 @@ int parseDts(
       }
     }
 
+    int64_t start_off = tellPos(ctx->file);
+
     switch (initNextDtsFrame(ctx)) {
       case DTS_FRAME_INIT_CORE_SUBSTREAM:
         /* DTS Coherent Acoustics Core */
@@ -2003,6 +1986,12 @@ int parseDts(
 
     if (completeDtsFrame(ctx, esms) < 0)
       return -1;
+
+    int64_t frame_size = tellPos(ctx->file) - start_off;
+    if (frame_size < 0)
+      LIBBLU_DTS_ERROR_RETURN("Negative frame size.\n");
+    if (DTS_CTX_IS_DTSHD_FILE(ctx))
+      ctx->dtshdFileHandle->off_STRMDATA += frame_size;
   }
 
   return 0;
@@ -2084,7 +2073,7 @@ int analyzeDts(
   // TODO: Cleanup, check nbChannels (support secondary audio case)
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
+    "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
     streamCodingTypeStr(esmsInfos->prop.coding_type),
     AudioFormatCodeStr(esmsInfos->prop.audio_format),
     ctx->core.curFrame.header.nbChannels,

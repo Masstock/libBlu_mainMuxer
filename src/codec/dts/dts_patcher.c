@@ -956,7 +956,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       /* [u4 DRCversion_Rev2] */
       size += 4;
 
-      if (param->drcRev2.version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
+      if (param->drcRev2.Hdr_Version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
         /* [0 nRev2_DRCs] */
         /* [u<8*nRev2_DRCs> DRCCoeff_Rev2[subsubFrame]] */
         size += 8 * (staticFieldsParam->frameDurationCodeValue / 256);
@@ -1382,13 +1382,13 @@ int buildDcaExtSSAssetDescriptorDecNavData(
       /* [u4 DRCversion_Rev2] */
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
-        param->drcRev2.version,
+        param->drcRev2.Hdr_Version,
         4
       );
       if (ret < 0)
         return -1;
 
-      if (param->drcRev2.version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
+      if (param->drcRev2.Hdr_Version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
         /* [0 nRev2_DRCs] */
         /* [u<8*nRev2_DRCs> DRCCoeff_Rev2[subsubFrame]] */
         LIBBLU_DTS_ERROR_RETURN(

@@ -674,17 +674,14 @@ int readValue64LittleEndian(
   uint64_t * value
 )
 {
-  size_t idx;
-  uint64_t v;
-  uint8_t byte;
+  assert(0 < length && length <= 8);
 
-  assert(0 < length && length <= 4);
-
-  v = 0;
-  for (idx = 0; idx < length; idx++) {
+  uint64_t v = 0;
+  for (size_t idx = 0; idx < length; idx++) {
+    uint8_t byte;
     if (readByte(bitStream, &byte) < 0)
       return -1;
-    v |= (uint64_t) (byte << (8 * idx));
+    v |= byte << (8ull * idx);
   }
 
   if (NULL != value)

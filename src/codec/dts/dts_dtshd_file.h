@@ -60,75 +60,10 @@ typedef enum {
     chunk.                                                                   */
 } DtsHdChunkMagic;
 
-const char * dtshdChunkIdStr(
-  const DtsHdChunkMagic id
-);
-
 /** \~english
  * \brief Supported DTS-HD file header Hdr_Version value.
  */
-#define DTS_HD_HEADER_SUPPORTED_VER 0x0
-
-int decodeDtshdHeaderChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdFileHeaderChunk * param
-);
-
-int decodeDtshdFileInfoChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdFileInfo * param
-);
-
-int decodeDtshdCoreSubStreamMetaChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdCoreSubStrmMeta * param
-);
-
-int decodeDtshdExtSubStreamMetaChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdExtSubStrmMeta * param,
-  bool isVariableBitRate
-);
-
-int decodeDtshdAudioPresHeaderMetaChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdAudioPresPropHeaderMeta * param
-);
-
-int decodeDtshdAudioPresInfoChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdAudioPresText * param
-);
-
-int decodeDtshdNavigationMetaChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdNavMeta * param
-);
-
-int decodeDtshdStreamDataChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdStreamData * param,
-  bool inStreamData
-);
-
-int decodeDtshdTimecodeChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdTimecode * param
-);
-
-int decodeDtshdBuildVerChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdBuildVer * param
-);
-
-int decodeDtshdBlackoutChunk(
-  BitstreamReaderPtr dtsInput,
-  DtshdBlackout * param
-);
-
-int decodeDtshdUnsupportedChunk(
-  BitstreamReaderPtr dtsInput
-);
+#define DTS_HD_HEADER_SUPPORTED_VER  0x0
 
 bool isDtshdFile(
   BitstreamReaderPtr dtsInput
@@ -173,25 +108,6 @@ int decodeDtshdFileChunk(
   BitstreamReaderPtr dtsInput,
   DtshdFileHandlerPtr handle,
   bool skipChecks
-);
-
-/** \~english
- * \brief Get if present initial number of encoded frame that initially must to
- * be skipped.
- *
- * This information may be available after DTS-HD Audio Presentation Header
- * Metadata (AUPR-HDR) chunk has been decoded. The return value of this
- * function allows to know if that the case or not.
- *
- * \param handle DTS-HD file handle.
- * \param skippedFramesNumber Number of to-be-skipped frames (may be NULL).
- * \return true Initial delay information is available.
- * \return false Initial delay information is not available or has not yet been
- * parsed.
- */
-bool getDtshdInitialDelay(
-  DtshdFileHandlerPtr handle,
-  unsigned * skippedFramesNumber
 );
 
 #endif

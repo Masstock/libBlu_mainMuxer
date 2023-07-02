@@ -24,42 +24,93 @@ typedef struct {
 } DtshdFileHandlerWarningFlags;
 
 typedef struct {
-  DtshdFileHeaderChunk header;
-  bool headerPresent;
+  DtshdFileHeaderChunk DTSHDHDR;
+  bool DTSHDHDR_present;
 
-  DtshdFileInfo fileInfo;
-  bool fileInfoPresent;
+  DtshdFileInfo FILEINFO;
+  bool FILEINFO_present;
 
-  DtshdCoreSubStrmMeta coreMetadata;
-  bool coreMetadataPresent;
+  DtshdCoreSubStrmMeta CORESSMD;
+  bool CORESSMD_present;
 
-  DtshdExtSubStrmMeta extMetadata;
-  bool extMetadataPresent;
+  DtshdExtSubStrmMeta EXTSS_MD;
+  bool EXTSS_MD_present;
 
-  DtshdAudioPresPropHeaderMeta audioPresHeaderMetadata;
-  bool audioPresHeaderMetadataPresent;
+  DtshdAudioPresPropHeaderMeta AUPR_HDR;
+  bool AUPR_HDR_present;
 
-  DtshdAudioPresText audioPresText;
-  bool audioPresTextPresent;
+  DtshdAudioPresText AUPRINFO;
+  bool AUPRINFO_present;
 
-  DtshdNavMeta navigationMetadata;
-  bool navigationMetadataPresent;
+  DtshdNavMeta NAVI_TBL;
+  bool NAVI_TBL_present;
 
-  DtshdStreamData streamData;
-  bool streamDataPresent;
-  bool inStreamData;
+  DtshdStreamData STRMDATA;
+  bool STRMDATA_present;
+  uint64_t off_STRMDATA;
+  bool in_STRMDATA;
 
-  DtshdTimecode timecode;
-  bool timecodePresent;
+  DtshdTimecode TIMECODE;
+  bool TIMECODE_present;
 
-  DtshdBuildVer buildVer;
-  bool buildVerPresent;
+  DtshdBuildVer BUILDVER;
+  bool BUILDVER_present;
 
-  DtshdBlackout blackout;
-  bool blackoutPresent;
+  DtshdBlackout BLACKOUT;
+  bool BLACKOUT_present;
 
   DtshdFileHandlerWarningFlags warningFlags;
 } DtshdFileHandler, *DtshdFileHandlerPtr;
+
+/** \~english
+ * \brief Return true if Peak Bit-Rate Smoothing process can be performed
+ * on DTS-HD file extension substreams.
+ *
+ * \param handler DTS-HD file handler.
+ * \return true PBRS process might be performed on at least one extension
+ * substream.
+ * \return false PBRS process is not required or cannot be performed.
+ */
+static inline bool canBePerformedPBRSDtshdFileHandler(
+  const DtshdFileHandlerPtr hdlr
+)
+{
+  if (!hdlr->DTSHDHDR_present)
+    return false;
+  if (!hdlr->AUPR_HDR_present)
+    return false;
+
+  return
+    !hdlr->warningFlags.missingRequiredPbrFile
+    && hdlr->AUPR_HDR.Bitw_Aupres_Metadata & DTSHD_BAM__LOSSLESS_PRESENT
+    && !(hdlr->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__PBRS_PERFORMED)
+  ;
+}
+
+/** \~english
+ * \brief Return the initial skipped delay in number of audio frames from the
+ * DTS-HD file.
+ *
+ * The returned value is the number of access units to skip from bitstream
+ * start. One access unit might be composed of up to one Core audio frame and
+ * zero, one or more Extension substreams audio frames.
+ *
+ * \param handle DTS-HD file handle.
+ * \return The number of to-be-skipped access units at bitstream start.
+ */
+static inline unsigned getInitialSkippingDelayDtshdFileHandler(
+  DtshdFileHandlerPtr hdlr
+)
+{
+  const DtshdAudioPresPropHeaderMeta * AUPR_HDR = &hdlr->AUPR_HDR;
+
+  if (!hdlr->AUPR_HDR_present)
+    return 0;
+
+  unsigned delay_samples = AUPR_HDR->Codec_Delay_At_Max_Fs;
+  unsigned samples_per_frame = AUPR_HDR->Samples_Per_Frame_At_Max_Fs;
+  return (delay_samples + (samples_per_frame >> 1)) / samples_per_frame;
+}
 
 typedef enum {
   DTS_AUDIO         = STREAM_CODING_TYPE_DTS,

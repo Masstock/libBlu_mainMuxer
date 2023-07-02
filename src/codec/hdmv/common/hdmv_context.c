@@ -1371,7 +1371,7 @@ static void _applyTimestampsPGDisplaySet(
   int64_t decode_time = pres_time - decode_duration;
 
   /* PCS */ {
-    LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_PCS));
+    LIBBLU_HDMV_COM_DEBUG("    - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_PCS));
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX);
     assert(isUniqueInDisplaySetHdmvSequence(seq));
@@ -1379,14 +1379,14 @@ static void _applyTimestampsPGDisplaySet(
     seq->dts = ref_tc + decode_time;
 
     LIBBLU_HDMV_COM_DEBUG(
-      "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+      "     - PTS: %" PRId64 " DTS: %" PRId64 "\n",
       seq->pts - ref_tc,
       seq->dts - ref_tc
     );
   }
 
   /* WDS */ {
-    LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_WDS));
+    LIBBLU_HDMV_COM_DEBUG("    - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_WDS));
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX);
     if (NULL != seq) {
@@ -1395,7 +1395,7 @@ static void _applyTimestampsPGDisplaySet(
       seq->dts = ref_tc + decode_time;
 
       LIBBLU_HDMV_COM_DEBUG(
-        "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+        "     - PTS: %" PRId64 " DTS: %" PRId64 "\n",
         seq->pts - ref_tc,
         seq->dts - ref_tc
       );
@@ -1403,7 +1403,7 @@ static void _applyTimestampsPGDisplaySet(
   }
 
   /* PDS */ {
-    LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_PDS));
+    LIBBLU_HDMV_COM_DEBUG("    - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_PDS));
 
     for (
       HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PDS_IDX);
@@ -1414,7 +1414,7 @@ static void _applyTimestampsPGDisplaySet(
       seq->dts = 0;
 
       LIBBLU_HDMV_COM_DEBUG(
-        "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+        "     - PTS: %" PRId64 " DTS: %" PRId64 "\n",
         seq->pts - ref_tc,
         seq->dts - ref_tc
       );
@@ -1422,7 +1422,7 @@ static void _applyTimestampsPGDisplaySet(
   }
 
   /* ODS */ {
-    LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_ODS));
+    LIBBLU_HDMV_COM_DEBUG("    - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_ODS));
 
     for (
       HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
@@ -1435,7 +1435,7 @@ static void _applyTimestampsPGDisplaySet(
       decode_time += seq->transferDuration;
 
       LIBBLU_HDMV_COM_DEBUG(
-        "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+        "     - PTS: %" PRId64 " DTS: %" PRId64 "\n",
         seq->pts - ref_tc,
         seq->dts - ref_tc
       );
@@ -1445,7 +1445,7 @@ static void _applyTimestampsPGDisplaySet(
   }
 
   /* END */ {
-    LIBBLU_HDMV_COM_DEBUG("   - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_END));
+    LIBBLU_HDMV_COM_DEBUG("    - %s:\n", HdmvSegmentTypeStr(HDMV_SEGMENT_TYPE_END));
 
     HdmvSequencePtr seq = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
     assert(isUniqueInDisplaySetHdmvSequence(seq));
@@ -1453,7 +1453,7 @@ static void _applyTimestampsPGDisplaySet(
     seq->dts = 0;
 
     LIBBLU_HDMV_COM_DEBUG(
-      "    - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+      "     - PTS: %" PRId64 " DTS: %" PRId64 "\n",
       seq->pts - ref_tc,
       seq->dts - ref_tc
     );
@@ -1471,13 +1471,21 @@ static void _debugCompareComputedTimestampsDisplaySet(
   const HdmvEpochState * epoch
 )
 {
+  int64_t ref_tc = ctx->param.referenceTimecode;
   bool issue = false;
 
   for (hdmv_segtype_idx idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
     HdmvSequencePtr seq = epoch->cur_ds.sequences[idx].ds;
 
     for (unsigned i = 0; NULL != seq; seq = seq->nextSequenceDS, i++) {
-      int64_t dts = seq->dts - ctx->param.referenceTimecode + ctx->param.initialDelay;
+      LIBBLU_HDMV_COM_DEBUG("    - %s:\n", HdmvSegmentTypeStr(seq->type));
+      LIBBLU_HDMV_COM_DEBUG(
+        "     - PTS: %" PRId64 " DTS: %" PRId64 "\n",
+        seq->pts - ref_tc,
+        seq->dts - ref_tc
+      );
+
+      int64_t dts = seq->dts - ref_tc + ctx->param.initialDelay;
 
       if (seq->dts != 0 && dts != seq->segments->param.header.dts) {
         LIBBLU_HDMV_TSC_WARNING(
@@ -1489,7 +1497,7 @@ static void _debugCompareComputedTimestampsDisplaySet(
         issue = true;
       }
 
-      int64_t pts = seq->pts - ctx->param.referenceTimecode + ctx->param.initialDelay;
+      int64_t pts = seq->pts - ref_tc + ctx->param.initialDelay;
 
       if (pts != seq->segments->param.header.pts) {
         LIBBLU_HDMV_TSC_WARNING(
@@ -1592,8 +1600,10 @@ static int _computeTimestampsDisplaySet(
   }
 
 #if ENABLE_DEBUG_TIMESTAMPS
-  if (!ctx->param.rawStreamInputMode)
+  if (!ctx->param.rawStreamInputMode) {
+    LIBBLU_HDMV_COM_DEBUG("   Compare with original timestamps:\n");
     _debugCompareComputedTimestampsDisplaySet(ctx, epoch);
+  }
 #endif
 
   ctx->param.last_ds_pres_time = pres_time;

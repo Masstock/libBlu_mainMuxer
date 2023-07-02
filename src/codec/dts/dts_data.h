@@ -10,115 +10,142 @@
 #ifndef __LIBBLU_MUXER__CODECS__DTS__DATA_H__
 #define __LIBBLU_MUXER__CODECS__DTS__DATA_H__
 
+typedef enum {
+  DTSHD_BSM__IS_VBR          = 0x0001,
+  DTSHD_BSM__PBRS_PERFORMED  = 0x0002,
+  DTSHD_BSM__NAVI_EMBEDDED   = 0x0004,
+  DTSHD_BSM__CORE_PRESENT    = 0x0008,
+  DTSHD_BSM__EXTSS_PRESENT   = 0x0010
+} DtshdBitwStreamMetadataMask;
+
+/** \~english
+ * \brief Minimal allowed DTSHDHDR chunk size.
+ *
+ * 14 payload bytes.
+ */
+#define DTSHD_DTSHDHDR_SIZE  14
+
 typedef struct {
-  int64_t length;
-  unsigned version;
+  uint64_t Hdr_Byte_Size;
+  uint32_t Hdr_Version;
 
-  uint8_t refClockCode;
-
-  unsigned timeStamp;
-
-  uint8_t frameRateCode;
-  bool dropFrame;
-
-  bool extSubstreamPresent;
-  bool coreSubstreamPresent;
-  bool navigationTableIndicatorPresent;
-  bool peakBitRateSmoothingPerformed;
-  bool variableBitRate;
-
-  unsigned nbAudioPresentations;
-  unsigned nbExtensionSubstreams;
-
-  /* Computed parameters */
-  unsigned refClock;
-  float frameRate;
+  uint8_t RefClockCode;
+  uint32_t TimeStamp;
+  uint8_t TC_Frame_Rate;
+  uint16_t Bitw_Stream_Metadata;
+  uint8_t Num_Audio_Presentations;
+  uint8_t Number_Of_Ext_Sub_Streams;
+  unsigned Num_ExSS;
 } DtshdFileHeaderChunk;
 
 typedef struct {
-  int64_t length;
-  char * string;
+  uint64_t FILEINFO_Text_Byte_Size;
+  char * text;
 } DtshdFileInfo;
 
-typedef struct {
-  int64_t length;
+/** \~english
+ * \brief Minimal allowed CORESSMD chunk size.
+ *
+ * 11 payload bytes.
+ */
+#define DTSHD_CORESSMD_SIZE  11
 
-  unsigned sampleRate;
-  unsigned bitRateKbps;
-  uint16_t channelMask;
-  int64_t framePayloadLength;
+typedef struct {
+  uint64_t Core_Ss_Md_Bytes_Size;
+
+  uint32_t Core_Ss_Max_Sample_Rate_Hz;
+  uint16_t Core_Ss_Bit_Rate_Kbps;
+  uint16_t Core_Ss_Channel_Mask;
+  uint32_t Core_Ss_Frame_Payload_In_Bytes;
 } DtshdCoreSubStrmMeta;
 
 typedef struct {
-  int64_t length;
+  uint64_t Ext_Ss_Md_Bytes_Size;
 
-  unsigned avgBitRateKbps;
-  unsigned peakBitRateKbps;
-  unsigned peakBitRateSmoothingBufSizeKb;
-  size_t framePayloadLength;
+  uint32_t Ext_Ss_Avg_Bit_Rate_Kbps;
+  union {
+    struct {
+      uint32_t Ext_Ss_Peak_Bit_Rate_Kbps;
+      uint16_t Pbr_Smooth_Buff_Size_Kb;
+    } vbr;
+    struct {
+      uint32_t Ext_Ss_Frame_Payload_In_Bytes;
+    } cbr;
+  };
 } DtshdExtSubStrmMeta;
 
+
+#define DTSHD_AUPR_HDR_MINSIZE  21
+
+#define DTSHD_AUPR_HDR_CORE_SIZE  7
+#define DTSHD_AUPR_HDR_XLL_SIZE  1
+
+typedef enum {
+  DTSHD_BAM__CORE_PRESENT      = 0x0001,
+  DTSHD_BAM__CORE_IN_EXTSS     = 0x0002,
+  DTSHD_BAM__LOSSLESS_PRESENT  = 0x0004,
+  DTSHD_BAM__LBR_PRESENT       = 0x0008,
+} DtshdBitwAupresMetadataMask;
+
 typedef struct {
-  int64_t length;
+  uint64_t Audio_Pres_Hdr_Md_Bytes_Size;
 
-  unsigned presentationIndex;
+  uint8_t Audio_Pres_Index;
+  uint16_t Bitw_Aupres_Metadata;
+  uint32_t Max_Sample_Rate_Hz;
+  uint32_t Num_Frames_Total;
+  uint16_t Samples_Per_Frame_At_Max_Fs;
+  uint64_t Num_Samples_Orig_Audio_At_Max_Fs;
+  uint16_t Channel_Mask;
+  uint16_t Codec_Delay_At_Max_Fs;
 
-  bool lbrComponentPresent;
-  bool losslessComponentPresent;
-  bool backwardCompatibleCoreLocation;
-  bool backwardCompatibleCorePresent;
+  uint32_t BC_Core_Max_Sample_Rate_Hz;
+  uint16_t BC_Core_Bit_Rate_Kbps;
+  uint16_t BC_Core_Channel_Mask;
 
-  unsigned maxSampleRate;
-  unsigned nbFrames;
-  unsigned maxNbSamplesPerFrame;
-  unsigned maxNbSamplesOrigAudioPerFrame;
-
-  uint16_t channelMask;
-
-  unsigned codecDelay;
-  unsigned nbSkippedFrames;
-
-  struct {
-    unsigned sampleRate;
-    unsigned bitRateKbps;
-    uint16_t channelMask;
-  } extCore;
-  bool extCorePresent;
-
-  unsigned losslessLsbTrim;
+  uint8_t LSB_Trim_Percent;
 } DtshdAudioPresPropHeaderMeta;
 
+#define DTSHD_AUPRINFO_MINSIZE  1
+
 typedef struct {
-  int64_t length;
-  unsigned index;
-  char * string;
+  uint64_t Audio_Pres_Info_Text_Byte_Size;
+
+  uint8_t Audio_Pres_Info_Text_Index;
+  char * text;
 } DtshdAudioPresText;
 
 typedef struct {
-  int64_t length;
+  uint64_t Navi_Tbl_Md_Bytes_Size;
 } DtshdNavMeta;
 
 typedef struct {
-  int64_t endOffset;
+  uint64_t Stream_Data_Byte_Size;
 } DtshdStreamData;
 
-typedef struct {
-  int64_t length;
+#define DTSHD_TIMECODE_SIZE  29
 
-  unsigned clockFreq;
-  uint8_t frameRateCode;
-  float frameRate;
-  bool dropFrame;
+typedef struct {
+  uint64_t Timecode_Data_Byte_Size;
+
+  uint32_t Timecode_Clock;
+  uint8_t Timecode_Frame_Rate;
+  uint64_t Start_Samples_Since_Midnight;
+  uint32_t Start_Residual;
+  uint64_t Reference_Samples_Since_Midnight;
+  uint32_t Reference_Residual;
 } DtshdTimecode;
 
 typedef struct {
-  int64_t length;
-  char * string;
+  uint64_t BuildVer_Data_Byte_Size;
+
+  char * text;
 } DtshdBuildVer;
 
 typedef struct {
-  int64_t length;
-  uint8_t * frame;
+  uint64_t Blackout_Data_Byte_Size;
+
+  uint8_t * Blackout_Frame;
 } DtshdBlackout;
 
 typedef enum {
@@ -394,7 +421,7 @@ typedef struct {
   bool extraDataPresent;
   bool drcRev2Present;
   struct {
-    unsigned version;
+    unsigned Hdr_Version;
   } drcRev2;
 } DcaAudioAssetDescriptorDecoderNavDataParameters;
 
