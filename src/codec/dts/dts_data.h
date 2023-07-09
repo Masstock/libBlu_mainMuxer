@@ -10,6 +10,8 @@
 #ifndef __LIBBLU_MUXER__CODECS__DTS__DATA_H__
 #define __LIBBLU_MUXER__CODECS__DTS__DATA_H__
 
+#include "../../util.h"
+
 typedef enum {
   DTSHD_BSM__IS_VBR          = 0x0001,
   DTSHD_BSM__PBRS_PERFORMED  = 0x0002,
@@ -149,65 +151,377 @@ typedef struct {
 } DtshdBlackout;
 
 typedef enum {
-  DTS_SYNCWORD_CORE       = 0x7FFE8001,
-  DTS_SYNCWORD_SUBSTREAM  = 0x64582025,
-  DTS_SYNCWORD_XLL        = 0x41A29547
+  DCA_SYNCWORD_CORE  = 0x7FFE8001,
+  DCA_SYNCEXTSSH     = 0x64582025,
+  DCA_SYNCXLL        = 0x41A29547
 } DcaSyncword;
+
+/* ### DTS Coherent Acoustics (DCA) Core audio : ########################### */
+
+/* ###### AMODE : ########################################################## */
+
+/** \~english
+ * \brief DCA Core channel assignement code, AMODE values.
+ *
+ * Other values means user defined.
+ */
+typedef enum {
+  DCA_AMODE_A                          = 0x0,
+  DCA_AMODE_A_B                        = 0x1,
+  DCA_AMODE_L_R                        = 0x2,
+  DCA_AMODE_L_R_SUMDIF                 = 0x3,
+  DCA_AMODE_LT_LR                      = 0x4,
+  DCA_AMODE_C_L_R                      = 0x5,
+  DCA_AMODE_L_R_S                      = 0x6,
+  DCA_AMODE_C_L_R_S                    = 0x7,
+  DCA_AMODE_L_R_SL_SR                  = 0x8,
+  DCA_AMODE_C_L_R_SL_SR                = 0x9,
+  DCA_AMODE_CL_CR_L_R_SL_SR            = 0xA,
+  DCA_AMODE_C_L_R_LR_RR_OV             = 0xB,
+  DCA_AMODE_CF_LF_LF_RF_LR_RR          = 0xC,
+  DCA_AMODE_CL_C_CR_L_R_SL_SR          = 0xD,
+  DCA_AMODE_CL_CR_L_R_SL1_SL2_SR1_SR2  = 0xE,
+  DCA_AMODE_CL_C_CR_L_R_SL_S_SR        = 0xF
+} DcaCoreAudioChannelAssignCode;
+
+/** \~english
+ * \brief Return from given AMODE field value the number of audio channels
+ * associated (CHS).
+ *
+ * \param AMODE AMODE field value.
+ * \return unsigned Number of audio channels (CHS).
+ */
+static inline unsigned getNbChDcaCoreAudioChannelAssignCode(
+  DcaCoreAudioChannelAssignCode AMODE
+)
+{
+  static const unsigned nb_ch[] = {
+    1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 6, 6, 6, 7, 8, 8
+  };
+  if (AMODE < ARRAY_SIZE(nb_ch))
+    return nb_ch[AMODE];
+  return 0; /* User defined */
+}
+
+/** \~english
+ * \brief Return AMODE field value string representation.
+ *
+ * \param AMODE
+ * \return const char*
+ */
+static inline const char * DcaCoreAudioChannelAssignCodeStr(
+  const DcaCoreAudioChannelAssignCode AMODE
+)
+{
+  static const char * strings[] = {
+    "C (Mono)",
+    "C+C (Dual-Mono)",
+    "L, R (Stereo 2.)",
+    "(L+R), (L-R) (Sum-differential Stereo)",
+    "Lt, Rt (Stereo 2. total)",
+    "C, L, R (Stereo 3.)",
+    "L, R, S (Surround 3.)",
+    "C, L, R, S (Quadraphonic)",
+    "L, R, Ls, Rs (Quadraphonic)",
+    "C, L, R, Ls, Rs (Surround 5.)",
+    "C, L, R, Ls, Rs, Oh",
+    "C, L, R, Ls, Cs, Rs",
+    "Lc, C, Rc, L, R, Ls, Rs (Surround 7.)",
+    "Lc, Rc, L, R, Lss, Ls, Rs, Rss",
+    "Lc, C, Rc, L, R, Ls, Cs, Rs"
+  };
+
+  if (AMODE < ARRAY_SIZE(strings))
+    return strings[AMODE];
+  return "User defined";
+}
+
+/* ###### SFREQ : ########################################################## */
+
+/** \~english
+ * \brief DCA Core audio sampling frequency code, SFREQ values.
+ *
+ */
+typedef enum {
+  DCA_SFREQ_8_KHZ     = 0x1,
+  DCA_SFREQ_16_KHZ    = 0x2,
+  DCA_SFREQ_32_KHZ    = 0x3,
+  DCA_SFREQ_11025_HZ  = 0x6,
+  DCA_SFREQ_22050_HZ  = 0x7,
+  DCA_SFREQ_44100_HZ  = 0x8,
+  DCA_SFREQ_12_KHZ    = 0xB,
+  DCA_SFREQ_24_KHZ    = 0xC,
+  DCA_SFREQ_48_KHZ    = 0xD
+} DcaCoreAudioSampFreqCode;
+
+static inline unsigned getDcaCoreAudioSampFreqCode(
+  DcaCoreAudioSampFreqCode SFREQ
+)
+{
+  static const unsigned values[] = {
+    0,
+    8000, 16000, 32000,
+    0, 0,
+    11025, 22050, 44100,
+    0, 0,
+    12000, 24000, 48000
+  };
+
+  if (SFREQ < ARRAY_SIZE(values))
+    return values[SFREQ];
+  return 0;
+}
+
+/* ###### RATE : ########################################################### */
+
+/** \~english
+ * \brief DCA Core transmission bitrate code values.
+ *
+ */
+typedef enum {
+  DCA_RATE_32    = 0x00,
+  DCA_RATE_56    = 0x01,
+  DCA_RATE_64    = 0x02,
+  DCA_RATE_96    = 0x03,
+  DCA_RATE_112   = 0x04,
+  DCA_RATE_128   = 0x05,
+  DCA_RATE_192   = 0x06,
+  DCA_RATE_224   = 0x07,
+  DCA_RATE_256   = 0x08,
+  DCA_RATE_320   = 0x09,
+  DCA_RATE_384   = 0x0A,
+  DCA_RATE_448   = 0x0B,
+  DCA_RATE_512   = 0x0C,
+  DCA_RATE_576   = 0x0D,
+  DCA_RATE_640   = 0x0E,
+  DCA_RATE_768   = 0x0F,
+  DCA_RATE_960   = 0x10,
+  DCA_RATE_1024  = 0x11,
+  DCA_RATE_1152  = 0x12,
+  DCA_RATE_1280  = 0x13,
+  DCA_RATE_1344  = 0x14,
+  DCA_RATE_1408  = 0x15,
+  DCA_RATE_1411  = 0x16,
+  DCA_RATE_1472  = 0x17,
+  DCA_RATE_1536  = 0x18,
+  DCA_RATE_OPEN  = 0x1D
+} DcaCoreTransBitRate;
+
+/** \~english
+ * \brief Return from given #DcaCoreTransBitRate value the bitrate value
+ * in Kbit/s associated.
+ *
+ * If given RATE == #DCA_RATE_OPEN, 1 is returned.
+ *
+ * \param RATE
+ * \return unsigned
+ */
+static inline unsigned getDcaCoreTransBitRate(
+  DcaCoreTransBitRate RATE
+)
+{
+  static const unsigned bitrates[] = {
+    32, 56, 64, 96, 112, 128, 192, 224, 256, 320, 384,
+    448, 512, 576, 640, 768, 960, 1024, 1152, 1280,
+    1344, 1408, 1411, 1472, 1536, 1 // 1 == 'open'
+  };
+  if (RATE < ARRAY_SIZE(bitrates))
+    return bitrates[RATE];
+  return 0;
+}
+
+/* ###### EXT_AUDIO_ID : ################################################### */
+
+typedef enum {
+  DCA_EXT_AUDIO_ID_XCH   = 0x0,  /**< Channel extension.                     */
+  DCA_EXT_AUDIO_ID_X96   = 0x2,  /**< Sampling frequency extension.          */
+  DCA_EXT_AUDIO_ID_XXCH  = 0x6   /**< Channel extension.                     */
+} DcaCoreExtendedAudioCodingCode;
+
+static inline bool isValidDcaCoreExtendedAudioCodingCode(
+  DcaCoreExtendedAudioCodingCode EXT_AUDIO_ID
+)
+{
+  return
+    EXT_AUDIO_ID == DCA_EXT_AUDIO_ID_XCH
+    || EXT_AUDIO_ID == DCA_EXT_AUDIO_ID_X96
+    || EXT_AUDIO_ID == DCA_EXT_AUDIO_ID_XXCH
+  ;
+}
+
+static inline const char * DcaCoreExtendedAudioCodingCodeStr(
+  DcaCoreExtendedAudioCodingCode EXT_AUDIO_ID
+)
+{
+  switch (EXT_AUDIO_ID) {
+    case DCA_EXT_AUDIO_ID_XCH:
+      return "DTS XCH (Extra centre surround channel extension)";
+    case DCA_EXT_AUDIO_ID_X96:
+      return "DTS X96 (96KHz sampling frequency extension)";
+    case DCA_EXT_AUDIO_ID_XXCH:
+      return "DTS XXCH (Channel extension).\n";
+  }
+  return "Reserved value";
+}
+
+/* ###### VERNUM : ######################################################### */
 
 /** \~english
  * \brief Maximal supported Encoder Software Revision code.
  */
-#define DTS_MAX_SYNTAX_VERNUM 0x7
+#define DCA_MAX_SYNTAX_VERNUM 0x7
+
+/* ###### CHIST : ########################################################## */
+
+typedef enum {
+  DCA_CHIST_NO_COPY     = 0x0,
+  DCA_CHIST_FIRST_GEN   = 0x1,
+  DCA_CHIST_SECOND_GEN  = 0x2,
+  DCA_CHIST_FREE_COPY   = 0x3
+} DcaCoreCopyrightHistoryCode;
+
+static inline const char * DcaCoreCopyrightHistoryCodeStr(
+  DcaCoreCopyrightHistoryCode CHIST
+)
+{
+  static const char * strings[] = {
+    "Forbidden copy",
+    "First generation",
+    "Second generation",
+    "Free copy"
+  };
+
+  if (CHIST < ARRAY_SIZE(strings))
+    return strings[CHIST];
+  return "Unknown";
+}
+
+/* ###### PCMR : ########################################################### */
+
+typedef enum {
+  DCA_PCMR_16,
+  DCA_PCMR_16_ES,
+  DCA_PCMR_20,
+  DCA_PCMR_20_ES,
+  DCA_PCMR_24,
+  DCA_PCMR_24_ES
+} DcaCoreSourcePcmResCode;
+
+static inline unsigned getDcaCoreSourcePcmResCode(
+  DcaCoreSourcePcmResCode PCMR
+)
+{
+  static const unsigned bitDepths[7] = {
+    16, 16, 20, 20, 0, 24, 24
+  };
+
+  if (PCMR < ARRAY_SIZE(bitDepths))
+    return bitDepths[PCMR];
+  return 0; // Invalid
+}
+
+static inline bool isEsDcaCoreSourcePcmResCode(
+  DcaCoreSourcePcmResCode PCMR
+)
+{
+  return PCMR & 0x1;
+}
+
+/* ###### SUMF/SUMS : ###################################################### */
+
+/** \~english
+ * \brief DCA Core Front/Surround channels Sum/Difference flag field,
+ * SUMF/SUMS values.
+ *
+ */
+typedef enum {
+  DCA_SUM_NOT_ENCODED  = 0x0,
+  DCA_SUM_ENCODED      = 0x1
+} DcaCoreChPairSumDiffEncodedFlag;
+
+static inline const char * frontChDcaCoreChPairSumDiffEncodedFlagStr(
+  DcaCoreChPairSumDiffEncodedFlag SUMF
+)
+{
+  if (SUMF)
+    return "Normal, L=L, R=R";
+  return "Sum/Difference, L=L+R, R=L-R";
+}
+
+static inline const char * surChDcaCoreChPairSumDiffEncodedFlagStr(
+  DcaCoreChPairSumDiffEncodedFlag SUMS
+)
+{
+  if (SUMS)
+    return "Normal, Ls=Ls, Rs=Rs";
+  return "Sum/Difference, Ls=Ls+Rs, Rs=Ls-Rs";
+}
+
+/* ###### DIALNORM/DNG : ################################################### */
+
+static inline int getDcaCoreDialogNormalizationValue(
+  uint8_t DIALNORM,
+  unsigned VERNUM
+)
+{
+  if (0x6 == VERNUM)
+    return 0 - (16 + DIALNORM);
+  if (0x7 == VERNUM)
+    return 0 - DIALNORM;
+  return 0;
+}
+
+/* ######################################################################### */
+
+/** \~english
+ * \brief DCA Bit-stream header.
+ *
+ */
+typedef struct {
+  bool FTYPE;            /**< Frame type. */
+  uint8_t SHORT;         /**< Deficit Sample Count. */
+  bool CPF;              /**< CRC Present flag. */
+  uint8_t NBLKS;         /**< Number of PCM Sample Blocks.  */
+  uint16_t FSIZE;        /**< Primary Frame Byte Size. */
+  uint8_t AMODE;         /**< Audio Channel Arrangement. */
+  uint8_t SFREQ;         /**< Core Audio Sampling Frequency. */
+  uint8_t RATE;          /**< Transmission Bit Rate. */
+  bool DYNF;             /**< Embedded Dynamic Range Flag. */
+  bool TIMEF;            /**< Embedded Time Stamp Flag. */
+  bool AUXF;             /**< Auxiliary Data Flag. */
+  bool HDCD;             /**< HDCD. */
+  uint8_t EXT_AUDIO_ID;  /**< Extension Audio Descriptor Flag. */
+  bool EXT_AUDIO;        /**< Extended Coding Flag. */
+  bool ASPF;             /**< Audio Sync Word Insertion Flag. */
+  uint8_t LFF;           /**< Low Frequency Effects Flag. */
+  bool HFLAG;            /**< Predictor History Flag Switch. */
+  uint16_t HCRC;         /**< Header CRC Check Bytes. */
+  bool FILTS;            /**< Multirate Interpolator Switch. */
+  uint8_t VERNUM;        /**< Encoder Software Revision. */
+  uint8_t CHIST;         /**< Copy History. */
+  uint8_t PCMR;          /**< Source PCM Resolution. */
+  bool SUMF;             /**< Front Sum/Difference Flag. */
+  bool SUMS;             /**< Surrounds Sum/Difference Flag. */
+  uint8_t DIALNORM;      /**< Dialog Normalization / Unspecified. */
+} DcaCoreBSHeaderParameters;
+
+/** \~english
+ * \brief DCA Core frame bit-stream header minimal size in bytes.
+ *
+ */
+#define DCA_CORE_BSH_MINSIZE  13
+
+static inline unsigned getSizeDcaCoreBSHeader(
+  const DcaCoreBSHeaderParameters * bsh
+)
+{
+  if (bsh->CPF)
+    return DCA_CORE_BSH_MINSIZE + 2; // Extra HCRC field word.
+  return DCA_CORE_BSH_MINSIZE;
+}
 
 typedef struct {
-  bool terminationFrame;           /* FTYPE  */
-
-  uint8_t samplesPerBlock;         /* SHORT  */
-  uint8_t blocksPerChannel;        /* NBLKS  */
-  int64_t frameLength;             /* FSIZE  */
-
-  bool crcPresent;                 /* CPF    */
-  uint16_t crcValue;               /* HCRC   */
-
-  uint8_t audioChannelArrangement; /* AMODE  */
-
-  uint8_t audioFreqCode;           /* SFREQ  */
-
-  uint8_t sourcePcmResCode;        /* PCMR   */
-
-  uint8_t bitRateCode;             /* RATE   */
-
-  bool embeddedDynRange;           /* DYNF   */
-  bool embeddedTimestamp;          /* TIMEF  */
-  bool auxData;                    /* AUXF   */
-  bool hdcd;                       /* HDCD   */
-  bool extAudio;                   /* EXT_AUDIO      */
-  bool syncWordInsertionLevel;     /* ASPF   */
-  uint8_t lfePresent;              /* LFF    */
-  bool predHist;                   /* HFLAG  */
-  bool multiRtInterpolatorSwtch;   /* FILTS  */
-  bool frontSum;                   /* SUMF   */
-  bool surroundSum;                /* SUMS   */
-
-  uint8_t extAudioId;              /* EXT_AUDIO_ID   */
-
-  uint8_t syntaxCode;              /* VERNUM */
-  uint8_t copyHistory;             /* CHIST  */
-  uint8_t dialNormCode;            /* DIALNORM / DNG */
-
-  /* Computed parameters : */
-  unsigned nbChannels;
-  unsigned audioFreq;
-  unsigned bitDepth;
-  bool isEs;
-  unsigned bitrate;
-  int dialNorm;
-  int64_t size; /**< Header size in bytes (sync word comprised). */
-} DcaCoreSSFrameHeaderParameters;
-
-typedef struct {
-  DcaCoreSSFrameHeaderParameters header;
-  int64_t payloadSize;
+  DcaCoreBSHeaderParameters bs_header;
 } DcaCoreSSFrameParameters;
 
 typedef struct {
@@ -221,6 +535,8 @@ typedef struct {
 
   uint8_t steamId;
 } DcaAudioAssetSSXllParameters;
+
+/* ######################################################################### */
 
 #define DCA_EXT_SS_DISABLE_MIX_META_SUPPORT false
 #define DCA_EXT_SS_ENABLE_DRC_2 true
@@ -245,7 +561,7 @@ typedef struct {
 /** \~english
  * \brief Define the maximal supported Ext SS Reserved fields size in bytes.
  *
- * If field size exceed reservedFieldLength * 8 + paddingBits bits,
+ * If field size exceed resFieldLength * 8 + paddingBits bits,
  * the reserved field data isn't saved.
  */
 #define DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE 16
@@ -278,15 +594,15 @@ typedef struct {
   bool embeddedSurround6chDownmix;
   uint8_t representationType; /* Only if directSpeakersFeed == 0b0 */
 
-  bool speakersMaskEnabled;
-  uint16_t speakersMask;
+  bool bSpkrMaskEnabled;
+  uint16_t nuSpkrActivityMask;
 
-  unsigned nbOfSpeakersRemapSets;
-  uint16_t stdSpeakersLayoutMask[DTS_EXT_SS_MAX_NB_REMAP_SETS];
+  unsigned nuNumSpkrRemapSets;
+  uint16_t nuStndrSpkrLayoutMask[DTS_EXT_SS_MAX_NB_REMAP_SETS];
   unsigned nbChsInRemapSet[DTS_EXT_SS_MAX_NB_REMAP_SETS];
   unsigned nbChRequiredByRemapSet[DTS_EXT_SS_MAX_NB_REMAP_SETS];
   /* decodedChannelsLinkedToSetSpeakerLayoutMask : */
-  uint16_t decChLnkdToSetSpkrMask[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB];
+  uint16_t nuRemapDecChMask[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB];
   uint8_t nbRemapCoeffCodes[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB];
   uint8_t outputSpkrRemapCoeffCodes[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB][DTS_EXT_SS_MAX_SPEAKERS_SETS_NB];
 
@@ -435,19 +751,19 @@ typedef struct {
   DcaAudioAssetDescriptorDynamicMetadataParameters dynMetadata;
   DcaAudioAssetDescriptorDecoderNavDataParameters decNavData;
 
-  int64_t reservedFieldLength;
-  int64_t paddingBits;
-  uint8_t reservedFieldData[
+  unsigned resFieldLength;
+  unsigned paddingBits;
+  uint8_t resFieldData[
     DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE
   ];
 } DcaAudioAssetDescriptorParameters;
 
 typedef struct {
-  uint8_t adjustmentLevel;
-  unsigned nbMixOutputConfigs;
+  uint8_t nuMixMetadataAdjLevel;
+  unsigned nuNumMixOutConfigs;
 
-  uint16_t mixOutputChannelsMask[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
-  unsigned nbMixOutputChannels[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
+  uint16_t nuMixOutChMask[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
+  unsigned nNumMixOutCh[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
 } DcaExtSSHeaderMixMetadataParameters;
 
 typedef struct {
@@ -507,14 +823,14 @@ typedef struct {
     uint8_t assetIndex;
   } audioAssetBckwdCompCore[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
 
-  int64_t reservedFieldLength;  /**< Reserved */
+  int64_t resFieldLength;  /**< Reserved */
   int64_t paddingBits;
-  uint8_t reservedFieldData[
+  uint8_t resFieldData[
     DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE
   ];  /**< Reserved field data content array, only in use if field size does
     not exceed its size. See #DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE.            */
 
-  uint16_t crcValue;
+  uint16_t HCRC;
 } DcaExtSSHeaderParameters;
 
 typedef struct {

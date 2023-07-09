@@ -14,7 +14,7 @@ int checkDtsXllCommonHeader(
 
   LIBBLU_DTS_DEBUG_XLL(
     "    SYNCXLL: 0x%08" PRIX32 ".\n",
-    DTS_SYNCWORD_XLL
+    DCA_SYNCXLL
   );
 
   LIBBLU_DTS_DEBUG_XLL(

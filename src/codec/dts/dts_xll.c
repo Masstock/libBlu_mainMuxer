@@ -20,14 +20,15 @@ int decodeDtsXllCommonHeader(
   startOffset = tellPosDtsXllPbr(ctx);
 
   /* [v32 SYNCXLL] */
-  if (unpackBytesDtsXllPbr(ctx, &value, 4) < 0)
+  uint32_t SYNCXLL;
+  if (unpackBytesDtsXllPbr(ctx, &SYNCXLL, 4) < 0)
     return -1;
 
-  if (value != DTS_SYNCWORD_XLL)
+  if (DCA_SYNCXLL != SYNCXLL)
     LIBBLU_DTS_ERROR_RETURN(
       "Unexpected DTS XLL Sync Word in Extension Substream Coding Component "
       "(0x%08" PRIX32 " parsed, expect 0x%08" PRIX32 ").\n",
-      value, DTS_SYNCWORD_XLL
+      SYNCXLL, DCA_SYNCXLL
     );
 
   initCrcContext(DTS_XLL_CRC_CTX(ctx), DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V);

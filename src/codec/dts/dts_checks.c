@@ -8,340 +8,294 @@
 
 #include "dts_checks.h"
 
-static int _checkDcaCoreSSFrameHeaderCompliance(
-  const DcaCoreSSFrameHeaderParameters * param,
-  DtsDcaCoreSSWarningFlags * warning_flags
+/* ### DTS Coherent Acoustics (DCA) Core audio : ########################### */
+
+static int _checkDcaCoreBSHeaderCompliance(
+  const DcaCoreBSHeaderParameters * param,
+  DtsDcaCoreSSWarningFlags * warn_flags
 )
 {
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Sync word (SYNC): 0x%08" PRIX32 ".\n",
-    DTS_SYNCWORD_CORE
+    DCA_SYNCWORD_CORE
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Frame type (FTYPE): %s (0x%d).\n",
-    (param->terminationFrame) ? "Normal frame" : "Termination frame",
-    param->terminationFrame
+    (param->FTYPE) ? "Normal frame" : "Termination frame",
+    param->FTYPE
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Deficit sample count (SHORT): %" PRIu8 " samples (0x%02" PRIX8 ").\n",
-    param->samplesPerBlock,
-    param->samplesPerBlock - 1
+    param->SHORT + 1,
+    param->SHORT
   );
 
-  if (!param->terminationFrame && param->samplesPerBlock != 32)
+  if (!param->FTYPE && param->SHORT != 31)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Unexpected number of core samples for a normal frame "
       "(expect %u, receive %u).\n",
-      32, param->samplesPerBlock
+      32, param->SHORT
     );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Deprecated CRC presence flag (CPF): %s (0b%x).\n",
-    BOOL_PRESENCE(param->crcPresent),
-    param->crcPresent
+    BOOL_PRESENCE(param->CPF),
+    param->CPF
   );
 
-  if (param->crcPresent && !warning_flags->presenceOfDeprecatedCrc) {
+  if (param->CPF && !warn_flags->presenceOfDeprecatedCrc) {
     LIBBLU_WARNING(
       "Presence of deprecated DCA CRC field.\n"
     );
-    warning_flags->presenceOfDeprecatedCrc = true;
+    warn_flags->presenceOfDeprecatedCrc = true;
   }
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Number of PCM samples blocks per channel (NBLKS): "
     "%" PRIu8 " blocks (0x% " PRIX8 ").\n",
-    param->blocksPerChannel,
-    param->blocksPerChannel - 1
+    param->NBLKS + 1,
+    param->NBLKS
   );
 
-  if (param->blocksPerChannel < 6)
+  if (param->NBLKS <= 4)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid NBLKS field range (%" PRIu8 " < 5).\n",
-      param->blocksPerChannel
+      "Invalid NBLKS field range (%" PRIu8 " <= 4).\n",
+      param->NBLKS
     );
 
-  if (!param->terminationFrame) {
-    if (
-      (param->blocksPerChannel & 0x7)
-      || 0 != (param->blocksPerChannel & (param->blocksPerChannel - 1))
-    )
+  if (!param->FTYPE) {
+    unsigned nb_blk = param->NBLKS + 1;
+    if ((nb_blk & 0x7) || 0 != (nb_blk & (nb_blk - 1)))
       LIBBLU_DTS_ERROR_RETURN(
         "Invalid number of PCM samples blocks (NBLKS) for a normal frame "
         "(shall be 8, 16, 32, 64 or 128 blocks, not %" PRIu8 ").\n",
-        param->blocksPerChannel
+        nb_blk
       );
   }
 
   LIBBLU_DTS_DEBUG_CORE(
-    "  Core frame size (FSIZE): %" PRId64 " bytes (0x% " PRIX64 ").\n",
-    param->frameLength,
-    param->frameLength - 1
+    "  Core frame size (FSIZE): %u bytes (0x%04" PRIX16 ").\n",
+    param->FSIZE + 1,
+    param->FSIZE
   );
 
-  if (param->frameLength < 96) {
+  if (param->FSIZE <= 94) {
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid Core audio frame size range (%" PRId64 " < 95).\n",
-      param->frameLength
+      "Invalid Core audio frame size range (%u <= 94).\n",
+      param->FSIZE
     );
   }
 
   LIBBLU_DTS_DEBUG_CORE(
-    "  Audio channel arrangement code (AMODE): 0x%02" PRIX8 ".\n",
-    param->audioChannelArrangement
-  );
-  LIBBLU_DTS_DEBUG_CORE(
-    "   => Audio channels: %s",
-    dtsCoreAudioChannelAssignCodeStr(param->audioChannelArrangement)
+    "  Audio channel arrangement code (AMODE): %s (0x%02" PRIX8 ").\n",
+    DcaCoreAudioChannelAssignCodeStr(param->AMODE),
+    param->AMODE
   );
 
-  if (param->lfePresent) {
-    LIBBLU_DTS_DEBUG_CORE_NH(" + LFE;\n");
-    LIBBLU_DTS_DEBUG_CORE(
-      "   => Nb channels: %d channel(s).\n",
-      param->nbChannels + 1
-    );
-    LIBBLU_DTS_DEBUG_CORE(
-      "   => NOTE: Presence of LFE is defined by LFF flag.\n"
-    );
-  }
-  else {
-    LIBBLU_DTS_DEBUG_CORE_NH(";\n");
-    LIBBLU_DTS_DEBUG_CORE(
-      "  => Nb channels: %d channel(s).\n",
-      param->nbChannels
-    );
-  }
-
+  unsigned samp_freq = getDcaCoreAudioSampFreqCode(param->SFREQ);
   LIBBLU_DTS_DEBUG_CORE(
-    "  Core audio sampling frequency code (SFREQ): 0x%02" PRIX8 ".\n",
-    param->audioFreqCode
+    "  Core audio sampling frequency (SFREQ): %u Hz (0x%02" PRIX8 ").\n",
+    samp_freq,
+    param->SFREQ
   );
-  if (param->audioFreq != 0)
-    LIBBLU_DTS_DEBUG_CORE("  => %d Hz.\n", param->audioFreq);
-  else {
-    LIBBLU_DTS_DEBUG_CORE("  => Reserved value.\n");
+
+  if (0 == samp_freq)
     LIBBLU_DTS_ERROR_RETURN(
       "Reserved value in use (SFREQ == 0x%02" PRIX8 ").\n",
-      param->audioFreqCode
+      param->SFREQ
     );
-  }
 
-  if (param->audioFreq != 48000)
+  if (48000 != samp_freq)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "BDAV specifications allows only 48 kHz as "
       "DCA Core audio sampling frequency (found %u Hz).\n",
-      param->audioFreq
+      samp_freq
     );
 
-  LIBBLU_DTS_DEBUG_CORE(
-    "  Target transmission bitrate code (RATE): 0x%02" PRIX8 ".\n",
-    param->bitRateCode
-  );
-  switch (param->bitrate) {
-    case 0: /* Reserved value */
-      LIBBLU_DTS_DEBUG_CORE(
-        "   => Bitrate: Reserved value (0x%02" PRIX8 ").\n",
-        param->bitRateCode
-      );
-      LIBBLU_DTS_ERROR_RETURN(
-        "Reserved value in use (RATE == 0x%02" PRIX8 ").\n",
-        param->bitRateCode
-      );
+  unsigned bitrate = getDcaCoreTransBitRate(param->RATE);
+  if (DCA_RATE_OPEN == param->RATE)
+    LIBBLU_DTS_DEBUG_CORE(
+      "  Target transmission bitrate code (RATE): Open (0x%02" PRIX8 ").\n",
+      param->RATE
+    );
+  else
+    LIBBLU_DTS_DEBUG_CORE(
+      "  Target transmission bitrate code (RATE): "
+      "%u Kbits/s (0x%02" PRIX8 ").\n",
+      bitrate,
+      param->RATE
+    );
 
-    case 1: /* Open bit-rate */
-      LIBBLU_DTS_DEBUG_CORE(
-        "   => Bitrate: Reserved value (0x%02" PRIX8 ").\n",
-        param->bitRateCode
-      );
-      LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
-        "BDAV specifications disallows use of open transmission rate mode of "
-        "DCA Core.\n"
-      );
-      break;
+  if (0 == bitrate)
+    LIBBLU_DTS_ERROR_RETURN(
+      "Reserved value in use (RATE == 0x%02" PRIX8 ").\n",
+      param->RATE
+    );
+  if (DCA_RATE_OPEN == param->RATE)
+    LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
+      "BDAV specifications disallows use of open transmission rate mode of "
+      "DCA Core.\n"
+    );
 
-    default: /* Normal value */
-      LIBBLU_DTS_DEBUG_CORE(
-        "   => Bitrate: %u Kbits/s.\n",
-        param->bitrate
-      );
-  }
-
+#if 0
   if (
-    param->frameLength * param->blocksPerChannel * param->bitrate
-    < ((unsigned) param->frameLength) * param->bitDepth * 8
+    param->FSIZE * param->NBLKS * param->bitrate
+    < ((unsigned) param->FSIZE) * param->bitDepth * 8
   )
     LIBBLU_DTS_ERROR_RETURN(
       "Too big Core audio frame size at stream bit-rate "
       "(%" PRId64 " bytes).\n",
-      param->frameLength
+      param->FSIZE
     );
+#endif
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Embedded dynamic range coefficients presence flag "
     "(DYNF): %s (0b%x).\n",
-    BOOL_PRESENCE(param->embeddedDynRange),
-    param->embeddedDynRange
+    BOOL_PRESENCE(param->DYNF),
+    param->DYNF
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Time stamps fields presence flag (TIMEF): %s (0b%x).\n",
-    BOOL_PRESENCE(param->embeddedTimestamp),
-    param->embeddedTimestamp
+    BOOL_PRESENCE(param->TIMEF),
+    param->TIMEF
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Core auxilary data presence flag (AUXF): %s (0b%x).\n",
-    BOOL_PRESENCE(param->auxData),
-    param->auxData
+    BOOL_PRESENCE(param->AUXF),
+    param->AUXF
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  HDCD mastered audio data flag (HDCD): %s (0b%x).\n",
-    BOOL_INFO(param->hdcd),
-    param->hdcd
+    BOOL_INFO(param->HDCD),
+    param->HDCD
   );
 
-  if (param->hdcd && !warning_flags->usageOfHdcdEncoding) {
+  if (param->HDCD && !warn_flags->usageOfHdcdEncoding) {
     LIBBLU_WARNING(
       "Signaled usage of HDCD mastering mode, "
       "normaly reserved for DTS-CDs.\n"
     );
-    warning_flags->usageOfHdcdEncoding = true;
+    warn_flags->usageOfHdcdEncoding = true;
   }
 
-  if (param->extAudio) {
+  if (param->EXT_AUDIO) {
     LIBBLU_DTS_DEBUG_CORE(
       "  Core audio extension data type (EXT_AUDIO_ID): "
       "%s (0x%02" PRIX8 ").\n",
-      dtsCoreExtendedAudioCodingCodeStr(
-        param->extAudioId
+      DcaCoreExtendedAudioCodingCodeStr(
+        param->EXT_AUDIO_ID
       ),
-      param->extAudioId
+      param->EXT_AUDIO_ID
     );
 
-    if (!isValidDtsExtendedAudioCodingCode(param->extAudioId))
+    if (!isValidDcaCoreExtendedAudioCodingCode(param->EXT_AUDIO_ID))
       LIBBLU_DTS_ERROR_RETURN(
         "Reserved value in use (EXT_AUDIO_ID == 0x%02" PRIX8 ").\n",
-        param->extAudioId
+        param->EXT_AUDIO_ID
       );
   }
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Core audio extension presence (EXT_AUDIO): %s (0b%x).\n",
-    BOOL_PRESENCE(param->extAudio),
-    param->extAudio
+    BOOL_PRESENCE(param->EXT_AUDIO),
+    param->EXT_AUDIO
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Audio data synchronization word insertion level (ASPF): %s (0b%x).\n",
-    (param->syncWordInsertionLevel) ?
+    (param->ASPF) ?
       "At Subsubframe level"
     :
       "At Subframe level",
-    param->syncWordInsertionLevel
+    param->ASPF
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Low Frequency Effects (LFE) channel presence code (LFF): "
     "0x%02" PRIX8 ".\n",
-    param->lfePresent
+    param->LFF
   );
 
-  if (param->lfePresent == 0x3)
+  if (param->LFF == 0x3)
     LIBBLU_DTS_ERROR_RETURN(
       "Invalid value in use (LFE == 0x%02" PRIX8 ").\n",
-      param->lfePresent
+      param->LFF
     );
 
   LIBBLU_DTS_DEBUG_CORE(
     "   => LFE channel: %s.\n",
-    BOOL_PRESENCE(0 < param->lfePresent)
+    BOOL_PRESENCE(0 < param->LFF)
   );
-  if (0 < param->lfePresent) {
+  if (0 < param->LFF) {
     LIBBLU_DTS_DEBUG_CORE(
       "   => Interpolation level: %d.\n",
-      (param->lfePresent == 0x1) ? 128 : 64
+      (param->LFF == 0x1) ? 128 : 64
     );
   }
 
   LIBBLU_DTS_DEBUG_CORE(
     "  ADPCM predicator history of last frame usage (HFLAG): %s (0b%x).\n",
-    BOOL_INFO(param->predHist),
-    param->predHist
+    BOOL_INFO(param->HFLAG),
+    param->HFLAG
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Filter bank interpolation FIR coefficients type (FILTS): %s (0x%x).\n",
-    (param->multiRtInterpolatorSwtch) ? "Perfect" : "Non-perfect",
-    param->multiRtInterpolatorSwtch
+    (param->FILTS) ? "Perfect" : "Non-perfect",
+    param->FILTS
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Encoder sofware syntax revision (VERNUM): %" PRIu8 " (0x%02" PRIX8 ").\n",
-    param->syntaxCode,
-    param->syntaxCode
+    param->VERNUM,
+    param->VERNUM
   );
 
-  if (param->syntaxCode == DTS_MAX_SYNTAX_VERNUM)
+  if (param->VERNUM == DCA_MAX_SYNTAX_VERNUM)
     LIBBLU_DTS_DEBUG_CORE("   => Current revision.\n");
-  else if (param->syntaxCode < DTS_MAX_SYNTAX_VERNUM)
+  else if (param->VERNUM < DCA_MAX_SYNTAX_VERNUM)
     LIBBLU_DTS_DEBUG_CORE("   => Future compatible revision.\n");
   else
     LIBBLU_DTS_DEBUG_CORE("   => Future incompatible revision.\n");
 
   LIBBLU_DTS_DEBUG_CORE(
-    "  Copyright history information code (CHIST): 0x%02" PRIX8 ".\n",
-    param->copyHistory
+    "  Copyright history information code (CHIST): %s (0x%02" PRIX8 ").\n",
+    DcaCoreCopyrightHistoryCodeStr(param->CHIST),
+    param->CHIST
   );
 
   LIBBLU_DTS_DEBUG_CORE(
-    "   => %s.\n",
-    dtsCoreCopyrightHistoryCodeStr(param->copyHistory)
-  );
-
-  LIBBLU_DTS_DEBUG_CORE(
-    "  Source PCM resolution code (PCMR): 0x%02" PRIX8 ".\n",
-    param->sourcePcmResCode
-  );
-  LIBBLU_DTS_DEBUG_CORE(
-    "   => Bit depth: %u bits.\n",
-    param->bitDepth
-  );
-  LIBBLU_DTS_DEBUG_CORE(
-    "   => DTS ES mastered: %s.\n",
-    BOOL_INFO(param->isEs)
+    "  Source PCM resolution code (PCMR): %u bits%s (0x%02" PRIX8 ").\n",
+    getDcaCoreSourcePcmResCode(param->PCMR),
+    isEsDcaCoreSourcePcmResCode(param->PCMR) ? " DTS ES encoded" : "",
+    param->PCMR
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Front speakers encoding mode flag (SUMF): %s (0b%x).\n",
-    (param->frontSum) ?
-      "Sum / Difference encoded (L = L + R, R = L - R)"
-    :
-      "Normal (L = L, R = R)",
-    param->frontSum
+    frontChDcaCoreChPairSumDiffEncodedFlagStr(param->SUMF),
+    param->SUMF
   );
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Surround speakers encoding mode flag (SUMS): %s (0b%x).\n",
-    (param->surroundSum) ?
-      "Sum / Difference encoded (Ls = Ls + Rs, Rs = Ls - Rs)"
-    :
-      "Normal (Ls = Ls, Rs = Rs)",
-    param->surroundSum
+    surChDcaCoreChPairSumDiffEncodedFlagStr(param->SUMF),
+    param->SUMS
   );
 
-  if (param->syntaxCode == 0x6 || param->syntaxCode == 0x7) {
+  if (0x6 == param->VERNUM || 0x7 == param->VERNUM) {
     LIBBLU_DTS_DEBUG_CORE(
-      "  Dialog normalization code (DIALNORM/DNG): 0x%02" PRIX8 ".\n",
-      param->dialNormCode
-    );
-    LIBBLU_DTS_DEBUG_CORE(
-      "   => Dialog normalization gain: %d dB.\n",
-      param->dialNorm
+      "  Dialog normalization (DIALNORM): "
+      "%d dB (DNG = 0x%02" PRIX8 ").\n",
+      getDcaCoreDialogNormalizationValue(param->DIALNORM, param->VERNUM),
+      param->DIALNORM
     );
   }
 
@@ -349,78 +303,78 @@ static int _checkDcaCoreSSFrameHeaderCompliance(
 }
 
 static bool _constantDcaCoreSSFrameHeader(
-  const DcaCoreSSFrameHeaderParameters * first,
-  const DcaCoreSSFrameHeaderParameters * second
+  const DcaCoreBSHeaderParameters * first,
+  const DcaCoreBSHeaderParameters * second
 )
 {
   return CHECK(
-    EQUAL(->terminationFrame)
-    EQUAL(->samplesPerBlock)
-    EQUAL(->blocksPerChannel)
-    EQUAL(->crcPresent)
-    EQUAL(->audioChannelArrangement)
-    EQUAL(->audioFreqCode)
-    EQUAL(->sourcePcmResCode)
-    EQUAL(->bitRateCode)
-    EQUAL(->auxData)
-    EQUAL(->hdcd)
-    EQUAL(->extAudio)
-    EQUAL(->lfePresent)
-    EQUAL(->extAudioId)
-    EQUAL(->syntaxCode)
+    EQUAL(->FTYPE)
+    EQUAL(->SHORT)
+    EQUAL(->NBLKS)
+    EQUAL(->CPF)
+    EQUAL(->AMODE)
+    EQUAL(->SFREQ)
+    EQUAL(->PCMR)
+    EQUAL(->RATE)
+    EQUAL(->AUXF)
+    EQUAL(->HDCD)
+    EQUAL(->EXT_AUDIO)
+    EQUAL(->LFF)
+    EQUAL(->EXT_AUDIO_ID)
+    EQUAL(->VERNUM)
   );
 }
 
-static int _checkDcaCoreSSFrameHeaderChangeCompliance(
-  const DcaCoreSSFrameHeaderParameters * old,
-  const DcaCoreSSFrameHeaderParameters * cur
+static int _checkDcaCoreBSHeaderChangeCompliance(
+  const DcaCoreBSHeaderParameters * old,
+  const DcaCoreBSHeaderParameters * cur
 )
 {
 
   /* Audio channel arragement */
-  if (old->audioChannelArrangement != cur->audioChannelArrangement)
+  if (old->AMODE != cur->AMODE)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio channel arrangement shall remain "
       "the same during whole bitstream."
     );
 
   /* Sampling frequency */
-  if (old->audioFreqCode != cur->audioFreqCode)
+  if (old->SFREQ != cur->SFREQ)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio sampling frequency shall remain "
       "the same during whole bitstream."
     );
 
   /* Bit depth */
-  if (old->sourcePcmResCode != cur->sourcePcmResCode)
+  if (old->PCMR != cur->PCMR)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio bit depth shall remain "
       "the same during whole bitstream."
     );
 
   /* Bit-rate */
-  if (old->bitRateCode != cur->bitRateCode)
+  if (old->RATE != cur->RATE)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio bit-rate shall remain "
       "the same during whole bitstream."
     );
 
   /* Low Frequency Effects flag */
-  if (old->lfePresent != cur->lfePresent)
+  if (old->LFF != cur->LFF)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio LFE configuration shall remain "
       "the same during whole bitstream."
     );
 
   /* Extension */
-  if (old->extAudio != cur->extAudio || old->extAudioId != cur->extAudioId)
+  if (old->EXT_AUDIO != cur->EXT_AUDIO || old->EXT_AUDIO_ID != cur->EXT_AUDIO_ID)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio extension coding parameters shall remain "
       "the same during whole bitstream."
     );
 
   /* Syntax version */
-  if (old->syntaxCode != cur->syntaxCode)
+  if (old->VERNUM != cur->VERNUM)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Core audio syntax version shall remain "
       "the same during whole bitstream."
@@ -431,16 +385,15 @@ static int _checkDcaCoreSSFrameHeaderChangeCompliance(
 
 int checkDcaCoreSSCompliance(
   const DcaCoreSSFrameParameters * frame,
-  DtsDcaCoreSSWarningFlags * warningFlags
+  DtsDcaCoreSSWarningFlags * warn_flags
 )
 {
-  LIBBLU_DTS_DEBUG_CORE(" Frame header:\n");
-
-  if (_checkDcaCoreSSFrameHeaderCompliance(&frame->header, warningFlags) < 0)
+  LIBBLU_DTS_DEBUG_CORE(" Bit-stream header:\n");
+  if (_checkDcaCoreBSHeaderCompliance(&frame->bs_header, warn_flags) < 0)
     return -1;
 
-  LIBBLU_DTS_DEBUG_CORE(" Frame payload:\n");
-  LIBBLU_DTS_DEBUG_CORE("  Size: %" PRId64 " bytes.\n", frame->payloadSize);
+  // LIBBLU_DTS_DEBUG_CORE(" Frame payload:\n");
+  // LIBBLU_DTS_DEBUG_CORE("  Size: %" PRId64 " bytes.\n", frame->payloadSize);
 
   return 0;
 }
@@ -451,25 +404,26 @@ bool constantDcaCoreSS(
 )
 {
   return CHECK(
-    EQUAL(->payloadSize)
-    SUB_FUN_PTR(->header, _constantDcaCoreSSFrameHeader)
+    SUB_FUN_PTR(->bs_header, _constantDcaCoreSSFrameHeader)
   );
 }
 
 int checkDcaCoreSSChangeCompliance(
   const DcaCoreSSFrameParameters * old,
   const DcaCoreSSFrameParameters * cur,
-  DtsDcaCoreSSWarningFlags * warning_flags
+  DtsDcaCoreSSWarningFlags * warn_flags
 )
 {
-  if (checkDcaCoreSSCompliance(cur, warning_flags) < 0)
+  if (checkDcaCoreSSCompliance(cur, warn_flags) < 0)
     return -1;
 
-  return _checkDcaCoreSSFrameHeaderChangeCompliance(
-    &old->header,
-    &cur->header
+  return _checkDcaCoreBSHeaderChangeCompliance(
+    &old->bs_header,
+    &cur->bs_header
   );
 }
+
+
 
 static int _checkDcaExtSSHeaderMixMetadataCompliance(
   const DcaExtSSHeaderMixMetadataParameters * param
@@ -478,42 +432,36 @@ static int _checkDcaExtSSHeaderMixMetadataCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "    Mixing Metadata Adujstement Level (nuMixMetadataAdjLevel): "
-    "0x%02" PRIX8 ".\n",
-    param->adjustmentLevel
+    "%s (0x%" PRIX8 ").\n",
+    dcaExtMixMetadataAjdLevelStr(param->nuMixMetadataAdjLevel),
+    param->nuMixMetadataAdjLevel
   );
 
-  LIBBLU_DTS_DEBUG_EXTSS(
-    "     => %s.\n",
-    dcaExtMixMetadataAjdLevelStr(param->adjustmentLevel)
-  );
-
-  if (!isValidDcaExtMixMetadataAdjLevel(param->adjustmentLevel))
+  if (DCA_EXT_SS_MIX_ADJ_LVL_RESERVED == param->nuMixMetadataAdjLevel)
     LIBBLU_DTS_ERROR_RETURN(
-      "Reserved value in use (nuMixMetadataAdjLevel == 0x%02" PRIX8 ").\n",
-      param->adjustmentLevel
+      "Reserved value in use (nuMixMetadataAdjLevel == 0x%" PRIX8 ").\n",
+      param->nuMixMetadataAdjLevel
     );
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "    Number of Mixing Configurations (nuNumMixOutConfigs): %u (0x%X).\n",
-    param->nbMixOutputConfigs,
-    param->nbMixOutputConfigs - 1
+    param->nuNumMixOutConfigs,
+    param->nuNumMixOutConfigs - 1
   );
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "    Mixing Configurations speaker layout for Mixer Output Channels "
     "(nuMixOutChMask[ns]):\n"
   );
-  for (unsigned ns = 0; ns < param->nbMixOutputConfigs; ns++) {
-    LIBBLU_DTS_DEBUG_EXTSS("     -> Configuration %u:", ns);
-    if (isEnabledLibbbluStatus(LIBBLU_DEBUG_DTS_PARSING_EXTSS))
-      dcaExtChMaskStrPrintFun(
-        param->mixOutputChannelsMask[ns],
-        lbc_deb_printf
-      );
-    LIBBLU_DTS_DEBUG_EXTSS_NH(
-      " (%u channels, 0x%04" PRIX16 ");\n",
-      param->nbMixOutputChannels[ns],
-      param->mixOutputChannelsMask[ns]
+  for (unsigned ns = 0; ns < param->nuNumMixOutConfigs; ns++) {
+    char ch_mask_str[DCA_CHMASK_STR_BUFSIZE];
+    buildDcaExtChMaskString(ch_mask_str, param->nuMixOutChMask[ns]);
+
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "     -> Configuration %u: %s (%u channels, 0x%04" PRIX16 ");\n",
+      ns, ch_mask_str,
+      param->nNumMixOutCh[ns],
+      param->nuMixOutChMask[ns]
     );
   }
 
@@ -524,7 +472,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
   const DcaExtSSHeaderStaticFieldsParameters * param,
   bool isSecondaryStream,
   unsigned nExtSSIndex,
-  DtsDcaExtSSWarningFlags * warning_flags
+  DtsDcaExtSSWarningFlags * warn_flags
 )
 {
 
@@ -674,12 +622,12 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
   );
 
   if (param->mixMetadataEnabled) {
-    if (!warning_flags->nonCompleteAudioPresentationAssetType) {
+    if (!warn_flags->nonCompleteAudioPresentationAssetType) {
       LIBBLU_INFO(
         LIBBLU_DTS_PREFIX
         "Presence of Mixing Metadata in Extension Substream.\n"
       );
-      warning_flags->nonCompleteAudioPresentationAssetType = true;
+      warn_flags->nonCompleteAudioPresentationAssetType = true;
     }
 
     LIBBLU_DTS_DEBUG_EXTSS("   Mixing Metadata:\n");
@@ -694,7 +642,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
 static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
   const DcaAudioAssetDescriptorStaticFieldsParameters * param,
   bool isSecondaryStream,
-  DtsDcaExtSSWarningFlags * warning_flags
+  DtsDcaExtSSWarningFlags * warn_flags
 )
 {
 
@@ -856,26 +804,26 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
       isSecondaryStream
       && !DCA_EXT_SS_STRICT_NOT_DIRECT_SPEAKERS_FEED_REJECT
     ) {
-      if (!warning_flags->nonDirectSpeakersFeedTolerance) {
+      if (!warn_flags->nonDirectSpeakersFeedTolerance) {
         LIBBLU_WARNING(
           "Usage of a non recommended alternate channels declaration syntax "
           "in Extension Substream Asset Descriptor "
           "tolerated for Secondary audio (No direct-speakers-feeds).\n"
         );
-        warning_flags->nonDirectSpeakersFeedTolerance = true;
+        warn_flags->nonDirectSpeakersFeedTolerance = true;
       }
     }
     else if (
       param->nbChannels == 2
       && !DCA_EXT_SS_STRICT_NOT_DIRECT_SPEAKERS_FEED_REJECT
     ) {
-      if (!warning_flags->nonDirectSpeakersFeedTolerance) {
+      if (!warn_flags->nonDirectSpeakersFeedTolerance) {
         LIBBLU_WARNING(
           "Usage of a non recommended alternate channels declaration syntax "
           "in Extension Substream Asset Descriptor "
           "tolerated for Stereo audio (No direct-speakers-feeds).\n"
         );
-        warning_flags->nonDirectSpeakersFeedTolerance = true;
+        warn_flags->nonDirectSpeakersFeedTolerance = true;
       }
     }
     else
@@ -899,13 +847,13 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
 
       if (
         param->embeddedStereoDownmix
-        && !warning_flags->presenceOfStereoDownmix
+        && !warn_flags->presenceOfStereoDownmix
       ) {
         LIBBLU_INFO(
           "Presence of an optional embedded Stereo Down-mix "
           "in Extension Substream.\n"
         );
-        warning_flags->presenceOfStereoDownmix = true;
+        warn_flags->presenceOfStereoDownmix = true;
       }
     }
     else
@@ -915,13 +863,13 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
       !param->embeddedStereoDownmix
       && isSecondaryStream
       && 2 < param->nbChannels
-      && !warning_flags->absenceOfStereoDownmixForSec
+      && !warn_flags->absenceOfStereoDownmixForSec
     ) {
       LIBBLU_WARNING(
         "Missing recommended Stereo Down-mix for a Secondary Stream audio "
         "track with more than two channels.\n"
       );
-      warning_flags->absenceOfStereoDownmixForSec = true;
+      warn_flags->absenceOfStereoDownmixForSec = true;
     }
 
     if (6 < param->nbChannels) {
@@ -946,73 +894,66 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
     LIBBLU_DTS_DEBUG_EXTSS(
       "      Channels loudspeakers activity layout mask presence "
       "(bSpkrMaskEnabled): %s (0b%x).\n",
-      BOOL_PRESENCE(param->speakersMaskEnabled),
-      param->speakersMaskEnabled
+      BOOL_PRESENCE(param->bSpkrMaskEnabled),
+      param->bSpkrMaskEnabled
     );
 
-    if (!param->speakersMaskEnabled)
+    if (!param->bSpkrMaskEnabled)
       LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
         "Missing presence of loudspeakers activity layout mask in Extension "
         "Substream Asset Descriptor.\n"
       );
 
-    if (param->speakersMaskEnabled) {
-      unsigned nb_ch_from_mask = dcaExtChMaskToNbCh(param->speakersMask);
+    if (param->bSpkrMaskEnabled) {
+      char spkr_activity_mask_str[DCA_CHMASK_STR_BUFSIZE];
+      unsigned nb_ch_spkr_activity_mask = buildDcaExtChMaskString(
+        spkr_activity_mask_str,
+        param->nuSpkrActivityMask
+      );
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "      Channels loudspeakers activity layout mask "
-        "(nuSpkrActivityMask): 0x%" PRIX16 ".\n",
-        param->speakersMask
-      );
-      LIBBLU_DTS_DEBUG_EXTSS("       => Channel(s):");
-      if (isEnabledLibbbluStatus(LIBBLU_DEBUG_DTS_PARSING_EXTSS))
-        dcaExtChMaskStrPrintFun(
-          param->speakersMask,
-          lbc_deb_printf
-        );
-      LIBBLU_DTS_DEBUG_EXTSS_NH(
-        " (%u channel(s), 0x%" PRIX16 ").\n",
-        nb_ch_from_mask,
-        param->speakersMask
+        "(nuSpkrActivityMask): %s (%u channel(s), 0x%" PRIX16 ").\n",
+        spkr_activity_mask_str,
+        nb_ch_spkr_activity_mask,
+        param->nuSpkrActivityMask
       );
 
-      if (nb_ch_from_mask != param->nbChannels)
+      if (nb_ch_spkr_activity_mask != param->nbChannels)
         LIBBLU_DTS_ERROR_RETURN(
           "Unexpected number of channels in loudspeakers activity layout mask "
           "of Extension Substream Asset Descriptor "
           "(expect %u channels, got %u).\n",
           param->nbChannels,
-          nb_ch_from_mask
+          nb_ch_spkr_activity_mask
         );
     }
 
     LIBBLU_DTS_DEBUG_EXTSS(
       "      Number of Speakers Remapping Sets (nuNumSpkrRemapSets): "
       "%u (0x%X).\n",
-      param->nbOfSpeakersRemapSets,
-      param->nbOfSpeakersRemapSets
+      param->nuNumSpkrRemapSets,
+      param->nuNumSpkrRemapSets
     );
 
-    if (0 < param->nbOfSpeakersRemapSets) {
+    if (0 < param->nuNumSpkrRemapSets) {
       LIBBLU_DTS_DEBUG_EXTSS("      Remapping Sets:\n");
 
-      for (unsigned ns = 0; ns < param->nbOfSpeakersRemapSets; ns++) {
+      for (unsigned ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
         LIBBLU_DTS_DEBUG_EXTSS("       - Set %u:\n", ns);
+
+        char stndr_spkr_layout_mask_str[DCA_CHMASK_STR_BUFSIZE];
+        unsigned nb_ch_stndr_spkr_layout_mask = buildDcaExtChMaskString(
+          stndr_spkr_layout_mask_str,
+          param->nuSpkrActivityMask
+        );
 
         LIBBLU_DTS_DEBUG_EXTSS(
           "        Standard replaced Loudspeaker Layout Mask "
-          "(nuStndrSpkrLayoutMask): 0x%" PRIX16 ".\n",
-          param->stdSpeakersLayoutMask[ns]
-        );
-        LIBBLU_DTS_DEBUG_EXTSS("         => Channel(s):");
-        if (isEnabledLibbbluStatus(LIBBLU_DEBUG_DTS_PARSING_EXTSS))
-          dcaExtChMaskStrPrintFun(
-            param->stdSpeakersLayoutMask[ns],
-            lbc_deb_printf
-          );
-        LIBBLU_DTS_DEBUG_EXTSS_NH(
-          " (%u channel(s)).\n",
-          param->nbChsInRemapSet[ns]
+          "(nuStndrSpkrLayoutMask): %s (%u channels, 0x%04" PRIX16 ").\n",
+          stndr_spkr_layout_mask_str,
+          nb_ch_stndr_spkr_layout_mask,
+          param->nuStndrSpkrLayoutMask[ns]
         );
 
         LIBBLU_DTS_DEBUG_EXTSS(
@@ -1034,28 +975,31 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
           "(nuRemapDecChMask / nuSpkrRemapCodes):\n"
         );
         for (unsigned nCh = 0; nCh < param->nbChsInRemapSet[ns]; nCh++) {
-          LIBBLU_DTS_DEBUG_EXTSS("         -> ");
           if (!param->nbRemapCoeffCodes[ns][nCh])
-            LIBBLU_DTS_DEBUG_EXTSS_NH("Muted (0x0).\n");
+            LIBBLU_DTS_DEBUG_EXTSS_NH("         -> Muted (0x0).\n");
           else {
-            if (isEnabledLibbbluStatus(LIBBLU_DEBUG_DTS_PARSING_EXTSS))
-              dcaExtChMaskStrPrintFun(
-                param->decChLnkdToSetSpkrMask[ns][nCh],
-                lbc_deb_printf
-              );
-            LIBBLU_DTS_DEBUG_EXTSS_NH(
-              " (0x%" PRIX16 "): ",
-              param->decChLnkdToSetSpkrMask[ns][nCh]
+            char stndr_spkr_layout_mask_str[DCA_CHMASK_STR_BUFSIZE];
+            unsigned nb_ch_stndr_spkr_layout_mask = buildDcaExtChMaskString(
+              stndr_spkr_layout_mask_str,
+              param->nuRemapDecChMask[ns][nCh]
             );
 
+            LIBBLU_DTS_DEBUG_EXTSS_NH(
+              "         -> %s (%u channels, 0x%02" PRIX16 "): ",
+              stndr_spkr_layout_mask_str,
+              nb_ch_stndr_spkr_layout_mask,
+              param->nuRemapDecChMask[ns][nCh]
+            );
+
+            const char * sep = "";
             for (unsigned nc = 0; nc < param->nbRemapCoeffCodes[ns][nCh]; nc++) {
-              if (0 < nc)
-                LIBBLU_DTS_DEBUG_EXTSS_NH(", ");
               LIBBLU_DTS_DEBUG_EXTSS_NH(
-                "%" PRIu8,
+                "%s%" PRIu8, sep,
                 param->outputSpkrRemapCoeffCodes[ns][nCh][nc]
               );
+              sep = ", ";
             }
+
             LIBBLU_DTS_DEBUG_EXTSS_NH(".\n");
           }
         }
@@ -1494,10 +1438,10 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
         "      Scaling Codes of Main Audio (nuMainAudioScaleCode[ns][%s]):\n",
         (param->mixMetadata.perChannelMainAudioScaleCode) ? "0" : "ch"
       );
-      for (unsigned ns = 0; ns < mix_meta.nbMixOutputConfigs; ns++) {
+      for (unsigned ns = 0; ns < mix_meta.nuNumMixOutConfigs; ns++) {
         LIBBLU_DTS_DEBUG_EXTSS("       - Config %u: ", ns);
         if (param->mixMetadata.perChannelMainAudioScaleCode) {
-          for (unsigned nCh = 0; nCh < mix_meta.nbMixOutputChannels[ns]; nCh++) {
+          for (unsigned nCh = 0; nCh < mix_meta.nNumMixOutCh[ns]; nCh++) {
             if (0 < nCh)
               LIBBLU_DTS_DEBUG_EXTSS_NH(", ");
             LIBBLU_DTS_DEBUG_EXTSS_NH(
@@ -1550,7 +1494,7 @@ static int _checkDcaAudioAssetDescriptorCompliance(
   const DcaAudioAssetDescriptorParameters * param,
   bool is_sec_stream,
   const DcaExtSSHeaderMixMetadataParameters mix_meta,
-  DtsDcaExtSSWarningFlags * warning_flags
+  DtsDcaExtSSWarningFlags * warn_flags
 )
 {
 
@@ -1575,7 +1519,7 @@ static int _checkDcaAudioAssetDescriptorCompliance(
     int ret = _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
       &param->staticFields,
       is_sec_stream,
-      warning_flags
+      warn_flags
     );
     if (ret < 0)
       return -1;
@@ -1611,7 +1555,7 @@ static int _checkDcaAudioAssetDescriptorCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "    Reserved data field length (Reserved): %" PRId64 " byte(s).\n",
-    param->reservedFieldLength
+    param->resFieldLength
   );
   LIBBLU_DTS_DEBUG_EXTSS(
     "    Byte boundary padding field "
@@ -1621,16 +1565,16 @@ static int _checkDcaAudioAssetDescriptorCompliance(
 
   if (
     DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->reservedFieldLength, param->paddingBits
+      param->resFieldLength, param->paddingBits
     )
   ) {
     LIBBLU_DTS_DEBUG_EXTSS(
       "     -> Content:"
     );
 
-    int64_t size = param->reservedFieldLength + (param->paddingBits + 7) / 8;
+    int64_t size = param->resFieldLength + (param->paddingBits + 7) / 8;
     for (int64_t i = 0; i < size; i++)
-      LIBBLU_DTS_DEBUG_EXTSS_NH(" 0x%" PRIX8, param->reservedFieldData[i]);
+      LIBBLU_DTS_DEBUG_EXTSS_NH(" 0x%" PRIX8, param->resFieldData[i]);
     LIBBLU_DTS_DEBUG_EXTSS_NH(".\n");
   }
 
@@ -1640,7 +1584,7 @@ static int _checkDcaAudioAssetDescriptorCompliance(
 int checkDcaExtSSHeaderCompliance(
   const DcaExtSSHeaderParameters * param,
   bool is_sec_stream,
-  DtsDcaExtSSWarningFlags * warning_flags
+  DtsDcaExtSSWarningFlags * warn_flags
 )
 {
 
@@ -1648,7 +1592,7 @@ int checkDcaExtSSHeaderCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "  Sync word (SYNCEXTSSH): 0x%08" PRIX32 ".\n",
-    DTS_SYNCWORD_SUBSTREAM
+    DCA_SYNCEXTSSH
   );
 
   LIBBLU_DTS_DEBUG_EXTSS(
@@ -1656,9 +1600,9 @@ int checkDcaExtSSHeaderCompliance(
     param->userDefinedBits
   );
 
-  if (param->userDefinedBits && !warning_flags->presenceOfUserDefinedBits) {
+  if (param->userDefinedBits && !warn_flags->presenceOfUserDefinedBits) {
     LIBBLU_INFO(LIBBLU_DTS_PREFIX "Presence of an user-data byte.\n");
-    warning_flags->presenceOfUserDefinedBits = true;
+    warn_flags->presenceOfUserDefinedBits = true;
   }
 
   LIBBLU_DTS_DEBUG_EXTSS(
@@ -1726,7 +1670,7 @@ int checkDcaExtSSHeaderCompliance(
       &param->staticFields,
       is_sec_stream,
       param->extSSIdx,
-      warning_flags
+      warn_flags
     );
     if (ret < 0)
       return -1;
@@ -1756,7 +1700,7 @@ int checkDcaExtSSHeaderCompliance(
       &param->audioAssets[nAst],
       is_sec_stream,
       param->staticFields.mixMetadata,
-      warning_flags
+      warn_flags
     );
     if (ret < 0)
       return -1;
@@ -1817,7 +1761,7 @@ int checkDcaExtSSHeaderCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "  Reserved data field length (Reserved): %" PRId64 " byte(s).\n",
-    param->reservedFieldLength
+    param->resFieldLength
   );
 
   LIBBLU_DTS_DEBUG_EXTSS(
@@ -1827,23 +1771,23 @@ int checkDcaExtSSHeaderCompliance(
 
   if (
     DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->reservedFieldLength, param->paddingBits
+      param->resFieldLength, param->paddingBits
     )
   ) {
     LIBBLU_DTS_DEBUG_EXTSS(
       "   -> Content:"
     );
 
-    int64_t size = param->reservedFieldLength + (param->paddingBits + 7) / 8;
+    int64_t size = param->resFieldLength + (param->paddingBits + 7) / 8;
     for (int64_t i = 0; i < size; i++)
-      LIBBLU_DTS_DEBUG_EXTSS_NH(" 0x%02" PRIX8, param->reservedFieldData[i]);
+      LIBBLU_DTS_DEBUG_EXTSS_NH(" 0x%02" PRIX8, param->resFieldData[i]);
     LIBBLU_DTS_DEBUG_EXTSS_NH(".\n");
   }
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "  Extension Substream Header CRC16 checksum (nCRC16ExtSSHeader): "
     "0x%04" PRIX16 ".\n",
-    param->crcValue
+    param->HCRC
   );
 #if !DCA_EXT_SS_DISABLE_CRC
   LIBBLU_DTS_DEBUG_EXTSS(

@@ -454,51 +454,6 @@ static int _decodeDtshdStreamDataChunk(
   return 1;
 }
 
-#define DSTHD_CHMASK_STR_BUFSIZE  240
-
-static unsigned _buildChannelMaskString(
-  char dst[static DSTHD_CHMASK_STR_BUFSIZE],
-  uint16_t Channel_Mask
-)
-{
-  static const char * ch_config_str[16] = {
-    "C",
-    "L, R",
-    "Ls, Rs",
-    "LFE",
-    "Cs",
-    "Lh, Rh",
-    "Lsr, Rsr",
-    "Ch",
-    "Oh",
-    "Lc, Rc",
-    "Lw, Rw",
-    "Lss, Rss",
-    "LFE2",
-    "Lhs, Rhs",
-    "Chr",
-    "Lhr, Rhr"
-  };
-  static const unsigned nb_ch_config[16] = {
-    1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 1, 2
-  };
-
-  unsigned nb_channels = 0;
-  char * str_ptr = dst;
-
-  const char * sep = "";
-  for (unsigned i = 0; i < 16; i++) {
-    if (Channel_Mask & (1 << i)) {
-      lb_str_cat(&str_ptr, sep);
-      lb_str_cat(&str_ptr, ch_config_str[i]);
-      nb_channels += nb_ch_config[i];
-      sep = ", ";
-    }
-  }
-
-  return nb_channels;
-}
-
 static int _decodeDtshdCoreSubStreamMetaChunk(
   BitstreamReaderPtr file,
   DtshdCoreSubStrmMeta * param
@@ -555,8 +510,8 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
   /* [v16 Core_Ss_Channel_Mask] */
   READ_BYTES(&param->Core_Ss_Channel_Mask, file, 2, return -1);
 
-  char channel_mask_str[DSTHD_CHMASK_STR_BUFSIZE];
-  unsigned channel_mask_nb_ch = _buildChannelMaskString(
+  char channel_mask_str[DCA_CHMASK_STR_BUFSIZE];
+  unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
     channel_mask_str,
     param->Core_Ss_Channel_Mask
   );
@@ -795,8 +750,8 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   /* [v16 Channel_Mask] */
   READ_BYTES(&param->Channel_Mask, file, 2, return -1);
 
-  char channel_mask_str[DSTHD_CHMASK_STR_BUFSIZE];
-  unsigned channel_mask_nb_ch = _buildChannelMaskString(
+  char channel_mask_str[DCA_CHMASK_STR_BUFSIZE];
+  unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
     channel_mask_str,
     param->Channel_Mask
   );
@@ -859,8 +814,8 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
     /* [u16 BC_Core_Channel_Mask] */
     READ_BYTES(&param->BC_Core_Channel_Mask, file, 2, return -1);
 
-    char channel_mask_str[DSTHD_CHMASK_STR_BUFSIZE];
-    unsigned channel_mask_nb_ch = _buildChannelMaskString(
+    char channel_mask_str[DCA_CHMASK_STR_BUFSIZE];
+    unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
       channel_mask_str,
       param->BC_Core_Channel_Mask
     );
@@ -1234,13 +1189,13 @@ void destroyDtshdFileHandler(
   if (NULL == handle)
     return;
 
-  if (handle->FILEINFO_present)
+  if (handle->FILEINFO_count)
     free(handle->FILEINFO.text);
-  if (handle->AUPRINFO_present)
+  if (handle->AUPRINFO_count)
     free(handle->AUPRINFO.text);
-  if (handle->BUILDVER_present)
+  if (handle->BUILDVER_count)
     free(handle->BUILDVER.text);
-  if (handle->BLACKOUT_present)
+  if (handle->BLACKOUT_count)
     free(handle->BLACKOUT.Blackout_Frame);
   free(handle);
 }
@@ -1274,31 +1229,31 @@ int decodeDtshdFileChunk(
     tellPos(file), _dtshdChunkIdStr(magic), magic
   );
 
-  bool * pres_flag;
-  int ret;
+  unsigned * presence_counter = NULL;
+  int ret = 0;
 
   switch (magic) {
     case DTS_HD_DTSHDHDR:
-      pres_flag = &handle->DTSHDHDR_present;
+      presence_counter = &handle->DTSHDHDR_count;
       ret = _decodeDtshdHeaderChunk(file, &handle->DTSHDHDR);
       break;
 
     case DTS_HD_FILEINFO:
-      pres_flag = &handle->FILEINFO_present;
+      presence_counter = &handle->FILEINFO_count;
       ret = _decodeDtshdFileInfoChunk(file, &handle->FILEINFO);
       break;
 
     case DTS_HD_CORESSMD:
-      pres_flag = &handle->CORESSMD_present;
+      presence_counter = &handle->CORESSMD_count;
       ret = _decodeDtshdCoreSubStreamMetaChunk(file, &handle->CORESSMD);
       break;
 
     case DTS_HD_EXTSS_MD:
-      if (!handle->DTSHDHDR_present)
+      if (!handle->DTSHDHDR_count)
         LIBBLU_DTS_ERROR_RETURN(
           "Expect presence of DTS-HD file header before EXTSS_MD chunk.\n"
         );
-      pres_flag = &handle->EXTSS_MD_present;
+      presence_counter = &handle->EXTSS_MD_count;
       ret = _decodeDtshdExtSubStreamMetaChunk(
         file,
         &handle->EXTSS_MD,
@@ -1307,26 +1262,26 @@ int decodeDtshdFileChunk(
       break;
 
     case DTS_HD_AUPR_HDR:
-      pres_flag = &handle->AUPR_HDR_present;
+      presence_counter = &handle->AUPR_HDR_count;
       ret = _decodeDtshdAudioPresHeaderMetaChunk(
         file, &handle->AUPR_HDR
       );
       break;
 
     case DTS_HD_AUPRINFO:
-      pres_flag = &handle->AUPRINFO_present;
+      presence_counter = &handle->AUPRINFO_count;
       ret = _decodeDtshdAudioPresInfoChunk(file, &handle->AUPRINFO);
       break;
 
     case DTS_HD_NAVI_TBL:
-      pres_flag = &handle->NAVI_TBL_present;
+      presence_counter = &handle->NAVI_TBL_count;
       ret = decodeDtshdNavigationMetaChunk(
         file, &handle->NAVI_TBL
       );
       break;
 
     case DTS_HD_STRMDATA:
-      pres_flag = &handle->STRMDATA_present;
+      presence_counter = &handle->STRMDATA_count;
       ret = _decodeDtshdStreamDataChunk(
         file, &handle->STRMDATA, false, 0
       );
@@ -1335,21 +1290,21 @@ int decodeDtshdFileChunk(
       break;
 
     case DTS_HD_TIMECODE:
-      pres_flag = &handle->TIMECODE_present;
+      presence_counter = &handle->TIMECODE_count;
       ret = decodeDtshdTimecodeChunk(
         file, &handle->TIMECODE
       );
       break;
 
     case DTS_HD_BUILDVER:
-      pres_flag = &handle->BUILDVER_present;
+      presence_counter = &handle->BUILDVER_count;
       ret = decodeDtshdBuildVerChunk(
         file, &handle->BUILDVER
       );
       break;
 
     case DTS_HD_BLACKOUT:
-      pres_flag = &handle->BLACKOUT_present;
+      presence_counter = &handle->BLACKOUT_count;
       ret = decodeDtshdBlackoutChunk(
         file, &handle->BLACKOUT
       );
@@ -1358,24 +1313,22 @@ int decodeDtshdFileChunk(
     case DTS_HD_BITSHVTB:
     case DTS_HD_BRANCHPT:
     default:
-      pres_flag = NULL;
       ret = _decodeDtshdUnknownChunk(file);
       break;
   }
 
-  if (skip_checks)
-    pres_flag = NULL;
+  if (ret < 0)
+    return ret;
 
-  if (0 <= ret && NULL != pres_flag) {
+  if (!skip_checks && NULL != presence_counter) {
     /* No error */
-    if (*pres_flag)
+    if (0 < ((*presence_counter)++))
       LIBBLU_DTS_ERROR_RETURN(
         "Presence of duplicated %s.\n",
         _dtshdChunkIdStr(magic)
       );
-    *pres_flag = true;
   }
 
-  return ret;
+  return 0;
 }
 

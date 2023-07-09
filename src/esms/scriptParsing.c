@@ -141,7 +141,7 @@ static int parseEntryESPropertiesSourceFilesEsms(
   uint8_t srcFilepath[PATH_BUFSIZE];
 
   uint16_t crcCoveredSize;
-  uint32_t crcValue;
+  uint32_t HCRC;
 
   lbc * convFilepath;
   EsmsESSourceFile prop;
@@ -167,9 +167,9 @@ static int parseEntryESPropertiesSourceFilesEsms(
   READ_VALUE(script, 2, &crcCoveredSize, goto free_return);
 
   /* [u32 crc] */
-  READ_VALUE(script, 4, &crcValue, goto free_return);
+  READ_VALUE(script, 4, &HCRC, goto free_return);
 
-  setEsmsESSourceFile(&prop, crcValue, crcCoveredSize);
+  setEsmsESSourceFile(&prop, HCRC, crcCoveredSize);
 
   /* Check CRC-32 */
   if (checkCrcEntryESPropertiesSourceFilesEsms(convFilepath, prop) < 0)

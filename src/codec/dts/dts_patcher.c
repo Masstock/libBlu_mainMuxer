@@ -23,11 +23,11 @@ size_t computeDcaExtSSHeaderMixMetadataSize(
   /* [u<nuBits4MixOutMask * ns> nuMixOutChMask[ns]] */
   COMPUTE_NUBITS4MIXOUTMASK(
     mixOutputMaskNbBits,
-    param->mixOutputChannelsMask,
-    param->nbMixOutputConfigs
+    param->nuMixOutChMask,
+    param->nuNumMixOutConfigs
   );
 
-  size += mixOutputMaskNbBits * param->nbMixOutputConfigs;
+  size += mixOutputMaskNbBits * param->nuNumMixOutConfigs;
 
   return size;
 }
@@ -259,8 +259,8 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
 
     spkrMaskNbBits = 0;
 
-    if (param->speakersMaskEnabled) {
-      COMPUTE_NUNUMBITS4SAMASK(spkrMaskNbBits, param->speakersMask);
+    if (param->bSpkrMaskEnabled) {
+      COMPUTE_NUNUMBITS4SAMASK(spkrMaskNbBits, param->nuSpkrActivityMask);
 
       /* [u2 nuNumBits4SAMask] */
       /* [v<nuNumBits4SAMask> nuSpkrActivityMask] */
@@ -271,9 +271,9 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
     /* Already counted */
 
     /* [v<nuNumBits4SAMask * nuNumSpkrRemapSets> nuStndrSpkrLayoutMask] */
-    size += spkrMaskNbBits * param->nbOfSpeakersRemapSets;
+    size += spkrMaskNbBits * param->nuNumSpkrRemapSets;
 
-    for (ns = 0; ns < param->nbOfSpeakersRemapSets; ns++) {
+    for (ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [u5 nuNumDecCh4Remap[ns]] */
       size += 5;
 
@@ -435,15 +435,15 @@ int buildDcaExtSSAssetDescriptorStaticFields(
     /* [b1 bSpkrMaskEnabled] */
     ret = writeBitDtsPatcherBitstreamHandle(
       handle,
-      param->speakersMaskEnabled
+      param->bSpkrMaskEnabled
     );
     if (ret < 0)
       return -1;
 
     spkrMaskNbBits = 0;
 
-    if (param->speakersMaskEnabled) {
-      COMPUTE_NUNUMBITS4SAMASK(spkrMaskNbBits, param->speakersMask);
+    if (param->bSpkrMaskEnabled) {
+      COMPUTE_NUNUMBITS4SAMASK(spkrMaskNbBits, param->nuSpkrActivityMask);
 
       /* [u2 nuNumBits4SAMask] */
       ret = writeBitsDtsPatcherBitstreamHandle(
@@ -457,7 +457,7 @@ int buildDcaExtSSAssetDescriptorStaticFields(
       /* [v<nuNumBits4SAMask> nuSpkrActivityMask] */
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
-        param->speakersMask,
+        param->nuSpkrActivityMask,
         spkrMaskNbBits
       );
       if (ret < 0)
@@ -467,24 +467,24 @@ int buildDcaExtSSAssetDescriptorStaticFields(
     /* [u3 nuNumSpkrRemapSets] */
     ret = writeBitsDtsPatcherBitstreamHandle(
       handle,
-      param->nbOfSpeakersRemapSets,
+      param->nuNumSpkrRemapSets,
       3
     );
     if (ret < 0)
       return -1;
 
-    for (ns = 0; ns < param->nbOfSpeakersRemapSets; ns++) {
+    for (ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [v<nuNumBits4SAMask> nuStndrSpkrLayoutMask] */
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
-        param->stdSpeakersLayoutMask[ns],
+        param->nuStndrSpkrLayoutMask[ns],
         spkrMaskNbBits
       );
       if (ret < 0)
         return -1;
     }
 
-    for (ns = 0; ns < param->nbOfSpeakersRemapSets; ns++) {
+    for (ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [u5 nuNumDecCh4Remap[ns]] */
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
@@ -498,7 +498,7 @@ int buildDcaExtSSAssetDescriptorStaticFields(
         /* [v<nuNumDecCh4Remap> nuRemapDecChMask] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
-          param->decChLnkdToSetSpkrMask[ns][nCh],
+          param->nuRemapDecChMask[ns][nCh],
           param->nbChRequiredByRemapSet[ns]
         );
         if (ret < 0)
@@ -682,7 +682,7 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
 
     for (
       ns = 0;
-      ns < staticFieldsParam->mixMetadata.nbMixOutputConfigs;
+      ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs;
       ns++
     ) {
       if (param->mixMetadata.perMainAudioChSepScal) {
@@ -722,7 +722,7 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
       param->mixMetadata.nbDownMixes++;
     }
 
-    for (ns = 0; ns < staticFieldsParam->mixMetadata.nbMixOutputConfigs; ns++) {
+    for (ns = 0; ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs; ns++) {
       /* Mix Configurations loop */
       for (nE = 0; nE < param->mixMetadata.nbDownMixes; nE++) {
         /* Embedded downmix loop */
@@ -741,7 +741,7 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
 
           /* [0 nuNumMixCoefs[ns][nE][nCh]] */
           param->mixMetadata.mixOutputMappingNbCoeff[ns][nE][nCh] =
-            nbBitsSetTo1(param->mixMetadata.mixOutputMappingMask[ns][nE][nCh])
+            _nbBitsSetTo1(param->mixMetadata.mixOutputMappingMask[ns][nE][nCh])
           ;
 
           for (nC = 0; nC < param->mixMetadata.mixOutputMappingNbCoeff[ns][nE][nCh]; nC++) {
@@ -925,7 +925,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
 
     for (
       ns = 0;
-      ns < staticFieldsParam->mixMetadata.nbMixOutputConfigs;
+      ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs;
       ns++
     ) {
       if (param->mixMetadata.perChannelMainAudioScaleCode) {
@@ -935,7 +935,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
          *  nuMainAudioScaleCode[ns][nCh]
          * ]
          */
-        size += 6 * staticFieldsParam->mixMetadata.nbMixOutputChannels[ns];
+        size += 6 * staticFieldsParam->mixMetadata.nNumMixOutCh[ns];
       }
       else {
         /* [u6 nuMainAudioScaleCode[ns][0]] */
@@ -1327,14 +1327,14 @@ int buildDcaExtSSAssetDescriptorDecNavData(
 
     for (
       ns = 0;
-      ns < staticFieldsParam->mixMetadata.nbMixOutputConfigs;
+      ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs;
       ns++
     ) {
 
       if (param->mixMetadata.perChannelMainAudioScaleCode) {
         for (
           nCh = 0;
-          nCh < staticFieldsParam->mixMetadata.nbMixOutputChannels[ns];
+          nCh < staticFieldsParam->mixMetadata.nNumMixOutCh[ns];
           nCh++
         ) {
           /* [u6 nuMainAudioScaleCode[ns][nCh]] */
@@ -1445,11 +1445,11 @@ size_t computeDcaExtSSAudioAssetDescriptorSize(
   /* [vn Reserved] */
   /* [v0...7 ZeroPadForFsize] */
   savedReservedField = DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-    param->reservedFieldLength,
+    param->resFieldLength,
     param->paddingBits
   );
   if (savedReservedField)
-    size += param->reservedFieldLength + param->paddingBits;
+    size += param->resFieldLength + param->paddingBits;
 
   return SHF_ROUND_UP(size, 3); /* Padding if required */
 }
@@ -1531,15 +1531,15 @@ int buildDcaExtSSAudioAssetDescriptor(
   /* Append if it was saved (meaning size does'nt exceed limit). */
   if (
     DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->reservedFieldLength, param->paddingBits
+      param->resFieldLength, param->paddingBits
     )
   ) {
     /* Copy saved reserved field */
-    resFieldSize = 8 * param->reservedFieldLength + param->paddingBits;
+    resFieldSize = 8 * param->resFieldLength + param->paddingBits;
     for (off = 0; 0 < resFieldSize; off++) {
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
-        param->reservedFieldData[off],
+        param->resFieldData[off],
         MIN(8, resFieldSize)
       );
       if (ret < 0)
@@ -1633,11 +1633,11 @@ size_t computeDcaExtSSHeaderSize(
   /* [v0..7 ByteAlign] */
   if (
     DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->reservedFieldLength,
+      param->resFieldLength,
       param->paddingBits
     )
   ) {
-    size += param->reservedFieldLength * 8 + param->paddingBits;
+    size += param->resFieldLength * 8 + param->paddingBits;
   }
 
   /* [u16 nCRC16ExtSSHeader] */
@@ -1700,7 +1700,7 @@ size_t appendDcaExtSSHeader(
     return 0;
 
   /* [v32 SYNCEXTSSH] */
-  if (writeBitsDtsPatcherBitstreamHandle(handle, DTS_SYNCWORD_SUBSTREAM, 32) < 0)
+  if (writeBitsDtsPatcherBitstreamHandle(handle, DCA_SYNCEXTSSH, 32) < 0)
     goto free_return;
 
   /* [u8 UserDefinedBits] */
@@ -1815,15 +1815,15 @@ size_t appendDcaExtSSHeader(
   /* Append if it was saved (meaning size does'nt exceed limit). */
   if (
     DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->reservedFieldLength, param->paddingBits
+      param->resFieldLength, param->paddingBits
     )
   ) {
     /* Copy saved reserved field */
-    resFieldSize = 8 * param->reservedFieldLength + param->paddingBits;
+    resFieldSize = 8 * param->resFieldLength + param->paddingBits;
     for (off = 0; 0 < resFieldSize; off++) {
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
-        param->reservedFieldData[off],
+        param->resFieldData[off],
         MIN(8, resFieldSize)
       );
       if (ret < 0)

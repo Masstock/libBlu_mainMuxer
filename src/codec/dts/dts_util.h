@@ -25,39 +25,39 @@ typedef struct {
 
 typedef struct {
   DtshdFileHeaderChunk DTSHDHDR;
-  bool DTSHDHDR_present;
+  unsigned DTSHDHDR_count;
 
   DtshdFileInfo FILEINFO;
-  bool FILEINFO_present;
+  unsigned FILEINFO_count;
 
   DtshdCoreSubStrmMeta CORESSMD;
-  bool CORESSMD_present;
+  unsigned CORESSMD_count;
 
   DtshdExtSubStrmMeta EXTSS_MD;
-  bool EXTSS_MD_present;
+  unsigned EXTSS_MD_count;
 
   DtshdAudioPresPropHeaderMeta AUPR_HDR;
-  bool AUPR_HDR_present;
+  unsigned AUPR_HDR_count;
 
   DtshdAudioPresText AUPRINFO;
-  bool AUPRINFO_present;
+  unsigned AUPRINFO_count;
 
   DtshdNavMeta NAVI_TBL;
-  bool NAVI_TBL_present;
+  unsigned NAVI_TBL_count;
 
   DtshdStreamData STRMDATA;
-  bool STRMDATA_present;
+  unsigned STRMDATA_count;
   uint64_t off_STRMDATA;
-  bool in_STRMDATA;
+  unsigned in_STRMDATA;
 
   DtshdTimecode TIMECODE;
-  bool TIMECODE_present;
+  unsigned TIMECODE_count;
 
   DtshdBuildVer BUILDVER;
-  bool BUILDVER_present;
+  unsigned BUILDVER_count;
 
   DtshdBlackout BLACKOUT;
-  bool BLACKOUT_present;
+  unsigned BLACKOUT_count;
 
   DtshdFileHandlerWarningFlags warningFlags;
 } DtshdFileHandler, *DtshdFileHandlerPtr;
@@ -75,9 +75,9 @@ static inline bool canBePerformedPBRSDtshdFileHandler(
   const DtshdFileHandlerPtr hdlr
 )
 {
-  if (!hdlr->DTSHDHDR_present)
+  if (!hdlr->DTSHDHDR_count)
     return false;
-  if (!hdlr->AUPR_HDR_present)
+  if (!hdlr->AUPR_HDR_count)
     return false;
 
   return
@@ -99,17 +99,31 @@ static inline bool canBePerformedPBRSDtshdFileHandler(
  * \return The number of to-be-skipped access units at bitstream start.
  */
 static inline unsigned getInitialSkippingDelayDtshdFileHandler(
-  DtshdFileHandlerPtr hdlr
+  const DtshdFileHandlerPtr hdlr
 )
 {
   const DtshdAudioPresPropHeaderMeta * AUPR_HDR = &hdlr->AUPR_HDR;
 
-  if (!hdlr->AUPR_HDR_present)
+  if (!hdlr->AUPR_HDR_count)
     return 0;
 
   unsigned delay_samples = AUPR_HDR->Codec_Delay_At_Max_Fs;
   unsigned samples_per_frame = AUPR_HDR->Samples_Per_Frame_At_Max_Fs;
   return (delay_samples + (samples_per_frame >> 1)) / samples_per_frame;
+}
+
+static inline unsigned getPBRSmoothingBufSizeDtshdFileHandler(
+  const DtshdFileHandlerPtr hdlr
+)
+{
+  const DtshdFileHeaderChunk * DTSHDHDR = &hdlr->DTSHDHDR;
+  const DtshdExtSubStrmMeta * EXTSS_MD = &hdlr->EXTSS_MD;
+
+  if (!hdlr->DTSHDHDR_count || !hdlr->EXTSS_MD_count)
+    return 0;
+  if (0 == (DTSHDHDR->Bitw_Stream_Metadata & DTSHD_BSM__IS_VBR))
+    return 0;
+  return EXTSS_MD->vbr.Pbr_Smooth_Buff_Size_Kb;
 }
 
 typedef enum {
@@ -119,146 +133,6 @@ typedef enum {
   DTS_EXPRESS       = STREAM_CODING_TYPE_DTSE_SEC,
   DTS_AUDIO_DEFAULT = 0xFF
 } DtsAudioStreamIds;
-
-typedef enum {
-  DTS_SFREQ_8_KHZ     = 0x1,
-  DTS_SFREQ_16_KHZ    = 0x2,
-  DTS_SFREQ_32_KHZ    = 0x3,
-  DTS_SFREQ_11025_HZ  = 0x6,
-  DTS_SFREQ_22050_HZ  = 0x7,
-  DTS_SFREQ_44100_HZ  = 0x8,
-  DTS_SFREQ_12_KHZ    = 0xB,
-  DTS_SFREQ_24_KHZ    = 0xC,
-  DTS_SFREQ_48_KHZ    = 0xD
-} DcaCoreAudioSampFreqCode;
-
-unsigned dtsCoreAudioSampFreqCodeValue(
-  const DcaCoreAudioSampFreqCode code
-);
-
-/** \~english
- * \brief DTS Core channel assignement code values.
- *
- * Other values means user defined.
- */
-typedef enum {
-  DTS_AMODE_A                          = 0x0,
-  DTS_AMODE_A_B                        = 0x1,
-  DTS_AMODE_L_R                        = 0x2,
-  DTS_AMODE_L_R_SUMDIF                 = 0x3,
-  DTS_AMODE_LT_LR                      = 0x4,
-  DTS_AMODE_C_L_R                      = 0x5,
-  DTS_AMODE_L_R_S                      = 0x6,
-  DTS_AMODE_C_L_R_S                    = 0x7,
-  DTS_AMODE_L_R_SL_SR                  = 0x8,
-  DTS_AMODE_C_L_R_SL_SR                = 0x9,
-  DTS_AMODE_CL_CR_L_R_SL_SR            = 0xA,
-  DTS_AMODE_C_L_R_LR_RR_OV             = 0xB,
-  DTS_AMODE_CF_LF_LF_RF_LR_RR          = 0xC,
-  DTS_AMODE_CL_C_CR_L_R_SL_SR          = 0xD,
-  DTS_AMODE_CL_CR_L_R_SL1_SL2_SR1_SR2  = 0xE,
-  DTS_AMODE_CL_C_CR_L_R_SL_S_SR        = 0xF
-} DcaCoreAudioChannelAssignCode;
-
-/** \~english
- * \brief Return from given #DcaCoreAudioChannelAssignCode value the number
- * of audio channels associated.
- *
- * \param code
- * \return unsigned
- */
-unsigned dtsCoreAudioChannelAssignCodeToNbCh(
-  const DcaCoreAudioChannelAssignCode code
-);
-
-const char * dtsCoreAudioChannelAssignCodeStr(
-  const DcaCoreAudioChannelAssignCode code
-);
-
-typedef enum {
-  DTS_PCMR_16,
-  DTS_PCMR_16_ES,
-  DTS_PCMR_20,
-  DTS_PCMR_20_ES,
-  DTS_PCMR_24,
-  DTS_PCMR_24_ES
-} DcaCoreSourcePcmResCode;
-
-unsigned dtsCoreSourcePcmResCodeValue(
-  const DcaCoreSourcePcmResCode code,
-  bool * isEs
-);
-
-/** \~english
- * \brief DTS Core transmission bitrate code values.
- *
- */
-typedef enum {
-  DTS_RATE_32    = 0x00,
-  DTS_RATE_56    = 0x01,
-  DTS_RATE_64    = 0x02,
-  DTS_RATE_96    = 0x03,
-  DTS_RATE_112   = 0x04,
-  DTS_RATE_128   = 0x05,
-  DTS_RATE_192   = 0x06,
-  DTS_RATE_224   = 0x07,
-  DTS_RATE_256   = 0x08,
-  DTS_RATE_320   = 0x09,
-  DTS_RATE_384   = 0x0A,
-  DTS_RATE_448   = 0x0B,
-  DTS_RATE_512   = 0x0C,
-  DTS_RATE_576   = 0x0D,
-  DTS_RATE_640   = 0x0E,
-  DTS_RATE_768   = 0x0F,
-  DTS_RATE_960   = 0x10,
-  DTS_RATE_1024  = 0x11,
-  DTS_RATE_1152  = 0x12,
-  DTS_RATE_1280  = 0x13,
-  DTS_RATE_1344  = 0x14,
-  DTS_RATE_1408  = 0x15,
-  DTS_RATE_1411  = 0x16,
-  DTS_RATE_1472  = 0x17,
-  DTS_RATE_1536  = 0x18,
-  DTS_RATE_OPEN  = 0x1D
-} DcaCoreTransBitRateCodeCat;
-
-/** \~english
- * \brief Return from given #DcaCoreTransBitRateCodeCat value the bitrate value
- * in Kbit/s associated.
- *
- * If given code == #DTS_RATE_OPEN, 1 is returned.
- *
- * \param code
- * \return unsigned
- */
-unsigned dtsBitRateCodeValue(
-  const DcaCoreTransBitRateCodeCat code
-);
-
-typedef enum {
-  DTS_EXT_AUDIO_ID_XCH   = 0x0,  /**< Channel extension.                     */
-  DTS_EXT_AUDIO_ID_X96   = 0x2,  /**< Sampling frequency extension.          */
-  DTS_EXT_AUDIO_ID_XXCH  = 0x6   /**< Channel extension.                     */
-} DcaCoreExtendedAudioCodingCode;
-
-bool isValidDtsExtendedAudioCodingCode(
-  const DcaCoreExtendedAudioCodingCode code
-);
-
-const char * dtsCoreExtendedAudioCodingCodeStr(
-  const DcaCoreExtendedAudioCodingCode code
-);
-
-typedef enum {
-  DTS_CHIST_NO_COPY     = 0x0,
-  DTS_CHIST_FIRST_GEN   = 0x1,
-  DTS_CHIST_SECOND_GEN  = 0x2,
-  DTS_CHIST_FREE_COPY   = 0x3
-} DcaCoreCopyrightHistoryCode;
-
-const char * dtsCoreCopyrightHistoryCodeStr(
-  const DcaCoreCopyrightHistoryCode code
-);
 
 typedef struct {
   bool presenceOfDeprecatedCrc;
@@ -274,7 +148,7 @@ typedef struct {
   )
 
 typedef struct {
-  DcaCoreSSFrameParameters curFrame;
+  DcaCoreSSFrameParameters cur_frame;
 
   unsigned nbFrames;
   DtsDcaCoreSSWarningFlags warningFlags;
@@ -380,13 +254,21 @@ typedef enum {
   DCA_EXT_SS_MIX_ADJ_LVL_RESERVED              = 0x3
 } DcaExtMixMetadataAdjLevel;
 
-const char * dcaExtMixMetadataAjdLevelStr(
+static inline const char * dcaExtMixMetadataAjdLevelStr(
   DcaExtMixMetadataAdjLevel lvl
-);
+)
+{
+  static const char * strings[] = {
+    "Use only bitstream embedded metadata",
+    "Allow system to adjust feature 1",
+    "Allow system to adjust both feature 1 and feature 2",
+    "Reserved value"
+  };
 
-bool isValidDcaExtMixMetadataAdjLevel(
-  DcaExtMixMetadataAdjLevel lvl
-);
+  if (lvl < ARRAY_SIZE(strings))
+    return strings[lvl];
+  return "Reserved value";
+}
 
 typedef enum {
   DCA_EXT_SS_CH_MASK_C        = 0x0001,
@@ -407,14 +289,21 @@ typedef enum {
   DCA_EXT_SS_CH_MASK_LHR_RHR  = 0x8000
 } DcaExtChMaskCode;
 
-unsigned dcaExtChMaskToNbCh(
+#define DCA_CHMASK_STR_BUFSIZE  240
+
+unsigned buildDcaExtChMaskString(
+  char dst[static DCA_CHMASK_STR_BUFSIZE],
+  uint16_t Channel_Mask
+);
+
+unsigned nbChDcaExtChMaskCode(
   const uint16_t mask
 );
 
-void dcaExtChMaskStrPrintFun(
-  uint16_t mask,
-  int (*printFun) (const lbc * format, ...)
-);
+// void dcaExtChMaskStrPrintFun(
+//   uint16_t mask,
+//   int (*printFun) (const lbc * format, ...)
+// );
 
 typedef enum {
   DCA_EXT_SS_SRC_SAMPLE_RATE_8000    = 0x0,
@@ -607,5 +496,16 @@ int updateDtsEsmsHeader(
   DtsContextPtr ctx,
   EsmsFileHeaderPtr dtsInfos
 );
+
+static inline unsigned getNbChannelsDtsContext(
+  const DtsContextPtr ctx
+)
+{
+  if (ctx->corePresent) {
+    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
+    return getNbChDcaCoreAudioChannelAssignCode(bsh->AMODE);
+  }
+  return 0; // TODO: Suppport secondary audio.
+}
 
 #endif

@@ -10,181 +10,47 @@
 #include "dts_dtshd_file.h"
 #include "dts_xll.h"
 
-unsigned dtsCoreAudioSampFreqCodeValue(
-  const DcaCoreAudioSampFreqCode code
+unsigned buildDcaExtChMaskString(
+  char dst[static DCA_CHMASK_STR_BUFSIZE],
+  uint16_t Channel_Mask
 )
 {
-  switch (code) {
-    case DTS_SFREQ_8_KHZ:
-      return 8000;
-    case DTS_SFREQ_16_KHZ:
-      return 16000;
-    case DTS_SFREQ_32_KHZ:
-      return 32000;
-    case DTS_SFREQ_11025_HZ:
-      return 11025;
-    case DTS_SFREQ_22050_HZ:
-      return 22050;
-    case DTS_SFREQ_44100_HZ:
-      return 44100;
-    case DTS_SFREQ_12_KHZ:
-      return 12000;
-    case DTS_SFREQ_24_KHZ:
-      return 24000;
-    case DTS_SFREQ_48_KHZ:
-      return 48000;
+  static const char * ch_config_str[16] = {
+    "C",
+    "L, R",
+    "Ls, Rs",
+    "LFE",
+    "Cs",
+    "Lh, Rh",
+    "Lsr, Rsr",
+    "Ch",
+    "Oh",
+    "Lc, Rc",
+    "Lw, Rw",
+    "Lss, Rss",
+    "LFE2",
+    "Lhs, Rhs",
+    "Chr",
+    "Lhr, Rhr"
+  };
+  static const unsigned nb_ch_config[16] = {
+    1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 1, 2
+  };
+
+  unsigned nb_channels = 0;
+  char * str_ptr = dst;
+
+  const char * sep = "";
+  for (unsigned i = 0; i < 16; i++) {
+    if (Channel_Mask & (1 << i)) {
+      lb_str_cat(&str_ptr, sep);
+      lb_str_cat(&str_ptr, ch_config_str[i]);
+      nb_channels += nb_ch_config[i];
+      sep = ", ";
+    }
   }
 
-  return 0; /* Invalid */
-}
-
-unsigned dtsCoreAudioChannelAssignCodeToNbCh(
-  const DcaCoreAudioChannelAssignCode code
-)
-{
-  static const unsigned aChCodesNbCh[] = {
-    1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 6, 6, 6, 7, 8, 8
-  };
-
-  if (code < ARRAY_SIZE(aChCodesNbCh))
-    return aChCodesNbCh[code];
-  return 0; /* User defined */
-}
-
-const char * dtsCoreAudioChannelAssignCodeStr(
-  const DcaCoreAudioChannelAssignCode code
-)
-{
-  static const char * aChCodesStr[] = {
-    "C (Mono)",
-    "C+C (Dual-Mono)",
-    "L, R (Stereo 2.)",
-    "(L+R), (L-R) (Sum-differential Stereo)",
-    "Lt, Rt (Stereo 2. total)",
-    "C, L, R (Stereo 3.)",
-    "L, R, S (Surround 3.)",
-    "C, L, R, S (Quadraphonic)",
-    "L, R, Ls, Rs (Quadraphonic)",
-    "C, L, R, Ls, Rs (Surround 5.)",
-    "C, L, R, Ls, Rs, Oh",
-    "C, L, R, Ls, Cs, Rs",
-    "Lc, C, Rc, L, R, Ls, Rs (Surround 7.)",
-    "Lc, Rc, L, R, Lss, Ls, Rs, Rss",
-    "Lc, C, Rc, L, R, Ls, Cs, Rs",
-    "User defined"
-  };
-
-  return aChCodesStr[
-    MIN(
-      ABS(code),
-      ARRAY_SIZE(aChCodesStr) - 1
-    )
-  ];
-}
-
-unsigned dtsCoreSourcePcmResCodeValue(
-  const DcaCoreSourcePcmResCode code,
-  bool * isEs
-)
-{
-  static const unsigned bitDepths[7] = {
-    16, 16, 20, 20, 0, 24, 24
-  };
-
-  if (NULL != isEs)
-    *isEs = code & 0x1;
-  if (code < ARRAY_SIZE(bitDepths))
-    return bitDepths[code];
-  return 0; /* Invalid */
-}
-
-unsigned dtsBitRateCodeValue(
-  const DcaCoreTransBitRateCodeCat code
-)
-{
-  static const unsigned bitRateCodes[25] = {
-    32,
-    56,
-    64,
-    96,
-    112,
-    128,
-    192,
-    224,
-    256,
-    320,
-    384,
-    448,
-    512,
-    576,
-    640,
-    768,
-    960,
-    1024,
-    1152,
-    1280,
-    1344,
-    1408,
-    1411,
-    1472,
-    1536
-  };
-
-  if (code == DTS_RATE_OPEN)
-    return 1; /* Unrestricted bitrate */
-  if (code < ARRAY_SIZE(bitRateCodes))
-    return bitRateCodes[code];
-  return 0;
-}
-
-bool isValidDtsExtendedAudioCodingCode(
-  const DcaCoreExtendedAudioCodingCode code
-)
-{
-  return
-    code == DTS_EXT_AUDIO_ID_XCH
-    || code == DTS_EXT_AUDIO_ID_X96
-    || code == DTS_EXT_AUDIO_ID_XXCH
-  ;
-}
-
-const char * dtsCoreExtendedAudioCodingCodeStr(
-  const DcaCoreExtendedAudioCodingCode code
-)
-{
-  switch (code) {
-    case DTS_EXT_AUDIO_ID_XCH:
-      return "DTS XCH (Extra centre surround channel extension)";
-
-    case DTS_EXT_AUDIO_ID_X96:
-      return "DTS X96 (96KHz sampling frequency extension)";
-
-    case DTS_EXT_AUDIO_ID_XXCH:
-      return "DTS XXCH (Channel extension).\n";
-
-    default:
-      break;
-  }
-
-  return "Reserved value";
-}
-
-const char * dtsCoreCopyrightHistoryCodeStr(
-  const DcaCoreCopyrightHistoryCode code
-)
-{
-  switch (code) {
-    case DTS_CHIST_NO_COPY:
-      return "Forbidden copy";
-    case DTS_CHIST_FIRST_GEN:
-      return "First generation";
-    case DTS_CHIST_SECOND_GEN:
-      return "Second generation";
-    case DTS_CHIST_FREE_COPY:
-      return "Free copy";
-  }
-
-  return "Unknown";
+  return nb_channels;
 }
 
 unsigned dtsExtReferenceClockCodeValue(
@@ -202,30 +68,7 @@ unsigned dtsExtReferenceClockCodeValue(
   return 0;
 }
 
-const char * dcaExtMixMetadataAjdLevelStr(
-  DcaExtMixMetadataAdjLevel lvl
-)
-{
-  static const char * lvlStr[4] = {
-    "Use only bitstream embedded metadata",
-    "Allow system to adjust feature 1",
-    "Allow system to adjust both feature 1 and feature 2",
-    "Reserved value"
-  };
-
-  if (lvl < ARRAY_SIZE(lvlStr))
-    return lvlStr[lvl];
-  return lvlStr[ARRAY_SIZE(lvlStr)-1];
-}
-
-bool isValidDcaExtMixMetadataAdjLevel(
-  DcaExtMixMetadataAdjLevel lvl
-)
-{
-  return lvl <= DCA_EXT_SS_MIX_ADJ_LVL_SYS_META_FEATURE_1_2;
-}
-
-unsigned dcaExtChMaskToNbCh(
+unsigned nbChDcaExtChMaskCode(
   const uint16_t mask
 )
 {
@@ -534,13 +377,13 @@ DtsFrameInitializationRet initNextDtsFrame(
   DtsAUInnerType type;
 
   switch ((syncWord = nextUint32(ctx->file))) {
-    case DTS_SYNCWORD_CORE:
+    case DCA_SYNCWORD_CORE:
       /* DTS Coherent Acoustics Core */
       ret = DTS_FRAME_INIT_CORE_SUBSTREAM;
       type = DTS_FRM_INNER_CORE_SS;
       break;
 
-    case DTS_SYNCWORD_SUBSTREAM:
+    case DCA_SYNCEXTSSH:
       ret = DTS_FRAME_INIT_EXT_SUBSTREAM;
       type = DTS_FRM_INNER_EXT_SS_HDR;
       break;
@@ -580,7 +423,7 @@ int addToEsmsDtsFrame(
     if (
       appendAddPesPayloadCommand(
         dtsInfos, ctx->sourceFileIdx, 0x0, curPeriod->syncFrameStartOffset,
-        core->curFrame.header.frameLength
+        core->cur_frame.header.FSIZE
       ) < 0
     )
       return -1;
@@ -588,11 +431,11 @@ int addToEsmsDtsFrame(
     core->frameDts +=
       (
         (
-          (uint64_t) core->curFrame.header.blocksPerChannel
-          * core->curFrame.header.samplesPerBlock
+          (uint64_t) core->cur_frame.header.NBLKS
+          * core->cur_frame.header.SHORT
         ) * MAIN_CLOCK_27MHZ
       )
-      / core->curFrame.header.audioFreq
+      / core->cur_frame.header.audioFreq
     ;
   }
   else {
@@ -643,18 +486,15 @@ int completeDtsFrame(
 
   if (DTS_CTX_BUILD_ESMS_SCRIPT(ctx)) {
     switch (identifyContentTypeDtsAUFrame(ctx->curAccessUnit)) {
-      case DTS_AU_CORE_SS:
+      case DTS_AU_CORE_SS: {
+        const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
+
         dts = ctx->core.frameDts;
         ctx->core.frameDts +=
-          (
-            (
-              (uint64_t) ctx->core.curFrame.header.blocksPerChannel
-              * ctx->core.curFrame.header.samplesPerBlock
-            ) * MAIN_CLOCK_27MHZ
-          )
-          / ctx->core.curFrame.header.audioFreq
-        ;
+          (1ull * (bsh->NBLKS + 1) * (bsh->SHORT + 1) * MAIN_CLOCK_27MHZ)
+          / getDcaCoreAudioSampFreqCode(bsh->SFREQ);
         break;
+      }
 
       case DTS_AU_EXT_SS:
         dts = ctx->extSS.frameDts;
@@ -722,22 +562,23 @@ int updateDtsEsmsHeader(
   dtsInfos->prop.coding_type = coding_type;
 
   if (ctx->corePresent) {
+    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
     dtsInfos->endPts = ctx->core.frameDts;
 
-    switch (ctx->core.curFrame.header.audioChannelArrangement) {
-      case DTS_AMODE_A:
+    switch (bsh->AMODE) {
+      case DCA_AMODE_A:
         /* Mono */
         dtsInfos->prop.audio_format = 0x01;
         break;
 
-      case DTS_AMODE_A_B:
+      case DCA_AMODE_A_B:
         /* Dual-Mono */
         dtsInfos->prop.audio_format = 0x02;
         break;
 
-      case DTS_AMODE_L_R:
-      case DTS_AMODE_L_R_SUMDIF:
-      case DTS_AMODE_LT_LR:
+      case DCA_AMODE_L_R:
+      case DCA_AMODE_L_R_SUMDIF:
+      case DCA_AMODE_LT_LR:
         /* Stereo */
         dtsInfos->prop.audio_format = 0x03;
         break;
@@ -747,7 +588,7 @@ int updateDtsEsmsHeader(
         dtsInfos->prop.audio_format = 0x06;
     }
 
-    switch (ctx->core.curFrame.header.audioFreq) {
+    switch (getDcaCoreAudioSampFreqCode(bsh->SFREQ)) {
       case 48000: /* 48 kHz */
         dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
       case 96000: /* 96 kHz */
@@ -756,7 +597,7 @@ int updateDtsEsmsHeader(
         dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
-    dtsInfos->prop.bit_depth = ctx->core.curFrame.header.bitDepth;
+    dtsInfos->prop.bit_depth = getDcaCoreSourcePcmResCode(bsh->PCMR);
   }
   else {
     assert(ctx->extSSPresent);

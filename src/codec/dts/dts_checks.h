@@ -16,7 +16,7 @@
 #include "../common/constantCheckFunctionsMacros.h"
 
 #define IS_ENTRY_POINT_DCA_CORE_SS(syncFrame)                                 \
-  (!(syncFrame).header.predHist)
+  (!(syncFrame).header.HFLAG)
 
 int checkDcaCoreSSCompliance(
   const DcaCoreSSFrameParameters * frame,

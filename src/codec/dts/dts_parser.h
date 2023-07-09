@@ -39,9 +39,9 @@ int parseDtshdChunk(
   DtsContextPtr ctx
 );
 
-int decodeDcaCoreSSFrameHeader(
+int decodeDcaCoreBitStreamHeader(
   BitstreamReaderPtr file,
-  DcaCoreSSFrameHeaderParameters * param
+  DcaCoreBSHeaderParameters * param
 );
 
 int decodeDcaCoreSS(
