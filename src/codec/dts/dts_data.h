@@ -364,6 +364,33 @@ static inline const char * DcaCoreExtendedAudioCodingCodeStr(
   return "Reserved value";
 }
 
+/* ###### LFF : ############################################################ */
+
+/** \~english
+ * \brief DCA Core Low Frequency effects Flag, LFF values.
+ *
+ */
+typedef enum {
+  DCA_LFF_NOT_PRESENT    = 0x0,  /**< Not present.                           */
+  DCA_LFF_PRESENT_128IF  = 0x1,  /**< Present, 128 Interpolation Factor.     */
+  DCA_LFF_PRESENT_64IF   = 0x2,  /**< Present, 64 Interpolation Factor.      */
+  DCA_LFF_INVALID        = 0x3   /**< Invalid value.                         */
+} DcaCoreLowFrequencyEffectsFlag;
+
+static inline const char * DcaCoreLowFrequencyEffectsFlagStr(
+  DcaCoreLowFrequencyEffectsFlag LFF
+)
+{
+  static const char * strings[] = {
+    "Not present",
+    "Present, 128 Interpolation Factor",
+    "Present, 64 Interpolation Factor"
+  };
+  if (LFF < ARRAY_SIZE(strings))
+    return strings[LFF];
+  return "Invalid";
+}
+
 /* ###### VERNUM : ######################################################### */
 
 /** \~english

@@ -260,18 +260,55 @@ const char * dtsXllCommonHeaderCrc16PresenceCodeStr(
   return "unk";
 }
 
-DtsContextPtr createDtsContext(
-  BitstreamReaderPtr inputFile,
-  const lbc * outputFilename,
-  LibbluESSettingsOptions options
+int createDtsContext(
+  DtsContext * ctx,
+  LibbluESParsingSettings * settings
 )
 {
-  DtsContextPtr ctx;
+  const LibbluESSettingsOptions options = settings->options;
+  BitstreamReaderPtr es_bs = NULL;
+  BitstreamWriterPtr script_bs = NULL;
+  EsmsFileHeaderPtr script = NULL;
+  unsigned src_file_idx;
+  bool is_dtshd_file;
 
-  if (NULL == (ctx = (DtsContextPtr) malloc(sizeof(DtsContext))))
-    LIBBLU_ERROR_NRETURN(
-      "Memory allocation error.\n"
-    );
+  /* ES input */
+  es_bs = createBitstreamReaderDefBuf(settings->esFilepath);
+  if (NULL == es_bs)
+    LIBBLU_DTS_ERROR_FRETURN("Unable to open input ES.\n");
+
+  /* Test if DTS-HD File from DTS-HDMA Suite */
+  is_dtshd_file = isDtshdFile(es_bs);
+
+  /* Script output */
+  script_bs = createBitstreamWriterDefBuf(settings->scriptFilepath);
+  if (NULL == script_bs)
+    LIBBLU_DTS_ERROR_FRETURN("Unable to create output script file.\n");
+
+  /* Prepare ESMS output file */
+  script = createEsmsFileHandler(ES_AUDIO, options, FMT_SPEC_INFOS_NONE);
+  if (NULL == script)
+    LIBBLU_DTS_ERROR_FRETURN("Unable to create output script handler.\n");
+
+  if (appendSourceFileEsms(script, settings->esFilepath, &src_file_idx) < 0)
+    LIBBLU_DTS_ERROR_FRETURN("Unable to add source file to script handler.\n");
+
+  /* Write script header */
+  if (writeEsmsHeader(script_bs) < 0)
+    return -1;
+
+  /* Save in context */
+  *ctx = (DtsContext) {
+    .src_file_idx = src_file_idx,
+    .bs = es_bs,
+    .script_bs = script_bs,
+    .script = script,
+    .script_fp = settings->scriptFilepath,
+
+    .is_dtshd_file = is_dtshd_file,
+    .isSecondaryStream = options.secondaryStream,
+    .skipExtensionSubstreams = options.extractCore
+  };
 
   if (isInitPbrFileHandler()) {
     LIBBLU_DTS_INFO("Perfoming two passes Peak Bit-Rate smoothing.\n");
@@ -285,67 +322,195 @@ DtsContextPtr createDtsContext(
 #endif
   }
 
-  ctx->file = inputFile;
-  ctx->esmsScriptOutputFile = NULL;
-  ctx->dtshdFileHandle = NULL;
-
-  ctx->corePresent = false;
-  ctx->extSSPresent = false;
-
-  ctx->xllCtx = NULL;
-
-  /* Default parameters: */
-  ctx->isSecondaryStream = options.secondaryStream;
-  ctx->skipExtensionSubstreams = options.extractCore;
-  ctx->skippedFramesControl = 0;
-
-  ctx->curAccessUnit = NULL;
-
-  ctx->esmsScriptOutputFile = createBitstreamWriter(
-    outputFilename, WRITE_BUFFER_LEN
-  );
-  if (NULL == ctx->esmsScriptOutputFile)
-    goto free_return;
-
-  if (NULL == (ctx->curAccessUnit = createDtsAUFrame()))
-    goto free_return;
-
-  /* Test if DTS-HD File from DTS-HDMA Suite */
-  if (isDtshdFile(inputFile)) {
-    if (NULL == (ctx->dtshdFileHandle = createDtshdFileHandler()))
-      goto free_return;
-  }
-
-  return ctx;
+  return 0;
 
 free_return:
-  destroyDtsContext(ctx);
-  return NULL;
+  closeBitstreamWriter(script_bs);
+  destroyEsmsFileHandler(script);
+
+  return -1;
 }
 
-void destroyDtsContext(
-  DtsContextPtr ctx
+static int _writeScriptEndMarker(
+  DtsContext * ctx
 )
 {
-  unsigned i;
+  /* [v8 endMarker] */
+  if (writeByte(ctx->script_bs, ESMS_SCRIPT_END_MARKER) < 0)
+    LIBBLU_DTS_ERROR_RETURN("Unable to write script end marker.\n");
+  return 0;
+}
 
+int _setScriptProperties(
+  DtsContext * ctx
+)
+{
+  EsmsFileHeaderPtr script = ctx->script;
+  LibbluStreamCodingType coding_type;
+
+  if (ctx->extSSPresent && ctx->extSS.content.xllExtSS)
+    coding_type = STREAM_CODING_TYPE_HDMA, script->bitrate = 24500000;
+  else if (ctx->extSSPresent && ctx->extSS.content.xbrExtSS)
+    coding_type = STREAM_CODING_TYPE_HDHR, script->bitrate = 24500000;
+  else if (ctx->extSSPresent && ctx->extSS.content.lbrExtSS)
+    coding_type = STREAM_CODING_TYPE_DTSE_SEC, script->bitrate = 256000;
+  else if (ctx->corePresent)
+    coding_type = STREAM_CODING_TYPE_DTS, script->bitrate = 2000000;
+  else
+    LIBBLU_DTS_ERROR_RETURN(
+      "Unexpected empty input stream.\n"
+    );
+
+  script->prop.coding_type = coding_type;
+
+  if (ctx->corePresent) {
+    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
+    script->endPts = ctx->core.pts;
+
+    switch (bsh->AMODE) {
+      case DCA_AMODE_A:
+        /* Mono */
+        script->prop.audio_format = 0x01;
+        break;
+
+      case DCA_AMODE_A_B:
+        /* Dual-Mono */
+        script->prop.audio_format = 0x02;
+        break;
+
+      case DCA_AMODE_L_R:
+      case DCA_AMODE_L_R_SUMDIF:
+      case DCA_AMODE_LT_LR:
+        /* Stereo */
+        script->prop.audio_format = 0x03;
+        break;
+
+      default:
+        /* Multi-channel */
+        script->prop.audio_format = 0x06;
+    }
+
+    switch (getDcaCoreAudioSampFreqCode(bsh->SFREQ)) {
+      case 48000: /* 48 kHz */
+        script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
+      case 96000: /* 96 kHz */
+        script->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
+      default: /* 192 kHz */
+        script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
+    }
+
+    script->prop.bit_depth = getDcaCoreSourcePcmResCode(bsh->PCMR) >> 4;
+  }
+  else {
+    assert(ctx->extSSPresent);
+
+    if (!ctx->extSS.content.parsedParameters)
+      LIBBLU_DTS_ERROR_RETURN(
+        "Missing mandatory static fields in Extension Substream, "
+        "unable to define audio properties.\n"
+      );
+
+    script->endPts = ctx->extSS.pts;
+
+    if (ctx->extSS.content.nbChannels <= 1)
+      script->prop.audio_format = 0x01; /* Mono */
+    else if (ctx->extSS.content.nbChannels == 2)
+      script->prop.audio_format = 0x03; /* Stereo */
+    else
+      script->prop.audio_format = 0x06; /* Multi-channel */
+
+    switch (ctx->extSS.content.audioFreq) {
+      case 48000: /* 48 kHz */
+        script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
+      case 96000: /* 96 kHz */
+        script->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
+      default: /* 192 kHz */
+        script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
+    }
+
+    script->prop.bit_depth = ctx->extSS.content.bitDepth >> 4;
+  }
+
+  return 0;
+}
+
+static inline unsigned _getNbChannels(
+  const DtsContext * ctx
+)
+{
+  if (ctx->corePresent) {
+    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
+    return getNbChDcaCoreAudioChannelAssignCode(bsh->AMODE);
+  }
+  return 0; // TODO: Suppport secondary audio.
+}
+
+static void _printStreamInfos(
+  const DtsContext * ctx
+)
+{
+  /* Display infos : */
+  lbc_printf("== Stream Infos =======================================================================\n");
+  lbc_printf(
+    "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %ubits.\n",
+    streamCodingTypeStr(ctx->script->prop.coding_type),
+    AudioFormatCodeStr(ctx->script->prop.audio_format),
+    _getNbChannels(ctx),
+    valueSampleRateCode(ctx->script->prop.sample_rate),
+    valueBitDepthCode(ctx->script->prop.bit_depth)
+  );
+  lbc_printf(
+    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
+    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 / 60,
+    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 % 60,
+    (ctx->core.pts / MAIN_CLOCK_27MHZ) % 60
+  );
+  lbc_printf("=======================================================================================\n");
+}
+
+int completeDtsContext(
+  DtsContext * ctx
+)
+{
+
+
+  if (_writeScriptEndMarker(ctx) < 0)
+    return -1;
+
+  if (_setScriptProperties(ctx) < 0)
+    return -1;
+  _printStreamInfos(ctx);
+
+  if (addEsmsFileEnd(ctx->script_bs, ctx->script) < 0)
+    return -1;
+  closeBitstreamWriter(ctx->script_bs);
+  ctx->script_bs = NULL;
+
+  if (updateEsmsHeader(ctx->script_fp, ctx->script) < 0)
+    return -1;
+
+  cleanDtsContext(ctx);
+  return 0;
+}
+
+void cleanDtsContext(
+  DtsContext * ctx
+)
+{
   if (NULL == ctx)
     return;
 
-  for (i = 0; i < DCA_EXT_SS_MAX_NB_INDEXES; i++) {
+  for (unsigned i = 0; i < DCA_EXT_SS_MAX_NB_INDEXES; i++) {
     if (ctx->extSS.presentIndexes[i])
       free(ctx->extSS.curFrames[i]);
   }
 
-  closeBitstreamWriter(ctx->esmsScriptOutputFile);
-  destroyDtshdFileHandler(ctx->dtshdFileHandle);
+  closeBitstreamWriter(ctx->script_bs);
   destroyDtsXllFrameContext(ctx->xllCtx);
-  destroyDtsAUFrame(ctx->curAccessUnit);
-  free(ctx);
 }
 
 bool nextPassDtsContext(
-  DtsContextPtr ctx
+  DtsContext * ctx
 )
 {
   assert(NULL != ctx);
@@ -360,14 +525,14 @@ bool nextPassDtsContext(
 }
 
 int initParsingDtsContext(
-  DtsContextPtr ctx
+  DtsContext * ctx
 )
 {
-  return seekPos(DTS_CTX_IN_FILE(ctx), 0, SEEK_SET);
+  return seekPos(ctx->bs, 0, SEEK_SET);
 }
 
 DtsFrameInitializationRet initNextDtsFrame(
-  DtsContextPtr ctx
+  DtsContext * ctx
 )
 {
   DtsFrameInitializationRet ret;
@@ -376,7 +541,7 @@ DtsFrameInitializationRet initNextDtsFrame(
   DtsAUCellPtr cell;
   DtsAUInnerType type;
 
-  switch ((syncWord = nextUint32(ctx->file))) {
+  switch ((syncWord = nextUint32(ctx->bs))) {
     case DCA_SYNCWORD_CORE:
       /* DTS Coherent Acoustics Core */
       ret = DTS_FRAME_INIT_CORE_SUBSTREAM;
@@ -395,17 +560,16 @@ DtsFrameInitializationRet initNextDtsFrame(
       );
   }
 
-  if (NULL == (cell = initDtsAUCell(ctx->curAccessUnit, type)))
+  if (NULL == (cell = initDtsAUCell(&ctx->curAccessUnit, type)))
     return -1;
-
-  cell->startOffset = tellPos(ctx->file);
+  cell->startOffset = tellPos(ctx->bs);
 
   return ret;
 }
 
 #if 0
 int addToEsmsDtsFrame(
-  DtsContextPtr ctx,
+  DtsContext * ctx,
   EsmsFileHeaderPtr dtsInfos,
   DtsCurrentPeriod * curPeriod
 )
@@ -417,18 +581,18 @@ int addToEsmsDtsFrame(
 
     assert(ctx->corePresent);
 
-    if (initEsmsAudioPesFrame(dtsInfos, false, false, core->frameDts, 0) < 0)
+    if (initEsmsAudioPesFrame(dtsInfos, false, false, core->pts, 0) < 0)
       return -1;
 
     if (
       appendAddPesPayloadCommand(
-        dtsInfos, ctx->sourceFileIdx, 0x0, curPeriod->syncFrameStartOffset,
+        dtsInfos, ctx->src_file_idx, 0x0, curPeriod->syncFrameStartOffset,
         core->cur_frame.header.FSIZE
       ) < 0
     )
       return -1;
 
-    core->frameDts +=
+    core->pts +=
       (
         (
           (uint64_t) core->cur_frame.header.NBLKS
@@ -444,12 +608,12 @@ int addToEsmsDtsFrame(
 
     assert(ctx->extSSPresent);
 
-    if (initEsmsAudioPesFrame(dtsInfos, true, false, ext->frameDts, 0) < 0)
+    if (initEsmsAudioPesFrame(dtsInfos, true, false, ext->pts, 0) < 0)
       return -1;
 
     if (
       appendAddPesPayloadCommand(
-        dtsInfos, ctx->sourceFileIdx,
+        dtsInfos, ctx->src_file_idx,
         0x0, curPeriod->syncFrameStartOffset,
         ext->curFrames[
           ext->currentExtSSIdx
@@ -458,7 +622,7 @@ int addToEsmsDtsFrame(
     )
       return -1;
 
-    ext->frameDts +=
+    ext->pts +=
       (
         (
           (uint64_t) ext->curFrames[
@@ -477,31 +641,30 @@ int addToEsmsDtsFrame(
 #endif
 
 int completeDtsFrame(
-  DtsContextPtr ctx,
-  EsmsFileHeaderPtr dtsInfos
+  DtsContext * ctx
 )
 {
   uint64_t dts;
   int ret;
 
   if (DTS_CTX_BUILD_ESMS_SCRIPT(ctx)) {
-    switch (identifyContentTypeDtsAUFrame(ctx->curAccessUnit)) {
+    switch (identifyContentTypeDtsAUFrame(&ctx->curAccessUnit)) {
       case DTS_AU_CORE_SS: {
         const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
 
-        dts = ctx->core.frameDts;
-        ctx->core.frameDts +=
+        dts = ctx->core.pts;
+        ctx->core.pts +=
           (1ull * (bsh->NBLKS + 1) * (bsh->SHORT + 1) * MAIN_CLOCK_27MHZ)
           / getDcaCoreAudioSampFreqCode(bsh->SFREQ);
         break;
       }
 
       case DTS_AU_EXT_SS:
-        dts = ctx->extSS.frameDts;
+        dts = ctx->extSS.pts;
 
         assert(NULL != ctx->extSS.curFrames[ctx->extSS.currentExtSSIdx]);
 
-        ctx->extSS.frameDts +=
+        ctx->extSS.pts +=
           (
             (
               (uint64_t) ctx->extSS.curFrames[
@@ -523,111 +686,18 @@ int completeDtsFrame(
     }
 
     ret = processCompleteFrameDtsAUFrame(
-      ctx->esmsScriptOutputFile,
-      dtsInfos,
-      ctx->curAccessUnit,
-      ctx->sourceFileIdx,
+      ctx->script_bs,
+      ctx->script,
+      &ctx->curAccessUnit,
+      ctx->src_file_idx,
       dts
     );
   }
   else {
     /* TODO: Add data to PBR smoothing process stats */
-    discardWholeCurDtsAUFrame(ctx->curAccessUnit);
+    discardWholeCurDtsAUFrame(&ctx->curAccessUnit);
     ret = 0;
   }
 
   return ret;
-}
-
-int updateDtsEsmsHeader(
-  DtsContextPtr ctx,
-  EsmsFileHeaderPtr dtsInfos
-)
-{
-  LibbluStreamCodingType coding_type;
-
-  if (ctx->extSSPresent && ctx->extSS.content.xllExtSS)
-    coding_type = STREAM_CODING_TYPE_HDMA, dtsInfos->bitrate = 24500000;
-  else if (ctx->extSSPresent && ctx->extSS.content.xbrExtSS)
-    coding_type = STREAM_CODING_TYPE_HDHR, dtsInfos->bitrate = 24500000;
-  else if (ctx->extSSPresent && ctx->extSS.content.lbrExtSS)
-    coding_type = STREAM_CODING_TYPE_DTSE_SEC, dtsInfos->bitrate = 256000;
-  else if (ctx->corePresent)
-    coding_type = STREAM_CODING_TYPE_DTS, dtsInfos->bitrate = 2000000;
-  else
-    LIBBLU_DTS_ERROR_RETURN(
-      "Unexpected empty input stream.\n"
-    );
-
-  dtsInfos->prop.coding_type = coding_type;
-
-  if (ctx->corePresent) {
-    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
-    dtsInfos->endPts = ctx->core.frameDts;
-
-    switch (bsh->AMODE) {
-      case DCA_AMODE_A:
-        /* Mono */
-        dtsInfos->prop.audio_format = 0x01;
-        break;
-
-      case DCA_AMODE_A_B:
-        /* Dual-Mono */
-        dtsInfos->prop.audio_format = 0x02;
-        break;
-
-      case DCA_AMODE_L_R:
-      case DCA_AMODE_L_R_SUMDIF:
-      case DCA_AMODE_LT_LR:
-        /* Stereo */
-        dtsInfos->prop.audio_format = 0x03;
-        break;
-
-      default:
-        /* Multi-channel */
-        dtsInfos->prop.audio_format = 0x06;
-    }
-
-    switch (getDcaCoreAudioSampFreqCode(bsh->SFREQ)) {
-      case 48000: /* 48 kHz */
-        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
-      case 96000: /* 96 kHz */
-        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
-      default: /* 192 kHz */
-        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
-    }
-
-    dtsInfos->prop.bit_depth = getDcaCoreSourcePcmResCode(bsh->PCMR);
-  }
-  else {
-    assert(ctx->extSSPresent);
-
-    if (!ctx->extSS.content.parsedParameters)
-      LIBBLU_DTS_ERROR_RETURN(
-        "Missing mandatory static fields in Extension Substream, "
-        "unable to define audio properties.\n"
-      );
-
-    dtsInfos->endPts = ctx->extSS.frameDts;
-
-    if (ctx->extSS.content.nbChannels <= 1)
-      dtsInfos->prop.audio_format = 0x01; /* Mono */
-    else if (ctx->extSS.content.nbChannels == 2)
-      dtsInfos->prop.audio_format = 0x03; /* Stereo */
-    else
-      dtsInfos->prop.audio_format = 0x06; /* Multi-channel */
-
-    switch (ctx->extSS.content.audioFreq) {
-      case 48000: /* 48 kHz */
-        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
-      case 96000: /* 96 kHz */
-        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
-      default: /* 192 kHz */
-        dtsInfos->prop.sample_rate = SAMPLE_RATE_CODE_192000;
-    }
-
-    dtsInfos->prop.bit_depth = ctx->extSS.content.bitDepth;
-  }
-
-  return 0;
 }

@@ -69,12 +69,12 @@ bool isDtshdFile(
   BitstreamReaderPtr dtsInput
 );
 
-DtshdFileHandlerPtr createDtshdFileHandler(
+DtshdFileHandler * createDtshdFileHandler(
   void
 );
 
 void destroyDtshdFileHandler(
-  DtshdFileHandlerPtr handle
+  DtshdFileHandler * handle
 );
 
 /** \~english
@@ -91,7 +91,7 @@ void destroyDtshdFileHandler(
  * Usage exemple:
  * \code{.c}
  * BitstreamReaderPtr file; // Input DTS-HD file
- * DtshdFileHandlerPtr handle; // DTS-HD file handle
+ * DtshdFileHandler * handle; // DTS-HD file handle
  * int ret; // Return value
  *
  * while (!isEof(file)) {
@@ -106,7 +106,7 @@ void destroyDtshdFileHandler(
  */
 int decodeDtshdFileChunk(
   BitstreamReaderPtr dtsInput,
-  DtshdFileHandlerPtr handle,
+  DtshdFileHandler * handle,
   bool skipChecks
 );
 

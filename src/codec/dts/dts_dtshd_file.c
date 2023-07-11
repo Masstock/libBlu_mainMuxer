@@ -1173,17 +1173,17 @@ bool isDtshdFile(
   return DTS_HD_DTSHDHDR == nextUint64(file);
 }
 
-DtshdFileHandlerPtr createDtshdFileHandler(
+DtshdFileHandler * createDtshdFileHandler(
   void
 )
 {
-  return (DtshdFileHandlerPtr) calloc(
+  return (DtshdFileHandler *) calloc(
     1, sizeof(DtshdFileHandler)
   );
 }
 
 void destroyDtshdFileHandler(
-  DtshdFileHandlerPtr handle
+  DtshdFileHandler * handle
 )
 {
   if (NULL == handle)
@@ -1202,7 +1202,7 @@ void destroyDtshdFileHandler(
 
 int decodeDtshdFileChunk(
   BitstreamReaderPtr file,
-  DtshdFileHandlerPtr handle,
+  DtshdFileHandler * handle,
   bool skip_checks
 )
 {

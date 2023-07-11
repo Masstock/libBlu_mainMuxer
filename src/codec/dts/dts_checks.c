@@ -219,26 +219,13 @@ static int _checkDcaCoreBSHeaderCompliance(
 
   LIBBLU_DTS_DEBUG_CORE(
     "  Low Frequency Effects (LFE) channel presence code (LFF): "
-    "0x%02" PRIX8 ".\n",
+    "%s (0x%" PRIX8 ").\n",
+    DcaCoreLowFrequencyEffectsFlagStr(param->LFF),
     param->LFF
   );
 
-  if (param->LFF == 0x3)
-    LIBBLU_DTS_ERROR_RETURN(
-      "Invalid value in use (LFE == 0x%02" PRIX8 ").\n",
-      param->LFF
-    );
-
-  LIBBLU_DTS_DEBUG_CORE(
-    "   => LFE channel: %s.\n",
-    BOOL_PRESENCE(0 < param->LFF)
-  );
-  if (0 < param->LFF) {
-    LIBBLU_DTS_DEBUG_CORE(
-      "   => Interpolation level: %d.\n",
-      (param->LFF == 0x1) ? 128 : 64
-    );
-  }
+  if (DCA_LFF_INVALID == param->LFF)
+    LIBBLU_DTS_ERROR_RETURN("Invalid value in use (LFE == 0x03).\n");
 
   LIBBLU_DTS_DEBUG_CORE(
     "  ADPCM predicator history of last frame usage (HFLAG): %s (0b%x).\n",
@@ -295,6 +282,12 @@ static int _checkDcaCoreBSHeaderCompliance(
       "  Dialog normalization (DIALNORM): "
       "%d dB (DNG = 0x%02" PRIX8 ").\n",
       getDcaCoreDialogNormalizationValue(param->DIALNORM, param->VERNUM),
+      param->DIALNORM
+    );
+  }
+  else {
+    LIBBLU_DTS_DEBUG_CORE(
+      "  Unspecified place-holder (UNSPEC): 0x%" PRIX8 ".\n",
       param->DIALNORM
     );
   }
@@ -388,13 +381,12 @@ int checkDcaCoreSSCompliance(
   DtsDcaCoreSSWarningFlags * warn_flags
 )
 {
-  LIBBLU_DTS_DEBUG_CORE(" Bit-stream header:\n");
+  LIBBLU_DTS_DEBUG_CORE(" Bit stream header:\n");
   if (_checkDcaCoreBSHeaderCompliance(&frame->bs_header, warn_flags) < 0)
     return -1;
 
   // LIBBLU_DTS_DEBUG_CORE(" Frame payload:\n");
   // LIBBLU_DTS_DEBUG_CORE("  Size: %" PRId64 " bytes.\n", frame->payloadSize);
-
   return 0;
 }
 

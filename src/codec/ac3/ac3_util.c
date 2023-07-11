@@ -502,6 +502,8 @@ void cleanAc3Context(
   Ac3Context * ctx
 )
 {
+  if (NULL == ctx)
+    return;
   closeBitstreamReader(ctx->bs);
   closeBitstreamWriter(ctx->script_bs);
   destroyEsmsFileHandler(ctx->script);

@@ -36,7 +36,7 @@
 #include "dts_data.h"
 
 int parseDtshdChunk(
-  DtsContextPtr ctx
+  DtsContext * ctx
 );
 
 int decodeDcaCoreBitStreamHeader(
@@ -45,7 +45,7 @@ int decodeDcaCoreBitStreamHeader(
 );
 
 int decodeDcaCoreSS(
-  DtsContextPtr ctx
+  DtsContext * ctx
 );
 
 int decodeDcaExtSSHeader(
@@ -62,19 +62,14 @@ int decodeDcaExtSubAsset(
 );
 
 int patchDcaExtSSHeader(
-  DtsContextPtr ctx,
+  DtsContext * ctx,
   DcaExtSSHeaderParameters param,
   const unsigned xllAssetId,
   DcaXllFrameSFPosition * assetContentOffsets
 );
 
 int decodeDcaExtSS(
-  DtsContextPtr ctx
-);
-
-int parseDts(
-  DtsContextPtr ctx,
-  EsmsFileHeaderPtr esms
+  DtsContext * ctx
 );
 
 int analyzeDts(

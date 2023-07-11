@@ -60,7 +60,7 @@ typedef struct {
   unsigned BLACKOUT_count;
 
   DtshdFileHandlerWarningFlags warningFlags;
-} DtshdFileHandler, *DtshdFileHandlerPtr;
+} DtshdFileHandler;
 
 /** \~english
  * \brief Return true if Peak Bit-Rate Smoothing process can be performed
@@ -72,7 +72,7 @@ typedef struct {
  * \return false PBRS process is not required or cannot be performed.
  */
 static inline bool canBePerformedPBRSDtshdFileHandler(
-  const DtshdFileHandlerPtr hdlr
+  const DtshdFileHandler * hdlr
 )
 {
   if (!hdlr->DTSHDHDR_count)
@@ -99,7 +99,7 @@ static inline bool canBePerformedPBRSDtshdFileHandler(
  * \return The number of to-be-skipped access units at bitstream start.
  */
 static inline unsigned getInitialSkippingDelayDtshdFileHandler(
-  const DtshdFileHandlerPtr hdlr
+  const DtshdFileHandler * hdlr
 )
 {
   const DtshdAudioPresPropHeaderMeta * AUPR_HDR = &hdlr->AUPR_HDR;
@@ -113,7 +113,7 @@ static inline unsigned getInitialSkippingDelayDtshdFileHandler(
 }
 
 static inline unsigned getPBRSmoothingBufSizeDtshdFileHandler(
-  const DtshdFileHandlerPtr hdlr
+  const DtshdFileHandler * hdlr
 )
 {
   const DtshdFileHeaderChunk * DTSHDHDR = &hdlr->DTSHDHDR;
@@ -139,34 +139,24 @@ typedef struct {
   bool usageOfHdcdEncoding;
 } DtsDcaCoreSSWarningFlags;
 
-#define INIT_DTS_DCA_CORE_SS_WARNING_FLAGS()                                  \
-  (                                                                           \
-    (DtsDcaCoreSSWarningFlags) {                                              \
-      .presenceOfDeprecatedCrc = false,                                       \
-      .usageOfHdcdEncoding = false                                            \
-    }                                                                         \
-  )
-
 typedef struct {
   DcaCoreSSFrameParameters cur_frame;
 
-  unsigned nbFrames;
-  DtsDcaCoreSSWarningFlags warningFlags;
+  unsigned nb_frames;
+  DtsDcaCoreSSWarningFlags warning_flags;
 
-  uint64_t frameDts;
+  uint64_t pts;
 } DtsDcaCoreSSContext;
 
 /** \~english
  * \brief Initialize #DtsDcaCoreSSContext fields to default values.
  */
-#define INIT_DTS_DCA_CORE_SS_CTX()                                            \
-  (                                                                           \
-    (DtsDcaCoreSSContext) {                                                   \
-      .nbFrames = 0,                                                          \
-      .warningFlags = INIT_DTS_DCA_CORE_SS_WARNING_FLAGS(),                   \
-      .frameDts = 0                                                           \
-    }                                                                         \
-  )
+static inline void initDtsDcaCoreSSContext(
+  DtsDcaCoreSSContext * ctx
+)
+{
+  *ctx = (DtsDcaCoreSSContext) {0};
+}
 
 typedef enum {
   DCA_EXT_SS_REF_CLOCK_PERIOD_32000 = 0x0,
@@ -231,7 +221,7 @@ typedef struct {
   unsigned nbFrames;
   DtsDcaExtSSWarningFlags warningFlags;
 
-  uint64_t frameDts;
+  uint64_t pts;
 } DtsDcaExtSSContext;
 
 /** \~english
@@ -243,7 +233,7 @@ typedef struct {
       .nbFrames = 0,                                                          \
       .content = INIT_DTS_DCA_EXT_SS_FRAME_CONTENT(),                         \
       .warningFlags = INIT_DTS_DCA_EXT_SS_WARNING_FLAGS(),                    \
-      .frameDts = 0                                                           \
+      .pts = 0                                                           \
     }                                                                         \
   )
 
@@ -416,11 +406,14 @@ typedef enum {
 typedef struct {
   DtsContextParsingMode mode;
 
-  unsigned sourceFileIdx;
-  BitstreamReaderPtr file;
-  BitstreamWriterPtr esmsScriptOutputFile;
+  unsigned src_file_idx;
+  BitstreamReaderPtr bs;
+  BitstreamWriterPtr script_bs;
+  EsmsFileHeaderPtr script;
+  const lbc * script_fp;
 
-  DtshdFileHandlerPtr dtshdFileHandle;
+  DtshdFileHandler dtshdFileHandle;
+  bool is_dtshd_file;
 
   DtsDcaCoreSSContext core;
   bool corePresent;
@@ -435,46 +428,49 @@ typedef struct {
   unsigned skippedFramesControl;
   bool skipCurrentPeriod; /**< Skip all extension substreams until next core frame is parsed. */
 
-  DtsAUFramePtr curAccessUnit;
-} DtsContext, *DtsContextPtr;
-
-#define DTS_CTX_IS_DTSHD_FILE(ctx)                                            \
-  (                                                                           \
-    NULL != (ctx)->dtshdFileHandle                                            \
-  )
-
-#define DTS_CTX_IN_FILE(ctx)                                                  \
-  ((ctx)->file)
-
-#define DTS_CTX_OUT_ESMS(ctx)                                                 \
-  ((ctx)->esmsScriptOutputFile)
+  DtsAUFrame curAccessUnit;
+} DtsContext;
 
 #define DTS_CTX_OUT_ESMS_FILE_IDX_PTR(ctx)                                    \
-  (&(ctx)->sourceFileIdx)
+  (&(ctx)->src_file_idx)
 
 #define DTS_CTX_BUILD_ESMS_SCRIPT(ctx)                                        \
   DTS_PARSMOD_ESMS_FILE_GENERATION((ctx)->mode)
 
-#define DTS_CTX_FAST_2ND_PASS(ctx)                                            \
-  ((ctx)->mode == DTS_PARSMOD_TWO_PASS_SECOND)
+static inline bool isFast2nbPassDtsContext(
+  const DtsContext * ctx
+)
+{
+  return DTS_PARSMOD_TWO_PASS_SECOND == ctx->mode;
+}
+
+static inline bool isDtshdFileDtsContext(
+  const DtsContext * ctx
+)
+{
+  return ctx->is_dtshd_file;
+}
 
 /* Handling functions : */
-DtsContextPtr createDtsContext(
-  BitstreamReaderPtr inputFile,
-  const lbc * outputFilename,
-  LibbluESSettingsOptions options
+int createDtsContext(
+  DtsContext * ctx,
+  LibbluESParsingSettings * settings
 );
 
-void destroyDtsContext(
-  DtsContextPtr ctx
+int completeDtsContext(
+  DtsContext * ctx
+);
+
+void cleanDtsContext(
+  DtsContext * ctx
 );
 
 bool nextPassDtsContext(
-  DtsContextPtr ctx
+  DtsContext * ctx
 );
 
 int initParsingDtsContext(
-  DtsContextPtr ctx
+  DtsContext * ctx
 );
 
 typedef enum {
@@ -484,28 +480,11 @@ typedef enum {
 } DtsFrameInitializationRet;
 
 DtsFrameInitializationRet initNextDtsFrame(
-  DtsContextPtr ctx
+  DtsContext * ctx
 );
 
 int completeDtsFrame(
-  DtsContextPtr ctx,
-  EsmsFileHeaderPtr dtsInfos
+  DtsContext * ctx
 );
-
-int updateDtsEsmsHeader(
-  DtsContextPtr ctx,
-  EsmsFileHeaderPtr dtsInfos
-);
-
-static inline unsigned getNbChannelsDtsContext(
-  const DtsContextPtr ctx
-)
-{
-  if (ctx->corePresent) {
-    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
-    return getNbChDcaCoreAudioChannelAssignCode(bsh->AMODE);
-  }
-  return 0; // TODO: Suppport secondary audio.
-}
 
 #endif

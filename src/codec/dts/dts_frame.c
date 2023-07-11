@@ -6,40 +6,6 @@
 
 #include "dts_frame.h"
 
-DtsAUFramePtr createDtsAUFrame(
-  void
-)
-{
-  DtsAUFramePtr frm;
-
-  if (NULL == (frm = (DtsAUFramePtr) malloc(sizeof(DtsAUFrame))))
-    LIBBLU_DTS_ERROR_NRETURN("Memory allocation error.\n");
-
-  frm->contentCells = NULL;
-  frm->nbUsedContentCells = 0;
-  frm->nbAllocatedContentCells = 0;
-
-  frm->initializedCell = false;
-
-  frm->replacementParams = NULL;
-  frm->nbUsedReplacementParam = 0;
-  frm->nbAllocatedReplacementParam = 0;
-
-  return frm;
-}
-
-void destroyDtsAUFrame(
-  DtsAUFramePtr frm
-)
-{
-  if (NULL == frm)
-    return;
-
-  free(frm->contentCells);
-  free(frm->replacementParams);
-  free(frm);
-}
-
 static void resetDtsAU(
   DtsAUFramePtr frm
 )
@@ -130,18 +96,6 @@ DtsAUCellPtr initDtsAUCell(
   frm->initializedCell = true;
 
   return cell;
-}
-
-DtsAUCellPtr recoverCurDtsAUCell(
-  DtsAUFramePtr frm
-)
-{
-  if (!frm->initializedCell)
-    LIBBLU_DTS_ERROR_NRETURN(
-      "Nothing to recover, AU cell never initialized.\n"
-    );
-
-  return frm->contentCells + frm->nbUsedContentCells;
 }
 
 int replaceCurDtsAUCell(

@@ -44,11 +44,11 @@ static unsigned _nbBitsSetTo1(uint16_t mask)
 }
 
 int parseDtshdChunk(
-  DtsContextPtr ctx
+  DtsContext * ctx
 )
 {
-  DtshdFileHandlerPtr hdlr = ctx->dtshdFileHandle;
-  int ret = decodeDtshdFileChunk(ctx->file, hdlr, DTS_CTX_FAST_2ND_PASS(ctx));
+  DtshdFileHandler * hdlr = &ctx->dtshdFileHandle;
+  int ret = decodeDtshdFileChunk(ctx->bs, hdlr, isFast2nbPassDtsContext(ctx));
 
   if (0 == ret) {
     /* Successfully decoded chunk, collect parameters : */
@@ -78,13 +78,10 @@ int decodeDcaCoreBitStreamHeader(
   DcaCoreBSHeaderParameters * param
 )
 {
-  int64_t frameStartOffset;
   uint32_t value;
 
   assert(NULL != file);
   assert(NULL != param);
-
-  frameStartOffset = tellPos(file);
 
   /* [u32 SYNC] // 0x7FFE8001 */
   uint32_t SYNC;
@@ -176,112 +173,77 @@ int decodeDcaCoreBitStreamHeader(
   /* [b1 SUMS] */
   READ_BITS(&param->SUMS, file, 1, return -1);
 
-  param->DIALNORM = 0x0;
-  if (param->VERNUM == 0x6 || param->VERNUM == 0x7) {
-    /* [u4 DIALNORM / DNG] */
-    READ_BITS(&param->DIALNORM, file, 4, return -1);
-  }
-  else {
-    /* [v4 UNSPEC] */
-    SKIP_BITS(file, 4, return -1);
-  }
-
-  if (paddingByte(file) < 0)
-    return -1;
-
-  /* Compute / Fetch additionnal paramters */
-  // param->nbChannels = getNbChDcaCoreAudioChannelAssignCode(
-  //   param->AMODE
-  // );
-  // param->audioFreq = getDcaCoreAudioSampFreqCode(
-  //   param->SFREQ
-  // );
-  // param->bitDepth = getDcaCoreSourcePcmResCode(
-  //   param->PCMR, &param->isEs
-  // );
-  // if (param->VERNUM == 0x6)
-  //   param->dialNorm = - (16 + ((int) param->DIALNORM));
-  // else
-  //   param->dialNorm = - ((int) param->DIALNORM);
-  // param->size = tellPos(file) - frameStartOffset;
+  /* [u4 DIALNORM / UNSPEC] */
+  READ_BITS(&param->DIALNORM, file, 4, return -1);
 
   return 0;
 }
 
-int decodeDcaCoreSS(
-  DtsContextPtr ctx
+static void _printHeaderDcaCoreSS(
+  DtsContext * ctx
 )
 {
-  DcaCoreSSFrameParameters frame = {0};
-  bool constantSyncFrame;
-
-  int64_t startOff;
-  DtsAUCellPtr cell;
-
-  assert(NULL != ctx);
-
-  uint64_t frame_dts = (ctx->corePresent) ? ctx->core.frameDts : 0;
-  uint64_t nb_frames = (ctx->corePresent) ? ctx->core.nbFrames : 0;
+  uint64_t nb_frames = 0, frame_dts = 0;
+  if (ctx->corePresent) {
+    nb_frames = ctx->core.nb_frames;
+    frame_dts = ctx->core.pts;
+  }
 
   lbc frame_time[STRT_H_M_S_MS_LEN];
   str_time(frame_time, STRT_H_M_S_MS_LEN, STRT_H_M_S_MS, frame_dts);
 
-  startOff = tellPos(ctx->file);
+  int64_t startOff = tellPos(ctx->bs);
   LIBBLU_DTS_DEBUG(
     "0x%08" PRIX64 " === DCA Core Substream Frame %u - %" PRI_LBCS " ===\n",
     startOff, nb_frames, frame_time
   );
+}
+
+int decodeDcaCoreSS(
+  DtsContext * ctx
+)
+{
+  DtsDcaCoreSSContext * core = &ctx->core;
+
+  _printHeaderDcaCoreSS(ctx);
+  DcaCoreSSFrameParameters frame;
 
   /* Bit stream header */
-  if (decodeDcaCoreBitStreamHeader(ctx->file, &frame.bs_header) < 0)
+  if (decodeDcaCoreBitStreamHeader(ctx->bs, &frame.bs_header) < 0)
     return -1;
 
-  unsigned frame_size     = frame.bs_header.FSIZE + 1;
-  unsigned bs_header_size = getSizeDcaCoreBSHeader(
-    &frame.bs_header
-  );
-  unsigned payload_size   = frame_size - bs_header_size;
+  unsigned frame_size   = frame.bs_header.FSIZE + 1;
+  unsigned bsh_size     = getSizeDcaCoreBSHeader(&frame.bs_header);
+  unsigned payload_size = frame_size - bsh_size;
 
   /* [vn payload] */ // TODO: Parse and check payload?
-  if (skipBytes(ctx->file, payload_size) < 0)
+  if (skipBytes(ctx->bs, payload_size) < 0)
     return -1;
 
   /* Skip frame if context asks */
   if ((ctx->skipCurrentPeriod = (0 < ctx->skippedFramesControl))) {
-    if (discardCurDtsAUCell(ctx->curAccessUnit) < 0)
+    if (discardCurDtsAUCell(&ctx->curAccessUnit) < 0)
       return -1;
     ctx->skippedFramesControl--;
     return 0;
   }
 
   if (!ctx->corePresent) {
-    /* if (!IS_ENTRY_POINT_DCA_CORE_SS(syncFrame))
-      LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
-        "Expect first Core frame to be a valid entry point "
-        "(expect Predictor History to be switch off).\n"
-      ); */
-
-    ctx->core = INIT_DTS_DCA_CORE_SS_CTX();
+    initDtsDcaCoreSSContext(core);
 
     /* First Sync Frame */
-    if (checkDcaCoreSSCompliance(&frame, &ctx->core.warningFlags) < 0)
+    if (checkDcaCoreSSCompliance(&frame, &core->warning_flags) < 0)
       return -1;
 
-    ctx->core.cur_frame = frame;
+    core->cur_frame = frame;
     ctx->corePresent = true;
   }
-  else if (!DTS_CTX_FAST_2ND_PASS(ctx)) {
-    constantSyncFrame = constantDcaCoreSS(&ctx->core.cur_frame, &frame);
-
-    if (!constantSyncFrame) {
-      if (
-        checkDcaCoreSSChangeCompliance(
-          &ctx->core.cur_frame, &frame, &ctx->core.warningFlags
-        ) < 0
-      )
+  else if (!isFast2nbPassDtsContext(ctx)) {
+    if (!constantDcaCoreSS(&core->cur_frame, &frame)) {
+      if (checkDcaCoreSSChangeCompliance(&core->cur_frame, &frame, &core->warning_flags) < 0)
         return -1;
 
-      ctx->core.cur_frame = frame;
+      core->cur_frame = frame;
     }
     else
       LIBBLU_DTS_DEBUG_CORE(
@@ -289,14 +251,14 @@ int decodeDcaCoreSS(
       );
   }
 
-  ctx->core.nbFrames++;
+  core->nb_frames++;
 
-  if (NULL == (cell = recoverCurDtsAUCell(ctx->curAccessUnit)))
+  DtsAUCellPtr cell;
+  if (NULL == (cell = recoverCurDtsAUCell(&ctx->curAccessUnit)))
     return -1;
-  cell->length = tellPos(ctx->file) - startOff;
-  assert(cell->length == frame_size);
+  cell->length = frame_size;
 
-  if (addCurCellToDtsAUFrame(ctx->curAccessUnit) < 0)
+  if (addCurCellToDtsAUFrame(&ctx->curAccessUnit) < 0)
     return -1;
 
   return 0;
@@ -1425,7 +1387,7 @@ static void updateDcaExtSSHeaderXllParam(
 }
 
 int patchDcaExtSSHeader(
-  DtsContextPtr ctx,
+  DtsContext * ctx,
   DcaExtSSHeaderParameters param,
   unsigned xllAssetId,
   DcaXllFrameSFPosition * assetContentOffsets
@@ -1446,7 +1408,7 @@ int patchDcaExtSSHeader(
 #endif
 
   unsigned PBRSmoothingBufSizeKb = getPBRSmoothingBufSizeDtshdFileHandler(
-    ctx->dtshdFileHandle
+    &ctx->dtshdFileHandle
   );
   if (0 == PBRSmoothingBufSizeKb)
     LIBBLU_DTS_ERROR_RETURN(
@@ -1524,13 +1486,13 @@ int patchDcaExtSSHeader(
   );
 
   return replaceCurDtsAUCell(
-    ctx->curAccessUnit,
+    &ctx->curAccessUnit,
     DTS_AU_INNER_EXT_SS_HDR(param)
   );
 }
 
 int decodeDcaExtSS(
-  DtsContextPtr ctx
+  DtsContext * ctx
 )
 {
   int ret;
@@ -1557,11 +1519,11 @@ int decodeDcaExtSS(
 
   assert(NULL != ctx);
 
-  startOff = tellPos(ctx->file);
+  startOff = tellPos(ctx->bs);
   str_time(
     frameClockTime,
     STRT_H_M_S_MS_LEN, STRT_H_M_S_MS,
-    (ctx->extSSPresent) ? ctx->extSS.frameDts : 0
+    (ctx->extSSPresent) ? ctx->extSS.pts : 0
   );
 
   LIBBLU_DTS_DEBUG(
@@ -1573,7 +1535,7 @@ int decodeDcaExtSS(
 
   ignoreFrame = ctx->skipExtensionSubstreams || ctx->skipCurrentPeriod;
 
-  if (decodeDcaExtSSHeader(ctx->file, &extFrame.header) < 0)
+  if (decodeDcaExtSSHeader(ctx->bs, &extFrame.header) < 0)
     return -1;
 
   if (!ignoreFrame) {
@@ -1632,11 +1594,11 @@ int decodeDcaExtSS(
     /* Frame content is always updated */
     *(ctx->extSS.curFrames[extSSIdx]) = extFrame;
 
-    if (NULL == (cell = recoverCurDtsAUCell(ctx->curAccessUnit)))
+    if (NULL == (cell = recoverCurDtsAUCell(&ctx->curAccessUnit)))
       return -1;
-    cell->length = tellPos(ctx->file) - startOff;
+    cell->length = tellPos(ctx->bs) - startOff;
 
-    if (DTS_CTX_FAST_2ND_PASS(ctx)) {
+    if (isFast2nbPassDtsContext(ctx)) {
       ret = patchDcaExtSSHeader(
         ctx, extFrame.header, xllAssetId, &xllAssetOffsets
       );
@@ -1644,21 +1606,21 @@ int decodeDcaExtSS(
         return -1;
     }
 
-    if (addCurCellToDtsAUFrame(ctx->curAccessUnit) < 0)
+    if (addCurCellToDtsAUFrame(&ctx->curAccessUnit) < 0)
       return -1;
 
     ctx->extSS.nbFrames++;
   }
   else {
     LIBBLU_DTS_DEBUG_EXTSS(" *Not checked, skipped*\n");
-    if (discardCurDtsAUCell(ctx->curAccessUnit) < 0)
+    if (discardCurDtsAUCell(&ctx->curAccessUnit) < 0)
       return -1;
   }
 
   /* Decode extension substream assets */
   decodeAssets =
     !ignoreFrame
-    && !DTS_CTX_FAST_2ND_PASS(ctx)
+    && !isFast2nbPassDtsContext(ctx)
     && (
       isInitPbrFileHandler()
       || DTS_XLL_FORCE_UNPACKING
@@ -1667,7 +1629,7 @@ int decodeDcaExtSS(
   ;
 
   for (nAst = 0; nAst < extFrame.header.staticFields.nbAudioAssets; nAst++) {
-    assetStartOff = tellPos(ctx->file);
+    assetStartOff = tellPos(ctx->bs);
     assetLength = extFrame.header.audioAssetsLengths[nAst];
     asset = extFrame.header.audioAssets + nAst;
 
@@ -1703,13 +1665,13 @@ int decodeDcaExtSS(
         ctx->extSS.content.xbrExtSS = true;
 
       /* Asset Access Unit cell */
-      cell = initDtsAUCell(ctx->curAccessUnit, DTS_FRM_INNER_EXT_SS_ASSET);
+      cell = initDtsAUCell(&ctx->curAccessUnit, DTS_FRM_INNER_EXT_SS_ASSET);
       if (NULL == cell)
         return -1;
       cell->startOffset = assetStartOff;
       cell->length = assetLength;
 
-      if (DTS_CTX_FAST_2ND_PASS(ctx) && ctx->extSS.content.xllExtSS) {
+      if (isFast2nbPassDtsContext(ctx) && ctx->extSS.content.xllExtSS) {
         /* Replace if required frame content to apply PBR smoothing. */
         updateAssetContent = (
           xllAssetOffsets.nbSourceOffsets != 1
@@ -1722,7 +1684,7 @@ int decodeDcaExtSS(
            * by PBR process.
            */
           ret = replaceCurDtsAUCell(
-            ctx->curAccessUnit,
+            &ctx->curAccessUnit,
             DTS_AU_INNER_EXT_SS_ASSET(xllAssetOffsets)
           );
         }
@@ -1730,35 +1692,35 @@ int decodeDcaExtSS(
     }
 
     if (decodeAssets) {
-      if (decodeDcaExtSubAsset(ctx->file, &ctx->xllCtx, *asset, extFrame.header, assetLength) < 0)
+      if (decodeDcaExtSubAsset(ctx->bs, &ctx->xllCtx, *asset, extFrame.header, assetLength) < 0)
         return -1;
 
-      assetReadedLength = tellPos(ctx->file) - assetStartOff;
+      assetReadedLength = tellPos(ctx->bs) - assetStartOff;
     }
     else
       assetReadedLength = 0;
 
-    if (skipBytes(ctx->file, assetLength - assetReadedLength) < 0)
+    if (skipBytes(ctx->bs, assetLength - assetReadedLength) < 0)
       return -1;
 
     if (!ignoreFrame) {
-      if (addCurCellToDtsAUFrame(ctx->curAccessUnit) < 0)
+      if (addCurCellToDtsAUFrame(&ctx->curAccessUnit) < 0)
         return -1;
     }
   }
 
   /* Check Extension Substream Size : */
   if (
-    !DTS_CTX_FAST_2ND_PASS(ctx)
+    !isFast2nbPassDtsContext(ctx)
     && (
-      tellPos(ctx->file) - startOff
+      tellPos(ctx->bs) - startOff
       != extFrame.header.extensionSubstreamFrameLength
     )
   )
     LIBBLU_DTS_ERROR_RETURN(
       "Unexpected Extension substream frame length "
       "(parsed length: %zu bytes, expected %zu bytes).\n",
-      tellPos(ctx->file) - startOff,
+      tellPos(ctx->bs) - startOff,
       extFrame.header.extensionSubstreamFrameLength
     );
 
@@ -1768,17 +1730,15 @@ int decodeDcaExtSS(
 }
 
 int parseDts(
-  DtsContextPtr ctx,
-  EsmsFileHeaderPtr esms
+  DtsContext * ctx
 )
 {
 
-  while (!isEof(DTS_CTX_IN_FILE(ctx))) {
-
+  while (!isEof(ctx->bs)) {
     /* Progress bar : */
-    printFileParsingProgressionBar(DTS_CTX_IN_FILE(ctx));
+    printFileParsingProgressionBar(ctx->bs);
 
-    if (DTS_CTX_IS_DTSHD_FILE(ctx)) {
+    if (isDtshdFileDtsContext(ctx)) {
       /* Read DTS-HD file chunks : */
       switch (parseDtshdChunk(ctx)) {
         case 0: /* Read next DTS-HD file chunk */
@@ -1792,7 +1752,7 @@ int parseDts(
       }
     }
 
-    int64_t start_off = tellPos(ctx->file);
+    int64_t start_off = tellPos(ctx->bs);
 
     switch (initNextDtsFrame(ctx)) {
       case DTS_FRAME_INIT_CORE_SUBSTREAM:
@@ -1811,14 +1771,14 @@ int parseDts(
         return -1;
     }
 
-    if (completeDtsFrame(ctx, esms) < 0)
+    if (completeDtsFrame(ctx) < 0)
       return -1;
 
-    int64_t frame_size = tellPos(ctx->file) - start_off;
+    int64_t frame_size = tellPos(ctx->bs) - start_off;
     if (frame_size < 0)
       LIBBLU_DTS_ERROR_RETURN("Negative frame size.\n");
-    if (DTS_CTX_IS_DTSHD_FILE(ctx))
-      ctx->dtshdFileHandle->off_STRMDATA += frame_size;
+    if (isDtshdFileDtsContext(ctx))
+      ctx->dtshdFileHandle.off_STRMDATA += frame_size;
   }
 
   return 0;
@@ -1828,27 +1788,9 @@ int analyzeDts(
   LibbluESParsingSettings * settings
 )
 {
-  BitstreamReaderPtr file;
-  DtsContextPtr ctx = NULL;
-
-  /* Script output */
-  EsmsFileHeaderPtr esmsInfos = NULL;
-
-  if (NULL == (file = createBitstreamReader(settings->esFilepath, READ_BUFFER_LEN)))
-    goto free_return;
-  if (NULL == (ctx = createDtsContext(file, settings->scriptFilepath, settings->options)))
-    goto free_return;
-
-  /* Prepare ESMS output file */
-  esmsInfos = createEsmsFileHandler(ES_AUDIO, settings->options, FMT_SPEC_INFOS_NONE);
-  if (NULL == esmsInfos)
-    goto free_return;
-
-  if (writeEsmsHeader(DTS_CTX_OUT_ESMS(ctx)) < 0)
-    goto free_return;
-
-  if (appendSourceFileEsms(esmsInfos, settings->esFilepath, DTS_CTX_OUT_ESMS_FILE_IDX_PTR(ctx)) < 0)
-    goto free_return;
+  DtsContext ctx;
+  if (createDtsContext(&ctx, settings) < 0)
+    return -1;
 
   if (NULL != settings->options.pbrFilepath) {
     if (initPbrFileHandler(settings->options.pbrFilepath) < 0)
@@ -1856,71 +1798,36 @@ int analyzeDts(
   }
 
   do {
-    if (initParsingDtsContext(ctx))
+    if (initParsingDtsContext(&ctx))
       goto free_return;
 
-    if (DTS_CTX_FAST_2ND_PASS(ctx)) {
-      if (NULL == (ctx->xllCtx))
+    if (isFast2nbPassDtsContext(&ctx)) {
+      if (NULL == ctx.xllCtx)
         LIBBLU_ERROR_FRETURN(
           "PBR smoothing is only available for DTS XLL streams.\n"
         );
 
       /* Compute PBR Smoothing resulting frame sizes */
-      if (performComputationDtsXllPbr(ctx->xllCtx) < 0)
+      if (performComputationDtsXllPbr(ctx.xllCtx) < 0)
         return -1;
 
-      ctx->core.nbFrames = 0;
-      ctx->extSS.nbFrames = 0;
+      ctx.core.nb_frames = 0;
+      ctx.extSS.nbFrames = 0;
     }
 
-    if (parseDts(ctx, esmsInfos) < 0)
+    if (parseDts(&ctx) < 0)
       goto free_return;
-  } while (nextPassDtsContext(ctx));
+  } while (nextPassDtsContext(&ctx));
 
   lbc_printf(" === Parsing finished with success. ===              \n");
 
-  /* [u8 endMarker] */
-  if (writeByte(DTS_CTX_OUT_ESMS(ctx), ESMS_SCRIPT_END_MARKER) < 0)
-    goto free_return;
 
-  /* Update if required ESMS header */
-  if (updateDtsEsmsHeader(ctx, esmsInfos) < 0)
-    return -1;
-
-  if (addEsmsFileEnd(DTS_CTX_OUT_ESMS(ctx), esmsInfos) < 0)
-    return -1;
-
-  /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
-  lbc_printf(
-    "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
-    streamCodingTypeStr(esmsInfos->prop.coding_type),
-    AudioFormatCodeStr(esmsInfos->prop.audio_format),
-    getNbChannelsDtsContext(ctx),
-    valueSampleRateCode(esmsInfos->prop.sample_rate),
-    valueBitDepthCode(esmsInfos->prop.bit_depth)
-  );
-  if (ctx->corePresent)
-    lbc_printf("Core frames: %u frame(s).\n", ctx->core.nbFrames);
-  if (ctx->extSSPresent)
-    lbc_printf("Extension Substream frames: %u frame(s).\n", ctx->extSS.nbFrames);
-  lbc_printf("=======================================================================================\n");
-
-  closeBitstreamReader(file);
+  int ret = completeDtsContext(&ctx);
   releasePbrFileHandler();
-  destroyDtsContext(ctx);
-
-  if (updateEsmsHeader(settings->scriptFilepath, esmsInfos) < 0)
-    return -1;
-  destroyEsmsFileHandler(esmsInfos);
-
-  return 0;
+  return ret;
 
 free_return:
-  closeBitstreamReader(file);
+  cleanDtsContext(&ctx);
   releasePbrFileHandler();
-  destroyDtsContext(ctx);
-  destroyEsmsFileHandler(esmsInfos);
-
   return -1;
 }

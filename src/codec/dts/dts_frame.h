@@ -66,22 +66,31 @@ typedef struct {
   unsigned nbAllocatedReplacementParam;
 } DtsAUFrame, *DtsAUFramePtr;
 
-DtsAUFramePtr createDtsAUFrame(
-  void
-);
-
-void destroyDtsAUFrame(
+static inline void cleanDtsAUFrame(
   DtsAUFramePtr frm
-);
+)
+{
+  if (NULL == frm)
+    return;
+
+  free(frm->contentCells);
+  free(frm->replacementParams);
+  free(frm);
+}
 
 DtsAUCellPtr initDtsAUCell(
   DtsAUFramePtr frm,
   DtsAUInnerType type
 );
 
-DtsAUCellPtr recoverCurDtsAUCell(
+static inline DtsAUCellPtr recoverCurDtsAUCell(
   DtsAUFramePtr frm
-);
+)
+{
+  if (!frm->initializedCell)
+    LIBBLU_DTS_ERROR_NRETURN("AU cell never initialized.\n");
+  return &frm->contentCells[frm->nbUsedContentCells];
+}
 
 int replaceCurDtsAUCell(
   DtsAUFramePtr frm,
