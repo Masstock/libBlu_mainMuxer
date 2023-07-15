@@ -238,13 +238,6 @@ int processCompleteFrameDtsAUFrame(
   uint64_t framePts
 )
 {
-  unsigned i;
-
-  bool isExtFrame;
-
-  size_t curInsertingOffset, writtenBytes;
-  DtsAUCell * cell;
-
   if (frm->initializedCell)
     LIBBLU_DTS_ERROR_RETURN("Incomplete AU cell in pipeline.\n");
 
@@ -255,6 +248,7 @@ int processCompleteFrameDtsAUFrame(
 
   optimizeContiguousCellsDtsAUFrame(frm); /* Merge contiguous cells */
 
+  bool isExtFrame;
   switch (identifyContentTypeDtsAUFrame(frm)) {
     case DTS_AU_CORE_SS:
       isExtFrame = false;
@@ -271,14 +265,15 @@ int processCompleteFrameDtsAUFrame(
   if (initEsmsAudioPesFrame(script, isExtFrame, false, framePts, 0) < 0)
     return -1;
 
-  curInsertingOffset = 0;
-  for (i = 0; i < frm->nbUsedContentCells; i++) {
-    cell = frm->contentCells + i;
+  size_t curInsertingOffset = 0;
+  for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
+    DtsAUCell * cell = &frm->contentCells[i];
 
     if (cell->skip)
       continue;
 
     if (cell->replace) {
+      size_t writtenBytes;
       switch (cell->type) {
         case DTS_FRM_INNER_EXT_SS_HDR:
           writtenBytes = appendDcaExtSSHeader(

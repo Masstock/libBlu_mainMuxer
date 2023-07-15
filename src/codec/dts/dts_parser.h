@@ -35,43 +35,6 @@
 #include "dts_patcher.h"
 #include "dts_data.h"
 
-int parseDtshdChunk(
-  DtsContext * ctx
-);
-
-int decodeDcaCoreBitStreamHeader(
-  BitstreamReaderPtr file,
-  DcaCoreBSHeaderParameters * param
-);
-
-int decodeDcaCoreSS(
-  DtsContext * ctx
-);
-
-int decodeDcaExtSSHeader(
-  BitstreamReaderPtr file,
-  DcaExtSSHeaderParameters * param
-);
-
-int decodeDcaExtSubAsset(
-  BitstreamReaderPtr dtsInput,
-  DtsXllFrameContextPtr * xllCtx,
-  DcaAudioAssetDescriptorParameters assetParam,
-  DcaExtSSHeaderParameters extSSParam,
-  size_t assetLength
-);
-
-int patchDcaExtSSHeader(
-  DtsContext * ctx,
-  DcaExtSSHeaderParameters param,
-  const unsigned xllAssetId,
-  DcaXllFrameSFPosition * assetContentOffsets
-);
-
-int decodeDcaExtSS(
-  DtsContext * ctx
-);
-
 int analyzeDts(
   LibbluESParsingSettings * settings
 );

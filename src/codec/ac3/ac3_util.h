@@ -50,9 +50,9 @@ typedef struct {
   bool skip_ext;
   bool contains_mlp;
   // bool isSecondaryStream;
-  // bool skipExtensionSubstreams;
-  // unsigned skippedFramesControl;
-  // bool skipCurrentPeriod;
+  // bool skip_ext;
+  // unsigned init_skip_delay;
+  // bool skip_cur_au;
 
   Ac3AccessUnit cur_au;
 } Ac3Context;

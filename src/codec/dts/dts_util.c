@@ -260,7 +260,7 @@ const char * dtsXllCommonHeaderCrc16PresenceCodeStr(
   return "unk";
 }
 
-int createDtsContext(
+int initDtsContext(
   DtsContext * ctx,
   LibbluESParsingSettings * settings
 )
@@ -306,8 +306,8 @@ int createDtsContext(
     .script_fp = settings->scriptFilepath,
 
     .is_dtshd_file = is_dtshd_file,
-    .isSecondaryStream = options.secondaryStream,
-    .skipExtensionSubstreams = options.extractCore
+    .is_secondary = options.secondaryStream,
+    .skip_ext = options.extractCore
   };
 
   if (isInitPbrFileHandler()) {
@@ -348,13 +348,13 @@ int _setScriptProperties(
   EsmsFileHeaderPtr script = ctx->script;
   LibbluStreamCodingType coding_type;
 
-  if (ctx->extSSPresent && ctx->extSS.content.xllExtSS)
+  if (ctx->ext_ss_pres && ctx->ext_ss.content.xllExtSS)
     coding_type = STREAM_CODING_TYPE_HDMA, script->bitrate = 24500000;
-  else if (ctx->extSSPresent && ctx->extSS.content.xbrExtSS)
+  else if (ctx->ext_ss_pres && ctx->ext_ss.content.xbrExtSS)
     coding_type = STREAM_CODING_TYPE_HDHR, script->bitrate = 24500000;
-  else if (ctx->extSSPresent && ctx->extSS.content.lbrExtSS)
+  else if (ctx->ext_ss_pres && ctx->ext_ss.content.lbrExtSS)
     coding_type = STREAM_CODING_TYPE_DTSE_SEC, script->bitrate = 256000;
-  else if (ctx->corePresent)
+  else if (ctx->core_pres)
     coding_type = STREAM_CODING_TYPE_DTS, script->bitrate = 2000000;
   else
     LIBBLU_DTS_ERROR_RETURN(
@@ -363,7 +363,7 @@ int _setScriptProperties(
 
   script->prop.coding_type = coding_type;
 
-  if (ctx->corePresent) {
+  if (ctx->core_pres) {
     const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
     script->endPts = ctx->core.pts;
 
@@ -402,24 +402,24 @@ int _setScriptProperties(
     script->prop.bit_depth = getDcaCoreSourcePcmResCode(bsh->PCMR) >> 4;
   }
   else {
-    assert(ctx->extSSPresent);
+    assert(ctx->ext_ss_pres);
 
-    if (!ctx->extSS.content.parsedParameters)
+    if (!ctx->ext_ss.content.parsedParameters)
       LIBBLU_DTS_ERROR_RETURN(
         "Missing mandatory static fields in Extension Substream, "
         "unable to define audio properties.\n"
       );
 
-    script->endPts = ctx->extSS.pts;
+    script->endPts = ctx->ext_ss.pts;
 
-    if (ctx->extSS.content.nbChannels <= 1)
+    if (ctx->ext_ss.content.nbChannels <= 1)
       script->prop.audio_format = 0x01; /* Mono */
-    else if (ctx->extSS.content.nbChannels == 2)
+    else if (ctx->ext_ss.content.nbChannels == 2)
       script->prop.audio_format = 0x03; /* Stereo */
     else
       script->prop.audio_format = 0x06; /* Multi-channel */
 
-    switch (ctx->extSS.content.audioFreq) {
+    switch (ctx->ext_ss.content.audioFreq) {
       case 48000: /* 48 kHz */
         script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
       case 96000: /* 96 kHz */
@@ -428,7 +428,7 @@ int _setScriptProperties(
         script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
-    script->prop.bit_depth = ctx->extSS.content.bitDepth >> 4;
+    script->prop.bit_depth = ctx->ext_ss.content.bitDepth >> 4;
   }
 
   return 0;
@@ -438,7 +438,7 @@ static inline unsigned _getNbChannels(
   const DtsContext * ctx
 )
 {
-  if (ctx->corePresent) {
+  if (ctx->core_pres) {
     const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
     return getNbChDcaCoreAudioChannelAssignCode(bsh->AMODE);
   }
@@ -473,7 +473,6 @@ int completeDtsContext(
 )
 {
 
-
   if (_writeScriptEndMarker(ctx) < 0)
     return -1;
 
@@ -500,13 +499,13 @@ void cleanDtsContext(
   if (NULL == ctx)
     return;
 
-  for (unsigned i = 0; i < DCA_EXT_SS_MAX_NB_INDEXES; i++) {
-    if (ctx->extSS.presentIndexes[i])
-      free(ctx->extSS.curFrames[i]);
-  }
-
+  closeBitstreamReader(ctx->bs);
   closeBitstreamWriter(ctx->script_bs);
-  destroyDtsXllFrameContext(ctx->xllCtx);
+  destroyEsmsFileHandler(ctx->script);
+  cleanDtshdFileHandler(ctx->dtshd);
+  cleanDtsDcaExtSSContext(ctx->ext_ss);
+  cleanDtsXllFrameContext(ctx->xll);
+  cleanDtsAUFrame(ctx->cur_au);
 }
 
 bool nextPassDtsContext(
@@ -528,6 +527,15 @@ int initParsingDtsContext(
   DtsContext * ctx
 )
 {
+  cleanDtshdFileHandler(ctx->dtshd);
+  cleanDtsDcaExtSSContext(ctx->ext_ss);
+
+  memset(&ctx->dtshd, 0, sizeof(DtshdFileHandler));
+  memset(&ctx->core, 0, sizeof(DtsDcaCoreSSContext));
+  ctx->core_pres = false;
+  memset(&ctx->ext_ss, 0, sizeof(DtsDcaExtSSContext));
+  ctx->ext_ss_pres = false;
+
   return seekPos(ctx->bs, 0, SEEK_SET);
 }
 
@@ -560,7 +568,7 @@ DtsFrameInitializationRet initNextDtsFrame(
       );
   }
 
-  if (NULL == (cell = initDtsAUCell(&ctx->curAccessUnit, type)))
+  if (NULL == (cell = initDtsAUCell(&ctx->cur_au, type)))
     return -1;
   cell->startOffset = tellPos(ctx->bs);
 
@@ -579,7 +587,7 @@ int addToEsmsDtsFrame(
     /* Core sync frame */
     DtsDcaCoreSSContext * core = &ctx->core;
 
-    assert(ctx->corePresent);
+    assert(ctx->core_pres);
 
     if (initEsmsAudioPesFrame(dtsInfos, false, false, core->pts, 0) < 0)
       return -1;
@@ -604,9 +612,9 @@ int addToEsmsDtsFrame(
   }
   else {
     /* Extension substream sync frame */
-    DtsDcaExtSSContext * ext = &ctx->extSS;
+    DtsDcaExtSSContext * ext = &ctx->ext_ss;
 
-    assert(ctx->extSSPresent);
+    assert(ctx->ext_ss_pres);
 
     if (initEsmsAudioPesFrame(dtsInfos, true, false, ext->pts, 0) < 0)
       return -1;
@@ -640,63 +648,75 @@ int addToEsmsDtsFrame(
 }
 #endif
 
+static uint64_t _getAndUpdatePTSCore(
+  DtsDcaCoreSSContext * core
+)
+{
+  const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
+
+  uint64_t increment =
+    (MAIN_CLOCK_27MHZ * (bsh->NBLKS + 1) * (bsh->SHORT + 1))
+    / getDcaCoreAudioSampFreqCode(bsh->SFREQ)
+  ;
+
+  uint64_t pts = core->pts;
+  core->pts += increment;
+  return pts;
+}
+
+static uint64_t _getAndUpdatePTSExtSS(
+  DtsDcaExtSSContext * extss
+)
+{
+  const DcaExtSSFrameParameters * frame = extss->curFrames[extss->currentExtSSIdx];
+  assert(NULL != frame);
+  const DcaExtSSHeaderStaticFieldsParameters * sf = &frame->header.staticFields;
+
+  uint64_t increment =
+    (MAIN_CLOCK_27MHZ * sf->frameDurationCodeValue)
+    / sf->referenceClockFreq
+  ;
+
+  uint64_t pts = extss->pts;
+  extss->pts += increment;
+  return pts;
+}
+
+static uint64_t _getAndUpdatePTS(
+  DtsContext * ctx
+)
+{
+  switch (identifyContentTypeDtsAUFrame(&ctx->cur_au)) {
+    case DTS_AU_EMPTY:
+      break;
+    case DTS_AU_CORE_SS:
+      return _getAndUpdatePTSCore(&ctx->core);
+    case DTS_AU_EXT_SS:
+      return _getAndUpdatePTSExtSS(&ctx->ext_ss);
+  }
+
+  return 0;
+}
+
 int completeDtsFrame(
   DtsContext * ctx
 )
 {
-  uint64_t dts;
-  int ret;
-
-  if (DTS_CTX_BUILD_ESMS_SCRIPT(ctx)) {
-    switch (identifyContentTypeDtsAUFrame(&ctx->curAccessUnit)) {
-      case DTS_AU_CORE_SS: {
-        const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
-
-        dts = ctx->core.pts;
-        ctx->core.pts +=
-          (1ull * (bsh->NBLKS + 1) * (bsh->SHORT + 1) * MAIN_CLOCK_27MHZ)
-          / getDcaCoreAudioSampFreqCode(bsh->SFREQ);
-        break;
-      }
-
-      case DTS_AU_EXT_SS:
-        dts = ctx->extSS.pts;
-
-        assert(NULL != ctx->extSS.curFrames[ctx->extSS.currentExtSSIdx]);
-
-        ctx->extSS.pts +=
-          (
-            (
-              (uint64_t) ctx->extSS.curFrames[
-                ctx->extSS.currentExtSSIdx
-              ]->header.staticFields.frameDurationCodeValue
-            ) * MAIN_CLOCK_27MHZ
-          )
-          / (
-            ctx->extSS.curFrames[
-              ctx->extSS.currentExtSSIdx
-            ]->header.staticFields.referenceClockFreq
-          )
-        ;
-        break;
-
-      default:
-        dts = 0;
-        break;
-    }
+  int ret = 0;
+  if (doGenerateScriptDtsContext(ctx)) {
+    uint64_t pts = _getAndUpdatePTS(ctx);
 
     ret = processCompleteFrameDtsAUFrame(
       ctx->script_bs,
       ctx->script,
-      &ctx->curAccessUnit,
+      &ctx->cur_au,
       ctx->src_file_idx,
-      dts
+      pts
     );
   }
   else {
     /* TODO: Add data to PBR smoothing process stats */
-    discardWholeCurDtsAUFrame(&ctx->curAccessUnit);
-    ret = 0;
+    discardWholeCurDtsAUFrame(&ctx->cur_au);
   }
 
   return ret;

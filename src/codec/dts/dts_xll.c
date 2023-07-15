@@ -8,7 +8,7 @@
 #include "dts_xll.h"
 
 int decodeDtsXllCommonHeader(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   DtsXllCommonHeader * param
 )
 {
@@ -31,7 +31,7 @@ int decodeDtsXllCommonHeader(
       SYNCXLL, DCA_SYNCXLL
     );
 
-  initCrcContext(DTS_XLL_CRC_CTX(ctx), DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V);
+  initCrcContext(&ctx->crcCtx, DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V);
 
   /* [u4 nVersion] */
   if (unpackBitsDtsXllPbr(ctx, &value, 4) < 0)
@@ -120,7 +120,7 @@ int decodeDtsXllCommonHeader(
   param->paddingBits = ctx->remainingBits;
   alignByteDtsXllPbr(ctx);
 
-  headerCrcResult = completeCrcContext(DTS_XLL_CRC_CTX(ctx));
+  headerCrcResult = completeCrcContext(&ctx->crcCtx);
 
   /* [u16 nCRC16Header] */
   if (unpackBitsDtsXllPbr(ctx, &value, 16) < 0)
@@ -136,7 +136,7 @@ int decodeDtsXllCommonHeader(
 }
 
 int decodeDtsXllChannelSetSubHeader(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   DtsXllChannelSetSubHeader * param
 )
 {
@@ -171,7 +171,7 @@ int decodeDtsXllChannelSetSubHeader(
 }
 
 int decodeDtsXllFrame(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   DcaXllFrameSFPosition * pbrFramePosition
 )
 {
@@ -235,8 +235,8 @@ int decodeDtsXllFrame(
 
 int parseDtsXllFrame(
   BitstreamReaderPtr dtsInput,
-  DtsXllFrameContextPtr ctx,
-  DcaAudioAssetDescriptorParameters asset,
+  DtsXllFrameContext * ctx,
+  DcaAudioAssetDescParameters asset,
   size_t assetLength
 )
 {
@@ -249,9 +249,9 @@ int parseDtsXllFrame(
   ;
 
   /* Reduce decoding delay of PBR pending frames */
-  bufferedFramesNb = getNbEntriesCircularBuffer(ctx->pendingFrames);
+  bufferedFramesNb = getNbEntriesCircularBuffer(&ctx->pendingFrames);
   for (i = 0; i < bufferedFramesNb; i++) {
-    frame = (DcaXllPbrFramePtr) getEntryCircularBuffer(ctx->pendingFrames, i);
+    frame = (DcaXllPbrFramePtr) getEntryCircularBuffer(&ctx->pendingFrames, i);
     assert(NULL != frame);
 
     if (0 < frame->pbrDelay)
@@ -263,12 +263,12 @@ int parseDtsXllFrame(
     return -1;
 
   /* Decode PBR buffer ready frame */
-  if (!getNbEntriesCircularBuffer(ctx->pendingFrames))
+  if (!getNbEntriesCircularBuffer(&ctx->pendingFrames))
     LIBBLU_DTS_ERROR_RETURN(
       "DTS PBR buffering underflow, no frame to decode.\n"
     );
 
-  frame = (DcaXllPbrFramePtr) getEntryCircularBuffer(ctx->pendingFrames, 0);
+  frame = (DcaXllPbrFramePtr) getEntryCircularBuffer(&ctx->pendingFrames, 0);
   assert(NULL != frame);
   if (0 < frame->pbrDelay)
     LIBBLU_DTS_ERROR_RETURN(
@@ -295,7 +295,7 @@ int parseDtsXllFrame(
   if (frame->size <= decodedDataLength) {
     assert(frame->size == decodedDataLength);
 
-    if (popCircularBuffer(ctx->pendingFrames, NULL) < 0)
+    if (popCircularBuffer(&ctx->pendingFrames, NULL) < 0)
       LIBBLU_DTS_ERROR_RETURN("Broken DTS-HDMA pending frames FIFO.\n");
   }
   else {

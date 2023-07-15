@@ -13,6 +13,14 @@
 #include "../../util.h"
 
 typedef enum {
+  DCA_SYNCWORD_CORE  = 0x7FFE8001,
+  DCA_SYNCEXTSSH     = 0x64582025,
+  DCA_SYNCXLL        = 0x41A29547
+} DcaSyncword;
+
+/* ### DTS-HD files : ###################################################### */
+
+typedef enum {
   DTSHD_BSM__IS_VBR          = 0x0001,
   DTSHD_BSM__PBRS_PERFORMED  = 0x0002,
   DTSHD_BSM__NAVI_EMBEDDED   = 0x0004,
@@ -150,11 +158,112 @@ typedef struct {
   uint8_t * Blackout_Frame;
 } DtshdBlackout;
 
-typedef enum {
-  DCA_SYNCWORD_CORE  = 0x7FFE8001,
-  DCA_SYNCEXTSSH     = 0x64582025,
-  DCA_SYNCXLL        = 0x41A29547
-} DcaSyncword;
+typedef struct {
+  bool missingRequiredPbrFile;
+} DtshdFileHandlerWarningFlags;
+
+typedef struct {
+  DtshdFileHeaderChunk DTSHDHDR;
+  unsigned DTSHDHDR_count;
+
+  DtshdFileInfo FILEINFO;
+  unsigned FILEINFO_count;
+
+  DtshdCoreSubStrmMeta CORESSMD;
+  unsigned CORESSMD_count;
+
+  DtshdExtSubStrmMeta EXTSS_MD;
+  unsigned EXTSS_MD_count;
+
+  DtshdAudioPresPropHeaderMeta AUPR_HDR;
+  unsigned AUPR_HDR_count;
+
+  DtshdAudioPresText AUPRINFO;
+  unsigned AUPRINFO_count;
+
+  DtshdNavMeta NAVI_TBL;
+  unsigned NAVI_TBL_count;
+
+  DtshdStreamData STRMDATA;
+  unsigned STRMDATA_count;
+  uint64_t off_STRMDATA;
+  unsigned in_STRMDATA;
+
+  DtshdTimecode TIMECODE;
+  unsigned TIMECODE_count;
+
+  DtshdBuildVer BUILDVER;
+  unsigned BUILDVER_count;
+
+  DtshdBlackout BLACKOUT;
+  unsigned BLACKOUT_count;
+
+  DtshdFileHandlerWarningFlags warningFlags;
+} DtshdFileHandler;
+
+/** \~english
+ * \brief Return true if Peak Bit-Rate Smoothing process can be performed
+ * on DTS-HD file extension substreams.
+ *
+ * \param handler DTS-HD file handler.
+ * \return true PBRS process might be performed on at least one extension
+ * substream.
+ * \return false PBRS process is not required or cannot be performed.
+ */
+static inline bool canBePerformedPBRSDtshdFileHandler(
+  const DtshdFileHandler * hdlr
+)
+{
+  if (!hdlr->DTSHDHDR_count)
+    return false;
+  if (!hdlr->AUPR_HDR_count)
+    return false;
+
+  return
+    !hdlr->warningFlags.missingRequiredPbrFile
+    && hdlr->AUPR_HDR.Bitw_Aupres_Metadata & DTSHD_BAM__LOSSLESS_PRESENT
+    && !(hdlr->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__PBRS_PERFORMED)
+  ;
+}
+
+/** \~english
+ * \brief Return the initial skipped delay in number of audio frames from the
+ * DTS-HD file.
+ *
+ * The returned value is the number of access units to skip from bitstream
+ * start. One access unit might be composed of up to one Core audio frame and
+ * zero, one or more Extension substreams audio frames.
+ *
+ * \param handle DTS-HD file handle.
+ * \return The number of to-be-skipped access units at bitstream start.
+ */
+static inline unsigned getInitialSkippingDelayDtshdFileHandler(
+  const DtshdFileHandler * hdlr
+)
+{
+  const DtshdAudioPresPropHeaderMeta * AUPR_HDR = &hdlr->AUPR_HDR;
+
+  if (!hdlr->AUPR_HDR_count)
+    return 0;
+
+  unsigned delay_samples = AUPR_HDR->Codec_Delay_At_Max_Fs;
+  unsigned samples_per_frame = AUPR_HDR->Samples_Per_Frame_At_Max_Fs;
+  return (delay_samples + (samples_per_frame >> 1)) / samples_per_frame;
+}
+
+static inline unsigned getPBRSmoothingBufSizeKiBDtshdFileHandler(
+  const DtshdFileHandler * hdlr
+)
+{
+  const DtshdFileHeaderChunk * DTSHDHDR = &hdlr->DTSHDHDR;
+  const DtshdExtSubStrmMeta * EXTSS_MD = &hdlr->EXTSS_MD;
+
+  if (!hdlr->DTSHDHDR_count || !hdlr->EXTSS_MD_count)
+    return 0;
+  if (0 == (DTSHDHDR->Bitw_Stream_Metadata & DTSHD_BSM__IS_VBR))
+    return 0;
+  return EXTSS_MD->vbr.Pbr_Smooth_Buff_Size_Kb;
+}
 
 /* ### DTS Coherent Acoustics (DCA) Core audio : ########################### */
 
@@ -552,7 +661,7 @@ typedef struct {
 } DcaCoreSSFrameParameters;
 
 typedef struct {
-  int64_t size;
+  uint32_t size;
 
   bool syncWordPresent;
   unsigned peakBitRateSmoothingBufSizeCode;
@@ -635,7 +744,7 @@ typedef struct {
 
   /* Computed parameters */
   unsigned maxSampleRate;
-} DcaAudioAssetDescriptorStaticFieldsParameters;
+} DcaAudioAssetDescSFParameters;
 
 /* Value used if 'bDRCMetadatRev2Present' is false: */
 #define DEFAULT_DRC_VERSION_VALUE -1
@@ -677,7 +786,7 @@ typedef struct {
 #endif
   } mixMetadata;
 
-} DcaAudioAssetDescriptorDynamicMetadataParameters;
+} DcaAudioAssetDescDMParameters;
 
 typedef enum {
   DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS             = 0x0,
@@ -706,8 +815,8 @@ typedef enum {
 } DcaAudioDrcMetadataRev2Version;
 
 typedef struct {
-  DcaAudioAssetCodingMode codingMode;
-  uint16_t codingComponentsUsedMask;
+  DcaAudioAssetCodingMode nuCodingMode;
+  uint16_t nuCoreExtensionMask;
 
   union {
     struct {
@@ -766,24 +875,24 @@ typedef struct {
   struct {
     unsigned Hdr_Version;
   } drcRev2;
-} DcaAudioAssetDescriptorDecoderNavDataParameters;
+} DcaAudioAssetDescDecNDParameters;
 
 typedef struct {
   int64_t descriptorLength;
 
   unsigned assetIndex;
 
-  DcaAudioAssetDescriptorStaticFieldsParameters staticFields;
+  DcaAudioAssetDescSFParameters staticFields;
   bool staticFieldsPresent; /* Copy from ExtSS Header */
-  DcaAudioAssetDescriptorDynamicMetadataParameters dynMetadata;
-  DcaAudioAssetDescriptorDecoderNavDataParameters decNavData;
+  DcaAudioAssetDescDMParameters dynMetadata;
+  DcaAudioAssetDescDecNDParameters decNavData;
 
   unsigned resFieldLength;
   unsigned paddingBits;
   uint8_t resFieldData[
     DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE
   ];
-} DcaAudioAssetDescriptorParameters;
+} DcaAudioAssetDescParameters;
 
 typedef struct {
   uint8_t nuMixMetadataAdjLevel;
@@ -842,7 +951,7 @@ typedef struct {
   DcaExtSSHeaderStaticFieldsParameters staticFields;
 
   int64_t audioAssetsLengths[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
-  DcaAudioAssetDescriptorParameters audioAssets[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
+  DcaAudioAssetDescParameters audioAssets[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
 
   bool audioAssetBckwdCompCorePresent[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
   struct {
@@ -867,7 +976,7 @@ typedef struct {
 #define DTS_XLL_MAX_SUPPORTED_OFILE_POS 8
 
 typedef struct {
-  int64_t off;
+  size_t off;
   size_t len;
 } DcaXllFrameSFPositionIndex;
 

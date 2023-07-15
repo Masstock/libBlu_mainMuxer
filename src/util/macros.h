@@ -86,6 +86,13 @@
 #define PING()  fprintf(stderr, "PING\n");
 #define PONG()  fprintf(stderr, "PONG\n");
 
+/** \~english
+ * \brief Assert or NULL pointer dereference.
+ *
+ */
+#define lb_assert_npd(expr) \
+  do {if (0 == (expr)) *((uint8_t *) 0) = 0; } while (0)
+
 #if defined(ARCH_WIN32)
 #  include <wchar.h>
 #  define lbc  wchar_t

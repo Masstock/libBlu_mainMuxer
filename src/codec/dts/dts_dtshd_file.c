@@ -750,7 +750,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   /* [v16 Channel_Mask] */
   READ_BYTES(&param->Channel_Mask, file, 2, return -1);
 
-  char channel_mask_str[DCA_CHMASK_STR_BUFSIZE];
+  char channel_mask_str[DCA_CHMASK_STR_BUFSIZE] = {'\0'};
   unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
     channel_mask_str,
     param->Channel_Mask
@@ -1173,37 +1173,9 @@ bool isDtshdFile(
   return DTS_HD_DTSHDHDR == nextUint64(file);
 }
 
-DtshdFileHandler * createDtshdFileHandler(
-  void
-)
-{
-  return (DtshdFileHandler *) calloc(
-    1, sizeof(DtshdFileHandler)
-  );
-}
-
-void destroyDtshdFileHandler(
-  DtshdFileHandler * handle
-)
-{
-  if (NULL == handle)
-    return;
-
-  if (handle->FILEINFO_count)
-    free(handle->FILEINFO.text);
-  if (handle->AUPRINFO_count)
-    free(handle->AUPRINFO.text);
-  if (handle->BUILDVER_count)
-    free(handle->BUILDVER.text);
-  if (handle->BLACKOUT_count)
-    free(handle->BLACKOUT.Blackout_Frame);
-  free(handle);
-}
-
 int decodeDtshdFileChunk(
   BitstreamReaderPtr file,
-  DtshdFileHandler * handle,
-  bool skip_checks
+  DtshdFileHandler * handle
 )
 {
   assert(NULL != file);
@@ -1320,7 +1292,7 @@ int decodeDtshdFileChunk(
   if (ret < 0)
     return ret;
 
-  if (!skip_checks && NULL != presence_counter) {
+  if (NULL != presence_counter) {
     /* No error */
     if (0 < ((*presence_counter)++))
       LIBBLU_DTS_ERROR_RETURN(

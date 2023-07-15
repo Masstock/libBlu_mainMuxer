@@ -19,113 +19,6 @@
 #include "dts_xll_util.h"
 #include "dts_frame.h"
 
-typedef struct {
-  bool missingRequiredPbrFile;
-} DtshdFileHandlerWarningFlags;
-
-typedef struct {
-  DtshdFileHeaderChunk DTSHDHDR;
-  unsigned DTSHDHDR_count;
-
-  DtshdFileInfo FILEINFO;
-  unsigned FILEINFO_count;
-
-  DtshdCoreSubStrmMeta CORESSMD;
-  unsigned CORESSMD_count;
-
-  DtshdExtSubStrmMeta EXTSS_MD;
-  unsigned EXTSS_MD_count;
-
-  DtshdAudioPresPropHeaderMeta AUPR_HDR;
-  unsigned AUPR_HDR_count;
-
-  DtshdAudioPresText AUPRINFO;
-  unsigned AUPRINFO_count;
-
-  DtshdNavMeta NAVI_TBL;
-  unsigned NAVI_TBL_count;
-
-  DtshdStreamData STRMDATA;
-  unsigned STRMDATA_count;
-  uint64_t off_STRMDATA;
-  unsigned in_STRMDATA;
-
-  DtshdTimecode TIMECODE;
-  unsigned TIMECODE_count;
-
-  DtshdBuildVer BUILDVER;
-  unsigned BUILDVER_count;
-
-  DtshdBlackout BLACKOUT;
-  unsigned BLACKOUT_count;
-
-  DtshdFileHandlerWarningFlags warningFlags;
-} DtshdFileHandler;
-
-/** \~english
- * \brief Return true if Peak Bit-Rate Smoothing process can be performed
- * on DTS-HD file extension substreams.
- *
- * \param handler DTS-HD file handler.
- * \return true PBRS process might be performed on at least one extension
- * substream.
- * \return false PBRS process is not required or cannot be performed.
- */
-static inline bool canBePerformedPBRSDtshdFileHandler(
-  const DtshdFileHandler * hdlr
-)
-{
-  if (!hdlr->DTSHDHDR_count)
-    return false;
-  if (!hdlr->AUPR_HDR_count)
-    return false;
-
-  return
-    !hdlr->warningFlags.missingRequiredPbrFile
-    && hdlr->AUPR_HDR.Bitw_Aupres_Metadata & DTSHD_BAM__LOSSLESS_PRESENT
-    && !(hdlr->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__PBRS_PERFORMED)
-  ;
-}
-
-/** \~english
- * \brief Return the initial skipped delay in number of audio frames from the
- * DTS-HD file.
- *
- * The returned value is the number of access units to skip from bitstream
- * start. One access unit might be composed of up to one Core audio frame and
- * zero, one or more Extension substreams audio frames.
- *
- * \param handle DTS-HD file handle.
- * \return The number of to-be-skipped access units at bitstream start.
- */
-static inline unsigned getInitialSkippingDelayDtshdFileHandler(
-  const DtshdFileHandler * hdlr
-)
-{
-  const DtshdAudioPresPropHeaderMeta * AUPR_HDR = &hdlr->AUPR_HDR;
-
-  if (!hdlr->AUPR_HDR_count)
-    return 0;
-
-  unsigned delay_samples = AUPR_HDR->Codec_Delay_At_Max_Fs;
-  unsigned samples_per_frame = AUPR_HDR->Samples_Per_Frame_At_Max_Fs;
-  return (delay_samples + (samples_per_frame >> 1)) / samples_per_frame;
-}
-
-static inline unsigned getPBRSmoothingBufSizeDtshdFileHandler(
-  const DtshdFileHandler * hdlr
-)
-{
-  const DtshdFileHeaderChunk * DTSHDHDR = &hdlr->DTSHDHDR;
-  const DtshdExtSubStrmMeta * EXTSS_MD = &hdlr->EXTSS_MD;
-
-  if (!hdlr->DTSHDHDR_count || !hdlr->EXTSS_MD_count)
-    return 0;
-  if (0 == (DTSHDHDR->Bitw_Stream_Metadata & DTSHD_BSM__IS_VBR))
-    return 0;
-  return EXTSS_MD->vbr.Pbr_Smooth_Buff_Size_Kb;
-}
-
 typedef enum {
   DTS_AUDIO         = STREAM_CODING_TYPE_DTS,
   DTS_HDHR_AUDIO    = STREAM_CODING_TYPE_HDHR,
@@ -177,18 +70,6 @@ typedef struct {
   bool absenceOfStereoDownmixForSec;
 } DtsDcaExtSSWarningFlags;
 
-#define INIT_DTS_DCA_EXT_SS_WARNING_FLAGS()                                   \
-  (                                                                           \
-    (DtsDcaExtSSWarningFlags) {                                               \
-      .presenceOfUserDefinedBits = false,                                     \
-      .presenceOfMixMetadata = false,                                         \
-      .nonCompleteAudioPresentationAssetType = false,                         \
-      .nonDirectSpeakersFeedTolerance = false,                                \
-      .presenceOfStereoDownmix = false,                                       \
-      .absenceOfStereoDownmixForSec = false                                   \
-    }                                                                         \
-  )
-
 typedef struct {
   bool xllExtSS;  /**< DTS XLL */
   bool xbrExtSS;  /**< DTS XBR */
@@ -200,16 +81,6 @@ typedef struct {
   unsigned audioFreq;
   unsigned bitDepth;
 } DtsDcaExtSSFrameContent;
-
-#define INIT_DTS_DCA_EXT_SS_FRAME_CONTENT()                                   \
-  (                                                                           \
-    (DtsDcaExtSSFrameContent) {                                               \
-      .xllExtSS = false,                                                      \
-      .xbrExtSS = false,                                                      \
-      .lbrExtSS = false,                                                      \
-      .parsedParameters = false                                               \
-    }                                                                         \
-  )
 
 typedef struct {
   DcaExtSSFrameParameters * curFrames[DCA_EXT_SS_MAX_NB_INDEXES];
@@ -224,18 +95,13 @@ typedef struct {
   uint64_t pts;
 } DtsDcaExtSSContext;
 
-/** \~english
- * \brief Initialize #DtsDcaExtSSContext fields to default values.
- */
-#define INIT_DTS_DCA_EXT_SS_CTX()                                             \
-  (                                                                           \
-    (DtsDcaExtSSContext) {                                                    \
-      .nbFrames = 0,                                                          \
-      .content = INIT_DTS_DCA_EXT_SS_FRAME_CONTENT(),                         \
-      .warningFlags = INIT_DTS_DCA_EXT_SS_WARNING_FLAGS(),                    \
-      .pts = 0                                                           \
-    }                                                                         \
-  )
+static inline void cleanDtsDcaExtSSContext(
+  DtsDcaExtSSContext ctx
+)
+{
+  for (unsigned i = 0; i < DCA_EXT_SS_MAX_NB_INDEXES; i++)
+    free(ctx.curFrames[i]);
+}
 
 typedef enum {
   DCA_EXT_SS_MIX_ADJ_LVL_ONLY_BITSTREAM_META   = 0x0,
@@ -289,11 +155,6 @@ unsigned buildDcaExtChMaskString(
 unsigned nbChDcaExtChMaskCode(
   const uint16_t mask
 );
-
-// void dcaExtChMaskStrPrintFun(
-//   uint16_t mask,
-//   int (*printFun) (const lbc * format, ...)
-// );
 
 typedef enum {
   DCA_EXT_SS_SRC_SAMPLE_RATE_8000    = 0x0,
@@ -397,12 +258,6 @@ typedef enum {
     during first pass.                                                       */
 } DtsContextParsingMode;
 
-#define DTS_PARSMOD_ESMS_FILE_GENERATION(mode)                                \
-  (                                                                           \
-    (mode) == DTS_PARSMOD_SINGLE_PASS                                         \
-    || (mode) == DTS_PARSMOD_TWO_PASS_SECOND                                  \
-  )
-
 typedef struct {
   DtsContextParsingMode mode;
 
@@ -412,30 +267,35 @@ typedef struct {
   EsmsFileHeaderPtr script;
   const lbc * script_fp;
 
-  DtshdFileHandler dtshdFileHandle;
+  DtshdFileHandler dtshd;
   bool is_dtshd_file;
 
   DtsDcaCoreSSContext core;
-  bool corePresent;
+  bool core_pres;
 
-  DtsDcaExtSSContext extSS;
-  bool extSSPresent;
+  DtsDcaExtSSContext ext_ss;
+  bool ext_ss_pres;
 
-  DtsXllFrameContextPtr xllCtx;
+  DtsXllFrameContext xll;
+  bool xll_present;
 
-  bool isSecondaryStream;
-  bool skipExtensionSubstreams;
-  unsigned skippedFramesControl;
-  bool skipCurrentPeriod; /**< Skip all extension substreams until next core frame is parsed. */
+  bool is_secondary;
+  bool skip_ext;
+  unsigned init_skip_delay;
 
-  DtsAUFrame curAccessUnit;
+  DtsAUFrame cur_au;
+  bool skip_cur_au; /**< Skip all extension substreams until next core frame is parsed. */
 } DtsContext;
 
-#define DTS_CTX_OUT_ESMS_FILE_IDX_PTR(ctx)                                    \
-  (&(ctx)->src_file_idx)
-
-#define DTS_CTX_BUILD_ESMS_SCRIPT(ctx)                                        \
-  DTS_PARSMOD_ESMS_FILE_GENERATION((ctx)->mode)
+static inline bool doGenerateScriptDtsContext(
+  const DtsContext * ctx
+)
+{
+  return
+    DTS_PARSMOD_SINGLE_PASS == ctx->mode
+    || DTS_PARSMOD_TWO_PASS_SECOND == ctx->mode
+  ;
+}
 
 static inline bool isFast2nbPassDtsContext(
   const DtsContext * ctx
@@ -452,7 +312,7 @@ static inline bool isDtshdFileDtsContext(
 }
 
 /* Handling functions : */
-int createDtsContext(
+int initDtsContext(
   DtsContext * ctx,
   LibbluESParsingSettings * settings
 );

@@ -739,38 +739,40 @@ int writeEsmsPesPacket(
 
   /* Writing modification script commands : */
   for (i = 0; i < curFrame.nbCommands; i++) {
-    EsmsCommand * command = curFrame.commands + i;
+    EsmsCommand command = curFrame.commands[i];
 
     /* [u8 commandId] */
-    if (writeByte(esmsFile, command->type) < 0)
+    if (writeByte(esmsFile, command.type) < 0)
       return -1;
 
-    switch (command->type) {
+    switch (command.type) {
       case ESMS_ADD_DATA:
-        if (writeEsmsAddDataCommand(esmsFile, command->data.addData) < 0)
+        if (writeEsmsAddDataCommand(esmsFile, command.data.addData) < 0)
           return -1;
         break;
 
       case ESMS_CHANGE_BYTEORDER:
-        if (writeEsmsChangeByteOrderCommand(esmsFile, command->data.changeByteOrder) < 0)
+        if (writeEsmsChangeByteOrderCommand(esmsFile, command.data.changeByteOrder) < 0)
           return -1;
         break;
 
       case ESMS_ADD_PAYLOAD_DATA:
-        if (writeEsmsAddPesPayloadCommand(esmsFile, command->data.addPesPayload) < 0)
+        if (writeEsmsAddPesPayloadCommand(esmsFile, command.data.addPesPayload) < 0)
           return -1;
         break;
 
       case ESMS_ADD_PADDING_DATA:
-        if (writeEsmsAddPaddingDataCommand(esmsFile, command->data.addPadding) < 0)
+        if (writeEsmsAddPaddingDataCommand(esmsFile, command.data.addPadding) < 0)
           return -1;
         break;
 
       case ESMS_ADD_DATA_SECTION:
-        if (writeEsmsAddDataBlockCommand(esmsFile, command->data.addDataBlock) < 0)
+        if (writeEsmsAddDataBlockCommand(esmsFile, command.data.addDataBlock) < 0)
           return -1;
         break;
     }
+
+    cleanEsmsCommand(command);
   }
 
   script->commandsPipeline.nbFrames++;
@@ -1133,16 +1135,14 @@ static EsmsCommand * newCommand(
   EsmsCommandType type
 )
 {
-  EsmsPesPacketHeader * curFrame;
-
-  curFrame = &script->commandsPipeline.curFrame;
+  EsmsPesPacketHeader * curFrame = &script->commandsPipeline.curFrame;
 
   if (MAX_SUPPORTED_COMMANDS <= curFrame->nbCommands)
     LIBBLU_ERROR_NRETURN(
       "Too many scripting commands in current ESMS PES frame.\n"
     );
 
-  return initEsmsCommand(curFrame->commands + curFrame->nbCommands++, type);
+  return initEsmsCommand(&curFrame->commands[curFrame->nbCommands++], type);
 }
 
 int appendAddDataCommand(
@@ -1153,8 +1153,6 @@ int appendAddDataCommand(
   const uint8_t * data
 )
 {
-  EsmsCommand * command;
-
 #if ENABLE_MAX_ADD_DATA_BYTES
   if (MAX_ADD_DATA_BYTES < dataLength)
     LIBBLU_ERROR_RETURN(
@@ -1165,6 +1163,7 @@ int appendAddDataCommand(
     );
 #endif
 
+  EsmsCommand * command;
   if (NULL == (command = newCommand(script, ESMS_ADD_DATA)))
     return -1;
 

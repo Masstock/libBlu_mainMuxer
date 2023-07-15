@@ -195,20 +195,19 @@ int setEsmsAddDataCommand(
   uint16_t dataLength
 )
 {
-  uint8_t * newData;
-
   assert(NULL != dst);
   assert(NULL != data);
   assert(0 < dataLength);
 
-  if (NULL == (newData = (uint8_t *) malloc(dataLength)))
+  uint8_t * new_data;
+  if (NULL == (new_data = (uint8_t *) malloc(dataLength)))
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-  memcpy(newData, data, dataLength);
+  memcpy(new_data, data, dataLength);
 
   *dst = (EsmsAddDataCommand) {
     .offset = offset,
     .mode = mode,
-    .data = newData,
+    .data = new_data,
     .dataLength = dataLength
   };
 

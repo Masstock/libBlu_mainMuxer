@@ -389,6 +389,7 @@ static inline void lb_str_cat(
 {
   while (*src != '\0')
     *((*dst)++) = *(src++);
+  *(*dst) = '\0';
 }
 
 static inline void lb_str_cat_comma(
@@ -401,6 +402,7 @@ static inline void lb_str_cat_comma(
     lb_str_cat(dst, ", ");
   while (*src != '\0')
     *((*dst)++) = *(src++);
+  *(*dst) = '\0';
 }
 
 static inline bool lb_str_equal(

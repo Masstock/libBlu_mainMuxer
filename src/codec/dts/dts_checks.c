@@ -462,7 +462,7 @@ static int _checkDcaExtSSHeaderMixMetadataCompliance(
 
 static int _checkDcaExtSSHeaderStaticFieldsCompliance(
   const DcaExtSSHeaderStaticFieldsParameters * param,
-  bool isSecondaryStream,
+  bool is_secondary,
   unsigned nExtSSIndex,
   DtsDcaExtSSWarningFlags * warn_flags
 )
@@ -503,7 +503,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
     param->frameDuration
   );
 
-  if (!isSecondaryStream) {
+  if (!is_secondary) {
     if (param->frameDurationCodeValue != 512)
       LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
         "Primary audio Extension Substream frames shall carry "
@@ -590,7 +590,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
     }
   }
 
-  if (!isSecondaryStream) {
+  if (!is_secondary) {
     if (param->activeExtSSMask[0] != 0x1)
       LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
         "Unexpected Active Audio Asset Mask for primary audio "
@@ -632,8 +632,8 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
 }
 
 static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
-  const DcaAudioAssetDescriptorStaticFieldsParameters * param,
-  bool isSecondaryStream,
+  const DcaAudioAssetDescSFParameters * param,
+  bool is_secondary,
   DtsDcaExtSSWarningFlags * warn_flags
 )
 {
@@ -734,7 +734,7 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
   );
 
   if (
-    isSecondaryStream
+    is_secondary
     && param->maxSampleRate != 48000
   )
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
@@ -761,7 +761,7 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
     param->nbChannels - 1
   );
 
-  if (isSecondaryStream && 6 < param->nbChannels)
+  if (is_secondary && 6 < param->nbChannels)
     LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
       "Unexpected Extension Substream number of channels %u "
       "for a secondary audio stream "
@@ -793,7 +793,7 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
 
   if (!param->directSpeakersFeed) {
     if (
-      isSecondaryStream
+      is_secondary
       && !DCA_EXT_SS_STRICT_NOT_DIRECT_SPEAKERS_FEED_REJECT
     ) {
       if (!warn_flags->nonDirectSpeakersFeedTolerance) {
@@ -853,7 +853,7 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
 
     if (
       !param->embeddedStereoDownmix
-      && isSecondaryStream
+      && is_secondary
       && 2 < param->nbChannels
       && !warn_flags->absenceOfStereoDownmixForSec
     ) {
@@ -1018,7 +1018,7 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
     if (param->representationType == DCA_EXT_SS_LH_RH_HEADPHONE)
       LIBBLU_DTS_DEBUG_EXTSS("      Implied channels mask: Lh, Rh.\n");
 
-    if (isSecondaryStream) {
+    if (is_secondary) {
       if (param->representationType != DCA_EXT_SS_MIX_REPLACEMENT)
         LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
           "Unexpected Representation Type in Extension Substream Asset "
@@ -1044,8 +1044,8 @@ static int _checkDcaAudioAssetDescriptorStaticFieldsCompliance(
 }
 
 static int _checkDcaAudioAssetDescriptorDynamicMetadataCompliance(
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * sf
+  const DcaAudioAssetDescDMParameters * param,
+  const DcaAudioAssetDescSFParameters * sf
 )
 {
 
@@ -1114,7 +1114,7 @@ static int _checkDcaAudioAssetDescriptorDynamicMetadataCompliance(
 }
 
 static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
-  const DcaAudioAssetDescriptorDecoderNavDataParameters * param,
+  const DcaAudioAssetDescDecNDParameters * param,
   const DcaExtSSHeaderMixMetadataParameters mix_meta,
   bool is_sec_stream
 )
@@ -1122,21 +1122,21 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "     Data Coding Mode (nuCodingMode): 0x%x.\n",
-    param->codingMode
+    param->nuCodingMode
   );
   LIBBLU_DTS_DEBUG_EXTSS(
-    "      => %s.\n", dtsAudioAssetCodingModeStr(param->codingMode)
+    "      => %s.\n", dtsAudioAssetCodingModeStr(param->nuCodingMode)
   );
 
   if (is_sec_stream) {
-    if (param->codingMode != DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE)
+    if (param->nuCodingMode != DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE)
       LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
         "Unexpected Secondary audio track coding mode. BDAV specifications "
         "require DTS-HD Low bit-rate coding mode for Extension Substream.\n"
       );
   }
   else {
-    if (param->codingMode != DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS)
+    if (param->nuCodingMode != DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS)
       LIBBLU_DTS_COMPLIANCE_ERROR_RETURN(
         "Unexpected Primary audio track coding mode. BDAV specifications "
         "require DTS-HD Components coding mode with retro-compatible "
@@ -1146,30 +1146,30 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS("     Coding Mode related:\n");
 
-  switch (param->codingMode) {
+  switch (param->nuCodingMode) {
     case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
     case DCA_EXT_SS_CODING_MODE_DTS_HD_LOSSLESS_WITHOUT_CORE:
     case DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE:
-      if (param->codingMode == DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS) {
+      if (param->nuCodingMode == DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "      Coding Components Used in Asset mask "
           "(nuCoreExtensionMask): 0x%04" PRIX16 ".\n",
-          param->codingComponentsUsedMask
+          param->nuCoreExtensionMask
         );
       }
       else {
         LIBBLU_DTS_DEBUG_EXTSS(
           "      Implied Coding Components Used in Asset mask: "
           "0x%04" PRIX16 ".\n",
-          param->codingComponentsUsedMask
+          param->nuCoreExtensionMask
         );
       }
 
-      if (!param->codingComponentsUsedMask)
+      if (!param->nuCoreExtensionMask)
         LIBBLU_DTS_DEBUG_EXTSS("       => *Empty*\n");
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_CORE_DCA
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_DCA
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA Core Component within Core Substream "
@@ -1178,7 +1178,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
         );
       }
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XXCH
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XXCH
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA XXCH 5.1+ Channels Extension within "
@@ -1187,7 +1187,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
         );
       }
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_CORE_EXT_X96
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_X96
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA X96 96kHz Sampling Frequency Extension within "
@@ -1196,7 +1196,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
         );
       }
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XCH
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XCH
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA XCH 6.1 Channels Extension within "
@@ -1206,7 +1206,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
       }
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA Core Component within cur-> Extension Substream "
@@ -1239,7 +1239,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
       }
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA XBR Extended Bit Rate within cur-> "
@@ -1257,7 +1257,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
       }
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA XXCH 5.1+ Channels Extension within cur-> "
@@ -1274,7 +1274,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
       }
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA X96 96kHz Sampling Frequency Extension within cur-> "
@@ -1291,7 +1291,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
       }
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA LBR Low Bitrate Component within cur-> Extension "
@@ -1324,7 +1324,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
       }
 
       if (
-        param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL
+        param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL
       ) {
         LIBBLU_DTS_DEBUG_EXTSS(
           "       => DCA XLL Lossless Extension within cur-> Extension "
@@ -1483,7 +1483,7 @@ static int _checkDcaAudioAssetDescriptorDecoderNavDataCompliance(
 }
 
 static int _checkDcaAudioAssetDescriptorCompliance(
-  const DcaAudioAssetDescriptorParameters * param,
+  const DcaAudioAssetDescParameters * param,
   bool is_sec_stream,
   const DcaExtSSHeaderMixMetadataParameters mix_meta,
   DtsDcaExtSSWarningFlags * warn_flags

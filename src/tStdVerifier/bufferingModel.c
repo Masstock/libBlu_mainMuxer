@@ -137,7 +137,8 @@ int addFrameToBuffer(
     LIBBLU_ERROR_RETURN("NULL pointer buffer on addFrameToBuffer().\n");
 
   newFrame = (BufModelBufferFrame *) newEntryCircularBuffer(
-    ((BufModelLeakingBufferPtr) buf)->header.storedFrames
+    ((BufModelLeakingBufferPtr) buf)->header.storedFrames,
+    sizeof(BufModelBufferFrame)
   );
   if (NULL == newFrame)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
@@ -891,11 +892,11 @@ static BufModelBufferPtr _createLeakingBuffer(
 )
 {
   BufModelLeakingBufferPtr buf;
-  CircularBufferPtr frmBuf;
-
   if (NULL == (buf = (BufModelLeakingBufferPtr) malloc(sizeof(BufModelLeakingBuffer))))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-  if (NULL == (frmBuf = createCircularBuffer(sizeof(BufModelBufferFrame))))
+
+  CircularBufferPtr frmBuf;
+  if (NULL == (frmBuf = createCircularBuffer()))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
   *buf = (BufModelLeakingBuffer) {
@@ -975,7 +976,7 @@ static BufModelBufferPtr createRemovalBuffer(
 
   if (NULL == (buf = (BufModelRemovalBufferPtr) malloc(sizeof(BufModelRemovalBuffer))))
     goto free_return; /* Memory allocation error */
-  if (NULL == (frmBuf = createCircularBuffer(sizeof(BufModelBufferFrame))))
+  if (NULL == (frmBuf = createCircularBuffer()))
     goto free_return; /* Memory allocation error */
 
   *buf = (BufModelRemovalBuffer) {

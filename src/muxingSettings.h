@@ -104,11 +104,8 @@ static inline void cleanLibbluMuxingSettings(
   LibbluMuxingSettings settings
 )
 {
-  unsigned i;
-
   free(settings.outputTsFilename);
-
-  for (i = 0; i < settings.nbInputStreams; i++)
+  for (unsigned i = 0; i < settings.nbInputStreams; i++)
     cleanLibbluESSettings(settings.inputStreams[i]);
 }
 

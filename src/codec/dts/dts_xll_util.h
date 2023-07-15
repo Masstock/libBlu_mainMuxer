@@ -40,10 +40,6 @@ typedef struct {
 #define INIT_DTS_PBR_SMOOTHING_STATS()                                        \
   ((DtsPbrSmoothingStats) {0})
 
-void cleanDtsPbrSmoothingStats(
-  DtsPbrSmoothingStats stats
-);
-
 #define SET_FPS_DTS_PBR_SMOOTHING_STATS(stats, fps)                           \
   ((stats).framesPerSec = (fps))
 
@@ -127,12 +123,12 @@ typedef struct {
 
   CrcContext crcCtx;
 
-  CircularBufferPtr pendingFrames;  /**< FIFO of #DcaXllPbrFrame, pending
+  CircularBuffer pendingFrames;  /**< FIFO of #DcaXllPbrFrame, pending
     frames to decode in PBR buffer.                                          */
   unsigned nbParsedPbrFrames;       /**< Current number of parsed PBR
     frames.                                                                  */
 
-  CircularBufferPtr decodedFramesOff;  /**< FIFO of
+  CircularBuffer decodedFramesOff;  /**< FIFO of
     #DtsXllDecodedFrame, decoded frames source file offsets.                 */
   unsigned nbDecodedFrames;         /**< Current number of decoded XLL
     frames.                                                                  */
@@ -140,96 +136,94 @@ typedef struct {
 
   /* PBR smoothing process related */
   DtsPbrSmoothingStats pbrSmoothing;
-} DtsXllFrameContext, *DtsXllFrameContextPtr;
+} DtsXllFrameContext;
 
-#define DTS_XLL_CRC_CTX(dtsXllFrameContextPtr)                                \
-  (&(dtsXllFrameContextPtr)->crcCtx)
+// DtsXllFrameContext * createDtsXllFrameContext(
+//   void
+// );
 
-#define IN_USE_DTS_XLL_CRC(dtsXllFrameContextPtr)                             \
-  ((dtsXllFrameContextPtr)->crcCtx.in_use)
+// void destroyDtsXllFrameContext(
+//   DtsXllFrameContext * ctx
+// );
 
-#define UPDATE_PBR_BUF_SIZE(dtsXllFrameContextPtr, bufSize)                   \
-  (                                                                           \
-    (dtsXllFrameContextPtr)->pbrBufferActiveSize                              \
-    = (dtsXllFrameContextPtr)->pbrSmoothing.maxPbrBufferSize                  \
-    = (bufSize)                                                               \
-  )
-
-DtsXllFrameContextPtr createDtsXllFrameContext(
-  void
-);
-
-void destroyDtsXllFrameContext(
-  DtsXllFrameContextPtr ctx
-);
+static inline void cleanDtsXllFrameContext(
+  DtsXllFrameContext ctx
+)
+{
+  free(ctx.pbrBuffer);
+  cleanCircularBuffer(ctx.pendingFrames);
+  cleanCircularBuffer(ctx.decodedFramesOff);
+  free(ctx.pbrSmoothing.targetFrmSize);
+}
 
 int initDtsXllFrameContext(
-  DtsXllFrameContextPtr * ctxPtr,
-  DcaAudioAssetDescriptorParameters asset,
-  DcaExtSSHeaderParameters extSSHdr
+  DtsXllFrameContext * ctx,
+  DcaAudioAssetDescParameters asset,
+  DcaExtSSHeaderParameters extSSHdr,
+  DtshdFileHandler * dtshd
 );
 
 int updateDtsXllPbrBufferSize(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   size_t newSize
 );
 
 int parseDtsXllToPbrBuffer(
   BitstreamReaderPtr dtsInput,
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   DcaAudioAssetSSXllParameters asset,
   size_t assetLength
 );
 
 int initUnpackDtsXllPbr(
-  DtsXllFrameContextPtr ctx
+  DtsXllFrameContext * ctx
 );
 
 int completeUnpackDtsXllPbr(
-  DtsXllFrameContextPtr ctx
+  DtsXllFrameContext * ctx
 );
 
 int unpackBitsDtsXllPbr(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   uint32_t * value,
   size_t length
 );
 
 int skipBitsDtsXllPbr(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   size_t length
 );
 
 void alignByteDtsXllPbr(
-  DtsXllFrameContextPtr ctx
+  DtsXllFrameContext * ctx
 );
 
 int align32BitsDtsXllPbr(
-  DtsXllFrameContextPtr ctx
+  DtsXllFrameContext * ctx
 );
 
 int unpackByteDtsXllPbr(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   uint8_t * byte
 );
 
 int unpackBytesDtsXllPbr(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   uint32_t * value,
   size_t length
 );
 
 int skipBytesDtsXllPbr(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   size_t length
 );
 
 size_t tellPosDtsXllPbr(
-  DtsXllFrameContextPtr ctx
+  DtsXllFrameContext * ctx
 );
 
 int registerDecodedFrameOffsetsDtsXllFrameContext(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   const DcaXllFrameSFPosition framePosition
 );
 
@@ -254,7 +248,7 @@ int registerDecodedFrameOffsetsDtsXllFrameContext(
  * returned.
  */
 int substractPbrFrameSliceDtsXllFrameContext(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   size_t requestedFrameSize,
   DcaXllFrameSFPosition * pbrFramePosition,
   int * syncPresenceIndex,
@@ -279,8 +273,8 @@ int collectFrameDataDcaXllFrameSFPosition(
 
 int getRelativeOffsetDcaXllFrameSFPosition(
   const DcaXllFrameSFPosition frame,
-  int64_t absoluteOffset,
-  int64_t * relativeOffset
+  size_t absoluteOffset,
+  size_t * relativeOffset
 );
 
 /** \~english
@@ -292,13 +286,13 @@ int getRelativeOffsetDcaXllFrameSFPosition(
  * \return int
  */
 int getFrameTargetSizeDtsXllPbr(
-  DtsXllFrameContextPtr ctx,
+  DtsXllFrameContext * ctx,
   unsigned frameIdx,
   size_t * size
 );
 
 int performComputationDtsXllPbr(
-  DtsXllFrameContextPtr ctx
+  DtsXllFrameContext * ctx
 );
 
 #endif

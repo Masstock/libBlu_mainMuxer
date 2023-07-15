@@ -52,12 +52,12 @@ int buildDcaExtSSHeaderStaticFields(
   } while(0)
 
 size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
-  const DcaAudioAssetDescriptorStaticFieldsParameters * param
+  const DcaAudioAssetDescSFParameters * param
 );
 
 int buildDcaExtSSAssetDescriptorStaticFields(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * param
+  const DcaAudioAssetDescSFParameters * param
 );
 
 /** \~english
@@ -72,15 +72,15 @@ int buildDcaExtSSAssetDescriptorStaticFields(
  * \return size_t Computed length in bits.
  */
 size_t computeDcaExtSSAssetDescriptorDynamicMetadataSize(
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam
 );
 
 int buildDcaExtSSAssetDescriptorDynamicMetadata(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam
 );
 
@@ -101,18 +101,18 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
  * \return size_t Computed length in bits.
  */
 size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
-  const DcaAudioAssetDescriptorDecoderNavDataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * dynMetadataParam,
+  const DcaAudioAssetDescDecNDParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * dynMetadataParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize
 );
 
 int buildDcaExtSSAssetDescriptorDecNavData(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorDecoderNavDataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * dynMetadataParam,
+  const DcaAudioAssetDescDecNDParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * dynMetadataParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize
 );
@@ -129,7 +129,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
  * \return size_t Computed length in bytes.
  */
 size_t computeDcaExtSSAudioAssetDescriptorSize(
-  const DcaAudioAssetDescriptorParameters * param,
+  const DcaAudioAssetDescParameters * param,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize
 );
@@ -149,7 +149,7 @@ size_t computeDcaExtSSAudioAssetDescriptorSize(
  */
 int buildDcaExtSSAudioAssetDescriptor(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorParameters * param,
+  const DcaAudioAssetDescParameters * param,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize,
   const size_t descriptorSize

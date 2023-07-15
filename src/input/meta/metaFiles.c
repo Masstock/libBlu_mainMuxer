@@ -365,6 +365,8 @@ static int parseTrackMetaFile(
           trackCodingTypeName
         );
     }
+
+    cleanLibbluMetaOptionArgValue(option, argument);
   }
 
   setExpectedCodingTypeLibbluESSettings(elemStream, trackCodingType);

@@ -69,20 +69,21 @@ bool isDtshdFile(
   BitstreamReaderPtr dtsInput
 );
 
-DtshdFileHandler * createDtshdFileHandler(
-  void
-);
-
-void destroyDtshdFileHandler(
-  DtshdFileHandler * handle
-);
+static inline void cleanDtshdFileHandler(
+  DtshdFileHandler handle
+)
+{
+  free(handle.FILEINFO.text);
+  free(handle.AUPRINFO.text);
+  free(handle.BUILDVER.text);
+  free(handle.BLACKOUT.Blackout_Frame);
+}
 
 /** \~english
  * \brief Decode a DTS-HD file (.dtshd) chunk.
  *
  * \param dtsInput Input file.
  * \param handle DTS-HD file handle.
- * \param skipChecks If true, conformance checks are skipped.
  * \return int On success, a zero is returned if a complete chunk as been
  * parsed. A '1' if decoded chunk is a DTS-HD Encoded Stream Data chunk,
  * followed by DTS audio frames that may be decoded. Otherwise (if error
@@ -106,8 +107,7 @@ void destroyDtshdFileHandler(
  */
 int decodeDtshdFileChunk(
   BitstreamReaderPtr dtsInput,
-  DtshdFileHandler * handle,
-  bool skipChecks
+  DtshdFileHandler * handle
 );
 
 #endif

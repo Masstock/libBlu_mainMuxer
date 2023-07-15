@@ -204,7 +204,7 @@ int buildDcaExtSSHeaderStaticFields(
 }
 
 size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
-  const DcaAudioAssetDescriptorStaticFieldsParameters * param
+  const DcaAudioAssetDescSFParameters * param
 )
 {
   size_t size;
@@ -296,7 +296,7 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
 
 int buildDcaExtSSAssetDescriptorStaticFields(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * param
+  const DcaAudioAssetDescSFParameters * param
 )
 {
   int ret;
@@ -532,8 +532,8 @@ int buildDcaExtSSAssetDescriptorStaticFields(
 }
 
 size_t computeDcaExtSSAssetDescriptorDynamicMetadataSize(
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam
 )
 {
@@ -572,8 +572,8 @@ size_t computeDcaExtSSAssetDescriptorDynamicMetadataSize(
 
 int buildDcaExtSSAssetDescriptorDynamicMetadata(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam
 )
 {
@@ -760,9 +760,9 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
 }
 
 size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
-  const DcaAudioAssetDescriptorDecoderNavDataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * dynMetadataParam,
+  const DcaAudioAssetDescDecNDParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * dynMetadataParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize
 )
@@ -776,7 +776,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
   /* [u2 nuCodingMode] */
   size = 3; /* Include some other fields */
 
-  switch (param->codingMode) {
+  switch (param->nuCodingMode) {
     case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
       /* DTS-HD component(s). */
 
@@ -784,7 +784,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       size += 12;
 
       if (
-        param->codingComponentsUsedMask
+        param->nuCoreExtensionMask
         & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
       ) {
         /* [u14 nuExSSCoreFsize] */
@@ -797,22 +797,22 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
         }
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
         /* [u14 nuExSSXBRFsize] */
         size += 14;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
         /* [u14 nuExSSXXCHFsize] */
         size += 14;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
         /* [u12 nuExSSX96Fsize] */
         size += 12;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
         /* [u14 nuExSSLBRFsize] */
         /* [b1 bExSSLBRSyncPresent] */
         size += 15;
@@ -823,7 +823,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
         }
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
         /* [u<nuBits4ExSSFsize> nuExSSXLLFsize] */
         /* [b1 bExSSXLLSyncPresent] */
         size += nuBits4ExSSFsize + 1;
@@ -842,12 +842,12 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
         }
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_RESERVED_1) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_RESERVED_1) {
         /* [v16 *Ignore*] */
         size += 16;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_RESERVED_2) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_RESERVED_2) {
         /* [v16 *Ignore*] */
         size += 16;
       }
@@ -902,7 +902,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       }
   }
 
-  if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
+  if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
     /* Extension Substream contains DTS-XLL component. */
 
     /* [u3 nuDTSHDStreamID] */
@@ -970,9 +970,9 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
 
 int buildDcaExtSSAssetDescriptorDecNavData(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorDecoderNavDataParameters * param,
-  const DcaAudioAssetDescriptorStaticFieldsParameters * assetStaticFieldsParam,
-  const DcaAudioAssetDescriptorDynamicMetadataParameters * dynMetadataParam,
+  const DcaAudioAssetDescDecNDParameters * param,
+  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
+  const DcaAudioAssetDescDMParameters * dynMetadataParam,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize
 )
@@ -984,24 +984,24 @@ int buildDcaExtSSAssetDescriptorDecNavData(
   uint32_t bits4InitLLDecDly;
 
   /* [u2 nuCodingMode] */
-  if (writeBitsDtsPatcherBitstreamHandle(handle, param->codingMode, 2) < 0)
+  if (writeBitsDtsPatcherBitstreamHandle(handle, param->nuCodingMode, 2) < 0)
     return -1;
 
-  switch (param->codingMode) {
+  switch (param->nuCodingMode) {
     case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
       /* DTS-HD component(s). */
 
       /* [u12 nuCoreExtensionMask] */
       ret = writeBitsDtsPatcherBitstreamHandle(
         handle,
-        param->codingComponentsUsedMask,
+        param->nuCoreExtensionMask,
         12
       );
       if (ret < 0)
         return -1;
 
       if (
-        param->codingComponentsUsedMask
+        param->nuCoreExtensionMask
         & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
       ) {
         /* [u14 nuExSSCoreFsize] */
@@ -1033,7 +1033,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
         }
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
         /* [u14 nuExSSXBRFsize] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1044,7 +1044,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
           return -1;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
         /* [u14 nuExSSXXCHFsize] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1055,7 +1055,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
           return -1;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
         /* [u12 nuExSSX96Fsize] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1066,7 +1066,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
           return -1;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
         /* [u14 nuExSSLBRFsize] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1094,7 +1094,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
         }
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
         /* [u<nuBits4ExSSFsize> nuExSSXLLFsize] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1156,7 +1156,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
         }
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_RESERVED_1) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_RESERVED_1) {
         /* [v16 *Ignore*] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1167,7 +1167,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
           return -1;
       }
 
-      if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_RESERVED_2) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_RESERVED_2) {
         /* [v16 *Ignore*] */
         ret = writeBitsDtsPatcherBitstreamHandle(
           handle,
@@ -1186,7 +1186,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
       break;
 
 #if 0
-      param->codingComponentsUsedMask = DCA_EXT_SS_COD_COMP_EXTSUB_XLL;
+      param->nuCoreExtensionMask = DCA_EXT_SS_COD_COMP_EXTSUB_XLL;
 
       /* [u<nuBits4ExSSFsize> nuExSSXLLFsize] */
       if (readBits(file, &value, nuBits4ExSSFsize) < 0)
@@ -1230,7 +1230,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
     case DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE:
       /* DTS-HD Express. */
 
-      param->codingComponentsUsedMask = DCA_EXT_SS_COD_COMP_EXTSUB_LBR;
+      param->nuCoreExtensionMask = DCA_EXT_SS_COD_COMP_EXTSUB_LBR;
 
       /* [u14 nuExSSLBRFsize] */
       if (readBits(file, &value, 14) < 0)
@@ -1261,7 +1261,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
     case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING:
       /* Auxiliary audio coding. */
 
-      param->codingComponentsUsedMask = 0;
+      param->nuCoreExtensionMask = 0;
 
       /* [u14 nuExSSAuxFsize] */
       if (readBits(file, &value, 14) < 0)
@@ -1288,7 +1288,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
 #endif
   }
 
-  if (param->codingComponentsUsedMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
+  if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
     /* Extension Substream contains DTS-XLL component. */
 
     /* [u3 nuDTSHDStreamID] */
@@ -1405,7 +1405,7 @@ int buildDcaExtSSAssetDescriptorDecNavData(
 }
 
 size_t computeDcaExtSSAudioAssetDescriptorSize(
-  const DcaAudioAssetDescriptorParameters * param,
+  const DcaAudioAssetDescParameters * param,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize
 )
@@ -1456,7 +1456,7 @@ size_t computeDcaExtSSAudioAssetDescriptorSize(
 
 int buildDcaExtSSAudioAssetDescriptor(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaAudioAssetDescriptorParameters * param,
+  const DcaAudioAssetDescParameters * param,
   const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
   const size_t nuBits4ExSSFsize,
   const size_t descriptorSize
@@ -1648,15 +1648,15 @@ size_t computeDcaExtSSHeaderSize(
 
 size_t appendDcaExtSSHeader(
   EsmsFileHeaderPtr script,
-  const size_t insertingOffset,
+  const size_t insert_off,
   const DcaExtSSHeaderParameters * param
 )
 {
   DtsPatcherBitstreamHandlePtr handle;
   int ret;
 
-  const uint8_t * array;
-  size_t arraySize;
+  const uint8_t * arr;
+  size_t arr_size;
 
   unsigned nAst;
   int64_t off, resFieldSize;
@@ -1848,26 +1848,14 @@ size_t appendDcaExtSSHeader(
   exit(-1); */
 
   /* Append generated bitstream to the script */
-  ret = getGeneratedArrayDtsPatcherBitstreamHandle(
-    handle,
-    &array,
-    &arraySize
-  );
-  if (ret < 0)
+  if (getGeneratedArrayDtsPatcherBitstreamHandle(handle, &arr, &arr_size) < 0)
     goto free_return;
 
-  ret = appendAddDataCommand(
-    script,
-    insertingOffset,
-    INSERTION_MODE_ERASE,
-    arraySize,
-    array
-  );
-  if (ret < 0)
+  if (appendAddDataCommand(script, insert_off, INSERTION_MODE_ERASE, arr_size, arr) < 0)
     goto free_return;
 
   destroyDtsPatcherBitstreamHandle(handle);
-  return arraySize;
+  return arr_size;
 
 free_return:
   destroyDtsPatcherBitstreamHandle(handle);
@@ -1876,7 +1864,7 @@ free_return:
 
 size_t appendDcaExtSSAsset(
   EsmsFileHeaderPtr script,
-  const size_t insertingOffset,
+  const size_t insert_off,
   const DcaXllFrameSFPosition * param,
   const unsigned scriptSourceFileId
 )
@@ -1887,7 +1875,7 @@ size_t appendDcaExtSSAsset(
   size_t curInsertingOffset;
   size_t len, off;
 
-  curInsertingOffset = origInsertingOffset = insertingOffset;
+  curInsertingOffset = origInsertingOffset = insert_off;
   for (i = 0; i < param->nbSourceOffsets; i++) {
     len = param->sourceOffsets[i].len;
     off = param->sourceOffsets[i].off;

@@ -67,15 +67,11 @@ typedef struct {
 } DtsAUFrame, *DtsAUFramePtr;
 
 static inline void cleanDtsAUFrame(
-  DtsAUFramePtr frm
+  DtsAUFrame frm
 )
 {
-  if (NULL == frm)
-    return;
-
-  free(frm->contentCells);
-  free(frm->replacementParams);
-  free(frm);
+  free(frm.contentCells);
+  free(frm.replacementParams);
 }
 
 DtsAUCellPtr initDtsAUCell(

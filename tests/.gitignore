@@ -3,23 +3,23 @@
 *.m2ts
 *.txt
 
+*.264
+*.ac3
+*.avc
+*.bmp
+*.dts*
+*.h264
+*.hevc
 *.ies
+*.ies
+*.m2v
+*.mlp
+*.mnu
 *.pdf
 *.png
-*.bmp
-*.hevc
-*.avc
-*.264
-*.h264
-*.m2v
-*.wav
-*.dts*
-*.mlp
-*.ac3
-*.thd
-*.ies
 *.sup
-*.mnu
+*.thd
+*.wav
 
 *StreamEyeOutput
 *.sfk
