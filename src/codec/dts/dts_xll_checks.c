@@ -173,7 +173,7 @@ int checkDtsXllCommonHeader(
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Byte boundary padding field (ByteAlign): %u bit(s).\n",
-    param.paddingBits
+    param.ZeroPadForFsize_size
   );
 
   LIBBLU_DTS_DEBUG_XLL(

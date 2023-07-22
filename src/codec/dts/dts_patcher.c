@@ -6,47 +6,52 @@
 
 #include "dts_patcher.h"
 
-size_t computeDcaExtSSHeaderMixMetadataSize(
+#define COMPUTE_NUBITS4MIXOUTMASK(res, masks, nb_masks)                       \
+  do {                                                                        \
+    unsigned _i, _max;                                                        \
+    for (_max = 0, _i = 0; _i < (nb_masks); _i++)                             \
+      _max = MAX(_max, (masks)[_i]);                                          \
+    unsigned _siz = 4;                                                        \
+    for (; _siz < _max; _siz += 4)                                            \
+      ;                                                                       \
+    *(res) = _siz;                                                            \
+  } while(0)
+
+#define WRITE_BITS(hdl, v, s, e)                                              \
+  do {                                                                        \
+    if (writeBitsDtsPatcherBitstreamHandle(hdl, v, s) < 0)                    \
+      e;                                                                      \
+  } while (0)
+
+static size_t _computeDcaExtSSHeaderMMSize(
   const DcaExtSSHeaderMixMetadataParameters * param
 )
 {
-  size_t size;
-
-  size_t mixOutputMaskNbBits;
-
   /* [u2 nuMixMetadataAdjLevel] */
   /* [u2 nuBits4MixOutMask] */
   /* [u2 nuNumMixOutConfigs] */
-  size = 6;
+  size_t size = 6;
 
   /* Output Audio Mix Configurations Loop : */
-  /* [u<nuBits4MixOutMask * ns> nuMixOutChMask[ns]] */
-  COMPUTE_NUBITS4MIXOUTMASK(
-    mixOutputMaskNbBits,
-    param->nuMixOutChMask,
-    param->nuNumMixOutConfigs
-  );
-
-  size += mixOutputMaskNbBits * param->nuNumMixOutConfigs;
+  /* [u<nuBits4MixOutMask * nuNumMixOutConfigs> nuMixOutChMask[ns]] */
+  unsigned nuBits4MixOutMask;
+  COMPUTE_NUBITS4MIXOUTMASK(&nuBits4MixOutMask, param->nuMixOutChMask, param->nuNumMixOutConfigs);
+  size += nuBits4MixOutMask * param->nuNumMixOutConfigs;
 
   return size;
 }
 
-size_t computeDcaExtSSHeaderStaticFieldsSize(
-  const DcaExtSSHeaderStaticFieldsParameters * param,
-  const uint8_t nExtSSIndex
+static size_t _computeDcaExtSSHeaderSFSize(
+  const DcaExtSSHeaderSFParameters * param,
+  uint8_t nExtSSIndex
 )
 {
-  size_t size;
-
-  unsigned nAuPr, nSS;
-
   /* [u2 nuRefClockCode] */
   /* [u3 nuExSSFrameDurationCode] */
   /* [b1 bTimeStampFlag] */
-  size = 13; /* Include some other fields */
+  size_t size = 13; /* Include some other fields */
 
-  if (param->timeStampPresent) {
+  if (param->bTimeStampFlag) {
     /* [u32 nuTimeStamp] */
     /* [u4 nLSB] */
     size += 36;
@@ -57,11 +62,11 @@ size_t computeDcaExtSSHeaderStaticFieldsSize(
   /* Already counted */
 
   /* [u<(nExtSSIndex+1) * nuNumAudioPresnt> nuNumAssets] */
-  size += (nExtSSIndex + 1) * param->nbAudioPresentations;
+  size += (nExtSSIndex + 1) * param->nuNumAudioPresnt;
 
-  for (nAuPr = 0; nAuPr < param->nbAudioPresentations; nAuPr++) {
-    for (nSS = 0; nSS < (unsigned) nExtSSIndex + 1; nSS++) {
-      if ((param->activeExtSSMask[nAuPr] >> nSS) & 0x1) {
+  for (unsigned nAuPr = 0; nAuPr < param->nuNumAudioPresnt; nAuPr++) {
+    for (unsigned nSS = 0; nSS < nExtSSIndex + 1u; nSS++) {
+      if ((param->nuActiveExSSMask[nAuPr] >> nSS) & 0x1) {
         /* [u8 nuActiveAssetMask[nAuPr][nSS]] */
         size += 8;
       }
@@ -71,126 +76,62 @@ size_t computeDcaExtSSHeaderStaticFieldsSize(
   /* [b1 bMixMetadataEnbl] */
   /* Already counted */
 
-  if (param->mixMetadataEnabled) {
+  if (param->bMixMetadataEnbl) {
     /* [vn MixMedata()] */
-    size += computeDcaExtSSHeaderMixMetadataSize(
-      &param->mixMetadata
-    );
+    size += _computeDcaExtSSHeaderMMSize(&param->mixMetadata);
   }
 
   return size;
 }
 
-int buildDcaExtSSHeaderStaticFields(
+static int _buildDcaExtSSHeaderSF(
   DtsPatcherBitstreamHandlePtr handle,
-  const DcaExtSSHeaderStaticFieldsParameters * param,
-  const uint8_t nExtSSIndex
+  const DcaExtSSHeaderSFParameters * param,
+  uint8_t nExtSSIndex
 )
 {
-  int ret;
-
-  unsigned nAuPr, nSS;
 
   /* [u2 nuRefClockCode] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->referenceClockCode,
-    2
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuRefClockCode, 2, return -1);
 
   /* [u3 nuExSSFrameDurationCode] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->frameDurationCode,
-    3
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuExSSFrameDurationCode, 3, return -1);
 
   /* [b1 bTimeStampFlag] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->timeStampPresent
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bTimeStampFlag, 1, return -1);
 
-  if (param->timeStampPresent) {
+  if (param->bTimeStampFlag) {
     /* [u32 nuTimeStamp] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->timeStampValue,
-      32
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuTimeStamp, 32, return -1);
 
     /* [u4 nLSB] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->timeStampLsb,
-      4
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nLSB, 4, return -1);
   }
 
   /* [u3 nuNumAudioPresnt] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->nbAudioPresentations - 1,
-    3
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuNumAudioPresnt - 1, 3, return -1);
 
   /* [u3 nuNumAssets] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->nbAudioAssets - 1,
-    3
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuNumAssets - 1, 3, return -1);
 
-  for (nAuPr = 0; nAuPr < param->nbAudioPresentations; nAuPr++) {
+  for (unsigned nAuPr = 0; nAuPr < param->nuNumAudioPresnt; nAuPr++) {
     /* [u<nExtSSIndex+1> nuNumAssets] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->activeExtSSMask[nAuPr],
-      nExtSSIndex + 1
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuActiveExSSMask[nAuPr], nExtSSIndex + 1, return -1);
   }
 
-  for (nAuPr = 0; nAuPr < param->nbAudioPresentations; nAuPr++) {
-    for (nSS = 0; nSS < (unsigned) nExtSSIndex + 1; nSS++) {
-
-      if ((param->activeExtSSMask[nAuPr] >> nSS) & 0x1) {
+  for (unsigned nAuPr = 0; nAuPr < param->nuNumAudioPresnt; nAuPr++) {
+    for (unsigned nSS = 0; nSS < (unsigned) nExtSSIndex + 1; nSS++) {
+      if ((param->nuActiveExSSMask[nAuPr] >> nSS) & 0x1) {
         /* [u8 nuActiveAssetMask[nAuPr][nSS]] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->activeAssetMask[nAuPr][nSS],
-          8
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, param->nuActiveAssetMask[nAuPr][nSS], 8, return -1);
       }
     }
   }
 
   /* [b1 bMixMetadataEnbl] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->mixMetadataEnabled
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bMixMetadataEnbl, 1, return -1);
 
-  if (param->mixMetadataEnabled) {
+  if (param->bMixMetadataEnbl) {
     /* [vn MixMedata()] */
 #if 0
     if (buildDcaExtSSHeaderMixMetadata(handle, &param->mixMetadata) < 0)
@@ -203,19 +144,23 @@ int buildDcaExtSSHeaderStaticFields(
   return 0;
 }
 
-size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
+#define COMPUTE_NUNUMBITS4SAMASK(res, mask)                                   \
+  do {                                                                        \
+    unsigned _siz = 4;                                                        \
+    for (; _siz < lb_fast_log2_32(mask); _siz += 4)                           \
+      ;                                                                       \
+    *(res) = _siz;                                                            \
+  } while(0)
+
+static size_t _computeDcaExtSSAssetDescSFSize(
   const DcaAudioAssetDescSFParameters * param
 )
 {
-  size_t size;
-
-  unsigned ns, nCh;
-  unsigned spkrMaskNbBits;
 
   /* [b1 bAssetTypeDescrPresent] */
-  size = 21; /* Include some other fields */
+  size_t size = 21; /* Include some other fields */
 
-  if (param->assetTypeDescriptorPresent) {
+  if (param->bAssetTypeDescrPresent) {
     /* [u4 nuAssetTypeDescriptor] */
     size += 4;
   }
@@ -223,7 +168,7 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
   /* [b1 bLanguageDescrPresent] */
   /* Already counted */
 
-  if (param->languageDescriptorPresent) {
+  if (param->bLanguageDescrPresent) {
     /* [v24 LanguageDescriptor] */
     size += DTS_EXT_SS_LANGUAGE_DESC_SIZE;
   }
@@ -231,10 +176,10 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
   /* [b1 bInfoTextPresent] */
   /* Already counted */
 
-  if (param->infoTextPresent) {
+  if (param->bInfoTextPresent) {
     /* [u10 nuInfoTextByteSize] */
     /* [v<nuInfoTextByteSize> InfoTextString] */
-    size += 10 + 8 * param->infoTextLength;
+    size += 10 + 8 * param->nuInfoTextByteSize;
   }
 
   /* [u5 nuBitResolution] */
@@ -243,13 +188,13 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
   /* [b1 bOne2OneMapChannels2Speakers] */
   /* Already counted */
 
-  if (param->directSpeakersFeed) {
-    if (2 < param->nbChannels) {
+  if (param->bOne2OneMapChannels2Speakers) {
+    if (2 < param->nuTotalNumChs) {
       /* [b1 bEmbeddedStereoFlag] */
       size++;
     }
 
-    if (6 < param->nbChannels) {
+    if (6 < param->nuTotalNumChs) {
       /* [b1 bEmbeddedSixChFlag] */
       size++;
     }
@@ -257,32 +202,29 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
     /* [b1 bSpkrMaskEnabled] */
     size += 4; /* Include some other fields */
 
-    spkrMaskNbBits = 0;
-
+    unsigned nuNumBits4SAMask = 0;
     if (param->bSpkrMaskEnabled) {
-      COMPUTE_NUNUMBITS4SAMASK(spkrMaskNbBits, param->nuSpkrActivityMask);
+      COMPUTE_NUNUMBITS4SAMASK(&nuNumBits4SAMask, param->nuSpkrActivityMask);
 
       /* [u2 nuNumBits4SAMask] */
       /* [v<nuNumBits4SAMask> nuSpkrActivityMask] */
-      size += 2 + spkrMaskNbBits;
+      size += 2 + nuNumBits4SAMask;
     }
 
     /* [u3 nuNumSpkrRemapSets] */
     /* Already counted */
 
     /* [v<nuNumBits4SAMask * nuNumSpkrRemapSets> nuStndrSpkrLayoutMask] */
-    size += spkrMaskNbBits * param->nuNumSpkrRemapSets;
+    size += nuNumBits4SAMask * param->nuNumSpkrRemapSets;
 
-    for (ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
+    for (unsigned ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [u5 nuNumDecCh4Remap[ns]] */
       size += 5;
 
-      for (nCh = 0; nCh < param->nbChsInRemapSet[ns]; nCh++) {
+      for (unsigned nCh = 0; nCh < param->nuNumSpeakers[ns]; nCh++) {
         /* [v<nuNumDecCh4Remap> nuRemapDecChMask] */
-        size += param->nbChRequiredByRemapSet[ns];
-
         /* [u<5 * nCoef> nuSpkrRemapCodes[ns][nCh][nc]] */
-        size += 5 * param->nbRemapCoeffCodes[ns][nCh];
+        size += param->nuNumDecCh4Remap[ns] + 5 * param->nCoeff[ns][nCh];
       }
     }
   }
@@ -294,255 +236,139 @@ size_t computeDcaExtSSAssetDescriptorStaticFieldsSize(
   return size;
 }
 
-int buildDcaExtSSAssetDescriptorStaticFields(
+static int _buildDcaExtSSAssetDescSF(
   DtsPatcherBitstreamHandlePtr handle,
   const DcaAudioAssetDescSFParameters * param
 )
 {
-  int ret;
-
-  int64_t i;
-  unsigned ns, nCh, nc;
-
-  unsigned spkrMaskNbBits;
 
   /* [b1 bAssetTypeDescrPresent] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->assetTypeDescriptorPresent
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bAssetTypeDescrPresent, 1, return -1);
 
-  if (param->assetTypeDescriptorPresent) {
+  if (param->bAssetTypeDescrPresent) {
     /* [u4 nuAssetTypeDescriptor] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->assetTypeDescriptor,
-      4
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuAssetTypeDescriptor, 4, return -1);
   }
 
   /* [b1 bLanguageDescrPresent] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->languageDescriptorPresent
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bLanguageDescrPresent, 1, return -1);
 
-  if (param->languageDescriptorPresent) {
+  if (param->bLanguageDescrPresent) {
     /* [v24 LanguageDescriptor] */
-    for (i = 0; i < DTS_EXT_SS_LANGUAGE_DESC_SIZE; i++) {
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->languageDescriptor[i],
-        8
-      );
-      if (ret < 0)
-        return -1;
+    for (unsigned i = 0; i < DTS_EXT_SS_LANGUAGE_DESC_SIZE; i++) {
+      WRITE_BITS(handle, param->LanguageDescriptor[i], 8, return -1);
     }
   }
 
   /* [b1 bInfoTextPresent] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->infoTextPresent
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bInfoTextPresent, 1, return -1);
 
-  if (param->infoTextPresent) {
+  if (param->bInfoTextPresent) {
     /* [u10 nuInfoTextByteSize] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->infoTextLength - 1,
-      10
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuInfoTextByteSize - 1, 10, return -1);
 
     /* [v<nuInfoTextByteSize> InfoTextString] */
-    for (i = 0; i < param->infoTextLength; i++) {
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->infoText[i],
-        8
-      );
-      if (ret < 0)
-        return -1;
+    for (unsigned i = 0; i < param->nuInfoTextByteSize; i++) {
+      WRITE_BITS(handle, param->InfoTextString[i], 8, return -1);
     }
   }
 
   /* [u5 nuBitResolution] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->bitDepth - 1,
-    5
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuBitResolution - 1, 5, return -1);
 
   /* [u4 nuMaxSampleRate] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->maxSampleRateCode,
-    4
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuMaxSampleRate, 4, return -1);
 
   /* [u8 nuTotalNumChs] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->nbChannels - 1,
-    8
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuTotalNumChs - 1, 8, return -1);
 
   /* [b1 bOne2OneMapChannels2Speakers] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->directSpeakersFeed
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bOne2OneMapChannels2Speakers, 1, return -1);
 
-  if (param->directSpeakersFeed) {
-    if (2 < param->nbChannels) {
+  if (param->bOne2OneMapChannels2Speakers) {
+    if (2 < param->nuTotalNumChs) {
       /* [b1 bEmbeddedStereoFlag] */
-      ret = writeBitDtsPatcherBitstreamHandle(
-        handle,
-        param->embeddedStereoDownmix
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->bEmbeddedStereoFlag, 1, return -1);
     }
 
-    if (6 < param->nbChannels) {
+    if (6 < param->nuTotalNumChs) {
       /* [b1 bEmbeddedSixChFlag] */
-      ret = writeBitDtsPatcherBitstreamHandle(
-        handle,
-        param->embeddedSurround6chDownmix
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->bEmbeddedSixChFlag, 1, return -1);
     }
 
     /* [b1 bSpkrMaskEnabled] */
-    ret = writeBitDtsPatcherBitstreamHandle(
-      handle,
-      param->bSpkrMaskEnabled
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->bSpkrMaskEnabled, 1, return -1);
 
-    spkrMaskNbBits = 0;
-
+    unsigned nuNumBits4SAMask = 0;
     if (param->bSpkrMaskEnabled) {
-      COMPUTE_NUNUMBITS4SAMASK(spkrMaskNbBits, param->nuSpkrActivityMask);
+      COMPUTE_NUNUMBITS4SAMASK(&nuNumBits4SAMask, param->nuSpkrActivityMask);
 
       /* [u2 nuNumBits4SAMask] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        (spkrMaskNbBits >> 2) - 1,
-        2
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, (nuNumBits4SAMask >> 2) - 1, 2, return -1);
 
       /* [v<nuNumBits4SAMask> nuSpkrActivityMask] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->nuSpkrActivityMask,
-        spkrMaskNbBits
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->nuSpkrActivityMask, nuNumBits4SAMask, return -1);
     }
 
     /* [u3 nuNumSpkrRemapSets] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->nuNumSpkrRemapSets,
-      3
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuNumSpkrRemapSets, 3, return -1);
 
-    for (ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
+    for (unsigned ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [v<nuNumBits4SAMask> nuStndrSpkrLayoutMask] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->nuStndrSpkrLayoutMask[ns],
-        spkrMaskNbBits
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->nuStndrSpkrLayoutMask[ns], nuNumBits4SAMask, return -1);
     }
 
-    for (ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
+    for (unsigned ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [u5 nuNumDecCh4Remap[ns]] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->nbChRequiredByRemapSet[ns] - 1,
-        5
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->nuNumDecCh4Remap[ns] - 1, 5, return -1);
 
-      for (nCh = 0; nCh < param->nbChsInRemapSet[ns]; nCh++) {
+      for (unsigned nCh = 0; nCh < param->nuNumSpeakers[ns]; nCh++) {
         /* [v<nuNumDecCh4Remap> nuRemapDecChMask] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
+        WRITE_BITS(
           handle,
           param->nuRemapDecChMask[ns][nCh],
-          param->nbChRequiredByRemapSet[ns]
+          param->nuNumDecCh4Remap[ns],
+          return -1
         );
-        if (ret < 0)
-          return -1;
 
-        for (nc = 0; nc < param->nbRemapCoeffCodes[ns][nCh]; nc++) {
+        for (unsigned nc = 0; nc < param->nCoeff[ns][nCh]; nc++) {
           /* [u5 nuSpkrRemapCodes[ns][nCh][nc]] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->outputSpkrRemapCoeffCodes[ns][nCh][nc],
-            5
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, param->nuSpkrRemapCodes[ns][nCh][nc], 5, return -1);
         }
       }
     }
   }
   else {
     /* [u3 nuRepresentationType] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->representationType,
-      3
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuRepresentationType, 3, return -1);
   }
 
   return 0;
 }
 
-size_t computeDcaExtSSAssetDescriptorDynamicMetadataSize(
+/** \~english
+ * \brief Return the length in bits of the dynamic metadata section fields of
+ * Extension Substream Asset Descriptor based on given parameters.
+ *
+ * \param param Ext SS Asset Descriptor dynamic metadata fields parameters.
+ * \param ad_sf Ext SS Asset Descriptor static fields
+ * parameters.
+ * \param sf Ext SS Static Fields parameters. Can be NULL,
+ * if so Static Fields are considered as absent.
+ * \return size_t Computed length in bits.
+ */
+static size_t _computeDcaExtSSAssetDescDMSize(
   const DcaAudioAssetDescDMParameters * param,
-  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam
+  const DcaAudioAssetDescSFParameters * ad_sf,
+  bool bStaticFieldsPresent,
+  const DcaExtSSHeaderSFParameters * sf
 )
 {
-  size_t size;
 
   /* [b1 bDRCCoefPresent] */
-  size = 2; /* Include some other fields */
+  size_t size = 2; /* Include some other fields */
 
-  if (param->drcEnabled) {
+  if (param->bDRCCoefPresent) {
     /* [u8 nuDRCCode] */
     size += 8;
   }
@@ -550,17 +376,17 @@ size_t computeDcaExtSSAssetDescriptorDynamicMetadataSize(
   /* [b1 bDialNormPresent] */
   /* Already counted */
 
-  if (param->dialNormEnabled) {
+  if (param->bDialNormPresent) {
     /* [u5 nuDialNormCode] */
     size += 5;
   }
 
-  if (param->drcEnabled && assetStaticFieldsParam->embeddedStereoDownmix) {
+  if (param->bDRCCoefPresent && ad_sf->bEmbeddedStereoFlag) {
     /* [u8 nuDRC2ChDmixCode] */
     size += 8;
   }
 
-  if ((NULL != staticFieldsParam) && staticFieldsParam->mixMetadataEnabled) {
+  if (bStaticFieldsPresent && sf->bMixMetadataEnbl) {
     /* [b1 bMixMetadataPresent] */
     size++;
   }
@@ -570,63 +396,39 @@ size_t computeDcaExtSSAssetDescriptorDynamicMetadataSize(
   return size;
 }
 
-int buildDcaExtSSAssetDescriptorDynamicMetadata(
+static int _buildDcaExtSSAssetDescDM(
   DtsPatcherBitstreamHandlePtr handle,
   const DcaAudioAssetDescDMParameters * param,
-  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam
+  const DcaAudioAssetDescSFParameters * ad_sf,
+  bool bStaticFieldsPresent,
+  const DcaExtSSHeaderSFParameters * sf
 )
 {
-  int ret;
-
-  bool staticFieldsPresent;
-
-  /* unsigned ns, nE, nCh, nC; */
 
   /* [b1 bDRCCoefPresent] */
-  if (writeBitDtsPatcherBitstreamHandle(handle, param->drcEnabled) < 0)
-    return -1;
+  WRITE_BITS(handle, param->bDRCCoefPresent, 1, return -1);
 
-  if (param->drcEnabled) {
+  if (param->bDRCCoefPresent) {
     /* [u8 nuDRCCode] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle, param->drcParameters.drcCode, 8
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuDRCCode, 8, return -1);
   }
 
   /* [b1 bDialNormPresent] */
-  if (writeBitDtsPatcherBitstreamHandle(handle, param->dialNormEnabled) < 0)
-    return -1;
+  WRITE_BITS(handle, param->bDialNormPresent, 1, return -1);
 
-  if (param->dialNormEnabled) {
+  if (param->bDialNormPresent) {
     /* [u5 nuDialNormCode] */
-    if (writeBitsDtsPatcherBitstreamHandle(handle, param->dialNormCode, 5) < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuDialNormCode, 5, return -1);
   }
 
-  if (param->drcEnabled && assetStaticFieldsParam->embeddedStereoDownmix) {
+  if (param->bDRCCoefPresent && ad_sf->bEmbeddedStereoFlag) {
     /* [u8 nuDRC2ChDmixCode] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->drcParameters.drc2ChCode,
-      8
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->nuDRC2ChDmixCode, 8, return -1);
   }
 
-  staticFieldsPresent = (NULL != staticFieldsParam);
-
-  if (staticFieldsPresent && staticFieldsParam->mixMetadataEnabled) {
+  if (bStaticFieldsPresent && sf->bMixMetadataEnbl) {
     /* [b1 bMixMetadataPresent] */
-    ret = writeBitDtsPatcherBitstreamHandle(
-      handle,
-      param->mixMetadataPresent
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->bMixMetadataPresent, 1, return -1);
   }
 
 #if DCA_EXT_SS_DISABLE_MIX_META_SUPPORT
@@ -636,11 +438,11 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
       "not supported in this compiled program version"
     );
 #else
-  if (param->mixMetadataPresent) {
+  if (param->bMixMetadataPresent) {
     LIBBLU_DTS_ERROR_RETURN("WORK IN PROGRESS LINE %u.\n", __LINE__);
     /**
      * TODO: Complete.
-     * Don't forget to update buildDcaExtSSAssetDescriptorDynamicMetadata().
+     * Don't forget to update _buildDcaExtSSAssetDescDM().
      */
   }
 #endif
@@ -660,15 +462,15 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
     /* [u2 nuControlMixerDRC] */
     if (readBits(file, &value, 2) < 0)
       return -1;
-    param->mixMetadata.drcMixerControlCode = value;
+    param->mixMetadata.nuControlMixerDRC = value;
 
-    if (param->mixMetadata.drcMixerControlCode < 3) {
+    if (param->mixMetadata.nuControlMixerDRC < 3) {
       /* [u3 nuLimit4EmbeddedDRC] */
       if (readBits(file, &value, 3) < 0)
         return -1;
       param->mixMetadata.limitDRCPriorMix = value;
     }
-    else if (param->mixMetadata.drcMixerControlCode == 3) {
+    else if (param->mixMetadata.nuControlMixerDRC == 3) {
       /* [u8 nuCustomDRCCode] */
       if (readBits(file, &value, 8) < 0)
         return -1;
@@ -682,13 +484,13 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
 
     for (
       ns = 0;
-      ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs;
+      ns < sf->mixMetadata.nuNumMixOutConfigs;
       ns++
     ) {
       if (param->mixMetadata.perMainAudioChSepScal) {
         for (
           nCh = 0;
-          nCh < staticFieldsParam->mixMetadata.nbMixOutputChannels[ns];
+          nCh < sf->mixMetadata.nbMixOutputChannels[ns];
           nCh++
         ) {
           /* [u6 nuMainAudioScaleCode[ns][nCh]] // Unique per channel */
@@ -709,46 +511,46 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
      * Preparing Down-mixes properties for mix parameters
      * (Main complete mix is considered as the first one) :
      */
-    param->mixMetadata.nbDownMixes = 1;
-    param->mixMetadata.nbChPerDownMix[0] = assetStaticFieldsParam->nbChannels;
+    param->mixMetadata.nEmDM = 1;
+    param->mixMetadata.nDecCh[0] = ad_sf->nbChannels;
 
-    if (assetStaticFieldsParam->embeddedSurround6chDownmix) {
-      param->mixMetadata.nbChPerDownMix[param->mixMetadata.nbDownMixes] = 6;
-      param->mixMetadata.nbDownMixes++;
+    if (ad_sf->embeddedSurround6chDownmix) {
+      param->mixMetadata.nDecCh[param->mixMetadata.nEmDM] = 6;
+      param->mixMetadata.nEmDM++;
     }
 
-    if (assetStaticFieldsParam->embeddedStereoDownmix) {
-      param->mixMetadata.nbChPerDownMix[param->mixMetadata.nbDownMixes] = 2;
-      param->mixMetadata.nbDownMixes++;
+    if (ad_sf->embeddedStereoDownmix) {
+      param->mixMetadata.nDecCh[param->mixMetadata.nEmDM] = 2;
+      param->mixMetadata.nEmDM++;
     }
 
-    for (ns = 0; ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs; ns++) {
+    for (ns = 0; ns < sf->mixMetadata.nuNumMixOutConfigs; ns++) {
       /* Mix Configurations loop */
-      for (nE = 0; nE < param->mixMetadata.nbDownMixes; nE++) {
+      for (nE = 0; nE < param->mixMetadata.nEmDM; nE++) {
         /* Embedded downmix loop */
-        for (nCh = 0; nCh < param->mixMetadata.nbChPerDownMix[nE]; nCh++) {
+        for (nCh = 0; nCh < param->mixMetadata.nDecCh[nE]; nCh++) {
           /* Supplemental Channel loop */
 
           /* [v<nNumMixOutCh[ns]> nuMixMapMask[ns][nE][nCh]] */
           if (
             readBits(
               file, &value,
-              staticFieldsParam->mixMetadata.nbMixOutputChannels[ns]
+              sf->mixMetadata.nbMixOutputChannels[ns]
             ) < 0
           )
             return -1;
-          param->mixMetadata.mixOutputMappingMask[ns][nE][nCh] = value;
+          param->mixMetadata.nuMixMapMask[ns][nE][nCh] = value;
 
           /* [0 nuNumMixCoefs[ns][nE][nCh]] */
-          param->mixMetadata.mixOutputMappingNbCoeff[ns][nE][nCh] =
-            _nbBitsSetTo1(param->mixMetadata.mixOutputMappingMask[ns][nE][nCh])
+          param->mixMetadata.nuNumMixCoefs[ns][nE][nCh] =
+            _nbBitsSetTo1(param->mixMetadata.nuMixMapMask[ns][nE][nCh])
           ;
 
-          for (nC = 0; nC < param->mixMetadata.mixOutputMappingNbCoeff[ns][nE][nCh]; nC++) {
+          for (nC = 0; nC < param->mixMetadata.nuNumMixCoefs[ns][nE][nCh]; nC++) {
             /* [u6 nuMixCoeffs[ns][nE][nCh][nC]] */
             if (readBits(file, &value, 6) < 0)
               return -1;
-            param->mixMetadata.mixOutputCoefficients[ns][nE][nCh][nC] = value;
+            param->mixMetadata.nuMixCoeffs[ns][nE][nCh][nC] = value;
           }
         }
       }
@@ -759,23 +561,33 @@ int buildDcaExtSSAssetDescriptorDynamicMetadata(
   return 0;
 }
 
-size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
+#define COMPUTE_NUBITSINITDECDLY(res, delay_value)                            \
+  do {                                                                        \
+    *(res) = MAX(1, lb_fast_log2_32(delay_value));                            \
+  } while(0)
+
+/** \~english
+ * \brief Return the length in bits of the decoder navigation data section
+ * fields of Extension Substream Asset Descriptor based on given parameters.
+ *
+ * \param param Ext SS Asset Descriptor decoder navigation data fields
+ * parameters.
+ * \return size_t Computed length in bits.
+ */
+static size_t _computeDcaExtSSAssetDescDNDSize(
   const DcaAudioAssetDescDecNDParameters * param,
-  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
-  const DcaAudioAssetDescDMParameters * dynMetadataParam,
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
-  const size_t nuBits4ExSSFsize
+  const DcaAudioAssetDescSFParameters * ad_sf,
+  const DcaAudioAssetDescDMParameters * ad_md,
+  bool bStaticFieldsPresent,
+  const DcaExtSSHeaderSFParameters * sf,
+  unsigned nuBits4ExSSFsize
 )
 {
-  size_t size;
-
-  unsigned ns;
-
-  uint32_t bits4InitLLDecDly;
 
   /* [u2 nuCodingMode] */
-  size = 3; /* Include some other fields */
+  size_t size = 3; /* Include some other fields */
 
+  const DcaAudioAssetDescDecNDCodingComponents * cc = &param->coding_components;
   switch (param->nuCodingMode) {
     case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
       /* DTS-HD component(s). */
@@ -783,15 +595,12 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       /* [u12 nuCoreExtensionMask] */
       size += 12;
 
-      if (
-        param->nuCoreExtensionMask
-        & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
-      ) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
         /* [u14 nuExSSCoreFsize] */
         /* [b1 bExSSCoreSyncPresent] */
         size += 15;
 
-        if (param->codingComponents.extSSCore.syncWordPresent) {
+        if (cc->ExSSCore.bExSSCoreSyncPresent) {
           /* [u2 nuExSSCoreSyncDistInFrames] */
           size += 2;
         }
@@ -817,7 +626,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
         /* [b1 bExSSLBRSyncPresent] */
         size += 15;
 
-        if (param->codingComponents.extSSLbr.syncWordPresent) {
+        if (cc->ExSSLBR.bExSSLBRSyncPresent) {
           /* [u2 nuExSSLBRSyncDistInFrames] */
           size += 2;
         }
@@ -828,17 +637,18 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
         /* [b1 bExSSXLLSyncPresent] */
         size += nuBits4ExSSFsize + 1;
 
-        if (param->codingComponents.extSSXll.syncWordPresent) {
+        if (cc->ExSSXLL.bExSSXLLSyncPresent) {
+          unsigned nuBitsInitDecDly;
           COMPUTE_NUBITSINITDECDLY(
-            bits4InitLLDecDly,
-            param->codingComponents.extSSXll.initialXllDecodingDelayInFrames
+            &nuBitsInitDecDly,
+            cc->ExSSXLL.nuInitLLDecDlyFrames
           );
 
           /* [u4 nuPeakBRCntrlBuffSzkB] */
           /* [u5 nuBitsInitDecDly] */
           /* [u<nuBitsInitDecDly> nuInitLLDecDlyFrames] */
           /* [u<nuBits4ExSSFsize> nuExSSXLLSyncOffset] */
-          size += 9 + bits4InitLLDecDly + nuBits4ExSSFsize;
+          size += 9 + nuBitsInitDecDly + nuBits4ExSSFsize;
         }
       }
 
@@ -861,17 +671,18 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       /* [b1 bExSSXLLSyncPresent] */
       size += nuBits4ExSSFsize + 1;
 
-      if (param->codingComponents.extSSXll.syncWordPresent) {
+      if (cc->ExSSXLL.bExSSXLLSyncPresent) {
+        unsigned nuBitsInitDecDly;
         COMPUTE_NUBITSINITDECDLY(
-          bits4InitLLDecDly,
-          param->codingComponents.extSSXll.initialXllDecodingDelayInFrames
+          &nuBitsInitDecDly,
+          cc->ExSSXLL.nuInitLLDecDlyFrames
         );
 
         /* [u4 nuPeakBRCntrlBuffSzkB] */
         /* [u5 nuBitsInitDecDly] */
         /* [u<nuBitsInitDecDly> nuInitLLDecDlyFrames] */
         /* [u<nuBits4ExSSFsize> nuExSSXLLSyncOffset] */
-        size += 9 + bits4InitLLDecDly + nuBits4ExSSFsize;
+        size += 9 + nuBitsInitDecDly + nuBits4ExSSFsize;
       }
       break;
 
@@ -882,7 +693,7 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       /* [b1 bExSSLBRSyncPresent] */
       size += 15;
 
-      if (param->codingComponents.extSSLbr.syncWordPresent) {
+      if (cc->ExSSLBR.bExSSLBRSyncPresent) {
         /* [u2 nuExSSLBRSyncDistInFrames] */
         size += 2;
       }
@@ -892,11 +703,11 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
       /* Auxiliary audio coding. */
 
       /* [u14 nuExSSAuxFsize] */
-      /* [u8 nuAuxCodecId] */
+      /* [u8 nuAuxCodecID] */
       /* [b1 bExSSAuxSyncPresent] */
       size += 23;
 
-      if (param->auxilaryCoding.syncWordPresent) {
+      if (param->auxilary_coding.bExSSAuxSyncPresent) {
         /* [u2 nuExSSAuxSyncDistInFrames] */
         size += 2;
       }
@@ -910,32 +721,23 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
   }
 
   if (
-    assetStaticFieldsParam->directSpeakersFeed
-    && NULL != staticFieldsParam
-    && staticFieldsParam->mixMetadataEnabled
-    && !dynMetadataParam->mixMetadataPresent
+    ad_sf->bOne2OneMapChannels2Speakers
+    && bStaticFieldsPresent
+    && sf->bMixMetadataEnbl
+    && !ad_md->bMixMetadataPresent
   ) {
     /* [b1 bOnetoOneMixingFlag] */
     size++;
   }
 
-  if (param->mixMetadata.oneTrackToOneChannelMix) {
+  if (param->bOnetoOneMixingFlag) {
     /* [b1 bEnblPerChMainAudioScale] */
     size++;
 
-    for (
-      ns = 0;
-      ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs;
-      ns++
-    ) {
-      if (param->mixMetadata.perChannelMainAudioScaleCode) {
-        /**
-         * [
-         *  u<6 * nNumMixOutCh[ns]>
-         *  nuMainAudioScaleCode[ns][nCh]
-         * ]
-         */
-        size += 6 * staticFieldsParam->mixMetadata.nNumMixOutCh[ns];
+    for (unsigned ns = 0; ns < sf->mixMetadata.nuNumMixOutConfigs; ns++) {
+      if (param->bEnblPerChMainAudioScale) {
+        /* [u<6 * nNumMixOutCh[ns]> nuMainAudioScaleCode[ns][nCh]] */
+        size += 6 * sf->mixMetadata.nNumMixOutCh[ns];
       }
       else {
         /* [u6 nuMainAudioScaleCode[ns][0]] */
@@ -948,18 +750,18 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
   /* Already counted */
 
 #if DCA_EXT_SS_ENABLE_DRC_2
-  if (param->extraDataPresent) {
+  if (param->extra_data_pres) {
     /* [b1 bDRCMetadataRev2Present] */
     size++;
 
-    if (param->drcRev2Present) {
+    if (param->bDRCMetadataRev2Present) {
       /* [u4 DRCversion_Rev2] */
       size += 4;
 
-      if (param->drcRev2.Hdr_Version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
+      if (DCA_EXT_SS_DRC_REV_2_VERSION_1 == param->DRCversion_Rev2) {
         /* [0 nRev2_DRCs] */
         /* [u<8*nRev2_DRCs> DRCCoeff_Rev2[subsubFrame]] */
-        size += 8 * (staticFieldsParam->frameDurationCodeValue / 256);
+        size += 8 * (sf->nuExSSFrameDurationCode / 256);
       }
     }
   }
@@ -968,216 +770,115 @@ size_t computeDcaExtSSAssetDescriptorDecNavDataSize(
   return size;
 }
 
-int buildDcaExtSSAssetDescriptorDecNavData(
+static int _buildDcaExtSSAssetDescDND(
   DtsPatcherBitstreamHandlePtr handle,
   const DcaAudioAssetDescDecNDParameters * param,
-  const DcaAudioAssetDescSFParameters * assetStaticFieldsParam,
-  const DcaAudioAssetDescDMParameters * dynMetadataParam,
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
-  const size_t nuBits4ExSSFsize
+  const DcaAudioAssetDescSFParameters * ad_sf,
+  const DcaAudioAssetDescDMParameters * ad_dm,
+  bool bStaticFieldsPresent,
+  const DcaExtSSHeaderSFParameters * sf,
+  size_t nuBits4ExSSFsize
 )
 {
-  int ret;
-
-  unsigned ns, nCh;
-
-  uint32_t bits4InitLLDecDly;
 
   /* [u2 nuCodingMode] */
-  if (writeBitsDtsPatcherBitstreamHandle(handle, param->nuCodingMode, 2) < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuCodingMode, 2, return -1);
 
+  const DcaAudioAssetDescDecNDCodingComponents * cc = &param->coding_components;
   switch (param->nuCodingMode) {
     case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
       /* DTS-HD component(s). */
 
       /* [u12 nuCoreExtensionMask] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->nuCoreExtensionMask,
-        12
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->nuCoreExtensionMask, 12, return -1);
 
-      if (
-        param->nuCoreExtensionMask
-        & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
-      ) {
+      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
+        const DcaAudioAssetExSSCoreParameters * p = &cc->ExSSCore;
+
         /* [u14 nuExSSCoreFsize] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSCore.size - 1,
-          14
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->nuExSSCoreFsize - 1, 14, return -1);
 
         /* [b1 bExSSCoreSyncPresent] */
-        ret = writeBitDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSCore.syncWordPresent
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->bExSSCoreSyncPresent, 1, return -1);
 
-        if (param->codingComponents.extSSCore.syncWordPresent) {
+        if (p->bExSSCoreSyncPresent) {
           /* [u2 nuExSSCoreSyncDistInFrames] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->codingComponents.extSSCore.syncDistanceInFramesCode,
-            2
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, p->nuExSSCoreSyncDistInFrames, 2, return -1);
         }
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
+        const DcaAudioAssetExSSXBRParameters * p = &cc->ExSSXBR;
+
         /* [u14 nuExSSXBRFsize] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSXbr.size - 1,
-          14
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->nuExSSXBRFsize - 1, 14, return -1);
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
+        const DcaAudioAssetExSSXXCHParameters * p = &cc->ExSSXXCH;
+
         /* [u14 nuExSSXXCHFsize] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSXxch.size - 1,
-          14
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->nuExSSXXCHFsize - 1, 14, return -1);
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
+        const DcaAudioAssetExSSX96Parameters * p = &cc->ExSSX96;
+
         /* [u12 nuExSSX96Fsize] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSX96.size - 1,
-          12
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->nuExSSX96Fsize - 1, 12, return -1);
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
+        const DcaAudioAssetExSSLBRParameters * p = &cc->ExSSLBR;
+
         /* [u14 nuExSSLBRFsize] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSLbr.size - 1,
-          14
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->nuExSSLBRFsize - 1, 14, return -1);
 
         /* [b1 bExSSLBRSyncPresent] */
-        ret = writeBitDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSLbr.syncWordPresent
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->bExSSLBRSyncPresent, 1, return -1);
 
-        if (param->codingComponents.extSSLbr.syncWordPresent) {
+        if (p->bExSSLBRSyncPresent) {
           /* [u2 nuExSSLBRSyncDistInFrames] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->codingComponents.extSSLbr.syncDistanceInFramesCode,
-            2
-          );
+          WRITE_BITS(handle, p->nuExSSLBRSyncDistInFrames, 2, return -1);
         }
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
+        const DcaAudioAssetExSSXllParameters * p = &cc->ExSSXLL;
+
         /* [u<nuBits4ExSSFsize> nuExSSXLLFsize] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSXll.size - 1,
-          nuBits4ExSSFsize
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->nuExSSXLLFsize - 1, nuBits4ExSSFsize, return -1);
 
         /* [b1 bExSSXLLSyncPresent] */
-        ret = writeBitDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.extSSXll.syncWordPresent
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, p->bExSSXLLSyncPresent, 1, return -1);
 
-        if (param->codingComponents.extSSXll.syncWordPresent) {
+        if (p->bExSSXLLSyncPresent) {
           /* [u4 nuPeakBRCntrlBuffSzkB] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->codingComponents.extSSXll.peakBitRateSmoothingBufSize >> 4,
-            4
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, p->nuPeakBRCntrlBuffSzkB >> 4, 4, return -1);
 
-          COMPUTE_NUBITSINITDECDLY(
-            bits4InitLLDecDly,
-            param->codingComponents.extSSXll.initialXllDecodingDelayInFrames
-          );
+          uint32_t nuBitsInitDecDly;
+          COMPUTE_NUBITSINITDECDLY(&nuBitsInitDecDly, p->nuInitLLDecDlyFrames);
 
           /* [u5 nuBitsInitDecDly] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            bits4InitLLDecDly - 1,
-            5
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, nuBitsInitDecDly - 1, 5, return -1);
 
           /* [u<nuBitsInitDecDly> nuInitLLDecDlyFrames] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->codingComponents.extSSXll.initialXllDecodingDelayInFrames,
-            bits4InitLLDecDly
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, p->nuInitLLDecDlyFrames, nuBitsInitDecDly, return -1);
 
           /* [u<nuBits4ExSSFsize> nuExSSXLLSyncOffset] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->codingComponents.extSSXll.nbBytesOffXllSync,
-            nuBits4ExSSFsize
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, p->nuExSSXLLSyncOffset, nuBits4ExSSFsize, return -1);
         }
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_RESERVED_1) {
         /* [v16 *Ignore*] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.reservedExtension1_data,
-          16
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, cc->res_ext_1_data, 16, return -1);
       }
 
       if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_RESERVED_2) {
         /* [v16 *Ignore*] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->codingComponents.reservedExtension2_data,
-          16
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, cc->res_ext_2_data, 16, return -1);
       }
-
       break;
 
     case DCA_EXT_SS_CODING_MODE_DTS_HD_LOSSLESS_WITHOUT_CORE:
@@ -1191,19 +892,19 @@ int buildDcaExtSSAssetDescriptorDecNavData(
       /* [u<nuBits4ExSSFsize> nuExSSXLLFsize] */
       if (readBits(file, &value, nuBits4ExSSFsize) < 0)
         return -1;
-      param->codingComponents.extSSXll.size = value + 1;
+      cc->extSSXll.size = value + 1;
 
       /* [b1 bExSSXLLSyncPresent] */
       if (readBits(file, &value, 1) < 0)
         return -1;
-      param->codingComponents.extSSXll.syncWordPresent = value;
+      cc->extSSXll.syncWordPresent = value;
 
-      if (param->codingComponents.extSSXll.syncWordPresent) {
+      if (cc->extSSXll.syncWordPresent) {
         /* [u4 nuPeakBRCntrlBuffSzkB] */
         if (readBits(file, &value, 4) < 0)
           return -1;
-        param->codingComponents.extSSXll.peakBitRateSmoothingBufSizeCode = value;
-        param->codingComponents.extSSXll.peakBitRateSmoothingBufSize = value << 4;
+        cc->extSSXll.peakBitRateSmoothingBufSizeCode = value;
+        cc->extSSXll.peakBitRateSmoothingBufSize = value << 4;
 
         /* [u5 nuBitsInitDecDly] */
         if (readBits(file, &value, 5) < 0)
@@ -1212,12 +913,12 @@ int buildDcaExtSSAssetDescriptorDecNavData(
         /* [u<nuBitsInitDecDly> nuInitLLDecDlyFrames] */
         if (readBits(file, &value, value + 1) < 0)
           return -1;
-        param->codingComponents.extSSXll.initialXllDecodingDelayInFrames = value;
+        cc->extSSXll.initialXllDecodingDelayInFrames = value;
 
         /* [u<nuBits4ExSSFsize> nuExSSXLLSyncOffset] */
         if (readBits(file, &value, nuBits4ExSSFsize) < 0)
           return -1;
-        param->codingComponents.extSSXll.nbBytesOffXllSync = value;
+        cc->extSSXll.nbBytesOffXllSync = value;
       }
 #endif
 
@@ -1235,19 +936,19 @@ int buildDcaExtSSAssetDescriptorDecNavData(
       /* [u14 nuExSSLBRFsize] */
       if (readBits(file, &value, 14) < 0)
         return -1;
-      param->codingComponents.extSSLbr.size = value + 1;
+      cc->extSSLbr.size = value + 1;
 
       /* [b1 bExSSLBRSyncPresent] */
       if (readBits(file, &value, 1) < 0)
         return -1;
-      param->codingComponents.extSSLbr.syncWordPresent = value;
+      cc->extSSLbr.syncWordPresent = value;
 
-      if (param->codingComponents.extSSLbr.syncWordPresent) {
+      if (cc->extSSLbr.syncWordPresent) {
         /* [u2 nuExSSLBRSyncDistInFrames] */
         if (readBits(file, &value, 2) < 0)
           return -1;
-        param->codingComponents.extSSLbr.syncDistanceInFramesCode = value;
-        param->codingComponents.extSSLbr.syncDistanceInFrames = 1 << value;
+        cc->extSSLbr.syncDistanceInFramesCode = value;
+        cc->extSSLbr.syncDistanceInFrames = 1 << value;
       }
       break;
 #endif
@@ -1266,129 +967,77 @@ int buildDcaExtSSAssetDescriptorDecNavData(
       /* [u14 nuExSSAuxFsize] */
       if (readBits(file, &value, 14) < 0)
         return -1;
-      param->auxilaryCoding.size = value + 1;
+      param->auxilary_coding.size = value + 1;
 
-      /* [u8 nuAuxCodecId] */
+      /* [u8 nuAuxCodecID] */
       if (readBits(file, &value, 8) < 0)
         return -1;
-      param->auxilaryCoding.auxCodecId = value;
+      param->auxilary_coding.auxCodecId = value;
 
       /* [b1 bExSSAuxSyncPresent] */
       if (readBits(file, &value, 1) < 0)
         return -1;
-      param->auxilaryCoding.syncWordPresent = value;
+      param->auxilary_coding.syncWordPresent = value;
 
-      if (param->auxilaryCoding.syncWordPresent) {
+      if (param->auxilary_coding.syncWordPresent) {
         /* [u2 nuExSSAuxSyncDistInFrames] */
         if (readBits(file, &value, 2) < 0)
           return -1;
-        param->auxilaryCoding.syncDistanceInFramesCode = value;
-        param->auxilaryCoding.syncDistanceInFrames = 1 << value;
+        param->auxilary_coding.syncDistanceInFramesCode = value;
+        param->auxilary_coding.syncDistanceInFrames = 1 << value;
       }
 #endif
   }
 
   if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
     /* Extension Substream contains DTS-XLL component. */
+    const DcaAudioAssetExSSXllParameters * p = &cc->ExSSXLL;
 
     /* [u3 nuDTSHDStreamID] */
-    ret = writeBitsDtsPatcherBitstreamHandle(
-      handle,
-      param->codingComponents.extSSXll.steamId,
-      3
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, p->nuDTSHDStreamID, 3, return -1);
   }
 
   if (
-    assetStaticFieldsParam->directSpeakersFeed
-    && NULL != staticFieldsParam
-    && staticFieldsParam->mixMetadataEnabled
-    && !dynMetadataParam->mixMetadataPresent
+    ad_sf->bOne2OneMapChannels2Speakers
+    && bStaticFieldsPresent
+    && sf->bMixMetadataEnbl
+    && !ad_dm->bMixMetadataPresent
   ) {
     /* [b1 bOnetoOneMixingFlag] */
-    ret = writeBitDtsPatcherBitstreamHandle(
-      handle,
-      param->mixMetadata.oneTrackToOneChannelMix
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->bOnetoOneMixingFlag, 1, return -1);
   }
 
-  if (param->mixMetadata.oneTrackToOneChannelMix) {
+  if (param->bOnetoOneMixingFlag) {
     /* [b1 bEnblPerChMainAudioScale] */
-    ret = writeBitDtsPatcherBitstreamHandle(
-      handle,
-      param->mixMetadata.perChannelMainAudioScaleCode
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->bEnblPerChMainAudioScale, 1, return -1);
 
-    for (
-      ns = 0;
-      ns < staticFieldsParam->mixMetadata.nuNumMixOutConfigs;
-      ns++
-    ) {
-
-      if (param->mixMetadata.perChannelMainAudioScaleCode) {
-        for (
-          nCh = 0;
-          nCh < staticFieldsParam->mixMetadata.nNumMixOutCh[ns];
-          nCh++
-        ) {
+    for (unsigned ns = 0; ns < sf->mixMetadata.nuNumMixOutConfigs; ns++) {
+      if (param->bEnblPerChMainAudioScale) {
+        for (unsigned nCh = 0; nCh < sf->mixMetadata.nNumMixOutCh[ns]; nCh++) {
           /* [u6 nuMainAudioScaleCode[ns][nCh]] */
-          ret = writeBitsDtsPatcherBitstreamHandle(
-            handle,
-            param->mixMetadata.mainAudioScaleCodes[ns][nCh],
-            6
-          );
-          if (ret < 0)
-            return -1;
+          WRITE_BITS(handle, param->nuMainAudioScaleCode[ns][nCh], 6, return -1);
         }
       }
       else {
         /* [u6 nuMainAudioScaleCode[ns][0]] */
-        ret = writeBitsDtsPatcherBitstreamHandle(
-          handle,
-          param->mixMetadata.mainAudioScaleCodes[ns][0],
-          6
-        );
-        if (ret < 0)
-          return -1;
+        WRITE_BITS(handle, param->nuMainAudioScaleCode[ns][0], 6, return -1);
       }
     }
   }
 
   /* [b1 bDecodeAssetInSecondaryDecoder] */
-  ret = writeBitDtsPatcherBitstreamHandle(
-    handle,
-    param->decodeInSecondaryDecoder
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->bDecodeAssetInSecondaryDecoder, 1, return -1);
 
 #if DCA_EXT_SS_ENABLE_DRC_2
-  if (param->extraDataPresent) {
+  if (param->extra_data_pres) {
     /* [b1 bDRCMetadataRev2Present] */
-    ret = writeBitDtsPatcherBitstreamHandle(
-      handle,
-      param->drcRev2Present
-    );
-    if (ret < 0)
-      return -1;
+    WRITE_BITS(handle, param->bDRCMetadataRev2Present, 1, return -1);
 
-    if (param->drcRev2Present) {
+    if (param->bDRCMetadataRev2Present) {
       /* [u4 DRCversion_Rev2] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->drcRev2.Hdr_Version,
-        4
-      );
-      if (ret < 0)
-        return -1;
+      WRITE_BITS(handle, param->DRCversion_Rev2, 4, return -1);
 
-      if (param->drcRev2.Hdr_Version == DCA_EXT_SS_DRC_REV_2_VERSION_1) {
+      if (DCA_EXT_SS_DRC_REV_2_VERSION_1 == param->DRCversion_Rev2) {
         /* [0 nRev2_DRCs] */
         /* [u<8*nRev2_DRCs> DRCCoeff_Rev2[subsubFrame]] */
         LIBBLU_DTS_ERROR_RETURN(
@@ -1404,177 +1053,174 @@ int buildDcaExtSSAssetDescriptorDecNavData(
   return 0;
 }
 
-size_t computeDcaExtSSAudioAssetDescriptorSize(
+/** \~english
+ * \brief Return the length in bytes of the Extension Substream Asset
+ * Descriptor based on given parameters.
+ *
+ * \param param Ext SS Asset Descriptor parameters.
+ * \param sf Ext SS Static Fields parameters. Can be NULL, if
+ * so Static Fields are considered as absent.
+ * \param nuBits4ExSSFsize 'nuBits4ExSSFsize' value, the size of Ext SS frame
+ * size fields. Defined by 'bHeaderSizeType' field in Ext SS Header.
+ * \return size_t Computed length in bytes.
+ */
+static size_t _computeDcaExtSSAudioAssetDescriptorSize(
   const DcaAudioAssetDescParameters * param,
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
-  const size_t nuBits4ExSSFsize
+  bool bStaticFieldsPresent,
+  const DcaExtSSHeaderSFParameters * sf,
+  uint32_t nuBits4ExSSFsize
 )
 {
-  size_t size;
-
-  bool savedReservedField;
-
   /* -- Main Asset Parameters Section -- */
   /* (Size, Index and Per Stream Static Metadata) */
 
   /* [u9 nuAssetDescriptFsize] */
   /* [u3 nuAssetIndex] */
-  size = 12;
+  size_t size = 12;
 
-  if (NULL != staticFieldsParam && param->staticFieldsPresent)
-    size += computeDcaExtSSAssetDescriptorStaticFieldsSize(
-      &param->staticFields
-    );
+  if (bStaticFieldsPresent)
+    size += _computeDcaExtSSAssetDescSFSize(&param->static_fields);
 
   /* -- Dynamic Metadata Section (DRC, DNC and Mixing Metadata) -- */
-  size += computeDcaExtSSAssetDescriptorDynamicMetadataSize(
-    &param->dynMetadata,
-    &param->staticFields,
-    staticFieldsParam
+  size += _computeDcaExtSSAssetDescDMSize(
+    &param->dyn_md,
+    &param->static_fields,
+    bStaticFieldsPresent,
+    sf
   );
 
   /* -- Decoder Navigation Data Section (Coding mode...) -- */
-  size += computeDcaExtSSAssetDescriptorDecNavDataSize(
-    &param->decNavData,
-    &param->staticFields,
-    &param->dynMetadata,
-    staticFieldsParam,
+  size += _computeDcaExtSSAssetDescDNDSize(
+    &param->dec_nav_data,
+    &param->static_fields,
+    &param->dyn_md,
+    bStaticFieldsPresent,
+    sf,
     nuBits4ExSSFsize
   );
 
   /* [vn Reserved] */
   /* [v0...7 ZeroPadForFsize] */
-  savedReservedField = DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-    param->resFieldLength,
-    param->paddingBits
-  );
-  if (savedReservedField)
-    size += param->resFieldLength + param->paddingBits;
+  if (isSavedReservedFieldDcaExtSS(param->Reserved_size, param->ZeroPadForFsize_size))
+    size += param->Reserved_size + param->ZeroPadForFsize_size;
 
   return SHF_ROUND_UP(size, 3); /* Padding if required */
 }
 
-int buildDcaExtSSAudioAssetDescriptor(
+/** \~english
+ * \brief Build an Extension Substream Audio Asset Descriptor based on given
+ * parameters.
+ *
+ * \param handle Destination Bitstream builder handle.
+ * \param param Ext SS Asset Descriptor parameters.
+ * \param sf Ext SS Static Fields parameters. Can be NULL, if
+ * so Static Fields are considered as absent.
+ * \param nuBits4ExSSFsize 'nuBits4ExSSFsize' value, the size of Ext SS frame
+ * size fields. Defined by 'bHeaderSizeType' field in Ext SS Header.
+ * \return int Upon success, a zero value is returned. Otherwise, a negative
+ * value is returned.
+ */
+static int _buildDcaExtSSAudioAssetDescriptor(
   DtsPatcherBitstreamHandlePtr handle,
   const DcaAudioAssetDescParameters * param,
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam,
-  const size_t nuBits4ExSSFsize,
-  const size_t descriptorSize
+  bool bStaticFieldsPresent,
+  const DcaExtSSHeaderSFParameters * sf,
+  unsigned nuBits4ExSSFsize,
+  uint16_t nuAssetDescriptFsize
 )
 {
   int ret;
 
-  int64_t off, resFieldSize;
-  size_t descBoundaryOff;
-
   /* -- Main Asset Parameters Section (Size, Index and Per Stream Static Metadata) -- */
 
 #if !defined(NDEBUG)
-  size_t startOff;
-
-  startOff = handle->currentByteUsedBits + handle->dataUsedLength * 8;
+  size_t start_off = handle->currentByteUsedBits + handle->dataUsedLength * 8;
 #endif
 
+  size_t desc_boundary_off;
   getBlockBinaryBoundaryOffDtsPatcherBitstreamHandle(
     handle,
-    &descBoundaryOff
+    &desc_boundary_off
   );
 
   /* [u9 nuAssetDescriptFsize] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    descriptorSize - 1,
-    9
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, nuAssetDescriptFsize - 1, 9, return -1);
 
   /* [u3 nuAssetIndex] */
-  ret = writeBitsDtsPatcherBitstreamHandle(
-    handle,
-    param->assetIndex,
-    3
-  );
-  if (ret < 0)
-    return -1;
+  WRITE_BITS(handle, param->nuAssetIndex, 3, return -1);
 
-  if (NULL != staticFieldsParam && param->staticFieldsPresent) {
-    ret = buildDcaExtSSAssetDescriptorStaticFields(
-      handle, &param->staticFields
-    );
-    if (ret < 0)
+  if (bStaticFieldsPresent) {
+    if (_buildDcaExtSSAssetDescSF(handle, &param->static_fields) < 0)
       return -1;
   }
 
   /* -- Dynamic Metadata Section (DRC, DNC and Mixing Metadata) -- */
-  ret = buildDcaExtSSAssetDescriptorDynamicMetadata(
+  ret = _buildDcaExtSSAssetDescDM(
     handle,
-    &param->dynMetadata,
-    &param->staticFields,
-    staticFieldsParam
+    &param->dyn_md,
+    &param->static_fields,
+    bStaticFieldsPresent,
+    sf
   );
   if (ret < 0)
     return -1;
 
   /* -- Decoder Navigation Data Section (Coding mode...) -- */
-  ret = buildDcaExtSSAssetDescriptorDecNavData(
+  ret = _buildDcaExtSSAssetDescDND(
     handle,
-    &param->decNavData,
-    &param->staticFields,
-    &param->dynMetadata,
-    staticFieldsParam,
+    &param->dec_nav_data,
+    &param->static_fields,
+    &param->dyn_md,
+    bStaticFieldsPresent,
+    sf,
     nuBits4ExSSFsize
   );
   if (ret < 0)
     return -1;
 
   /* Append if it was saved (meaning size does'nt exceed limit). */
-  if (
-    DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->resFieldLength, param->paddingBits
-    )
-  ) {
+  if (isSavedReservedFieldDcaExtSS(param->Reserved_size, param->ZeroPadForFsize_size)) {
     /* Copy saved reserved field */
-    resFieldSize = 8 * param->resFieldLength + param->paddingBits;
-    for (off = 0; 0 < resFieldSize; off++) {
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->resFieldData[off],
-        MIN(8, resFieldSize)
-      );
-      if (ret < 0)
-        return -1;
-      resFieldSize -= 8;
+    for (unsigned off = 0; off < param->Reserved_size; off++) {
+      WRITE_BITS(handle, param->Reserved[off], 8, return -1);
     }
+
+    uint8_t ZeroPadForFsize = param->Reserved[param->Reserved_size];
+    WRITE_BITS(handle, ZeroPadForFsize, param->ZeroPadForFsize_size, return -1);
   }
 
   /* Padding if required */
   ret = blockByteAlignDtsPatcherBitstreamHandle(
     handle,
-    descBoundaryOff
+    desc_boundary_off
   );
   if (ret < 0)
     return -1;
 
-  assert(startOff + descriptorSize * 8 == handle->currentByteUsedBits + handle->dataUsedLength * 8);
+  assert(
+    start_off + nuAssetDescriptFsize * 8
+    == handle->currentByteUsedBits + handle->dataUsedLength * 8
+  );
 
   return 0;
 }
 
-size_t computeDcaExtSSHeaderSize(
+/** \~english
+ * \brief Return the length in bytes of the Extension Substream header based
+ * on given parameters.
+ *
+ * \param param Ext SS parameters.
+ * \param assetDescsSizes Optionnal assets descriptors sizes. Avoid
+ * re-computation if already done. Can be NULL, disabling this functionnality.
+ * The size of the array must be equal to the specified number of assets in
+ * given Ext SS parameters.
+ * \return uint16_t Computed length in bytes.
+ */
+static uint16_t _computeDcaExtSSHeaderSize(
   const DcaExtSSHeaderParameters * param,
-  const size_t * assetDescsSizes
+  uint16_t nuAssetDescriptFsizeArr[static DCA_EXT_SS_MAX_NB_AUDIO_ASSETS]
 )
 {
-  size_t size;
-
-  unsigned nAst;
-
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam;
-
-  size_t headerLengthFieldNbBits;
-  size_t extSSFrameSizeFieldNbBits;
-  size_t assetDescSize;
 
   /* [v32 SYNCEXTSSH] */
   /* [u8 UserDefinedBits] */
@@ -1584,36 +1230,29 @@ size_t computeDcaExtSSHeaderSize(
   /* [u<extSubFrmLengthFieldSize> nuExtSSFsize] */
   /* [b1 bStaticFieldsPresent] */
 
-  headerLengthFieldNbBits = (param->longHeaderSizeFlag) ? 12 : 8;
-  extSSFrameSizeFieldNbBits = (param->longHeaderSizeFlag) ? 20 : 16;
-  size = 60 + headerLengthFieldNbBits + extSSFrameSizeFieldNbBits;
+  unsigned nuBits4Header    = (param->bHeaderSizeType) ? 12 : 8;
+  unsigned nuBits4ExSSFsize = (param->bHeaderSizeType) ? 20 : 16;
+  uint16_t size = 60 + nuBits4Header + nuBits4ExSSFsize;
 
-  staticFieldsParam = &param->staticFields;
+  const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
 
-  if (param->staticFieldsPresent) {
-    size += computeDcaExtSSHeaderStaticFieldsSize(
-      staticFieldsParam,
-      param->extSSIdx
+  if (param->bStaticFieldsPresent) {
+    size += _computeDcaExtSSHeaderSFSize(
+      sf,
+      param->nExtSSIndex
     );
   }
 
   /* [u<nuBits4ExSSFsize * nuNumAssets> nuAssetFsize[nAst]] */
   /* Included further */
 
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
-    if (NULL != assetDescsSizes)
-      assetDescSize = assetDescsSizes[nAst];
-    else
-      assetDescSize = computeDcaExtSSAudioAssetDescriptorSize(
-        param->audioAssets + nAst,
-        staticFieldsParam,
-        extSSFrameSizeFieldNbBits
-      );
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
+    uint16_t nuAssetDescriptFsize = nuAssetDescriptFsizeArr[nAst];
 
     /* [vn AssetDecriptor()] */
     size +=
-      extSSFrameSizeFieldNbBits
-      + 8 * assetDescSize
+      nuBits4ExSSFsize
+      + 8 * nuAssetDescriptFsize
       + 1
     ; /* Include some other fields */
   }
@@ -1621,8 +1260,8 @@ size_t computeDcaExtSSHeaderSize(
   /* [b<1 * nuNumAssets> bBcCorePresent[nAst]] */
   /* Already included */
 
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
-    if (param->audioAssetBckwdCompCorePresent[nAst]) {
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
+    if (param->bBcCorePresent[nAst]) {
       /* [u2 nuBcCoreExtSSIndex[nAst]] */
       /* [u3 nuBcCoreAssetIndex[nAst]] */
       size += 5;
@@ -1631,13 +1270,8 @@ size_t computeDcaExtSSHeaderSize(
 
   /* [vn Reserved] */
   /* [v0..7 ByteAlign] */
-  if (
-    DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->resFieldLength,
-      param->paddingBits
-    )
-  ) {
-    size += param->resFieldLength * 8 + param->paddingBits;
+  if (isSavedReservedFieldDcaExtSS(param->Reserved_size, param->ZeroPadForFsize_size)) {
+    size += param->Reserved_size * 8 + param->ZeroPadForFsize_size;
   }
 
   /* [u16 nCRC16ExtSSHeader] */
@@ -1646,66 +1280,49 @@ size_t computeDcaExtSSHeaderSize(
   return SHF_ROUND_UP(size, 3); /* Padding if required */
 }
 
-size_t appendDcaExtSSHeader(
+uint32_t appendDcaExtSSHeader(
   EsmsFileHeaderPtr script,
-  const size_t insert_off,
+  uint32_t insert_off,
   const DcaExtSSHeaderParameters * param
 )
 {
-  DtsPatcherBitstreamHandlePtr handle;
-  int ret;
-
-  const uint8_t * arr;
-  size_t arr_size;
-
-  unsigned nAst;
-  int64_t off, resFieldSize;
-
-  const DcaExtSSHeaderStaticFieldsParameters * staticFieldsParam;
-
-  size_t headerLengthFieldNbBits;
-  size_t extSSFrameSizeFieldNbBits;
-  uint32_t crc16HdrValue;
-
-  size_t extSSHeaderLen;
-  size_t extSSAssetDescLen[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
-  size_t extSSFrameLen;
-
-  staticFieldsParam = &param->staticFields;
+  const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
 
   /* Compute size fields */
-  headerLengthFieldNbBits = (param->longHeaderSizeFlag) ? 12 : 8;
-  extSSFrameSizeFieldNbBits = (param->longHeaderSizeFlag) ? 20 : 16;
+  unsigned nuBits4Header    = (param->bHeaderSizeType) ? 12 : 8;
+  unsigned nuBits4ExSSFsize = (param->bHeaderSizeType) ? 20 : 16;
 
-  MEMSET_ARRAY(extSSAssetDescLen, 0);
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
-    extSSAssetDescLen[nAst] = computeDcaExtSSAudioAssetDescriptorSize(
-      param->audioAssets + nAst,
-      staticFieldsParam,
-      extSSFrameSizeFieldNbBits
+  uint16_t nuAssetDescriptFsizeArr[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
+  MEMSET_ARRAY(nuAssetDescriptFsizeArr, 0);
+
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
+    nuAssetDescriptFsizeArr[nAst] = _computeDcaExtSSAudioAssetDescriptorSize(
+      &param->audioAssets[nAst],
+      param->bStaticFieldsPresent,
+      sf,
+      nuBits4ExSSFsize
     );
   }
 
-  extSSHeaderLen = computeDcaExtSSHeaderSize(
+  uint16_t nuExtSSHeaderSize = _computeDcaExtSSHeaderSize(
     param,
-    extSSAssetDescLen
+    nuAssetDescriptFsizeArr
   );
 
-  extSSFrameLen = extSSHeaderLen;
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++)
-    extSSFrameLen += param->audioAssetsLengths[nAst];
+  uint32_t nuExtSSFsize = nuExtSSHeaderSize;
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++)
+    nuExtSSFsize += param->audioAssetsLengths[nAst];
 
   /* Create destination bitarray handle */
+  DtsPatcherBitstreamHandlePtr handle;
   if (NULL == (handle = createDtsPatcherBitstreamHandle()))
     return 0;
 
   /* [v32 SYNCEXTSSH] */
-  if (writeBitsDtsPatcherBitstreamHandle(handle, DCA_SYNCEXTSSH, 32) < 0)
-    goto free_return;
+  WRITE_BITS(handle, DCA_SYNCEXTSSH, 32, return -1);
 
   /* [u8 UserDefinedBits] */
-  if (writeBitsDtsPatcherBitstreamHandle(handle, param->userDefinedBits, 8) < 0)
-    goto free_return;
+  WRITE_BITS(handle, param->UserDefinedBits, 8, return -1);
 
   /* Init DTS ExtSS Header CRC 16 checksum (nCRC16ExtSSHeader) */
   initCrcDtsPatcherBitstreamHandle(
@@ -1715,139 +1332,85 @@ size_t appendDcaExtSSHeader(
   );
 
   /* [u2 nExtSSIndex] */
-  if (writeBitsDtsPatcherBitstreamHandle(handle, param->extSSIdx, 2) < 0)
-    goto free_return;
+  WRITE_BITS(handle, param->nExtSSIndex, 2, return -1);
 
   /* [b1 bHeaderSizeType] */
-  if (writeBitDtsPatcherBitstreamHandle(handle, param->longHeaderSizeFlag) < 0)
-    goto free_return;
+  WRITE_BITS(handle, param->bHeaderSizeType, 1, return -1);
 
   /* [u<nuBits4Header> nuExtSSHeaderSize] */
-  ret = writeValueDtsPatcherBitstreamHandle(
-    handle,
-    extSSHeaderLen - 1,
-    headerLengthFieldNbBits
-  );
-  if (ret < 0)
-    goto free_return;
+  WRITE_BITS(handle, nuExtSSHeaderSize - 1, nuBits4Header, return -1);
 
-  /* [u<extSubFrmLengthFieldSize> nuExtSSFsize] */
-  ret = writeValueDtsPatcherBitstreamHandle(
-    handle,
-    extSSFrameLen - 1,
-    extSSFrameSizeFieldNbBits
-  );
-  if (ret < 0)
-    goto free_return;
+  /* [u<nuBits4ExSSFsize> nuExtSSFsize] */
+  WRITE_BITS(handle, nuExtSSFsize - 1, nuBits4ExSSFsize, return -1);
 
   /* [b1 bStaticFieldsPresent] */
-  if (writeBitDtsPatcherBitstreamHandle(handle, param->staticFieldsPresent) < 0)
-    return -1;
+  WRITE_BITS(handle, param->bStaticFieldsPresent, 1, return -1);
 
-  if (param->staticFieldsPresent) {
-    ret = buildDcaExtSSHeaderStaticFields(
-      handle,
-      staticFieldsParam,
-      param->extSSIdx
-    );
-    if (ret < 0)
+  if (param->bStaticFieldsPresent) {
+    if (_buildDcaExtSSHeaderSF(handle, sf, param->nExtSSIndex) < 0)
       return -1;
   }
 
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
     /* [u<nuBits4ExSSFsize> nuAssetFsize[nAst]] */
-    ret = writeValueDtsPatcherBitstreamHandle(
-      handle,
-      param->audioAssetsLengths[nAst] - 1,
-      extSSFrameSizeFieldNbBits
-    );
-    if (ret < 0)
-      goto free_return;
+    uint32_t nuAssetFsize = param->audioAssetsLengths[nAst] - 1;
+    WRITE_BITS(handle, nuAssetFsize, nuBits4ExSSFsize, return -1);
   }
 
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
     /* [vn AssetDecriptor()] */
-    if (
-      buildDcaExtSSAudioAssetDescriptor(
-        handle,
-        param->audioAssets + nAst,
-        (param->staticFieldsPresent) ? staticFieldsParam : NULL,
-        extSSFrameSizeFieldNbBits,
-        extSSAssetDescLen[nAst]
-      ) < 0
-    )
-      goto free_return;
-  }
-
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
-    /* [b1 bBcCorePresent[nAst]] */
-    ret = writeBitDtsPatcherBitstreamHandle(
+    int ret = _buildDcaExtSSAudioAssetDescriptor(
       handle,
-      param->audioAssetBckwdCompCorePresent[nAst]
+      &param->audioAssets[nAst],
+      param->bStaticFieldsPresent, sf,
+      nuBits4ExSSFsize,
+      nuAssetDescriptFsizeArr[nAst]
     );
     if (ret < 0)
       goto free_return;
   }
 
-  for (nAst = 0; nAst < staticFieldsParam->nbAudioAssets; nAst++) {
-    if (param->audioAssetBckwdCompCorePresent[nAst]) {
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
+    /* [b1 bBcCorePresent[nAst]] */
+    WRITE_BITS(handle, param->bBcCorePresent[nAst], 1, return -1);
+  }
+
+  for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
+    if (param->bBcCorePresent[nAst]) {
       /* [u2 nuBcCoreExtSSIndex[nAst]] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->audioAssetBckwdCompCore[nAst].extSSIndex,
-        2
-      );
-      if (ret < 0)
-        goto free_return;
+      uint8_t nuBcCoreExtSSIndex = param->nuBcCoreExtSSIndex[nAst];
+      WRITE_BITS(handle, nuBcCoreExtSSIndex, 2, return -1);
 
       /* [u3 nuBcCoreAssetIndex[nAst]] */
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->audioAssetBckwdCompCore[nAst].assetIndex,
-        3
-      );
-      if (ret < 0)
-        goto free_return;
+      uint8_t nuBcCoreAssetIndex = param->nuBcCoreAssetIndex[nAst];
+      WRITE_BITS(handle, nuBcCoreAssetIndex, 3, return -1);
     }
   }
 
   /* [vn Reserved] */
-  /* Append if it was saved (meaning size does'nt exceed limit). */
-  if (
-    DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(
-      param->resFieldLength, param->paddingBits
-    )
-  ) {
+  /* Append if it was saved (meaning size doesn't exceed limit). */
+  if (isSavedReservedFieldDcaExtSS(param->Reserved_size, param->ZeroPadForFsize_size)) {
     /* Copy saved reserved field */
-    resFieldSize = 8 * param->resFieldLength + param->paddingBits;
-    for (off = 0; 0 < resFieldSize; off++) {
-      ret = writeBitsDtsPatcherBitstreamHandle(
-        handle,
-        param->resFieldData[off],
-        MIN(8, resFieldSize)
-      );
-      if (ret < 0)
-        goto free_return;
-      resFieldSize -= 8;
+    for (unsigned off = 0; off < param->Reserved_size; off++) {
+      WRITE_BITS(handle, param->Reserved[off], 8, return -1);
     }
+    uint8_t pad_bits = param->Reserved[param->Reserved_size];
+    WRITE_BITS(handle, pad_bits, param->ZeroPadForFsize_size, return -1);
   }
 
   /* [v0..7 ByteAlign] */
   if (byteAlignDtsPatcherBitstreamHandle(handle) < 0)
     goto free_return;
 
-  crc16HdrValue = finalizeCrcDtsPatcherBitstreamHandle(handle);
-
   /* [u16 nCRC16ExtSSHeader] */
-  if (writeValueDtsPatcherBitstreamHandle(handle, crc16HdrValue, 16) < 0)
-    goto free_return;
+  uint16_t nCRC16ExtSSHeader = finalizeCrcDtsPatcherBitstreamHandle(handle);
+  WRITE_BITS(handle, nCRC16ExtSSHeader, 16, return -1);
 
-  assert(extSSHeaderLen == handle->dataUsedLength);
-
- /*  lb_print_data(handle->data, handle->dataUsedLength);
-  exit(-1); */
+  assert(nuExtSSHeaderSize == handle->dataUsedLength);
 
   /* Append generated bitstream to the script */
+  const uint8_t * arr;
+  size_t arr_size;
   if (getGeneratedArrayDtsPatcherBitstreamHandle(handle, &arr, &arr_size) < 0)
     goto free_return;
 
@@ -1862,23 +1425,16 @@ free_return:
   return 0;
 }
 
-size_t appendDcaExtSSAsset(
+uint32_t appendDcaExtSSAsset(
   EsmsFileHeaderPtr script,
-  const size_t insert_off,
+  uint32_t insert_off,
   const DcaXllFrameSFPosition * param,
-  const unsigned scriptSourceFileId
+  unsigned scriptSourceFileId
 )
 {
-  int ret, i;
-
-  size_t origInsertingOffset;
-  size_t curInsertingOffset;
-  size_t len, off;
-
-  curInsertingOffset = origInsertingOffset = insert_off;
-  for (i = 0; i < param->nbSourceOffsets; i++) {
-    len = param->sourceOffsets[i].len;
-    off = param->sourceOffsets[i].off;
+  uint32_t frame_rel_off = 0;
+  for (unsigned i = 0; i < param->nbSourceOffsets; i++) {
+    DcaXllFrameSFPositionIndex pos = param->sourceOffsets[i];
 
 #if 0
     lbc_printf("taking %zu bytes from offset 0x%zX.\n", len, off);
@@ -1887,17 +1443,17 @@ size_t appendDcaExtSSAsset(
       exit(EXIT_FAILURE);
 #endif
 
-    ret = appendAddPesPayloadCommand(
+    int ret = appendAddPesPayloadCommand(
       script,
       scriptSourceFileId,
-      curInsertingOffset,
-      off,
-      len
+      insert_off + frame_rel_off,
+      pos.offset,
+      pos.size
     );
     if (ret < 0)
       return 0;
-    curInsertingOffset += len;
+    frame_rel_off += pos.size;
   }
 
-  return curInsertingOffset - origInsertingOffset;
+  return frame_rel_off;
 }

@@ -660,19 +660,7 @@ typedef struct {
   DcaCoreBSHeaderParameters bs_header;
 } DcaCoreSSFrameParameters;
 
-typedef struct {
-  uint32_t size;
-
-  bool syncWordPresent;
-  unsigned peakBitRateSmoothingBufSizeCode;
-  size_t peakBitRateSmoothingBufSize;
-  unsigned initialXllDecodingDelayInFrames;
-  size_t nbBytesOffXllSync;
-
-  uint8_t steamId;
-} DcaAudioAssetSSXllParameters;
-
-/* ######################################################################### */
+/* ### DTS Extension Substream : ########################################### */
 
 #define DCA_EXT_SS_DISABLE_MIX_META_SUPPORT false
 #define DCA_EXT_SS_ENABLE_DRC_2 true
@@ -697,95 +685,124 @@ typedef struct {
 /** \~english
  * \brief Define the maximal supported Ext SS Reserved fields size in bytes.
  *
- * If field size exceed resFieldLength * 8 + paddingBits bits,
+ * If field size exceed Reserved_size * 8 + ZeroPadForFsize_size bits,
  * the reserved field data isn't saved.
  */
 #define DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE 16
 
-#define DCA_EXT_SS_IS_SUPP_RES_FIELD_SIZES(ReservedSize, ByteAlignSize)       \
-  (                                                                           \
-    (8 * (ReservedSize) + (ByteAlignSize))                                    \
-    <= 8 * DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE                                 \
-  )
+static inline bool isSavedReservedFieldDcaExtSS(
+  unsigned Reserved_size,
+  unsigned ZeroPadForFsize_size
+)
+{
+  unsigned size = (Reserved_size << 3) + ZeroPadForFsize_size;
+  return size <= (DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE << 3);
+}
+
+typedef enum {
+  DCA_EXT_SS_SRC_SAMPLE_RATE_8000    = 0x0,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_16000   = 0x1,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_32000   = 0x2,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_64000   = 0x3,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_128000  = 0x4,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_22050   = 0x5,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_44100   = 0x6,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_88200   = 0x7,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_176400  = 0x8,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_352800  = 0x9,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_12000   = 0xA,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_24000   = 0xB,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_48000   = 0xC,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_96000   = 0xD,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_192000  = 0xE,
+  DCA_EXT_SS_SRC_SAMPLE_RATE_384000  = 0xF,
+} DcaExtMaxSampleRate;
+
+static inline unsigned getSampleFrequencyDcaExtMaxSampleRate(
+  const DcaExtMaxSampleRate code
+)
+{
+  static const unsigned sample_rates[] = {
+    8000u,    16000u,  32000u,  64000u,
+    128000u,  22050u,  44100u,  88200u,
+    176400u, 352800u,  12000u,  24000u,
+    48000u,   96000u, 192000u, 384000u
+  };
+
+  if (code < ARRAY_SIZE(sample_rates))
+    return sample_rates[code];
+  return 0;
+}
 
 typedef struct {
-  bool assetTypeDescriptorPresent;
-  uint8_t assetTypeDescriptor;
+  bool bAssetTypeDescrPresent;
+  uint8_t nuAssetTypeDescriptor;
 
-  bool languageDescriptorPresent;
-  uint8_t languageDescriptor[
-    DTS_EXT_SS_LANGUAGE_DESC_SIZE + 1
-  ];
+  bool bLanguageDescrPresent;
+  uint8_t LanguageDescriptor[DTS_EXT_SS_LANGUAGE_DESC_SIZE+1];
 
-  bool infoTextPresent;
-  uint8_t infoText[DTS_EXT_SS_MAX_STRING_TEXT_MAX_LEN + 1];
-  int64_t infoTextLength;
+  bool bInfoTextPresent;
+  uint16_t nuInfoTextByteSize;
+  uint8_t InfoTextString[DTS_EXT_SS_MAX_STRING_TEXT_MAX_LEN+1];
 
-  unsigned bitDepth;
-  uint8_t maxSampleRateCode;
-  unsigned nbChannels;
+  uint8_t nuBitResolution;
+  uint8_t nuMaxSampleRate;
+  uint16_t nuTotalNumChs;
 
-  bool directSpeakersFeed;
-  bool embeddedStereoDownmix;
-  bool embeddedSurround6chDownmix;
-  uint8_t representationType; /* Only if directSpeakersFeed == 0b0 */
+  bool bOne2OneMapChannels2Speakers;
+  bool bEmbeddedStereoFlag;
+  bool bEmbeddedSixChFlag;
+  uint8_t nuRepresentationType; /* Only if bOne2OneMapChannels2Speakers == 0b0 */
 
   bool bSpkrMaskEnabled;
   uint16_t nuSpkrActivityMask;
 
   unsigned nuNumSpkrRemapSets;
   uint16_t nuStndrSpkrLayoutMask[DTS_EXT_SS_MAX_NB_REMAP_SETS];
-  unsigned nbChsInRemapSet[DTS_EXT_SS_MAX_NB_REMAP_SETS];
-  unsigned nbChRequiredByRemapSet[DTS_EXT_SS_MAX_NB_REMAP_SETS];
+  unsigned nuNumSpeakers[DTS_EXT_SS_MAX_NB_REMAP_SETS];
+
+  unsigned nuNumDecCh4Remap[DTS_EXT_SS_MAX_NB_REMAP_SETS];
   /* decodedChannelsLinkedToSetSpeakerLayoutMask : */
   uint16_t nuRemapDecChMask[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB];
-  uint8_t nbRemapCoeffCodes[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB];
-  uint8_t outputSpkrRemapCoeffCodes[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB][DTS_EXT_SS_MAX_SPEAKERS_SETS_NB];
-
-  /* Computed parameters */
-  unsigned maxSampleRate;
+  uint8_t nCoeff[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB];
+  uint8_t nuSpkrRemapCodes[DTS_EXT_SS_MAX_NB_REMAP_SETS][DTS_EXT_SS_MAX_CHANNELS_NB][DTS_EXT_SS_MAX_SPEAKERS_SETS_NB];
 } DcaAudioAssetDescSFParameters;
 
 /* Value used if 'bDRCMetadatRev2Present' is false: */
 #define DEFAULT_DRC_VERSION_VALUE -1
 
 typedef struct {
-  bool drcEnabled;       /**< bDRCCoefPresent                                */
-  struct {
-    uint8_t drcCode;     /**< nuDRCCode                                      */
-    uint8_t drc2ChCode;  /**< nuDRC2ChDmixCode                               */
-  } drcParameters;       /**< DRC parameters present if (bDRCCoefPresent)    */
+  bool bDRCCoefPresent;
+  uint8_t nuDRCCode;
+  uint8_t nuDRC2ChDmixCode;
 
-  bool dialNormEnabled;  /**< bDialNormPresent                               */
-  uint8_t dialNormCode;  /**< nuDialNormCode                                 */
+  bool bDialNormPresent;  /**< bDialNormPresent                               */
+  uint8_t nuDialNormCode;  /**< nuDialNormCode                                 */
 
-  bool mixMetadataPresent;  /**< bMixMetadataPresent                         */
-  struct {
+  bool bMixMetadataPresent;  /**< bMixMetadataPresent                         */
 #if !DCA_EXT_SS_DISABLE_MIX_META_SUPPORT
-    bool useExternalMix;            /**< bExternalMixFlag                    */
-    uint8_t postMixGainCode;        /**< nuPostMixGainAdjCode                */
-    uint8_t drcMixerControlCode;    /**< nuControlMixerDRC                   */
-    union {
-      uint8_t limitDRCPriorMix;       /**< nuLimit4EmbeddedDRC               */
-      uint8_t customMixDRCCoeffCode;  /**< nuCustomDRCCode                   */
-    };
+  bool bExternalMixFlag;            /**< bExternalMixFlag                    */
+  uint8_t nuPostMixGainAdjCode;        /**< nuPostMixGainAdjCode                */
+  uint8_t nuControlMixerDRC;    /**< nuControlMixerDRC                   */
+  union {
+    uint8_t nuLimit4EmbeddedDRC;       /**< nuLimit4EmbeddedDRC               */
+    uint8_t nuCustomDRCCode;  /**< nuCustomDRCCode                   */
+  };
 
-    bool perMainAudioChSepScal;     /**< bEnblPerChMainAudioScale            */
-    uint8_t scalingAudioParam[
-      DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB
-    ][DTS_EXT_SS_MAX_CHANNELS_NB];             /**< nuMainAudioScaleCode, if
-      'perMainAudioChSepScal == 0b0', the scaling code shared between all
-      channels of one mix config is stored as for the channel of index 0,
-      'scalingAudioParam[configId][0]'.                                      */
+  bool bEnblPerChMainAudioScale;     /**< bEnblPerChMainAudioScale            */
+  uint8_t nuMainAudioScaleCode[
+    DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB
+  ][DTS_EXT_SS_MAX_CHANNELS_NB];             /**< nuMainAudioScaleCode, if
+    'perMainAudioChSepScal == 0b0', the scaling code shared between all
+    channels of one mix config is stored as for the channel of index 0,
+    'nuMainAudioScaleCode[configId][0]'.                                      */
 
-    unsigned nbDownMixes;
-    unsigned nbChPerDownMix[DTS_EXT_SS_MAX_DOWNMIXES_NB];
-    uint16_t mixOutputMappingMask[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_CHANNELS_NB];
-    unsigned mixOutputMappingNbCoeff[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_CHANNELS_NB];
-    uint8_t mixOutputCoefficients[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_SPEAKERS_SETS_NB];
+  unsigned nEmDM;
+  unsigned nDecCh[DTS_EXT_SS_MAX_DOWNMIXES_NB];
+  uint16_t nuMixMapMask[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_CHANNELS_NB];
+  unsigned nuNumMixCoefs[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_CHANNELS_NB];
+  uint8_t nuMixCoeffs[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_DOWNMIXES_NB][DTS_EXT_SS_MAX_SPEAKERS_SETS_NB];
 #endif
-  } mixMetadata;
-
 } DcaAudioAssetDescDMParameters;
 
 typedef enum {
@@ -815,117 +832,171 @@ typedef enum {
 } DcaAudioDrcMetadataRev2Version;
 
 typedef struct {
+  uint16_t nuExSSCoreFsize;
+  bool bExSSCoreSyncPresent;
+  uint8_t nuExSSCoreSyncDistInFrames_code;
+  uint8_t nuExSSCoreSyncDistInFrames;
+} DcaAudioAssetExSSCoreParameters;
+
+typedef struct {
+  uint16_t nuExSSXBRFsize;
+} DcaAudioAssetExSSXBRParameters;
+
+typedef struct {
+  uint16_t nuExSSXXCHFsize;
+} DcaAudioAssetExSSXXCHParameters;
+
+typedef struct {
+  uint16_t nuExSSX96Fsize;
+} DcaAudioAssetExSSX96Parameters;
+
+typedef struct {
+  uint16_t nuExSSLBRFsize;
+  bool bExSSLBRSyncPresent;
+  uint8_t nuExSSLBRSyncDistInFrames_code;
+  uint8_t nuExSSLBRSyncDistInFrames;
+} DcaAudioAssetExSSLBRParameters;
+
+typedef struct {
+  uint32_t nuExSSXLLFsize;
+  bool bExSSXLLSyncPresent;
+  uint8_t nuPeakBRCntrlBuffSzkB;
+  uint8_t nuBitsInitDecDly;
+  uint32_t nuInitLLDecDlyFrames;
+  uint32_t nuExSSXLLSyncOffset;
+
+  uint8_t nuDTSHDStreamID;
+} DcaAudioAssetExSSXllParameters;
+
+typedef struct {
+  DcaAudioAssetExSSCoreParameters ExSSCore;
+  DcaAudioAssetExSSXBRParameters ExSSXBR;
+  DcaAudioAssetExSSXXCHParameters ExSSXXCH;
+  DcaAudioAssetExSSX96Parameters ExSSX96;
+  DcaAudioAssetExSSLBRParameters ExSSLBR;
+  DcaAudioAssetExSSXllParameters ExSSXLL;
+  uint16_t res_ext_1_data;
+  uint16_t res_ext_2_data;
+} DcaAudioAssetDescDecNDCodingComponents;
+
+typedef struct {
+  uint16_t nuExSSAuxFsize;
+  uint8_t nuAuxCodecID;
+  bool bExSSAuxSyncPresent;
+  uint8_t nuExSSAuxSyncDistInFrames_code;
+  uint8_t nuExSSAuxSyncDistInFrames;
+} DcaAudioAssetDescDecNDAuxiliaryCoding;
+
+typedef struct {
   DcaAudioAssetCodingMode nuCodingMode;
   uint16_t nuCoreExtensionMask;
-
   union {
-    struct {
-      struct {
-        int64_t size;
-        bool syncWordPresent;
-        unsigned syncDistanceInFramesCode;
-        unsigned syncDistanceInFrames;
-      } extSSCore;
-
-      struct {
-        int64_t size;
-      } extSSXbr;
-
-      struct {
-        int64_t size;
-      } extSSXxch;
-
-      struct {
-        int64_t size;
-      } extSSX96;
-
-      struct {
-        int64_t size;
-        bool syncWordPresent;
-        unsigned syncDistanceInFramesCode;
-        unsigned syncDistanceInFrames;
-      } extSSLbr;
-
-      DcaAudioAssetSSXllParameters extSSXll;
-
-      uint16_t reservedExtension1_data;
-      uint16_t reservedExtension2_data;
-    } codingComponents;
-
-    struct {
-      int64_t size;
-      uint8_t auxCodecId;
-      bool syncWordPresent;
-      unsigned syncDistanceInFramesCode;
-      unsigned syncDistanceInFrames;
-    } auxilaryCoding;
+    DcaAudioAssetDescDecNDCodingComponents coding_components;
+    DcaAudioAssetDescDecNDAuxiliaryCoding auxilary_coding;
   };
 
-  struct {
-    bool oneTrackToOneChannelMix;
-    bool perChannelMainAudioScaleCode;
-    uint8_t mainAudioScaleCodes[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_CHANNELS_NB];
-  } mixMetadata;
-  bool mixMetadataFieldsPresent;
+  bool mix_md_fields_pres;
+  bool bOnetoOneMixingFlag;
 
-  bool decodeInSecondaryDecoder;
+  bool bEnblPerChMainAudioScale;
+  uint8_t nuMainAudioScaleCode[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB][DTS_EXT_SS_MAX_CHANNELS_NB];
 
-  bool extraDataPresent;
-  bool drcRev2Present;
-  struct {
-    unsigned Hdr_Version;
-  } drcRev2;
+  bool bDecodeAssetInSecondaryDecoder;
+
+  bool extra_data_pres;
+  bool bDRCMetadataRev2Present;
+  uint8_t DRCversion_Rev2;
 } DcaAudioAssetDescDecNDParameters;
 
 typedef struct {
-  int64_t descriptorLength;
+  uint16_t nuAssetDescriptFsize;
+  uint8_t nuAssetIndex;
 
-  unsigned assetIndex;
+  DcaAudioAssetDescSFParameters static_fields;
+  DcaAudioAssetDescDMParameters dyn_md;
+  DcaAudioAssetDescDecNDParameters dec_nav_data;
 
-  DcaAudioAssetDescSFParameters staticFields;
-  bool staticFieldsPresent; /* Copy from ExtSS Header */
-  DcaAudioAssetDescDMParameters dynMetadata;
-  DcaAudioAssetDescDecNDParameters decNavData;
-
-  unsigned resFieldLength;
-  unsigned paddingBits;
-  uint8_t resFieldData[
-    DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE
-  ];
+  unsigned Reserved_size;
+  unsigned ZeroPadForFsize_size;
+  uint8_t Reserved[DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE];
 } DcaAudioAssetDescParameters;
 
 typedef struct {
   uint8_t nuMixMetadataAdjLevel;
-  unsigned nuNumMixOutConfigs;
+  uint8_t nuNumMixOutConfigs;
 
   uint16_t nuMixOutChMask[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
   unsigned nNumMixOutCh[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
 } DcaExtSSHeaderMixMetadataParameters;
 
+typedef enum {
+  DCA_EXT_SS_REF_CLOCK_PERIOD_32000 = 0x0,
+  DCA_EXT_SS_REF_CLOCK_PERIOD_44100 = 0x1,
+  DCA_EXT_SS_REF_CLOCK_PERIOD_48000 = 0x2,
+  DCA_EXT_SS_REF_CLOCK_PERIOD_RES   = 0x3
+} DcaExtRefClockCode;
+
+static inline unsigned getDcaExtReferenceClockValue(
+  DcaExtRefClockCode code
+)
+{
+  static const unsigned clock_periods[3] = {
+    32000,
+    44100,
+    48000
+  };
+
+  if (code < ARRAY_SIZE(clock_periods))
+    return clock_periods[code];
+  return 0;
+}
+
+static inline float getRefClockPeriodDcaExtRefClockCode(
+  DcaExtRefClockCode code
+)
+{
+  unsigned RefClock = getDcaExtReferenceClockValue(code);
+  if (!RefClock)
+    return -1.f;
+  return 1.f / RefClock;
+}
+
 typedef struct {
-  uint8_t referenceClockCode;
+  uint8_t nuRefClockCode; // DcaExtRefClockCode
 
-  uint8_t frameDurationCode;
-  unsigned frameDurationCodeValue;
+  uint8_t nuExSSFrameDurationCode_code;
+  uint32_t nuExSSFrameDurationCode;
 
-  bool timeStampPresent;
-  uint32_t timeStampValue;
-  uint8_t timeStampLsb;
+  bool bTimeStampFlag;
+  uint32_t nuTimeStamp;
+  uint8_t nLSB;
 
-  unsigned nbAudioPresentations;
-  unsigned nbAudioAssets;
+  uint8_t nuNumAudioPresnt;
+  uint8_t nuNumAssets;
 
-  uint8_t activeExtSSMask[DTS_EXT_SS_MAX_AUDIO_PRES_NB];
-  uint8_t activeAssetMask[DTS_EXT_SS_MAX_AUDIO_PRES_NB][DTS_EXT_SS_MAX_EXT_SUBSTREAMS_NB];
+  uint8_t nuActiveExSSMask[DTS_EXT_SS_MAX_AUDIO_PRES_NB];
+  uint8_t nuActiveAssetMask[DTS_EXT_SS_MAX_AUDIO_PRES_NB][DTS_EXT_SS_MAX_EXT_SUBSTREAMS_NB];
 
-  bool mixMetadataEnabled;
+  bool bMixMetadataEnbl;
   DcaExtSSHeaderMixMetadataParameters mixMetadata;
 
   /* Computed parameters */
-  unsigned referenceClockFreq;
-  float frameDuration;
-  uint64_t timeStamp;
-} DcaExtSSHeaderStaticFieldsParameters;
+  // unsigned referenceClockFreq;
+  // float frameDuration;
+  // uint64_t timeStamp;
+} DcaExtSSHeaderSFParameters;
+
+static inline float getExSSFrameDurationDcaExtRefClockCode(
+  const DcaExtSSHeaderSFParameters * sf
+)
+{
+  float RefClockPeriod = getRefClockPeriodDcaExtRefClockCode(
+    sf->nuRefClockCode
+  );
+  if (RefClockPeriod < 0)
+    return -1.f;
+  return sf->nuExSSFrameDurationCode * 512.f * RefClockPeriod;
+}
 
 #define DCA_EXT_SS_CRC_LENGTH 16
 #define DCA_EXT_SS_CRC_POLY 0x11021
@@ -939,34 +1010,31 @@ typedef struct {
 #define DCA_EXT_SS_MAX_NB_AUDIO_ASSETS 8
 
 typedef struct {
-  uint8_t userDefinedBits;
-  uint8_t extSSIdx;
+  uint8_t UserDefinedBits;
+  uint8_t nExtSSIndex;
 
-  bool longHeaderSizeFlag;
+  bool bHeaderSizeType;
 
-  int64_t extensionSubstreamHeaderLength;
-  int64_t extensionSubstreamFrameLength;
+  int64_t nuExtSSHeaderSize;
+  int64_t nuExtSSFsize;
 
-  bool staticFieldsPresent; /* Mandatory in most cases */
-  DcaExtSSHeaderStaticFieldsParameters staticFields;
+  bool bStaticFieldsPresent; /* Mandatory in most cases */
+  DcaExtSSHeaderSFParameters static_fields;
 
-  int64_t audioAssetsLengths[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
+  uint32_t audioAssetsLengths[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
   DcaAudioAssetDescParameters audioAssets[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
 
-  bool audioAssetBckwdCompCorePresent[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
-  struct {
-    uint8_t extSSIndex;
-    uint8_t assetIndex;
-  } audioAssetBckwdCompCore[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
+  bool bBcCorePresent[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
+  uint8_t nuBcCoreExtSSIndex[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
+  uint8_t nuBcCoreAssetIndex[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
 
-  int64_t resFieldLength;  /**< Reserved */
-  int64_t paddingBits;
-  uint8_t resFieldData[
-    DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE
-  ];  /**< Reserved field data content array, only in use if field size does
-    not exceed its size. See #DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE.            */
+  unsigned Reserved_size;  /**< Reserved */
+  unsigned ZeroPadForFsize_size;
+  uint8_t Reserved[DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE];  /**< Reserved field
+    data content array, only in use if field size does not exceed its size.
+    See #DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE.                                 */
 
-  uint16_t HCRC;
+  uint16_t nCRC16ExtSSHeader;
 } DcaExtSSHeaderParameters;
 
 typedef struct {
@@ -976,8 +1044,8 @@ typedef struct {
 #define DTS_XLL_MAX_SUPPORTED_OFILE_POS 8
 
 typedef struct {
-  size_t off;
-  size_t len;
+  uint64_t offset;
+  uint32_t size;
 } DcaXllFrameSFPositionIndex;
 
 /** \~english
@@ -988,48 +1056,31 @@ typedef struct {
   DcaXllFrameSFPositionIndex sourceOffsets[
     DTS_XLL_MAX_SUPPORTED_OFILE_POS
   ];
-  int nbSourceOffsets;
+  unsigned nbSourceOffsets;
 } DcaXllFrameSFPosition;
 
-#define INIT_DTS_XLL_FRAME_SF_POS()                                           \
-  (                                                                           \
-    (DcaXllFrameSFPosition) {                                                 \
-      .nbSourceOffsets = 0                                                    \
-    }                                                                         \
-  )
+static inline int addDcaXllFrameSFPosition(
+  DcaXllFrameSFPosition * dst,
+  uint64_t offset,
+  uint32_t size
+)
+{
+  if (DTS_XLL_MAX_SUPPORTED_OFILE_POS <= dst->nbSourceOffsets)
+    return -1;
 
-#define IS_EMPTY_XLL_FRAME_SF_POS(frmPos)                                     \
-  ((frmPos).nbSourceOffsets == 0)
-
-/** \~english
- * \brief Register given source file offset and length to given
- * #DcaXllFrameSFPosition structure.
- *
- * If too many source offsets are already been defined, the given error
- * instruction is executed.
- *
- * \param #DcaXllFrameSFPosition Destination frame source file position
- * recorder.
- * \param offset off_t Original file XLL frame piece start offset.
- * \param length size_t XLL frame piece length.
- * \param errinstr Error instruction executed if too many indexes have been
- * used, E.g. 'LIBBLU_ERROR_RETURN("Error")'.
- */
-#define ADD_DTS_XLL_FRAME_SF_POS(dst, offset, length, errinstr)               \
-  {                                                                           \
-    if (DTS_XLL_MAX_SUPPORTED_OFILE_POS <= (dst).nbSourceOffsets)             \
-      errinstr;                                                               \
-    (dst).sourceOffsets[(dst).nbSourceOffsets].off = (offset);                \
-    (dst).sourceOffsets[(dst).nbSourceOffsets].len = (length);                \
-    (dst).nbSourceOffsets++;                                                  \
-  }
+  dst->sourceOffsets[dst->nbSourceOffsets++] = (DcaXllFrameSFPositionIndex) {
+    .offset = offset,
+    .size = size
+  };
+  return 0;
+}
 
 typedef struct {
   unsigned number;     /**< Used for stats, number of the PBR frame in
     bitstream.                                                               */
-  size_t size;         /**< Frame size in bytes.                             */
 
   DcaXllFrameSFPosition pos;
+  uint32_t size;              /**< Frame size in bytes.                      */
 
   unsigned pbrDelay;   /**< Frame decoding delay according to audio asset
     parameters. If this value is greater than zero, data is accumulated in
@@ -1094,7 +1145,7 @@ typedef struct {
   unsigned fixedLsbWidth;
 
   size_t reservedFieldSize;
-  unsigned paddingBits;
+  unsigned ZeroPadForFsize_size;
 
   uint16_t headerCrc;
 

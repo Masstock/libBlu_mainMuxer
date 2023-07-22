@@ -47,7 +47,7 @@ int getMaxSizePbrFileHandler(
 );
 
 int getAvgSizePbrFileHandler(
-  size_t * avgSize
+  uint32_t * avg_size
 );
 
 #endif

@@ -265,7 +265,7 @@ int processCompleteFrameDtsAUFrame(
   if (initEsmsAudioPesFrame(script, isExtFrame, false, framePts, 0) < 0)
     return -1;
 
-  size_t curInsertingOffset = 0;
+  uint32_t cur_insert_off = 0;
   for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
     DtsAUCell * cell = &frm->contentCells[i];
 
@@ -273,21 +273,22 @@ int processCompleteFrameDtsAUFrame(
       continue;
 
     if (cell->replace) {
-      size_t writtenBytes;
+      uint32_t appended_bytes;
+
       switch (cell->type) {
         case DTS_FRM_INNER_EXT_SS_HDR:
-          writtenBytes = appendDcaExtSSHeader(
+          appended_bytes = appendDcaExtSSHeader(
             script,
-            curInsertingOffset,
-            &cell->param->extSSHdr
+            cur_insert_off,
+            &cell->param->ext_ss_hdr
           );
           break;
 
         case DTS_FRM_INNER_EXT_SS_ASSET:
-           writtenBytes = appendDcaExtSSAsset(
+           appended_bytes = appendDcaExtSSAsset(
             script,
-            curInsertingOffset,
-            &cell->param->extSSAsset,
+            cur_insert_off,
+            &cell->param->ext_ss_asset,
             srcFileScriptIdx
           );
           break;
@@ -299,23 +300,23 @@ int processCompleteFrameDtsAUFrame(
           );
       }
 
-      if (!writtenBytes)
+      if (!appended_bytes)
         return -1;
-
-      curInsertingOffset += writtenBytes;
+      cur_insert_off += appended_bytes;
     }
     else {
       if (
         appendAddPesPayloadCommand(
-          script, srcFileScriptIdx,
-          (uint32_t) curInsertingOffset,
+          script,
+          srcFileScriptIdx,
+          cur_insert_off,
           cell->startOffset,
           cell->length
         ) < 0
       )
         return -1;
 
-      curInsertingOffset += cell->length;
+      cur_insert_off += cell->length;
     }
   }
 

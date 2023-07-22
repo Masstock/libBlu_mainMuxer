@@ -23,14 +23,14 @@
  * Used to compile a byte-array to be inserted in output stream/
  */
 typedef struct {
-  uint8_t * data;              /**< Constructed bitstream byte array.        */
-  size_t dataAllocatedLength;  /**< Current array allocation size.           */
-  size_t dataUsedLength;       /**< Current array used size.                 */
+  uint8_t * data;               /**< Constructed bitstream byte array.       */
+  size_t dataAllocatedLength;   /**< Current array allocation size.          */
+  size_t dataUsedLength;        /**< Current array used size.                */
 
-  uint8_t currentByte;         /**< Bit-level temporary byte.                */
-  char currentByteUsedBits;    /**< Currently used bits in temporary byte.   */
+  uint8_t currentByte;          /**< Bit-level temporary byte.               */
+  unsigned currentByteUsedBits; /**< Currently used bits in temporary byte.  */
 
-  CrcContext crc;              /**< CRC checksum generation context.         */
+  CrcContext crc;               /**< CRC checksum generation context.        */
 } DtsPatcherBitstreamHandle, *DtsPatcherBitstreamHandlePtr;
 
 #define DTS_PATCHER_BITSTREAM_HANDLE_DEFAULT_SIZE 1024

@@ -53,21 +53,6 @@ unsigned buildDcaExtChMaskString(
   return nb_channels;
 }
 
-unsigned dtsExtReferenceClockCodeValue(
-  const DcaExtReferenceClockCode code
-)
-{
-  static const unsigned clockPeriods[3] = {
-    32000,
-    44100,
-    48000
-  };
-
-  if (code < ARRAY_SIZE(clockPeriods))
-    return clockPeriods[code];
-  return 0;
-}
-
 unsigned nbChDcaExtChMaskCode(
   const uint16_t mask
 )
@@ -152,34 +137,6 @@ void dcaExtChMaskStrPrintFun(
       sep = ",";
     }
   }
-}
-
-unsigned dtsExtSourceSampleRateCodeValue(
-  const DcaExtSourceSampleRateCode code
-)
-{
-  static const unsigned sampleRates[] = {
-    8000,
-    16000,
-    32000,
-    64000,
-    128000,
-    22050,
-    44100,
-    88200,
-    176400,
-    352800,
-    12000,
-    24000,
-    48000,
-    96000,
-    192000,
-    384000
-  };
-
-  if (code < ARRAY_SIZE(sampleRates))
-    return sampleRates[code];
-  return 0;
 }
 
 const char * dtsExtAssetTypeDescCodeStr(
@@ -278,7 +235,7 @@ int initDtsContext(
     LIBBLU_DTS_ERROR_FRETURN("Unable to open input ES.\n");
 
   /* Test if DTS-HD File from DTS-HDMA Suite */
-  is_dtshd_file = isDtshdFile(es_bs);
+  is_dtshd_file = isNextQWORDDtshdHdr(es_bs);
 
   /* Script output */
   script_bs = createBitstreamWriterDefBuf(settings->scriptFilepath);
@@ -508,21 +465,6 @@ void cleanDtsContext(
   cleanDtsAUFrame(ctx->cur_au);
 }
 
-bool nextPassDtsContext(
-  DtsContext * ctx
-)
-{
-  assert(NULL != ctx);
-
-  if (ctx->mode == DTS_PARSMOD_TWO_PASS_FIRST) {
-    /* Switch to second pass */
-    ctx->mode = DTS_PARSMOD_TWO_PASS_SECOND;
-    return true;
-  }
-
-  return false;
-}
-
 int initParsingDtsContext(
   DtsContext * ctx
 )
@@ -635,10 +577,10 @@ int addToEsmsDtsFrame(
         (
           (uint64_t) ext->curFrames[
             ext->currentExtSSIdx
-          ]->header.staticFields.frameDurationCodeValue
+          ]->header.static_fields.frameDurationCodeValue
         ) * MAIN_CLOCK_27MHZ
       )
-      / ext->curFrames[ext->currentExtSSIdx]->header.staticFields.referenceClockFreq
+      / ext->curFrames[ext->currentExtSSIdx]->header.static_fields.referenceClockFreq
     ;
   }
 
@@ -670,12 +612,9 @@ static uint64_t _getAndUpdatePTSExtSS(
 {
   const DcaExtSSFrameParameters * frame = extss->curFrames[extss->currentExtSSIdx];
   assert(NULL != frame);
-  const DcaExtSSHeaderStaticFieldsParameters * sf = &frame->header.staticFields;
+  const DcaExtSSHeaderSFParameters * sf = &frame->header.static_fields;
 
-  uint64_t increment =
-    (MAIN_CLOCK_27MHZ * sf->frameDurationCodeValue)
-    / sf->referenceClockFreq
-  ;
+  uint64_t increment = MAIN_CLOCK_27MHZ * getExSSFrameDurationDcaExtRefClockCode(sf);
 
   uint64_t pts = extss->pts;
   extss->pts += increment;

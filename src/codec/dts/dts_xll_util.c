@@ -10,7 +10,7 @@
 
 int saveFrameSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
-  size_t size
+  unsigned size
 )
 {
   assert(NULL != stats);
@@ -19,14 +19,14 @@ int saveFrameSizeDtsPbrSmoothing(
   if (stats->nbAllocatedFrames <= stats->nbUsedFrames) {
     unsigned new_len = GROW_ALLOCATION(stats->nbAllocatedFrames, 4096);
 
-    if (lb_mul_overflow(new_len, sizeof(size_t)))
+    if (lb_mul_overflow(new_len, sizeof(unsigned)))
       LIBBLU_DTS_ERROR_RETURN(
         "Too many DTS XLL frames for PBR smoothing process.\n"
       );
 
-    size_t * new_array = (size_t *) realloc(
+    unsigned * new_array = realloc(
       stats->targetFrmSize,
-      new_len * sizeof(size_t)
+      new_len * sizeof(unsigned)
     );
     if (NULL == new_array)
       LIBBLU_DTS_ERROR_RETURN(
@@ -42,10 +42,10 @@ int saveFrameSizeDtsPbrSmoothing(
   return 0;
 }
 
-int getFrameTargetSizeDtsPbrSmoothing(
+int _getFrameTargetSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
   unsigned frame_idx,
-  size_t * size
+  uint32_t * size
 )
 {
   assert(NULL != stats);
@@ -64,106 +64,120 @@ int getFrameTargetSizeDtsPbrSmoothing(
   return 0;
 }
 
-int performComputationDtsPbrSmoothing(
+static int _performComputationDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats
 )
 {
-  unsigned idx;
-
-  /* float timestamp, timePerFrame; */
-  size_t bufferedSize, maxSize, curSize, resSize;
-  size_t bufferSize, maxBufferedSize;
-  bool adjustmentRequired;
-
-  bool fakePbr;
-
-  /* timestamp = 0; */
-  /* timePerFrame = 1.0 / stats->framesPerSec; */
-  bufferedSize = maxBufferedSize = 0;
-  adjustmentRequired = false;
-
-  fakePbr = !isInitPbrFileHandler();
+  bool fake_pbr = !isInitPbrFileHandler();
 
   LIBBLU_DTS_DEBUG_PBR(
-    "Performing PBR smoothing computation on parsed frame sizes.\n"
+    "Performing Peak Bit-Rate Smoothing computation on parsed frame sizes.\n"
   );
   LIBBLU_DTS_DEBUG_PBR(
     " -> Fake mode: %s.\n",
-    BOOL_INFO(fakePbr)
+    BOOL_INFO(fake_pbr)
   );
 
-  if (!fakePbr) {
-    bufferSize = stats->maxPbrBufferSize;
+  uint32_t pbrs_buf_size;
+  if (!fake_pbr) {
+    pbrs_buf_size = stats->max_pbrs_buf_size;
 
     LIBBLU_DTS_DEBUG_PBR(
-      " -> Defined buffer size: %zu bytes (0: Disabled).\n",
-      bufferSize
+      " -> Defined buffer size: %" PRIu32 " bytes (0: Disabled).\n",
+      pbrs_buf_size
     );
 
-    if (!stats->averageFrameSizeComputed) {
-      size_t avgSize;
+    if (!stats->avg_frame_size_set) {
+      uint32_t avg_size;
 
-      if (getAvgSizePbrFileHandler(&avgSize) < 0)
+      if (getAvgSizePbrFileHandler(&avg_size) < 0)
         return -1;
-      stats->averageFrameSize = avgSize;
-      stats->averageFrameSizeComputed = true;
+      stats->avg_frame_size     = avg_size;
+      stats->avg_frame_size_set = true;
     }
 
     LIBBLU_DTS_DEBUG_PBR(
       " -> Average frame size: %zu bytes.\n",
-      stats->averageFrameSize
+      stats->avg_frame_size
     );
   }
   else
-    bufferSize = 0;
+    pbrs_buf_size = 0;
 
   LIBBLU_DTS_DEBUG_PBR("Compute frames sizes:\n");
-  for (idx = stats->nbUsedFrames; 0 < idx; idx--) {
-    curSize = stats->targetFrmSize[idx-1] + bufferedSize;
+  bool adj_required = false;
+  uint32_t accltd_size = 0; // Amount of future bytes to accumulate
+  uint32_t max_accltd_size = 0; // Peak amount of bytes accumulated
 
-    if (fakePbr) {
-      maxSize = 3200;
+  for (unsigned idx = stats->nbUsedFrames; 0 < idx; idx--) {
+    /* Compute amount of bytes accumulated at current frame decoding */
+    uint32_t cur_accltd_size = stats->targetFrmSize[idx-1] + accltd_size;
+
+    /* Compute frame maximum size */
+    uint32_t max_frame_size;
+    if (fake_pbr) {
+      max_frame_size = 3200;
     }
     else {
-      /* BUG: PBR smoothing using dtspbr file values need more research. */
+      /* TODO: PBR smoothing using dtspbr file values need more research. */
 #if 0
       if (getMaxSizePbrFileHandler((unsigned) (timestamp * 1000), &maxSize) < 0)
         return -1;
 #else
-      maxSize = stats->averageFrameSize;
+      max_frame_size = stats->avg_frame_size;
 #endif
     }
 
-    resSize = MIN(curSize, maxSize);
-    if (bufferSize && bufferSize < curSize && resSize < curSize - bufferSize) {
-      adjustmentRequired = true;
-      resSize = curSize - bufferSize;
+    /* Compute resulting targetted frame size. */
+    uint32_t res_frm_size = MIN(cur_accltd_size, max_frame_size);
+    bool cur_adj_required = false;
+
+    if (
+      0 < pbrs_buf_size // PBRS buffer size is not zero
+      && pbrs_buf_size < cur_accltd_size // Accumulated bytes might overflow PBRS buffer
+      && res_frm_size < cur_accltd_size - pbrs_buf_size // Exceeding bytes overflows
+                                                          // max target frame size
+    ) {
+      // Accumulated bytes will overflow PBRS buffer if accumulated any longer
+      // Targeted frame size can't be maintain anymore, adjust current frame
+      // max size to contain exceeding bytes to avoid this overflow.
+      res_frm_size = cur_accltd_size - pbrs_buf_size;
+      adj_required = cur_adj_required = true;
     }
-    bufferedSize = curSize - resSize;
 
-    if (0 < bufferedSize)
+    /* Compute amount of bytes to be accumulated in previous frames */
+    accltd_size = cur_accltd_size - res_frm_size;
+
+    if (0 < accltd_size) {
       LIBBLU_DTS_DEBUG_PBR(
-        " Frame %u: %zu bytes -> %zu bytes (%zu bytes buffered).\n",
-        idx-1, stats->targetFrmSize[idx-1], resSize, bufferedSize
+        " Frame %u: %" PRIu32 " bytes -> %" PRIu32 " bytes "
+        "(%" PRIu32 " bytes buffered)%s.\n",
+        idx-1,
+        stats->targetFrmSize[idx-1],
+        res_frm_size,
+        accltd_size,
+        cur_adj_required ? " # Overflow avoiding" : ""
       );
+    }
 
-    stats->targetFrmSize[idx-1] = resSize;
-
-    maxBufferedSize = MAX(maxBufferedSize, bufferedSize);
-
-    /* timestamp += timePerFrame; */
+    stats->targetFrmSize[idx-1] = res_frm_size; // Save resulting frame size.
+    max_accltd_size = MAX(max_accltd_size, accltd_size);
   }
 
-  if (0 < bufferedSize)
+  /* Remaining accumulated bytes, failing of PBRS */
+  if (0 < accltd_size)
     LIBBLU_DTS_XLL_ERROR_RETURN(
       "PBR smoothing process error, unable to smooth enough data "
       "(unable to place %zu bytes).\n",
-      bufferedSize
+      accltd_size
     );
 
   LIBBLU_DTS_DEBUG_PBR("Summary:\n");
-  LIBBLU_DTS_DEBUG_PBR(" -> Max buffered size: %zu bytes.\n", maxBufferedSize);
-  if (adjustmentRequired)
+  LIBBLU_DTS_DEBUG_PBR(
+    " -> Max buffered size: %" PRIu32 " bytes.\n",
+    max_accltd_size
+  );
+  if (adj_required)
     LIBBLU_DTS_DEBUG_PBR(
       "  -> Adjustment done to avoid buffer overflow.\n"
     );
@@ -171,82 +185,27 @@ int performComputationDtsPbrSmoothing(
   return 0;
 }
 
-#if 0
-
-DtsXllFrameContext * createDtsXllFrameContext(
-  void
-)
-{
-  DtsXllFrameContext * ctx;
-
-  ctx = (DtsXllFrameContext *) malloc(sizeof(DtsXllFrameContext));
-  if (NULL == ctx)
-    LIBBLU_DTS_ERROR_FRETURN("Memory allocation error.\n");
-
-  ctx->pbrBuffer = NULL;
-  ctx->pbrBufferSize = 0;
-  ctx->pbrBufferActiveSize = 0;
-  ctx->pbrBufferUsedSize = 0;
-  ctx->maxPbrBufferUsedSize = 0;
-
-  ctx->initializedPbrUnpack = false;
-
-  resetCrcContext(&ctx->crcCtx);
-
-  ctx->pendingFrames = createCircularBuffer();
-  ctx->nbParsedPbrFrames = 0;
-
-  ctx->decodedFramesOff = createCircularBuffer();
-  ctx->nbDecodedFrames = 0;
-  ctx->nbSlicedFrames = 0;
-
-  ctx->pbrSmoothing = INIT_DTS_PBR_SMOOTHING_STATS();
-
-  if (NULL == ctx->pendingFrames)
-    goto free_return;
-
-  return ctx;
-
-free_return:
-  destroyDtsXllFrameContext(ctx);
-  return NULL;
-}
-
-void destroyDtsXllFrameContext(DtsXllFrameContext * ctx)
-{
-  if (NULL == ctx)
-    return;
-
-  destroyCircularBuffer(ctx->pendingFrames);
-  destroyCircularBuffer(ctx->decodedFramesOff);
-  free(ctx->pbrBuffer);
-  _cleanDtsPbrSmoothingStats(ctx->pbrSmoothing);
-  free(ctx);
-}
-
-#endif
-
 int initDtsXllFrameContext(
   DtsXllFrameContext * ctx,
   DcaAudioAssetDescParameters asset,
-  DcaExtSSHeaderParameters extSSHdr,
+  const DcaExtSSHeaderParameters * ext_ss_hdr,
   DtshdFileHandler * dtshd
 )
 {
   assert(NULL != ctx);
 
-  DcaAudioAssetDescDecNDParameters * dec_nav_data = &asset.decNavData;
-  DcaAudioAssetSSXllParameters * xll_param = &dec_nav_data->codingComponents.extSSXll;
+  DcaAudioAssetDescDecNDParameters * dec_nav_data = &asset.dec_nav_data;
+  DcaAudioAssetExSSXllParameters * xll_param = &dec_nav_data->coding_components.ExSSXLL;
 
   /* Update decoder PBRS buffer size according to header : */
   if (dec_nav_data->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
-    if (xll_param->syncWordPresent) {
-      size_t buf_size = xll_param->peakBitRateSmoothingBufSize << 10; // KiB
+    if (xll_param->bExSSXLLSyncPresent) {
+      size_t buf_size = xll_param->nuPeakBRCntrlBuffSzkB << 10; // KiB
 
       if (DTS_XLL_MAX_PBR_BUFFER_SIZE < buf_size)
         LIBBLU_DTS_ERROR_RETURN(
           "DTS-HDMA PBR buffer size exceed 240 kBytes (%zu kBytes).\n",
-          xll_param->peakBitRateSmoothingBufSize
+          xll_param->nuPeakBRCntrlBuffSzkB
         );
 
       ctx->pbrBufferActiveSize = buf_size;
@@ -262,20 +221,21 @@ int initDtsXllFrameContext(
         pbrs_buf_size
       );
 
-    ctx->pbrSmoothing.maxPbrBufferSize = pbrs_buf_size;
+    ctx->pbrSmoothing.max_pbrs_buf_size = pbrs_buf_size;
   }
 
-  if (extSSHdr.staticFieldsPresent) {
-    SET_FPS_DTS_PBR_SMOOTHING_STATS(
-      ctx->pbrSmoothing,
-      1.0 / extSSHdr.staticFields.frameDuration
+  if (ext_ss_hdr->bStaticFieldsPresent) {
+    float ExSSFrameDuration = getExSSFrameDurationDcaExtRefClockCode(
+      &ext_ss_hdr->static_fields
     );
+    assert(0.f <= ExSSFrameDuration);
+    ctx->pbrSmoothing.framesPerSec = ExSSFrameDuration;
   }
 
   return 0;
 }
 
-int updateDtsXllPbrBufferSize(
+static int _updateDtsXllPbrBufferSize(
   DtsXllFrameContext * ctx,
   size_t newSize
 )
@@ -297,64 +257,62 @@ int updateDtsXllPbrBufferSize(
 int parseDtsXllToPbrBuffer(
   BitstreamReaderPtr dtsInput,
   DtsXllFrameContext * ctx,
-  DcaAudioAssetSSXllParameters asset,
+  DcaAudioAssetExSSXllParameters asset,
   size_t assetLength
 )
 {
   assert(!ctx->initializedPbrUnpack);
 
-  if (updateDtsXllPbrBufferSize(ctx, asset.size + ctx->pbrBufferUsedSize) < 0)
+  if (_updateDtsXllPbrBufferSize(ctx, asset.nuExSSXLLFsize + ctx->pbrBufferUsedSize) < 0)
     return -1;
 
-  /* lbc_printf("Frame size: %zu bytes, asset length: %zu bytes.\n", asset.size, assetLength); */
-
-  int64_t asset_off;
-  if ((asset_off = tellPos(dtsInput)) < 0)
-    return -1;
   uint8_t * buf_ptr = &ctx->pbrBuffer[ctx->pbrBufferUsedSize];
-
-  if (readBytes(dtsInput, buf_ptr, asset.size) < 0)
+  if (readBytes(dtsInput, buf_ptr, asset.nuExSSXLLFsize) < 0)
     return -1;
-  ctx->pbrBufferUsedSize += asset.size;
+  ctx->pbrBufferUsedSize += asset.nuExSSXLLFsize;
 
   size_t nbBufFrames = getNbEntriesCircularBuffer(&ctx->pendingFrames);
-
   DcaXllPbrFramePtr prev_frame = NULL;
   if (0 < nbBufFrames)
     prev_frame = getEntryCircularBuffer(&ctx->pendingFrames, nbBufFrames - 1);
 
-  if (asset.syncWordPresent) {
-    if (asset.size <= asset.nbBytesOffXllSync)
+  uint64_t xll_off  = (uint64_t) tellPos(dtsInput);
+  uint32_t xll_size = asset.nuExSSXLLFsize;
+
+  if (asset.bExSSXLLSyncPresent && 0 < asset.nuExSSXLLSyncOffset) {
+    uint32_t xll_sw_off = asset.nuExSSXLLSyncOffset;
+
+    /**
+     * Sync word present,
+     */
+
+    if (xll_size <= xll_sw_off)
       LIBBLU_DTS_ERROR_RETURN(
-        "Out of asset DTS-HDMA sync word offset (%zu <= %zu bytes).\n",
-        asset.size, asset.nbBytesOffXllSync
+        "Out of asset XLL sync word offset "
+        "(%" PRIu32 " <= %" PRIu32 " bytes).\n",
+        xll_size, xll_sw_off
       );
 
-    /* Collect if present data for last frame */
-    if (NULL != prev_frame) {
-      prev_frame->size += asset.nbBytesOffXllSync;
-
-      ADD_DTS_XLL_FRAME_SF_POS(
-        prev_frame->pos,
-        asset_off,
-        asset.nbBytesOffXllSync,
-        LIBBLU_DTS_ERROR_RETURN(
-          "Unable to add DTS-HDMA frame, source stream is too hashed.\n"
-        )
-      );
-
-      LIBBLU_DEBUG_COM(
-        " Previous frame %u data: %zu bytes.\n",
-        prev_frame->number,
-        asset.nbBytesOffXllSync
-      );
-    }
-    else if (0 < asset.nbBytesOffXllSync)
+    if (NULL == prev_frame)
       LIBBLU_DTS_ERROR_RETURN(
         "Presence of garbage out-of-sync DTS-HDMA audio data "
         "of %zu bytes at start.\n",
-        asset.nbBytesOffXllSync
+        xll_sw_off
       );
+
+    /* Collect if present data for last frame */
+    prev_frame->size += xll_sw_off;
+    if (addDcaXllFrameSFPosition(&prev_frame->pos, xll_off, xll_sw_off) < 0)
+      LIBBLU_DTS_ERROR_RETURN("Unable to add XLL frame, source stream is too hashed.\n");
+
+    LIBBLU_DEBUG_COM(
+      " Previous frame %u data: %" PRIu32 " bytes.\n",
+      prev_frame->number,
+      xll_sw_off
+    );
+
+    uint64_t cur_frm_off  = xll_off  + xll_sw_off;
+    uint32_t cur_frm_size = xll_size - xll_sw_off;
 
     /* Add frame to pending */
     DcaXllPbrFramePtr frame = newEntryCircularBuffer(
@@ -363,40 +321,28 @@ int parseDtsXllToPbrBuffer(
     );
     if (NULL == frame)
       return -1;
+    *frame = (DcaXllPbrFrame) {
+      .number   = ctx->nbParsedPbrFrames++,
+      .size     = cur_frm_size,
+      .pbrDelay = asset.nuInitLLDecDlyFrames
+    };
 
-    frame->number = ctx->nbParsedPbrFrames++;
-    frame->size = asset.size - asset.nbBytesOffXllSync;
-    frame->pos = INIT_DTS_XLL_FRAME_SF_POS();
-    frame->pbrDelay = asset.initialXllDecodingDelayInFrames;
-
-    ADD_DTS_XLL_FRAME_SF_POS(
-      frame->pos,
-      asset_off + asset.nbBytesOffXllSync,
-      frame->size,
-      LIBBLU_DTS_ERROR_RETURN(
-        "Unable to add DTS-HDMA frame, source stream is too hashed.\n"
-      )
-    );
+    if (addDcaXllFrameSFPosition(&frame->pos, cur_frm_off, cur_frm_size) < 0)
+      LIBBLU_DTS_ERROR_RETURN("Unable to add XLL frame, source stream is too hashed.\n");
 
     LIBBLU_DEBUG_COM(
-      " Current frame %u data: %zu bytes.\n",
+      " Current frame %u data: %" PRIu32 " bytes.\n",
       frame->number,
       frame->size
     );
   }
   else if (NULL != prev_frame) {
-    prev_frame->size += asset.size;
-    ADD_DTS_XLL_FRAME_SF_POS(
-      prev_frame->pos,
-      asset_off,
-      asset.size,
-      LIBBLU_DTS_ERROR_RETURN(
-        "Unable to add DTS-HDMA frame, source stream is too hashed.\n"
-      )
-    );
+    prev_frame->size += xll_size;
+    if (addDcaXllFrameSFPosition(&prev_frame->pos, xll_off, xll_size) < 0)
+      LIBBLU_DTS_ERROR_RETURN("Unable to add XLL frame, source stream is too hashed.\n");
   }
 
-  if (asset.size < assetLength) {
+  if (xll_size < assetLength) {
 #if 1
     LIBBLU_DTS_ERROR_RETURN(
       "Unexpected data in asset after the end of the XLL component.\n"
@@ -445,6 +391,14 @@ int initUnpackDtsXllPbr(
   return 0;
 }
 
+int _alignDwordDtsXllPbr(
+  DtsXllFrameContext * ctx
+)
+{
+  unsigned padding_size = (~(ctx->pbrBufferParsedSize - 1)) & 0x3;
+  return unpackBytesDtsXllPbr(ctx, NULL, padding_size);
+}
+
 int completeUnpackDtsXllPbr(
   DtsXllFrameContext * ctx
 )
@@ -452,10 +406,8 @@ int completeUnpackDtsXllPbr(
   assert(ctx->initializedPbrUnpack);
 
   /* Align to 32-bits boundary */
-  if (ctx->pbrBufferParsedSize & 0x3) {
-    if (align32BitsDtsXllPbr(ctx) < 0)
-      return -1;
-  }
+  if (_alignDwordDtsXllPbr(ctx) < 0)
+    return -1;
 
   memmove(
     ctx->pbrBuffer,
@@ -521,17 +473,6 @@ void alignByteDtsXllPbr(
 )
 {
   ctx->remainingBits = 0;
-}
-
-int align32BitsDtsXllPbr(
-  DtsXllFrameContext * ctx
-)
-{
-  size_t alignment;
-
-  if (4 == (alignment = 4 - (ctx->pbrBufferParsedSize & 0x3)))
-    return -1;
-  return unpackBytesDtsXllPbr(ctx, NULL, alignment);
 }
 
 int unpackByteDtsXllPbr(
@@ -684,13 +625,13 @@ int substractPbrFrameSliceDtsXllFrameContext(
     if (ret < 0)
       return -1;
 
-    if (IS_EMPTY_XLL_FRAME_SF_POS(dec_frame->position)) {
+    if (0 == dec_frame->position.nbSourceOffsets) {
       if (popCircularBuffer(&ctx->decodedFramesOff, NULL) < 0)
         LIBBLU_DTS_XLL_ERROR_RETURN("Broken decoded frames offsets FIFO.\n");
     }
     else {
       assert(requestedFrameSize == 0);
-      assert(0 < dec_frame->position.sourceOffsets[0].len);
+      assert(0 < dec_frame->position.sourceOffsets[0].size);
       dec_frame->unpackingStarted = true;
     }
   }
@@ -711,14 +652,12 @@ void printDcaXllFrameSFPositionIndexes(
   unsigned indent
 )
 {
-  int i;
-
-  for (i = 0; i < position.nbSourceOffsets; i++) {
+  for (unsigned i = 0; i < position.nbSourceOffsets; i++) {
     lbc_printf(
-      "%-*c- 0x%08" PRIX64 ", length: %lu bytes.\n",
+      "%-*c- 0x%08" PRIX64 ", length: %" PRIu32 " bytes.\n",
       indent, ' ',
-      position.sourceOffsets[i].off,
-      (unsigned long) position.sourceOffsets[i].len
+      position.sourceOffsets[i].offset,
+      position.sourceOffsets[i].size
     );
   }
 }
@@ -728,15 +667,10 @@ void substractDtsXllFrameOriginalPosition(
   DcaXllFrameSFPosition * pbrFramePosition
 )
 {
-  int ret;
+  DcaXllFrameSFPosition dstXllFramePosition = (DcaXllFrameSFPosition) {0};
+  size_t remainingFrameSize = frame->comHdr.frameSize;
 
-  DcaXllFrameSFPosition dstXllFramePosition;
-  size_t remainingFrameSize;
-
-  dstXllFramePosition = INIT_DTS_XLL_FRAME_SF_POS();
-  remainingFrameSize = frame->comHdr.frameSize;
-
-  ret = collectFrameDataDcaXllFrameSFPosition(
+  int ret = collectFrameDataDcaXllFrameSFPosition(
     pbrFramePosition,
     &remainingFrameSize,
     &dstXllFramePosition
@@ -794,45 +728,36 @@ int collectFrameDataDcaXllFrameSFPosition(
   DcaXllFrameSFPosition * dst
 )
 {
-  DcaXllFrameSFPosition genFrame;
-
   size_t indexConsumedLength, remainingFrameSize;
-  int i, consumedIndexes;
+  int consumedIndexes;
 
   assert(NULL != src);
   assert(NULL != dataAmount);
 
-  if (NULL == dst)
-    genFrame = INIT_DTS_XLL_FRAME_SF_POS();
-  else
+  DcaXllFrameSFPosition genFrame = (DcaXllFrameSFPosition) {0};
+  if (NULL != dst)
     genFrame = *dst;
 
   remainingFrameSize = *dataAmount;
   consumedIndexes = 0;
 
-  for (i = 0; i < src->nbSourceOffsets; i++) {
+  for (unsigned i = 0; i < src->nbSourceOffsets; i++) {
     /* While remaining decoded frame data to collect from PBR frame */
     if (!remainingFrameSize)
       break;
 
     DcaXllFrameSFPositionIndex * srcIdx = &src->sourceOffsets[i];
 
-    assert(0 < srcIdx->len);
-    indexConsumedLength = MIN(remainingFrameSize, srcIdx->len);
+    assert(0 < srcIdx->size);
+    indexConsumedLength = MIN(remainingFrameSize, srcIdx->size);
 
-    ADD_DTS_XLL_FRAME_SF_POS(
-      genFrame,
-      srcIdx->off,
-      indexConsumedLength,
-      LIBBLU_DTS_XLL_ERROR_RETURN(
-        "Too fragmented DTS PBR frame.\n"
-      )
-    );
+    if (addDcaXllFrameSFPosition(&genFrame, srcIdx->offset, indexConsumedLength) < 0)
+      LIBBLU_DTS_XLL_ERROR_RETURN("Too fragmented XLL asset.\n");
 
-    srcIdx->off += indexConsumedLength;
-    srcIdx->len -= indexConsumedLength;
+    srcIdx->offset += indexConsumedLength;
+    srcIdx->size -= indexConsumedLength;
     remainingFrameSize -= indexConsumedLength;
-    if (0 == srcIdx->len)
+    if (0 == srcIdx->size)
       consumedIndexes++;
     else
       assert(!remainingFrameSize);
@@ -840,7 +765,7 @@ int collectFrameDataDcaXllFrameSFPosition(
 
   /* Update remaining data in PBR frame */
   src->nbSourceOffsets -= consumedIndexes;
-  for (i = 0; i < src->nbSourceOffsets; i++) {
+  for (unsigned i = 0; i < src->nbSourceOffsets; i++) {
     src->sourceOffsets[i] = src->sourceOffsets[consumedIndexes+i];
   }
 
@@ -853,22 +778,23 @@ int collectFrameDataDcaXllFrameSFPosition(
 
 int getRelativeOffsetDcaXllFrameSFPosition(
   const DcaXllFrameSFPosition frame,
-  size_t abs_offset,
-  size_t * rel_offset
+  uint64_t abs_offset,
+  uint64_t * rel_offset
 )
 {
-  size_t offset = 0;
-  for (int i = 0; i < frame.nbSourceOffsets; i++) {
-    const DcaXllFrameSFPositionIndex * index = &frame.sourceOffsets[i];
-    size_t indexEndOffset = index->off + index->len;
+  uint64_t offset = 0;
 
-    if (index->off <= abs_offset && abs_offset < indexEndOffset) {
+  for (unsigned i = 0; i < frame.nbSourceOffsets; i++) {
+    const DcaXllFrameSFPositionIndex * index = &frame.sourceOffsets[i];
+    uint64_t end_off = index->offset + index->size;
+
+    if (index->offset <= abs_offset && abs_offset < end_off) {
       if (NULL != rel_offset)
-        *rel_offset = offset + (abs_offset - index->off);
+        *rel_offset = offset + (abs_offset - index->offset);
       return 0;
     }
 
-    offset += index->len;
+    offset += index->size;
   }
 
   return -1;
@@ -876,15 +802,15 @@ int getRelativeOffsetDcaXllFrameSFPosition(
 
 int getFrameTargetSizeDtsXllPbr(
   DtsXllFrameContext * ctx,
-  unsigned frameIdx,
-  size_t * size
+  unsigned frame_idx,
+  uint32_t * size
 )
 {
   assert(NULL != ctx);
 
-  return getFrameTargetSizeDtsPbrSmoothing(
+  return _getFrameTargetSizeDtsPbrSmoothing(
     &ctx->pbrSmoothing,
-    frameIdx,
+    frame_idx,
     size
   );
 }
@@ -893,7 +819,7 @@ int performComputationDtsXllPbr(
   DtsXllFrameContext * ctx
 )
 {
-  return performComputationDtsPbrSmoothing(
+  return _performComputationDtsPbrSmoothing(
     &ctx->pbrSmoothing
   );
 }

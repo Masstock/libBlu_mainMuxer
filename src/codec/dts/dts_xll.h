@@ -32,8 +32,8 @@ int decodeDtsXllFrame(
 int parseDtsXllFrame(
   BitstreamReaderPtr dtsInput,
   DtsXllFrameContext * ctx,
-  DcaAudioAssetDescParameters asset,
-  size_t assetLength
+  size_t assetLength,
+  const DcaAudioAssetDescDecNDParameters * asset_decnav
 );
 
 #endif

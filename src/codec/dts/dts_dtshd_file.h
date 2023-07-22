@@ -65,18 +65,21 @@ typedef enum {
  */
 #define DTS_HD_HEADER_SUPPORTED_VER  0x0
 
-bool isDtshdFile(
-  BitstreamReaderPtr dtsInput
-);
-
-static inline void cleanDtshdFileHandler(
-  DtshdFileHandler handle
+static inline bool isNextQWORDDtshdHdr(
+  BitstreamReaderPtr bs
 )
 {
-  free(handle.FILEINFO.text);
-  free(handle.AUPRINFO.text);
-  free(handle.BUILDVER.text);
-  free(handle.BLACKOUT.Blackout_Frame);
+  return DTS_HD_DTSHDHDR == nextUint64(bs);
+}
+
+static inline void cleanDtshdFileHandler(
+  DtshdFileHandler hdl
+)
+{
+  free(hdl.FILEINFO.text);
+  free(hdl.AUPRINFO.text);
+  free(hdl.BUILDVER.text);
+  free(hdl.BLACKOUT.Blackout_Frame);
 }
 
 /** \~english
@@ -106,7 +109,7 @@ static inline void cleanDtshdFileHandler(
  * \endcode
  */
 int decodeDtshdFileChunk(
-  BitstreamReaderPtr dtsInput,
+  BitstreamReaderPtr bs,
   DtshdFileHandler * handle
 );
 

@@ -217,17 +217,17 @@ int getMaxSizePbrFileHandler(
 }
 
 int getAvgSizePbrFileHandler(
-  size_t * avgSize
+  uint32_t * avg_size
 )
 {
-  double avg;
-  unsigned i;
-
-  avg = 0;
-  for (i = 0; i < pbrHandle.nbUsedEntries; i++) {
-    avg += (((double) pbrHandle.entries[i].value) - avg) / (i+1);
+  double avg = 0.;
+  for (unsigned i = 0; i < pbrHandle.nbUsedEntries; i++) {
+    avg += (((double) pbrHandle.entries[i].value) - avg) / (i + 1.);
   }
 
-  *avgSize = (size_t) ABS(ceil(avg));
+  if (avg < 0 || UINT32_MAX < (uint64_t) ceil(avg))
+    LIBBLU_DTS_PBR_ERROR_RETURN("Out of range avg frame size (%f).\n", avg);
+
+  *avg_size = ceil(avg);
   return 0;
 }

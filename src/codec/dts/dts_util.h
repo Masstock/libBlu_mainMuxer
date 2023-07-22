@@ -36,30 +36,10 @@ typedef struct {
   DcaCoreSSFrameParameters cur_frame;
 
   unsigned nb_frames;
-  DtsDcaCoreSSWarningFlags warning_flags;
+  DtsDcaCoreSSWarningFlags warn_flags;
 
   uint64_t pts;
 } DtsDcaCoreSSContext;
-
-/** \~english
- * \brief Initialize #DtsDcaCoreSSContext fields to default values.
- */
-static inline void initDtsDcaCoreSSContext(
-  DtsDcaCoreSSContext * ctx
-)
-{
-  *ctx = (DtsDcaCoreSSContext) {0};
-}
-
-typedef enum {
-  DCA_EXT_SS_REF_CLOCK_PERIOD_32000 = 0x0,
-  DCA_EXT_SS_REF_CLOCK_PERIOD_44100 = 0x1,
-  DCA_EXT_SS_REF_CLOCK_PERIOD_48000 = 0x2
-} DcaExtReferenceClockCode;
-
-unsigned dtsExtReferenceClockCodeValue(
-  const DcaExtReferenceClockCode code
-);
 
 typedef struct {
   bool presenceOfUserDefinedBits;
@@ -154,29 +134,6 @@ unsigned buildDcaExtChMaskString(
 
 unsigned nbChDcaExtChMaskCode(
   const uint16_t mask
-);
-
-typedef enum {
-  DCA_EXT_SS_SRC_SAMPLE_RATE_8000    = 0x0,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_16000   = 0x1,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_32000   = 0x2,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_64000   = 0x3,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_128000  = 0x4,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_22050   = 0x5,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_44100   = 0x6,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_88200   = 0x7,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_176400  = 0x8,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_352800  = 0x9,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_12000   = 0xA,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_24000   = 0xB,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_48000   = 0xC,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_96000   = 0xD,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_192000  = 0xE,
-  DCA_EXT_SS_SRC_SAMPLE_RATE_384000  = 0xF,
-} DcaExtSourceSampleRateCode;
-
-unsigned dtsExtSourceSampleRateCodeValue(
-  const DcaExtSourceSampleRateCode code
 );
 
 typedef enum {
@@ -287,6 +244,27 @@ typedef struct {
   bool skip_cur_au; /**< Skip all extension substreams until next core frame is parsed. */
 } DtsContext;
 
+/* Handling functions : */
+int initDtsContext(
+  DtsContext * ctx,
+  LibbluESParsingSettings * settings
+);
+
+int completeDtsContext(
+  DtsContext * ctx
+);
+
+void cleanDtsContext(
+  DtsContext * ctx
+);
+
+static inline bool isDtshdFileDtsContext(
+  const DtsContext * ctx
+)
+{
+  return ctx->is_dtshd_file;
+}
+
 static inline bool doGenerateScriptDtsContext(
   const DtsContext * ctx
 )
@@ -304,30 +282,17 @@ static inline bool isFast2nbPassDtsContext(
   return DTS_PARSMOD_TWO_PASS_SECOND == ctx->mode;
 }
 
-static inline bool isDtshdFileDtsContext(
-  const DtsContext * ctx
+static inline bool nextPassDtsContext(
+  DtsContext * ctx
 )
 {
-  return ctx->is_dtshd_file;
+  if (ctx->mode == DTS_PARSMOD_TWO_PASS_FIRST) {
+    ctx->mode = DTS_PARSMOD_TWO_PASS_SECOND; // Switch to second pass
+    return true;
+  }
+
+  return false;
 }
-
-/* Handling functions : */
-int initDtsContext(
-  DtsContext * ctx,
-  LibbluESParsingSettings * settings
-);
-
-int completeDtsContext(
-  DtsContext * ctx
-);
-
-void cleanDtsContext(
-  DtsContext * ctx
-);
-
-bool nextPassDtsContext(
-  DtsContext * ctx
-);
 
 int initParsingDtsContext(
   DtsContext * ctx

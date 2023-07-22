@@ -24,23 +24,9 @@ typedef enum {
 } DtsAUInnerType;
 
 typedef union {
-  DcaExtSSHeaderParameters extSSHdr;
-  DcaXllFrameSFPosition extSSAsset;
+  DcaExtSSHeaderParameters ext_ss_hdr;
+  DcaXllFrameSFPosition ext_ss_asset;
 } DtsAUInnerReplacementParam;
-
-#define DTS_AU_INNER_EXT_SS_HDR(param)                                        \
-  (                                                                           \
-    (DtsAUInnerReplacementParam) {                                            \
-      .extSSHdr = (param)                                                     \
-    }                                                                         \
-  )
-
-#define DTS_AU_INNER_EXT_SS_ASSET(offsets)                                    \
-  (                                                                           \
-    (DtsAUInnerReplacementParam) {                                            \
-      .extSSAsset = (offsets)                                                 \
-    }                                                                         \
-  )
 
 typedef struct {
   DtsAUInnerType type;
@@ -53,6 +39,16 @@ typedef struct {
 
   DtsAUInnerReplacementParam * param;
 } DtsAUCell, *DtsAUCellPtr;
+
+static inline void setPositionDtsAUCell(
+  DtsAUCellPtr cell,
+  uint64_t src_file_offset,
+  uint32_t size
+)
+{
+  cell->startOffset = src_file_offset;
+  cell->length = size;
+}
 
 typedef struct {
   DtsAUCell * contentCells;

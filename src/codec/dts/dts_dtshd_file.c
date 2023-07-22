@@ -142,7 +142,7 @@ static int _getFrameRateCode(
 }
 
 static int _decodeDtshdHeaderChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdFileHeaderChunk * param
 )
 {
@@ -150,7 +150,7 @@ static int _decodeDtshdHeaderChunk(
 
   /* [v64 'DTSHDHDR' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(chunk_id == DTS_HD_DTSHDHDR);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -158,7 +158,7 @@ static int _decodeDtshdHeaderChunk(
   );
 
   /* [u64 Hdr_Byte_Size] */
-  READ_BYTES(&param->Hdr_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->Hdr_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Header chunk size (Hdr_Byte_Size): %" PRIu64 " bytes (0x%016" PRIX64 ").\n",
@@ -168,13 +168,13 @@ static int _decodeDtshdHeaderChunk(
 
   if (param->Hdr_Byte_Size < DTSHD_DTSHDHDR_SIZE || param->Hdr_Byte_Size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file header chunk size "
+      "Invalid DTS-HD bs header chunk size "
       "('Hdr_Byte_Size' == 0x%016" PRIX64 ").\n",
       param->Hdr_Byte_Size
     );
 
   /* [u32 Hdr_Version] */
-  READ_BYTES(&param->Hdr_Version, file, 4, return -1);
+  READ_BYTES(&param->Hdr_Version, bs, 4, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Header version (Hdr_Version): %u.\n",
@@ -183,7 +183,7 @@ static int _decodeDtshdHeaderChunk(
 
   if (DTS_HD_HEADER_SUPPORTED_VER != param->Hdr_Version)
     LIBBLU_DTS_ERROR_RETURN(
-      "Unsupported DTS-HD file header version (%u).\n",
+      "Unsupported DTS-HD bs header version (%u).\n",
       param->Hdr_Version
     );
 
@@ -193,7 +193,7 @@ static int _decodeDtshdHeaderChunk(
    * -> u32 - TimeStamp
    */
   uint64_t Time_Code;
-  READ_BYTES(&Time_Code, file, 5, return -1);
+  READ_BYTES(&Time_Code, bs, 5, return -1);
   param->RefClockCode = Time_Code >> 38;
   param->TimeStamp    = Time_Code & 0xFFFFFFFF;
 
@@ -219,7 +219,7 @@ static int _decodeDtshdHeaderChunk(
   );
 
   /* [v8 TC_Frame_Rate] */
-  READ_BYTES(&param->TC_Frame_Rate, file, 1, return -1);
+  READ_BYTES(&param->TC_Frame_Rate, bs, 1, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Timecode frame-rate code (TC_Frame_Rate): 0x%02" PRIX8 ".\n",
@@ -249,7 +249,7 @@ static int _decodeDtshdHeaderChunk(
    * -> b1 : Peak Bit-Rate Smoothing (PBRS) indicator.
    * -> b1 : Constant Bit-Rate or Variable Bit-Rate descriptor.
    */
-  READ_BYTES(&param->Bitw_Stream_Metadata, file, 2, return -1);
+  READ_BYTES(&param->Bitw_Stream_Metadata, bs, 2, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Bitstream Metadata (Bitw_Stream_Metadata): 0x%04" PRIX16 ".\n",
@@ -282,7 +282,7 @@ static int _decodeDtshdHeaderChunk(
   );
 
   /* [u8 Num_Audio_Presentations] */
-  READ_BYTES(&param->Num_Audio_Presentations, file, 1, return -1);
+  READ_BYTES(&param->Num_Audio_Presentations, bs, 1, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Number of Audio Presentations (Num_Audio_Presentations): "
@@ -292,7 +292,7 @@ static int _decodeDtshdHeaderChunk(
   );
 
   /* [u8 Number_Of_Ext_Sub_Streams] */
-  READ_BYTES(&param->Number_Of_Ext_Sub_Streams, file, 1, return -1);
+  READ_BYTES(&param->Number_Of_Ext_Sub_Streams, bs, 1, return -1);
 
   if (param->Bitw_Stream_Metadata & DTSHD_BSM__EXTSS_PRESENT)
     param->Num_ExSS = param->Number_Of_Ext_Sub_Streams + 1;
@@ -311,13 +311,13 @@ static int _decodeDtshdHeaderChunk(
   );
 
   /* [vn Reserved/Dword_Align] */
-  SKIP_BYTES(file, param->Hdr_Byte_Size - DTSHD_DTSHDHDR_SIZE, return -1);
+  SKIP_BYTES(bs, param->Hdr_Byte_Size - DTSHD_DTSHDHDR_SIZE, return -1);
 
   return 0;
 }
 
 static int _decodeDtshdString(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   uint64_t max_size,
   char ** dst_ptr,
   uint64_t * res_size
@@ -329,14 +329,14 @@ static int _decodeDtshdString(
   uint8_t byte;
   do {
     if (max_size <= current_size)
-      LIBBLU_DTS_ERROR_RETURN("DTS-HD file header string is not terminated.\n");
+      LIBBLU_DTS_ERROR_RETURN("DTS-HD bs header string is not terminated.\n");
 
-    READ_BYTES(&byte, file, 1, return -1);
+    READ_BYTES(&byte, bs, 1, return -1);
 
     if (buffer_size <= current_size) {
       /* Realloc buffer */
       if (0 == (buffer_size = GROW_ALLOCATION(buffer_size, 16u)))
-        LIBBLU_DTS_ERROR_RETURN("DTS-HD file header string size overflow.\n");
+        LIBBLU_DTS_ERROR_RETURN("DTS-HD bs header string size overflow.\n");
       uint8_t * new_buffer = realloc(buffer, buffer_size);
       if (NULL == new_buffer)
         LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
@@ -352,14 +352,14 @@ static int _decodeDtshdString(
 }
 
 static int _decodeDtshdFileInfoChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdFileInfo * param
 )
 {
 
   /* [v64 'FILEINFO' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(chunk_id == DTS_HD_FILEINFO);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -367,7 +367,7 @@ static int _decodeDtshdFileInfoChunk(
   );
 
   /* [u64 FILEINFO_Text_Byte_Size] */
-  READ_BYTES(&param->FILEINFO_Text_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->FILEINFO_Text_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " FILEINFO chunk size (FILEINFO_Text_Byte_Size): "
@@ -378,7 +378,7 @@ static int _decodeDtshdFileInfoChunk(
 
   if (param->FILEINFO_Text_Byte_Size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file FILEINFO chunk size "
+      "Invalid DTS-HD bs FILEINFO chunk size "
       "('FILEINFO_Text_Byte_Size' == 0x%016" PRIX64 ").\n",
       param->FILEINFO_Text_Byte_Size
     );
@@ -386,8 +386,8 @@ static int _decodeDtshdFileInfoChunk(
   /* [vn string] */
   uint64_t string_size;
   uint64_t max_string_size = param->FILEINFO_Text_Byte_Size;
-  if (_decodeDtshdString(file, max_string_size, &param->text, &string_size) < 0)
-    LIBBLU_DTS_ERROR_RETURN("Invalid DTS-HD file FILEINFO string.\n");
+  if (_decodeDtshdString(bs, max_string_size, &param->text, &string_size) < 0)
+    LIBBLU_DTS_ERROR_RETURN("Invalid DTS-HD bs FILEINFO string.\n");
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Information Text string: '%s'.\n",
@@ -395,13 +395,13 @@ static int _decodeDtshdFileInfoChunk(
   );
 
   /* [vn Reserved/Dword_Align] */
-  SKIP_BYTES(file, param->FILEINFO_Text_Byte_Size - string_size, return -1);
+  SKIP_BYTES(bs, param->FILEINFO_Text_Byte_Size - string_size, return -1);
 
   return 0;
 }
 
 static int _decodeDtshdStreamDataChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdStreamData * param,
   bool in_STRMDATA,
   uint64_t off_STRMDATA
@@ -412,11 +412,11 @@ static int _decodeDtshdStreamDataChunk(
     if (param->Stream_Data_Byte_Size <= off_STRMDATA) {
       if (param->Stream_Data_Byte_Size < off_STRMDATA)
         LIBBLU_DTS_ERROR_RETURN(
-          "DTS-HD file chunk length error (longer than expected).\n"
+          "DTS-HD bs chunk length error (longer than expected).\n"
         );
 
       /* Align to DWORD (32 bits) boundary */
-      if (paddingBoundary(file, 4) < 0)
+      if (paddingBoundary(bs, 4) < 0)
         return -1;
       return 0; // End of STRMDATA chunk, stop reading DTS audio frames.
     }
@@ -426,7 +426,7 @@ static int _decodeDtshdStreamDataChunk(
 
   /* [v64 'STRMDATA' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_STRMDATA == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -434,7 +434,7 @@ static int _decodeDtshdStreamDataChunk(
   );
 
   /* [u64 Stream_Data_Byte_Size] */
-  READ_BYTES(&param->Stream_Data_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->Stream_Data_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " STRMDATA chunk size (Stream_Data_Byte_Size): "
@@ -445,7 +445,7 @@ static int _decodeDtshdStreamDataChunk(
 
   if (0x00 == param->Stream_Data_Byte_Size)
     LIBBLU_DTS_ERROR_RETURN(
-      "DTS-HD file chunk length error (unexpected empty stream data chunk).\n"
+      "DTS-HD bs chunk length error (unexpected empty stream data chunk).\n"
     );
 
   /* [vn DTS-HD Encoded Bitstream] */
@@ -455,14 +455,14 @@ static int _decodeDtshdStreamDataChunk(
 }
 
 static int _decodeDtshdCoreSubStreamMetaChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdCoreSubStrmMeta * param
 )
 {
 
   /* [v64 'CORESSMD' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_CORESSMD == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -470,7 +470,7 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
   );
 
   /* [u64 Core_Ss_Md_Bytes_Size] */
-  READ_BYTES(&param->Core_Ss_Md_Bytes_Size, file, 8, return -1);
+  READ_BYTES(&param->Core_Ss_Md_Bytes_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " CORESSMD chunk size (Core_Ss_Md_Bytes_Size): "
@@ -482,13 +482,13 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
   unsigned chunk_size = param->Core_Ss_Md_Bytes_Size;
   if (chunk_size < DTSHD_CORESSMD_SIZE || chunk_size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Core Substream Metadata chunk size "
+      "Invalid DTS-HD bs Core Substream Metadata chunk size "
       "('Core_Ss_Md_Bytes_Size' == 0x%016" PRIX64 ").\n",
       param->Core_Ss_Md_Bytes_Size
     );
 
   /* [u24 Core_Ss_Max_Sample_Rate_Hz] */
-  READ_BYTES(&param->Core_Ss_Max_Sample_Rate_Hz, file, 3, return -1);
+  READ_BYTES(&param->Core_Ss_Max_Sample_Rate_Hz, bs, 3, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Core Sub-Stream Maximum Sampling Rate (Core_Ss_Max_Sample_Rate_Hz): "
@@ -498,7 +498,7 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
   );
 
   /* [u16 Core_Ss_Bit_Rate_Kbps] */
-  READ_BYTES(&param->Core_Ss_Bit_Rate_Kbps, file, 2, return -1);
+  READ_BYTES(&param->Core_Ss_Bit_Rate_Kbps, bs, 2, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Core Sub-Stream Bit-Rate (Core_Ss_Bit_Rate_Kbps): "
@@ -508,7 +508,7 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
   );
 
   /* [v16 Core_Ss_Channel_Mask] */
-  READ_BYTES(&param->Core_Ss_Channel_Mask, file, 2, return -1);
+  READ_BYTES(&param->Core_Ss_Channel_Mask, bs, 2, return -1);
 
   char channel_mask_str[DCA_CHMASK_STR_BUFSIZE];
   unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
@@ -526,11 +526,11 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
 
   if (0 == channel_mask_nb_ch)
     LIBBLU_DTS_ERROR_RETURN(
-      "DTS-HD file empty Core Sub-Stream channel mask.\n"
+      "DTS-HD bs empty Core Sub-Stream channel mask.\n"
     );
 
   /* [u32 Core_Ss_Frame_Payload_In_Bytes] */
-  READ_BYTES(&param->Core_Ss_Frame_Payload_In_Bytes, file, 4, return -1);
+  READ_BYTES(&param->Core_Ss_Frame_Payload_In_Bytes, bs, 4, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Core Sub-Stream Frame Payload size (Core_Ss_Frame_Payload_In_Bytes): "
@@ -540,13 +540,13 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
   );
 
   /* [vn reserved/padding] */
-  SKIP_BYTES(file, param->Core_Ss_Md_Bytes_Size - DTSHD_CORESSMD_SIZE, return -1);
+  SKIP_BYTES(bs, param->Core_Ss_Md_Bytes_Size - DTSHD_CORESSMD_SIZE, return -1);
 
   return 0;
 }
 
 static int _decodeDtshdExtSubStreamMetaChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdExtSubStrmMeta * param,
   bool is_VBR
 )
@@ -554,7 +554,7 @@ static int _decodeDtshdExtSubStreamMetaChunk(
 
   /* [v64 'EXTSS_MD' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_EXTSS_MD == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -562,7 +562,7 @@ static int _decodeDtshdExtSubStreamMetaChunk(
   );
 
   /* [u64 Ext_Ss_Md_Bytes_Size] */
-  READ_BYTES(&param->Ext_Ss_Md_Bytes_Size, file, 8, return -1);
+  READ_BYTES(&param->Ext_Ss_Md_Bytes_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " EXTSS_MD chunk size (Ext_Ss_Md_Bytes_Size): "
@@ -574,14 +574,14 @@ static int _decodeDtshdExtSubStreamMetaChunk(
   unsigned chunk_size = param->Ext_Ss_Md_Bytes_Size;
   if (chunk_size < (7 + (unsigned) is_VBR) || chunk_size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Extension Substream Metadata chunk size "
+      "Invalid DTS-HD bs Extension Substream Metadata chunk size "
       "('Ext_Ss_Md_Bytes_Size' == 0x%016" PRIX64 ").\n",
       param->Ext_Ss_Md_Bytes_Size
     );
   unsigned remaining_size = chunk_size - (7 + (unsigned) is_VBR);
 
   /* [u24 Ext_Ss_Avg_Bit_Rate_Kbps] */
-  READ_BYTES(&param->Ext_Ss_Avg_Bit_Rate_Kbps, file, 3, return -1);
+  READ_BYTES(&param->Ext_Ss_Avg_Bit_Rate_Kbps, bs, 3, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Extension Substreams Average Bit-Rate (Ext_Ss_Avg_Bit_Rate_Kbps): "
@@ -592,7 +592,7 @@ static int _decodeDtshdExtSubStreamMetaChunk(
 
   if (is_VBR) {
     /* [u24 Ext_Ss_Peak_Bit_Rate_Kbps] */
-    READ_BYTES(&param->vbr.Ext_Ss_Peak_Bit_Rate_Kbps, file, 3, return -1);
+    READ_BYTES(&param->vbr.Ext_Ss_Peak_Bit_Rate_Kbps, bs, 3, return -1);
 
     LIBBLU_DTS_DEBUG_DTSHD(
       " Extension Substreams Peak Bit-Rate (Ext_Ss_Avg_Bit_Rate_Kbps): "
@@ -602,7 +602,7 @@ static int _decodeDtshdExtSubStreamMetaChunk(
     );
 
     /* [u16 Pbr_Smooth_Buff_Size_Kb] */
-    READ_BYTES(&param->vbr.Pbr_Smooth_Buff_Size_Kb, file, 2, return -1);
+    READ_BYTES(&param->vbr.Pbr_Smooth_Buff_Size_Kb, bs, 2, return -1);
 
     LIBBLU_DTS_DEBUG_DTSHD(
       " Peak Bit-Rate Smoothing Buffer Size (Pbr_Smooth_Buff_Size_Kb): "
@@ -613,7 +613,7 @@ static int _decodeDtshdExtSubStreamMetaChunk(
   }
   else {
     /* [u32 Ext_Ss_Frame_Payload_In_Bytes] */
-    READ_BYTES(&param->cbr.Ext_Ss_Frame_Payload_In_Bytes, file, 4, return -1);
+    READ_BYTES(&param->cbr.Ext_Ss_Frame_Payload_In_Bytes, bs, 4, return -1);
 
     LIBBLU_DTS_DEBUG_DTSHD(
       " Extension Substreams Frame Payload (Ext_Ss_Frame_Payload_In_Bytes): "
@@ -624,20 +624,20 @@ static int _decodeDtshdExtSubStreamMetaChunk(
   }
 
   /* [vn reserved/padding] */
-  SKIP_BYTES(file, remaining_size, return -1);
+  SKIP_BYTES(bs, remaining_size, return -1);
 
   return 0;
 }
 
 static int _decodeDtshdAudioPresHeaderMetaChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdAudioPresPropHeaderMeta * param
 )
 {
 
   /* [v64 'AUPR-HDR' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_AUPR_HDR == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -645,7 +645,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   );
 
   /* [u64 Audio_Pres_Hdr_Md_Bytes_Size] */
-  READ_BYTES(&param->Audio_Pres_Hdr_Md_Bytes_Size, file, 8, return -1);
+  READ_BYTES(&param->Audio_Pres_Hdr_Md_Bytes_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " AUPR-HDR chunk size (Audio_Pres_Hdr_Md_Bytes_Size): "
@@ -657,14 +657,14 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   unsigned remaining_size = param->Audio_Pres_Hdr_Md_Bytes_Size;
   if (remaining_size < DTSHD_AUPR_HDR_MINSIZE || remaining_size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Audio Presentation Header Metadata chunk size "
+      "Invalid DTS-HD bs Audio Presentation Header Metadata chunk size "
       "('Audio_Pres_Hdr_Md_Bytes_Size' == 0x%016" PRIX64 ").\n",
       param->Audio_Pres_Hdr_Md_Bytes_Size
     );
   remaining_size -= DTSHD_AUPR_HDR_MINSIZE;
 
   /* [u8 Audio_Pres_Index] */
-  READ_BYTES(&param->Audio_Pres_Index, file, 1, return -1);
+  READ_BYTES(&param->Audio_Pres_Index, bs, 1, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Audio Presentation Index (Audio_Pres_Index): 0x%02" PRIX8 ".\n",
@@ -679,7 +679,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   * -> b1 : Location of backward compatible Core audio coding component.
   * -> b1 : Presence of backward compatible Core audio coding component.
   */
-  READ_BYTES(&param->Bitw_Aupres_Metadata, file, 2, return -1);
+  READ_BYTES(&param->Bitw_Aupres_Metadata, bs, 2, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Audio Presentation Metadata (Bitw_Aupres_Metadata): 0x%04" PRIX16 ".\n",
@@ -708,7 +708,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   );
 
   /* [u24 Max_Sample_Rate_Hz] */
-  READ_BYTES(&param->Max_Sample_Rate_Hz, file, 3, return -1);
+  READ_BYTES(&param->Max_Sample_Rate_Hz, bs, 3, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Max audio Sampling Rate (Max_Sample_Rate_Hz): %u Hz (0x%06" PRIX32 ").\n",
@@ -717,7 +717,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   );
 
   /* [u32 Num_Frames_Total] */
-  READ_BYTES(&param->Num_Frames_Total, file, 4, return -1);
+  READ_BYTES(&param->Num_Frames_Total, bs, 4, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Total Number of audio Frames (Num_Frames_Total): "
@@ -727,7 +727,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   );
 
   /* [u16 Samples_Per_Frame_At_Max_Fs] */
-  READ_BYTES(&param->Samples_Per_Frame_At_Max_Fs, file, 2, return -1);
+  READ_BYTES(&param->Samples_Per_Frame_At_Max_Fs, bs, 2, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Samples Per Frame at Maximum Sample Frequency "
@@ -737,7 +737,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   );
 
   /* [u40 Num_Samples_Orig_Audio_At_Max_Fs] */
-  READ_BYTES(&param->Num_Samples_Orig_Audio_At_Max_Fs, file, 5, return -1);
+  READ_BYTES(&param->Num_Samples_Orig_Audio_At_Max_Fs, bs, 5, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Number of Samples in Original Audio at Maximum Sample Frequency "
@@ -748,7 +748,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   );
 
   /* [v16 Channel_Mask] */
-  READ_BYTES(&param->Channel_Mask, file, 2, return -1);
+  READ_BYTES(&param->Channel_Mask, bs, 2, return -1);
 
   char channel_mask_str[DCA_CHMASK_STR_BUFSIZE] = {'\0'};
   unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
@@ -766,11 +766,11 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
 
   if (0 == channel_mask_nb_ch)
     LIBBLU_DTS_ERROR_RETURN(
-      "DTS-HD file empty Audio Presentation Channel mask.\n"
+      "DTS-HD bs empty Audio Presentation Channel mask.\n"
     );
 
   /* [u16 Codec_Delay_At_Max_Fs] */
-  READ_BYTES(&param->Codec_Delay_At_Max_Fs, file, 2, return -1);
+  READ_BYTES(&param->Codec_Delay_At_Max_Fs, bs, 2, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Encoder delay at Maximum Sample Frequency (Codec_Delay_At_Max_Fs): "
@@ -785,14 +785,14 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   ) {
     if (remaining_size < DTSHD_AUPR_HDR_CORE_SIZE)
       LIBBLU_DTS_ERROR_RETURN(
-        "Invalid DTS-HD file Audio Presentation Header Metadata chunk size "
+        "Invalid DTS-HD bs Audio Presentation Header Metadata chunk size "
         "('Audio_Pres_Hdr_Md_Bytes_Size' == 0x%016" PRIX64 ").\n",
         param->Audio_Pres_Hdr_Md_Bytes_Size
       );
     remaining_size -= DTSHD_AUPR_HDR_CORE_SIZE;
 
     /* [u24 BC_Core_Max_Sample_Rate_Hz] */
-    READ_BYTES(&param->BC_Core_Max_Sample_Rate_Hz, file, 3, return -1);
+    READ_BYTES(&param->BC_Core_Max_Sample_Rate_Hz, bs, 3, return -1);
 
     LIBBLU_DTS_DEBUG_DTSHD(
       " Backward-Compatible Core Maximum Sample Rate "
@@ -802,7 +802,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
     );
 
     /* [u16 BC_Core_Bit_Rate_Kbps] */
-    READ_BYTES(&param->BC_Core_Bit_Rate_Kbps, file, 2, return -1);
+    READ_BYTES(&param->BC_Core_Bit_Rate_Kbps, bs, 2, return -1);
 
     LIBBLU_DTS_DEBUG_DTSHD(
       " Backward-Compatible Core Bit-Rate "
@@ -812,7 +812,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
     );
 
     /* [u16 BC_Core_Channel_Mask] */
-    READ_BYTES(&param->BC_Core_Channel_Mask, file, 2, return -1);
+    READ_BYTES(&param->BC_Core_Channel_Mask, bs, 2, return -1);
 
     char channel_mask_str[DCA_CHMASK_STR_BUFSIZE];
     unsigned channel_mask_nb_ch = buildDcaExtChMaskString(
@@ -830,7 +830,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
 
     if (0 == channel_mask_nb_ch)
       LIBBLU_DTS_ERROR_RETURN(
-        "DTS-HD file empty Audio Presentation "
+        "DTS-HD bs empty Audio Presentation "
         "Backward-Compatible Core Channel mask.\n"
       );
   }
@@ -838,14 +838,14 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   if (param->Bitw_Aupres_Metadata & DTSHD_BAM__LOSSLESS_PRESENT) {
     if (remaining_size < DTSHD_AUPR_HDR_XLL_SIZE)
       LIBBLU_DTS_ERROR_RETURN(
-        "Invalid DTS-HD file Audio Presentation Header Metadata chunk size "
+        "Invalid DTS-HD bs Audio Presentation Header Metadata chunk size "
         "('Audio_Pres_Hdr_Md_Bytes_Size' == 0x%016" PRIX64 ").\n",
         param->Audio_Pres_Hdr_Md_Bytes_Size
       );
     remaining_size -= DTSHD_AUPR_HDR_XLL_SIZE;
 
     /* [u8 LSB_Trim_Percent] */
-    READ_BYTES(&param->LSB_Trim_Percent, file, 1, return -1);
+    READ_BYTES(&param->LSB_Trim_Percent, bs, 1, return -1);
 
     LIBBLU_DTS_DEBUG_DTSHD(
       " Lossless Extension LSB trim (LSB_Trim_Percent): "
@@ -856,20 +856,20 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
   }
 
   /* [vn reserved/padding] */
-  SKIP_BYTES(file, remaining_size, return -1);
+  SKIP_BYTES(bs, remaining_size, return -1);
 
   return 0;
 }
 
 static int _decodeDtshdAudioPresInfoChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdAudioPresText * param
 )
 {
 
   /* [v64 'AUPRINFO' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_AUPRINFO == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -877,7 +877,7 @@ static int _decodeDtshdAudioPresInfoChunk(
   );
 
   /* [u64 Audio_Pres_Info_Text_Byte_Size] */
-  READ_BYTES(&param->Audio_Pres_Info_Text_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->Audio_Pres_Info_Text_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " AUPRINFO chunk size (Audio_Pres_Info_Text_Byte_Size): "
@@ -889,14 +889,14 @@ static int _decodeDtshdAudioPresInfoChunk(
   unsigned remaining_size = param->Audio_Pres_Info_Text_Byte_Size;
   if (remaining_size < DTSHD_AUPRINFO_MINSIZE || remaining_size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Audio Presentation Info Text chunk size "
+      "Invalid DTS-HD bs Audio Presentation Info Text chunk size "
       "('Audio_Pres_Info_Text_Byte_Size' == 0x%016" PRIX64 ").\n",
       param->Audio_Pres_Info_Text_Byte_Size
     );
   remaining_size -= DTSHD_AUPRINFO_MINSIZE;
 
   /* [u8 Audio_Pres_Info_Text_Index] */
-  READ_BYTES(&param->Audio_Pres_Info_Text_Index, file, 1, return -1);
+  READ_BYTES(&param->Audio_Pres_Info_Text_Index, bs, 1, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Information Text associated Audio Presentation Index "
@@ -907,8 +907,8 @@ static int _decodeDtshdAudioPresInfoChunk(
 
   /* [vn string] */
   uint64_t string_size;
-  if (_decodeDtshdString(file, remaining_size, &param->text, &string_size) < 0)
-    LIBBLU_DTS_ERROR_RETURN("Invalid DTS-HD file FILEINFO string.\n");
+  if (_decodeDtshdString(bs, remaining_size, &param->text, &string_size) < 0)
+    LIBBLU_DTS_ERROR_RETURN("Invalid DTS-HD bs FILEINFO string.\n");
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Information Text string: '%s'.\n",
@@ -916,20 +916,20 @@ static int _decodeDtshdAudioPresInfoChunk(
   );
 
   /* [vn Reserved/Dword_Align] */
-  SKIP_BYTES(file, remaining_size - string_size, return -1);
+  SKIP_BYTES(bs, remaining_size - string_size, return -1);
 
   return 0;
 }
 
 int decodeDtshdNavigationMetaChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdNavMeta * param
 )
 {
 
   /* [v64 'NAVI-TBL' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_NAVI_TBL == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -937,7 +937,7 @@ int decodeDtshdNavigationMetaChunk(
   );
 
   /* [u64 Navi_Tbl_Md_Bytes_Size] */
-  READ_BYTES(&param->Navi_Tbl_Md_Bytes_Size, file, 8, return -1);
+  READ_BYTES(&param->Navi_Tbl_Md_Bytes_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " NAVI-TBL chunk size (Navi_Tbl_Md_Bytes_Size): "
@@ -948,26 +948,26 @@ int decodeDtshdNavigationMetaChunk(
 
   if (!param->Navi_Tbl_Md_Bytes_Size || param->Navi_Tbl_Md_Bytes_Size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Navigation Table chunk size "
+      "Invalid DTS-HD bs Navigation Table chunk size "
       "('Navi_Tbl_Md_Bytes_Size' == 0x%016" PRIX64 ").\n",
       param->Navi_Tbl_Md_Bytes_Size
     );
 
   /* [vn Reserved/Dword_Align] */
-  SKIP_BYTES(file, param->Navi_Tbl_Md_Bytes_Size, return -1);
+  SKIP_BYTES(bs, param->Navi_Tbl_Md_Bytes_Size, return -1);
 
   return 0;
 }
 
 int decodeDtshdTimecodeChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdTimecode * param
 )
 {
 
   /* [v64 'TIMECODE' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_TIMECODE == chunk_id);
 
   LIBBLU_DTS_DEBUG_DTSHD(
@@ -975,7 +975,7 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [u64 Timecode_Data_Byte_Size] */
-  READ_BYTES(&param->Timecode_Data_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->Timecode_Data_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " TIMECODE chunk size (Timecode_Data_Byte_Size): "
@@ -987,13 +987,13 @@ int decodeDtshdTimecodeChunk(
   uint64_t chunk_size = param->Timecode_Data_Byte_Size;
   if (chunk_size < DTSHD_TIMECODE_SIZE || chunk_size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Timecode Data chunk size "
+      "Invalid DTS-HD bs Timecode Data chunk size "
       "('Timecode_Data_Byte_Size' == 0x%016" PRIX64 ").\n",
       param->Timecode_Data_Byte_Size
     );
 
   /* [u32 Timecode_Clock] */
-  READ_BYTES(&param->Timecode_Clock, file, 4, return -1);
+  READ_BYTES(&param->Timecode_Clock, bs, 4, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Timecode clock (Timecode_Clock): %u (0x%08" PRIX32 ").\n",
@@ -1002,7 +1002,7 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [u8 Timecode_Frame_Rate] */
-  READ_BYTES(&param->Timecode_Frame_Rate, file, 1, return -1);
+  READ_BYTES(&param->Timecode_Frame_Rate, bs, 1, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Timecode frame-rate (Timecode_Frame_Rate): %u (0x%02" PRIX8 ").\n",
@@ -1011,7 +1011,7 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [u64 Start_Samples_Since_Midnight] */
-  READ_BYTES(&param->Start_Samples_Since_Midnight, file, 8, return -1);
+  READ_BYTES(&param->Start_Samples_Since_Midnight, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Start samples since midnight (Start_Samples_Since_Midnight): "
@@ -1021,7 +1021,7 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [u32 Start_Residual] */
-  READ_BYTES(&param->Start_Residual, file, 4, return -1);
+  READ_BYTES(&param->Start_Residual, bs, 4, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Start residual (Start_Residual): %" PRIu32 " (0x%08" PRIX32 ").\n",
@@ -1030,7 +1030,7 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [u64 Reference_Samples_Since_Midnight] */
-  READ_BYTES(&param->Reference_Samples_Since_Midnight, file, 8, return -1);
+  READ_BYTES(&param->Reference_Samples_Since_Midnight, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Reference Samples Since Midnight (Reference_Samples_Since_Midnight): "
@@ -1040,7 +1040,7 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [u32 Reference_Residual] */
-  READ_BYTES(&param->Reference_Residual, file, 4, return -1);
+  READ_BYTES(&param->Reference_Residual, bs, 4, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Reference Samples Since Midnight (Reference_Residual): "
@@ -1050,24 +1050,24 @@ int decodeDtshdTimecodeChunk(
   );
 
   /* [vn Reserved/Dword_Align] */
-  SKIP_BYTES(file, param->Timecode_Data_Byte_Size - DTSHD_TIMECODE_SIZE, return -1);
+  SKIP_BYTES(bs, param->Timecode_Data_Byte_Size - DTSHD_TIMECODE_SIZE, return -1);
 
   return 0;
 }
 
 int decodeDtshdBuildVerChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdBuildVer * param
 )
 {
 
   /* [v64 'BUILDVER' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_BUILDVER == chunk_id);
 
   /* [u64 BuildVer_Data_Byte_Size] */
-  READ_BYTES(&param->BuildVer_Data_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->BuildVer_Data_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " BUILDVER chunk size (BuildVer_Data_Byte_Size): "
@@ -1079,15 +1079,15 @@ int decodeDtshdBuildVerChunk(
   uint64_t chunk_size = param->BuildVer_Data_Byte_Size;
   if (chunk_size < DTSHD_TIMECODE_SIZE || chunk_size & 0x3)
     LIBBLU_DTS_ERROR_RETURN(
-      "Invalid DTS-HD file Build Version chunk size "
+      "Invalid DTS-HD bs Build Version chunk size "
       "('BuildVer_Data_Byte_Size' == 0x%016" PRIX64 ").\n",
       param->BuildVer_Data_Byte_Size
     );
 
   /* [vn string] */
   uint64_t string_size;
-  if (_decodeDtshdString(file, chunk_size, &param->text, &string_size) < 0)
-    LIBBLU_DTS_ERROR_RETURN("Invalid DTS-HD file FILEINFO string.\n");
+  if (_decodeDtshdString(bs, chunk_size, &param->text, &string_size) < 0)
+    LIBBLU_DTS_ERROR_RETURN("Invalid DTS-HD bs FILEINFO string.\n");
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Information Text string: '%s'.\n",
@@ -1095,24 +1095,24 @@ int decodeDtshdBuildVerChunk(
   );
 
   /* [vn Reserved/Dword_Align] */
-  SKIP_BYTES(file, chunk_size - string_size, return -1);
+  SKIP_BYTES(bs, chunk_size - string_size, return -1);
 
   return 0;
 }
 
 int decodeDtshdBlackoutChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdBlackout * param
 )
 {
 
   /* [v64 'BLACKOUT' ASCII identifier] */
   uint64_t chunk_id;
-  READ_BYTES_BE(&chunk_id, file, 8, return -1);
+  READ_BYTES_BE(&chunk_id, bs, 8, return -1);
   assert(DTS_HD_BLACKOUT == chunk_id);
 
   /* [u64 Blackout_Data_Byte_Size] */
-  READ_BYTES(&param->Blackout_Data_Byte_Size, file, 8, return -1);
+  READ_BYTES(&param->Blackout_Data_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " BLACKOUT chunk size (Blackout_Data_Byte_Size): "
@@ -1126,7 +1126,7 @@ int decodeDtshdBlackoutChunk(
   if (NULL == frame)
     LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
 
-  if (readBytes(file, frame, param->Blackout_Data_Byte_Size) < 0)
+  if (readBytes(bs, frame, param->Blackout_Data_Byte_Size) < 0)
     return -1;
   param->Blackout_Frame = frame;
 
@@ -1137,13 +1137,13 @@ int decodeDtshdBlackoutChunk(
 }
 
 static int _decodeDtshdUnknownChunk(
-  BitstreamReaderPtr file
+  BitstreamReaderPtr bs
 )
 {
 
   /* [v64 Unknown ASCII identifier] */
   uint64_t Unk_Chunk_Id;
-  READ_BYTES(&Unk_Chunk_Id, file, 8, return -1);
+  READ_BYTES(&Unk_Chunk_Id, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Unknown chunk identifier: 0x016" PRIX64 ".\n",
@@ -1152,7 +1152,7 @@ static int _decodeDtshdUnknownChunk(
 
   /* [u64 Unknown chunk size] */
   uint64_t Unk_Byte_Size;
-  READ_BYTES(&Unk_Byte_Size, file, 8, return -1);
+  READ_BYTES(&Unk_Byte_Size, bs, 8, return -1);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     " Unknown chunk size: %" PRIu64 " bytes (0x%016" PRIX64 ").\n",
@@ -1161,29 +1161,22 @@ static int _decodeDtshdUnknownChunk(
   );
 
   /* [vn reserved/padding] */
-  SKIP_BYTES(file, Unk_Byte_Size, return -1);
+  SKIP_BYTES(bs, Unk_Byte_Size, return -1);
 
   return 0;
 }
 
-bool isDtshdFile(
-  BitstreamReaderPtr file
-)
-{
-  return DTS_HD_DTSHDHDR == nextUint64(file);
-}
-
 int decodeDtshdFileChunk(
-  BitstreamReaderPtr file,
+  BitstreamReaderPtr bs,
   DtshdFileHandler * handle
 )
 {
-  assert(NULL != file);
+  assert(NULL != bs);
   assert(NULL != handle);
 
   if (handle->in_STRMDATA) {
     int ret = _decodeDtshdStreamDataChunk(
-      file,
+      bs,
       &handle->STRMDATA,
       true,
       handle->off_STRMDATA
@@ -1194,11 +1187,11 @@ int decodeDtshdFileChunk(
     return ret;
   }
 
-  uint64_t magic = nextUint64(file);
+  uint64_t magic = nextUint64(bs);
 
   LIBBLU_DTS_DEBUG_DTSHD(
     "0x%08" PRIX64 " === %s (0x%016" PRIX64 ") ===\n",
-    tellPos(file), _dtshdChunkIdStr(magic), magic
+    tellPos(bs), _dtshdChunkIdStr(magic), magic
   );
 
   unsigned * presence_counter = NULL;
@@ -1207,27 +1200,27 @@ int decodeDtshdFileChunk(
   switch (magic) {
     case DTS_HD_DTSHDHDR:
       presence_counter = &handle->DTSHDHDR_count;
-      ret = _decodeDtshdHeaderChunk(file, &handle->DTSHDHDR);
+      ret = _decodeDtshdHeaderChunk(bs, &handle->DTSHDHDR);
       break;
 
     case DTS_HD_FILEINFO:
       presence_counter = &handle->FILEINFO_count;
-      ret = _decodeDtshdFileInfoChunk(file, &handle->FILEINFO);
+      ret = _decodeDtshdFileInfoChunk(bs, &handle->FILEINFO);
       break;
 
     case DTS_HD_CORESSMD:
       presence_counter = &handle->CORESSMD_count;
-      ret = _decodeDtshdCoreSubStreamMetaChunk(file, &handle->CORESSMD);
+      ret = _decodeDtshdCoreSubStreamMetaChunk(bs, &handle->CORESSMD);
       break;
 
     case DTS_HD_EXTSS_MD:
       if (!handle->DTSHDHDR_count)
         LIBBLU_DTS_ERROR_RETURN(
-          "Expect presence of DTS-HD file header before EXTSS_MD chunk.\n"
+          "Expect presence of DTS-HD bs header before EXTSS_MD chunk.\n"
         );
       presence_counter = &handle->EXTSS_MD_count;
       ret = _decodeDtshdExtSubStreamMetaChunk(
-        file,
+        bs,
         &handle->EXTSS_MD,
         handle->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__IS_VBR
       );
@@ -1236,26 +1229,26 @@ int decodeDtshdFileChunk(
     case DTS_HD_AUPR_HDR:
       presence_counter = &handle->AUPR_HDR_count;
       ret = _decodeDtshdAudioPresHeaderMetaChunk(
-        file, &handle->AUPR_HDR
+        bs, &handle->AUPR_HDR
       );
       break;
 
     case DTS_HD_AUPRINFO:
       presence_counter = &handle->AUPRINFO_count;
-      ret = _decodeDtshdAudioPresInfoChunk(file, &handle->AUPRINFO);
+      ret = _decodeDtshdAudioPresInfoChunk(bs, &handle->AUPRINFO);
       break;
 
     case DTS_HD_NAVI_TBL:
       presence_counter = &handle->NAVI_TBL_count;
       ret = decodeDtshdNavigationMetaChunk(
-        file, &handle->NAVI_TBL
+        bs, &handle->NAVI_TBL
       );
       break;
 
     case DTS_HD_STRMDATA:
       presence_counter = &handle->STRMDATA_count;
       ret = _decodeDtshdStreamDataChunk(
-        file, &handle->STRMDATA, false, 0
+        bs, &handle->STRMDATA, false, 0
       );
       handle->off_STRMDATA = 0;
       handle->in_STRMDATA = true;
@@ -1264,28 +1257,28 @@ int decodeDtshdFileChunk(
     case DTS_HD_TIMECODE:
       presence_counter = &handle->TIMECODE_count;
       ret = decodeDtshdTimecodeChunk(
-        file, &handle->TIMECODE
+        bs, &handle->TIMECODE
       );
       break;
 
     case DTS_HD_BUILDVER:
       presence_counter = &handle->BUILDVER_count;
       ret = decodeDtshdBuildVerChunk(
-        file, &handle->BUILDVER
+        bs, &handle->BUILDVER
       );
       break;
 
     case DTS_HD_BLACKOUT:
       presence_counter = &handle->BLACKOUT_count;
       ret = decodeDtshdBlackoutChunk(
-        file, &handle->BLACKOUT
+        bs, &handle->BLACKOUT
       );
       break;
 
     case DTS_HD_BITSHVTB:
     case DTS_HD_BRANCHPT:
     default:
-      ret = _decodeDtshdUnknownChunk(file);
+      ret = _decodeDtshdUnknownChunk(bs);
       break;
   }
 

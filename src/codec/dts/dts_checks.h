@@ -15,12 +15,9 @@
 
 #include "../common/constantCheckFunctionsMacros.h"
 
-#define IS_ENTRY_POINT_DCA_CORE_SS(syncFrame)                                 \
-  (!(syncFrame).header.HFLAG)
-
 int checkDcaCoreSSCompliance(
   const DcaCoreSSFrameParameters * frame,
-  DtsDcaCoreSSWarningFlags * warning_flags
+  DtsDcaCoreSSWarningFlags * warn_flags
 );
 
 bool constantDcaCoreSS(
@@ -33,7 +30,7 @@ bool constantDcaCoreSS(
  *
  * \param old
  * \param cur
- * \param warning_flags
+ * \param warn_flags
  * \return int
  *
  * Apply rules from ETSI TS 102 114 V.1.6.1 E.4
@@ -41,13 +38,13 @@ bool constantDcaCoreSS(
 int checkDcaCoreSSChangeCompliance(
   const DcaCoreSSFrameParameters * old,
   const DcaCoreSSFrameParameters * cur,
-  DtsDcaCoreSSWarningFlags * warning_flags
+  DtsDcaCoreSSWarningFlags * warn_flags
 );
 
 int checkDcaExtSSHeaderCompliance(
   const DcaExtSSHeaderParameters * param,
   bool is_sec_stream,
-  DtsDcaExtSSWarningFlags * warning_flags
+  DtsDcaExtSSWarningFlags * warn_flags
 );
 
 #endif

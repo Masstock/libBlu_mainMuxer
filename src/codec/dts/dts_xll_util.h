@@ -22,40 +22,21 @@
  * Used during PBR smoothing process.
  */
 typedef struct {
-  size_t * targetFrmSize; /* TODO: Add frames offsets #DcaXllFrameSFPosition */
+  uint32_t * targetFrmSize; /* TODO: Add frames offsets #DcaXllFrameSFPosition */
   unsigned nbAllocatedFrames;
   unsigned nbUsedFrames;
 
   float framesPerSec;
 
-  unsigned averageFrameSize;
-  bool averageFrameSizeComputed;
+  uint32_t avg_frame_size;
+  bool avg_frame_size_set;
 
-  size_t maxPbrBufferSize;
+  uint32_t max_pbrs_buf_size;
 } DtsPbrSmoothingStats;
-
-/** \~english
- * \brief Default #DtsPbrSmoothingStats values.
- */
-#define INIT_DTS_PBR_SMOOTHING_STATS()                                        \
-  ((DtsPbrSmoothingStats) {0})
-
-#define SET_FPS_DTS_PBR_SMOOTHING_STATS(stats, fps)                           \
-  ((stats).framesPerSec = (fps))
 
 int saveFrameSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
-  size_t size
-);
-
-int getFrameTargetSizeDtsPbrSmoothing(
-  DtsPbrSmoothingStats * stats,
-  unsigned frameIdx,
-  size_t * size
-);
-
-int performComputationDtsPbrSmoothing(
-  DtsPbrSmoothingStats * stats
+  unsigned size
 );
 
 typedef struct {
@@ -138,14 +119,6 @@ typedef struct {
   DtsPbrSmoothingStats pbrSmoothing;
 } DtsXllFrameContext;
 
-// DtsXllFrameContext * createDtsXllFrameContext(
-//   void
-// );
-
-// void destroyDtsXllFrameContext(
-//   DtsXllFrameContext * ctx
-// );
-
 static inline void cleanDtsXllFrameContext(
   DtsXllFrameContext ctx
 )
@@ -159,19 +132,14 @@ static inline void cleanDtsXllFrameContext(
 int initDtsXllFrameContext(
   DtsXllFrameContext * ctx,
   DcaAudioAssetDescParameters asset,
-  DcaExtSSHeaderParameters extSSHdr,
+  const DcaExtSSHeaderParameters * ext_ss_hdr,
   DtshdFileHandler * dtshd
-);
-
-int updateDtsXllPbrBufferSize(
-  DtsXllFrameContext * ctx,
-  size_t newSize
 );
 
 int parseDtsXllToPbrBuffer(
   BitstreamReaderPtr dtsInput,
   DtsXllFrameContext * ctx,
-  DcaAudioAssetSSXllParameters asset,
+  DcaAudioAssetExSSXllParameters asset,
   size_t assetLength
 );
 
@@ -195,10 +163,6 @@ int skipBitsDtsXllPbr(
 );
 
 void alignByteDtsXllPbr(
-  DtsXllFrameContext * ctx
-);
-
-int align32BitsDtsXllPbr(
   DtsXllFrameContext * ctx
 );
 
@@ -273,8 +237,8 @@ int collectFrameDataDcaXllFrameSFPosition(
 
 int getRelativeOffsetDcaXllFrameSFPosition(
   const DcaXllFrameSFPosition frame,
-  size_t absoluteOffset,
-  size_t * relativeOffset
+  uint64_t abs_offset,
+  uint64_t * rel_offset
 );
 
 /** \~english
@@ -288,7 +252,7 @@ int getRelativeOffsetDcaXllFrameSFPosition(
 int getFrameTargetSizeDtsXllPbr(
   DtsXllFrameContext * ctx,
   unsigned frameIdx,
-  size_t * size
+  unsigned * size
 );
 
 int performComputationDtsXllPbr(
