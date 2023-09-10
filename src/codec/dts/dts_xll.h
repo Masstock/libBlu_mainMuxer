@@ -19,20 +19,10 @@
 #define DTS_XLL_FORCE_UNPACKING false
 #define DTS_XLL_FORCE_REBUILD_SEIING false
 
-int decodeDtsXllCommonHeader(
-  DtsXllFrameContext * ctx,
-  DtsXllCommonHeader * param
-);
-
-int decodeDtsXllFrame(
-  DtsXllFrameContext * ctx,
-  DcaXllFrameSFPosition * pbrFramePosition
-);
-
 int parseDtsXllFrame(
-  BitstreamReaderPtr dtsInput,
+  BitstreamReaderPtr bs,
   DtsXllFrameContext * ctx,
-  size_t assetLength,
+  uint32_t asset_length,
   const DcaAudioAssetDescDecNDParameters * asset_decnav
 );
 

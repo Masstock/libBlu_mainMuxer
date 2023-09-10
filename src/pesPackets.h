@@ -106,14 +106,14 @@ typedef struct {
 } PesPacketHeaderParam;
 
 static inline size_t computePesPacketHeaderLen(
-  PesPacketHeaderParam headerParam
+  const PesPacketHeaderParam * pes_header
 )
 {
   return
-    headerParam.pesHeaderDataLen
+    pes_header->pesHeaderDataLen
     + PES_PRE_HEADER_LEN
     + (
-      IS_SHORT_PES_HEADER(headerParam.packetStartCode & 0xFF) ?
+      IS_SHORT_PES_HEADER(pes_header->packetStartCode & 0xFF) ?
         0 : PES_PRE_STREAM_HEADER_LEN
     )
   ;
@@ -121,20 +121,20 @@ static inline size_t computePesPacketHeaderLen(
 
 static inline void setLengthPesPacketHeaderParam(
   PesPacketHeaderParam * dst,
-  size_t headerSize,
-  size_t payloadSize
+  size_t header_size,
+  size_t payload_size
 )
 {
-  if (!headerSize)
-    headerSize = computePesPacketHeaderLen(*dst);
+  if (!header_size)
+    header_size = computePesPacketHeaderLen(dst);
   /* minus packet_start_code_prefix, stream_id and PES_packet_length fields. */
-  dst->pesPacketLength = headerSize + payloadSize - PES_PRE_HEADER_LEN;
+  dst->pesPacketLength = header_size + payload_size - PES_PRE_HEADER_LEN;
 }
 
 size_t writePesHeader(
   uint8_t * packetData,
   size_t offset,
-  const PesPacketHeaderParam param
+  const PesPacketHeaderParam * param
 );
 
 #endif

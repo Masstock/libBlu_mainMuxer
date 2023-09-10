@@ -6,7 +6,7 @@
 
 #include "streamCodingType.h"
 
-const lbc * streamCodingTypeStr(
+const lbc * LibbluStreamCodingTypeStr(
   LibbluStreamCodingType sct
 )
 {

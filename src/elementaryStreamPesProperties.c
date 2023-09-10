@@ -10,39 +10,33 @@
 
 int prepareLibbluESPesPacketProperties(
   LibbluESPesPacketProperties * dst,
-  EsmsPesPacketNodePtr scriptNode,
+  EsmsPesPacket * esms_pes,
   uint64_t referentialStc,
-  uint64_t referentialTs,
-  LibbluESPesPacketHeaderPrepFun preparePesHeader,
-  LibbluStreamCodingType codingType
+  uint64_t referentialTs
 )
 {
   assert(NULL != dst);
-  assert(NULL != scriptNode);
+  assert(NULL != esms_pes);
 
-  dst->extensionFrame = scriptNode->extensionFrame;
-  dst->dtsPresent = scriptNode->dtsPresent;
-  dst->extDataPresent = scriptNode->extensionDataPresent;
+  dst->extensionFrame = false;
+  if (ES_AUDIO == esms_pes->prop.type)
+    dst->extensionFrame = esms_pes->prop.prefix.audio.extension_frame;
 
-  dst->pts = scriptNode->pts + referentialStc;
+  dst->dtsPresent = esms_pes->prop.dts_present;
+  dst->extDataPresent = esms_pes->prop.ext_data_present;
+
+  dst->pts = esms_pes->pts + referentialStc;
   if (dst->pts < referentialTs)
     LIBBLU_ERROR_RETURN("Negative Presentation Time Stamp on a PES header.\n");
   dst->pts -= referentialTs;
 
-  dst->dts = scriptNode->dts + referentialStc;
+  dst->dts = esms_pes->dts + referentialStc;
   if (dst->dts < referentialTs)
     LIBBLU_ERROR_RETURN("Negative Decoding Time Stamp on a PES header.\n");
   dst->dts -= referentialTs;
 
-  dst->extData = scriptNode->extensionData;
-
-  dst->payloadSize = scriptNode->length;
-
-  if (preparePesHeader(&dst->header, *dst, codingType) < 0)
-    return -1;
-
-  dst->headerSize = computePesPacketHeaderLen(dst->header);
-  setLengthPesPacketHeaderParam(&dst->header, dst->headerSize, dst->payloadSize);
+  dst->extData = esms_pes->ext_data;
+  dst->payloadSize = esms_pes->size;
 
   return 0;
 }
@@ -78,7 +72,7 @@ int preparePesHeaderCommon(
         "Unable to prepare PES packet header, unknown parameters for stream "
         "coding type 0x%02X (%s).\n",
         (unsigned) codingType,
-        streamCodingTypeStr(codingType)
+        LibbluStreamCodingTypeStr(codingType)
       );
   }
 
@@ -263,7 +257,7 @@ int preparePesHeaderCommon(
                 "unknown PES Extension parameters for stream "
                 "coding type 0x%02X (%s).\n",
                 (unsigned) codingType,
-                streamCodingTypeStr(codingType)
+                LibbluStreamCodingTypeStr(codingType)
               );
           }
         }
@@ -291,6 +285,8 @@ int preparePesHeaderCommon(
 }
 
 /* ### ES Pes Packet Properties Node : ##################################### */
+
+#if 0
 
 LibbluESPesPacketPropertiesNodePtr createLibbluESPesPacketPropertiesNode(
   void
@@ -329,7 +325,7 @@ LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   EsmsPesPacketNodePtr scriptNode,
   uint64_t refPcr,
   uint64_t refPts,
-  LibbluESPesPacketHeaderPrepFun preparePesHeader,
+  LibbluPesPacketHeaderPrep_fun preparePesHeader,
   LibbluStreamCodingType codingType
 )
 {
@@ -339,8 +335,7 @@ LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   if (NULL == (node = createLibbluESPesPacketPropertiesNode()))
     return NULL;
 
-  if (prepareLibbluESPesPacketProperties(&node->prop, scriptNode, refPcr, refPts, preparePesHeader, codingType) < 0)
-    goto free_return;
+
 
   if (NULL == (commands = claimCommandsEsmsPesPacketNode(scriptNode)))
     LIBBLU_ERROR_FRETURN("Script node does not contain any command.\n");
@@ -396,6 +391,8 @@ size_t averageSizeLibbluESPesPacketPropertiesNode(
   return DIV_ROUND_UP(sumValue, usedSamples);
 }
 
+#endif
+
 /* ### ES Pes Packet Data : ################################################ */
 
 int allocateLibbluESPesPacketData(
@@ -403,31 +400,26 @@ int allocateLibbluESPesPacketData(
   size_t size
 )
 {
-  bool performAllocation;
+  bool perfm_alloc = (dst->alloc_size < size);
 
-  performAllocation = (
-    dst->dataAllocatedSize < size
 #if USE_OPTIMIZED_REALLOCATION
-    || size + DIFF_TRIGGER_REALLOC_OPTIMIZATION < dst->dataAllocatedSize
+  perfm_alloc |= (size + DIFF_TRIGGER_REALLOC_OPTI < dst->alloc_size);
 #endif
-  );
 
-  if (performAllocation) {
-    size_t newSize;
-    uint8_t * newData;
-
+  if (perfm_alloc) {
     /* Found power of 2 */
-    newSize = 0;
-    while (newSize < size) {
-      newSize = GROW_ALLOCATION(newSize, 4096);
-      if (!newSize)
-        LIBBLU_ERROR_RETURN("PES packet size overflow.\n");
-    }
+    uint32_t new_size = 1024;
+    for (; new_size && new_size < size; new_size <<= 1)
+      ;
+    if (!new_size)
+      LIBBLU_ERROR_RETURN("PES packet allocation size overflow.\n");
 
-    if (NULL == (newData = (uint8_t *) realloc(dst->data, newSize)))
+    uint8_t * new_data = realloc(dst->data, new_size);
+    if (NULL == new_data)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-    dst->data = newData;
-    dst->dataAllocatedSize = newSize;
+
+    dst->data = new_data;
+    dst->alloc_size = new_size;
   }
 
   return 0;

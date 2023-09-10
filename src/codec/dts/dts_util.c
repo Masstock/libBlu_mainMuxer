@@ -10,80 +10,6 @@
 #include "dts_dtshd_file.h"
 #include "dts_xll.h"
 
-unsigned buildDcaExtChMaskString(
-  char dst[static DCA_CHMASK_STR_BUFSIZE],
-  uint16_t Channel_Mask
-)
-{
-  static const char * ch_config_str[16] = {
-    "C",
-    "L, R",
-    "Ls, Rs",
-    "LFE",
-    "Cs",
-    "Lh, Rh",
-    "Lsr, Rsr",
-    "Ch",
-    "Oh",
-    "Lc, Rc",
-    "Lw, Rw",
-    "Lss, Rss",
-    "LFE2",
-    "Lhs, Rhs",
-    "Chr",
-    "Lhr, Rhr"
-  };
-  static const unsigned nb_ch_config[16] = {
-    1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 1, 2
-  };
-
-  unsigned nb_channels = 0;
-  char * str_ptr = dst;
-
-  const char * sep = "";
-  for (unsigned i = 0; i < 16; i++) {
-    if (Channel_Mask & (1 << i)) {
-      lb_str_cat(&str_ptr, sep);
-      lb_str_cat(&str_ptr, ch_config_str[i]);
-      nb_channels += nb_ch_config[i];
-      sep = ", ";
-    }
-  }
-
-  return nb_channels;
-}
-
-unsigned nbChDcaExtChMaskCode(
-  const uint16_t mask
-)
-{
-  unsigned nbCh, i;
-
-  static const uint16_t chConfigs[16][2] = {
-    {DCA_EXT_SS_CH_MASK_C,       1},
-    {DCA_EXT_SS_CH_MASK_L_R,     2},
-    {DCA_EXT_SS_CH_MASK_LS_RS,   2},
-    {DCA_EXT_SS_CH_MASK_LFE,     1},
-    {DCA_EXT_SS_CH_MASK_CS,      1},
-    {DCA_EXT_SS_CH_MASK_LH_RH,   2},
-    {DCA_EXT_SS_CH_MASK_LSR_RSR, 2},
-    {DCA_EXT_SS_CH_MASK_CH,      1},
-    {DCA_EXT_SS_CH_MASK_OH,      1},
-    {DCA_EXT_SS_CH_MASK_LC_RC,   2},
-    {DCA_EXT_SS_CH_MASK_LW_RW,   2},
-    {DCA_EXT_SS_CH_MASK_LSS_RSS, 2},
-    {DCA_EXT_SS_CH_MASK_LFE2,    1},
-    {DCA_EXT_SS_CH_MASK_LHS_RHS, 2},
-    {DCA_EXT_SS_CH_MASK_CHR,     1},
-    {DCA_EXT_SS_CH_MASK_LHR_RHR, 2}
-  };
-
-  for (nbCh = i = 0; i < ARRAY_SIZE(chConfigs); i++)
-    nbCh += (mask & chConfigs[i][0]) ? chConfigs[i][1] : 0;
-
-  return nbCh;
-}
-
 void dcaExtChMaskStrPrintFun(
   uint16_t mask,
   int (*printFun) (const lbc * format, ...)
@@ -139,84 +65,6 @@ void dcaExtChMaskStrPrintFun(
   }
 }
 
-const char * dtsExtAssetTypeDescCodeStr(
-  const DcaExtAssetTypeDescCode code
-)
-{
-  static const char * typStr[] = {
-    "Music",
-    "Effects",
-    "Dialog",
-    "Commentary",
-    "Visually impaired",
-    "Hearing impaired",
-    "Isolated music object",
-    "Music and Effects",
-    "Dialog and Commentary",
-    "Effects and Commentary",
-    "Isolated Music Object and Commentary",
-    "Isolated Music Object and Effects",
-    "Karaoke",
-    "Music, Effects and Dialog",
-    "Complete Audio Presentation",
-    "Reserved value"
-  };
-
-  if (code < ARRAY_SIZE(typStr))
-    return typStr[code];
-  return "unk";
-}
-
-const char * dtsExtRepresentationTypeCodeStr(
-  const DcaExtRepresentationTypeCode code
-)
-{
-  static const char * typStr[] = {
-    "Audio Asset for Mixing/Replacement purpose",
-    "Not applicable",
-    "Lt/Rt Encoded for Matrix Surround",
-    "Lh/Rh Headphone playback",
-    "Not Applicable"
-  };
-
-  if (code < ARRAY_SIZE(typStr))
-    return typStr[code];
-  return "Reserved value";
-}
-
-const char * dtsAudioAssetCodingModeStr(
-  const DcaAudioAssetCodingMode mode
-)
-{
-  static const char * modStr[] = {
-    "DTS-HD Components Coding Mode",
-    "DTS-HD Lossless (without Core) Coding Mode",
-    "DTS-HD Low bit-rate (without Core) Coding Mode",
-    "Auxilary Coding Mode"
-  };
-
-  if (mode < ARRAY_SIZE(modStr))
-    return modStr[mode];
-  return "unk";
-}
-
-const char * dtsXllCommonHeaderCrc16PresenceCodeStr(
-  DtsXllCommonHeaderCrc16PresenceCode code
-)
-{
-  static const char * codeStr[] = {
-    "No CRC16 checksum within frequency bands",
-    "CRC16 checksum present at the end of frequency band 0's MSB",
-    "CRC16 checksums present at the end of frequency band 0's MSB and LSB",
-    "CRC checksums present at the end of frequency band 0's MSB and LSB and "
-    "other frequency bands where they exists"
-  };
-
-  if (code < ARRAY_SIZE(codeStr))
-    return codeStr[code];
-  return "unk";
-}
-
 int initDtsContext(
   DtsContext * ctx,
   LibbluESParsingSettings * settings
@@ -225,8 +73,8 @@ int initDtsContext(
   const LibbluESSettingsOptions options = settings->options;
   BitstreamReaderPtr es_bs = NULL;
   BitstreamWriterPtr script_bs = NULL;
-  EsmsFileHeaderPtr script = NULL;
-  unsigned src_file_idx;
+  EsmsHandlerPtr script = NULL;
+  uint8_t src_file_idx;
   bool is_dtshd_file;
 
   /* ES input */
@@ -243,11 +91,11 @@ int initDtsContext(
     LIBBLU_DTS_ERROR_FRETURN("Unable to create output script file.\n");
 
   /* Prepare ESMS output file */
-  script = createEsmsFileHandler(ES_AUDIO, options, FMT_SPEC_INFOS_NONE);
+  script = createEsmsHandler(ES_AUDIO, options, FMT_SPEC_INFOS_NONE);
   if (NULL == script)
     LIBBLU_DTS_ERROR_FRETURN("Unable to create output script handler.\n");
 
-  if (appendSourceFileEsms(script, settings->esFilepath, &src_file_idx) < 0)
+  if (appendSourceFileEsmsHandler(script, settings->esFilepath, &src_file_idx) < 0)
     LIBBLU_DTS_ERROR_FRETURN("Unable to add source file to script handler.\n");
 
   /* Write script header */
@@ -283,26 +131,16 @@ int initDtsContext(
 
 free_return:
   closeBitstreamWriter(script_bs);
-  destroyEsmsFileHandler(script);
+  destroyEsmsHandler(script);
 
   return -1;
-}
-
-static int _writeScriptEndMarker(
-  DtsContext * ctx
-)
-{
-  /* [v8 endMarker] */
-  if (writeByte(ctx->script_bs, ESMS_SCRIPT_END_MARKER) < 0)
-    LIBBLU_DTS_ERROR_RETURN("Unable to write script end marker.\n");
-  return 0;
 }
 
 int _setScriptProperties(
   DtsContext * ctx
 )
 {
-  EsmsFileHeaderPtr script = ctx->script;
+  EsmsHandlerPtr script = ctx->script;
   LibbluStreamCodingType coding_type;
 
   if (ctx->ext_ss_pres && ctx->ext_ss.content.xllExtSS)
@@ -322,7 +160,7 @@ int _setScriptProperties(
 
   if (ctx->core_pres) {
     const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
-    script->endPts = ctx->core.pts;
+    script->PTS_final = ctx->core.pts;
 
     switch (bsh->AMODE) {
       case DCA_AMODE_A:
@@ -356,7 +194,7 @@ int _setScriptProperties(
         script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
-    script->prop.bit_depth = getDcaCoreSourcePcmResCode(bsh->PCMR) >> 4;
+    script->prop.bit_depth = (getDcaCoreSourcePcmResCode(bsh->PCMR) - 12) >> 2;
   }
   else {
     assert(ctx->ext_ss_pres);
@@ -367,7 +205,7 @@ int _setScriptProperties(
         "unable to define audio properties.\n"
       );
 
-    script->endPts = ctx->ext_ss.pts;
+    script->PTS_final = ctx->ext_ss.pts;
 
     if (ctx->ext_ss.content.nbChannels <= 1)
       script->prop.audio_format = 0x01; /* Mono */
@@ -385,7 +223,7 @@ int _setScriptProperties(
         script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
-    script->prop.bit_depth = ctx->ext_ss.content.bitDepth >> 4;
+    script->prop.bit_depth = (ctx->ext_ss.content.bitDepth - 12) >> 2;
   }
 
   return 0;
@@ -410,7 +248,7 @@ static void _printStreamInfos(
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
     "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %ubits.\n",
-    streamCodingTypeStr(ctx->script->prop.coding_type),
+    LibbluStreamCodingTypeStr(ctx->script->prop.coding_type),
     AudioFormatCodeStr(ctx->script->prop.audio_format),
     _getNbChannels(ctx),
     valueSampleRateCode(ctx->script->prop.sample_rate),
@@ -430,19 +268,16 @@ int completeDtsContext(
 )
 {
 
-  if (_writeScriptEndMarker(ctx) < 0)
-    return -1;
-
   if (_setScriptProperties(ctx) < 0)
     return -1;
   _printStreamInfos(ctx);
 
-  if (addEsmsFileEnd(ctx->script_bs, ctx->script) < 0)
+  if (completePesCuttingScriptEsmsHandler(ctx->script_bs, ctx->script) < 0)
     return -1;
   closeBitstreamWriter(ctx->script_bs);
   ctx->script_bs = NULL;
 
-  if (updateEsmsHeader(ctx->script_fp, ctx->script) < 0)
+  if (updateEsmsFile(ctx->script_fp, ctx->script) < 0)
     return -1;
 
   cleanDtsContext(ctx);
@@ -458,7 +293,7 @@ void cleanDtsContext(
 
   closeBitstreamReader(ctx->bs);
   closeBitstreamWriter(ctx->script_bs);
-  destroyEsmsFileHandler(ctx->script);
+  destroyEsmsHandler(ctx->script);
   cleanDtshdFileHandler(ctx->dtshd);
   cleanDtsDcaExtSSContext(ctx->ext_ss);
   cleanDtsXllFrameContext(ctx->xll);
@@ -512,7 +347,7 @@ DtsFrameInitializationRet initNextDtsFrame(
 
   if (NULL == (cell = initDtsAUCell(&ctx->cur_au, type)))
     return -1;
-  cell->startOffset = tellPos(ctx->bs);
+  cell->offset = tellPos(ctx->bs);
 
   return ret;
 }
@@ -520,7 +355,7 @@ DtsFrameInitializationRet initNextDtsFrame(
 #if 0
 int addToEsmsDtsFrame(
   DtsContext * ctx,
-  EsmsFileHeaderPtr dtsInfos,
+  EsmsHandlerPtr dtsInfos,
   DtsCurrentPeriod * curPeriod
 )
 {
@@ -531,11 +366,11 @@ int addToEsmsDtsFrame(
 
     assert(ctx->core_pres);
 
-    if (initEsmsAudioPesFrame(dtsInfos, false, false, core->pts, 0) < 0)
+    if (initAudioPesPacketEsmsHandler(dtsInfos, false, false, core->pts, 0) < 0)
       return -1;
 
     if (
-      appendAddPesPayloadCommand(
+      appendAddPesPayloadCommandEsmsHandler(
         dtsInfos, ctx->src_file_idx, 0x0, curPeriod->syncFrameStartOffset,
         core->cur_frame.header.FSIZE
       ) < 0
@@ -558,11 +393,11 @@ int addToEsmsDtsFrame(
 
     assert(ctx->ext_ss_pres);
 
-    if (initEsmsAudioPesFrame(dtsInfos, true, false, ext->pts, 0) < 0)
+    if (initAudioPesPacketEsmsHandler(dtsInfos, true, false, ext->pts, 0) < 0)
       return -1;
 
     if (
-      appendAddPesPayloadCommand(
+      appendAddPesPayloadCommandEsmsHandler(
         dtsInfos, ctx->src_file_idx,
         0x0, curPeriod->syncFrameStartOffset,
         ext->curFrames[
@@ -584,7 +419,7 @@ int addToEsmsDtsFrame(
     ;
   }
 
-  return writeEsmsPesPacket(
+  return writePesPacketEsmsHandler(
     ctx->esmsScriptOutputFile, dtsInfos
   );
 }

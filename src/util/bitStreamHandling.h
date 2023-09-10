@@ -116,7 +116,7 @@ static inline void applySingleByteCrcContext(
 static inline void applyTableCrcContext(
   CrcContext * ctx,
   const uint8_t * array,
-  unsigned size
+  size_t size
 )
 {
   const uint32_t * table = ctx->param.table;
@@ -126,7 +126,7 @@ static inline void applyTableCrcContext(
   if (!ctx->in_use)
     return;
 
-  for (unsigned i = 0; i < size; i++) {
+  for (size_t i = 0; i < size; i++) {
     applySingleByteTableCrcContext(ctx, table, array[i]);
   }
 }
@@ -134,13 +134,13 @@ static inline void applyTableCrcContext(
 static inline void applyCrcContext(
   CrcContext * ctx,
   const uint8_t * array,
-  unsigned size
+  size_t size
 )
 {
   if (!ctx->in_use)
     return;
 
-  for (unsigned i = 0; i < size; i++) {
+  for (size_t i = 0; i < size; i++) {
     applySingleByteCrcContext(ctx, array[i]);
   }
 }
@@ -318,15 +318,12 @@ static inline int64_t tellBinaryPos(
 }
 
 static inline int64_t tellWritingPos(
-  const BitstreamWriterPtr bitStream
+  const BitstreamWriterPtr bs
 )
 {
-  assert(NULL != bitStream);
+  assert(NULL != bs);
 
-  return
-    bitStream->fileOffset
-    + bitStream->byteArrayOff
-  ;
+  return bs->fileOffset + bs->byteArrayOff;
 }
 
 static inline int rewindFile(
@@ -607,77 +604,6 @@ int writeBytes(
   const uint8_t * data,
   size_t size
 );
-
-static inline int writeUint64(
-  BitstreamWriterPtr bitStream,
-  uint64_t value
-)
-{
-  int i = 8;
-  while (i--) {
-    if (writeByte(bitStream, (uint8_t) (value >> (8 * i)) & 0xFF) < 0)
-      return -1;
-  }
-
-  return 0;
-}
-
-static inline int writeUint48(
-  BitstreamWriterPtr bitStream,
-  uint64_t value
-)
-{
-  int i = 6;
-  while (i--) {
-    if (writeByte(bitStream, (uint8_t) (value >> (8 * i)) & 0xFF) < 0)
-      return -1;
-  }
-
-  return 0;
-}
-
-static inline int writeUint32(
-  BitstreamWriterPtr bitStream,
-  uint32_t value
-)
-{
-  int i = 4;
-  while (i--) {
-    if (writeByte(bitStream, (uint8_t) (value >> (8 * i)) & 0xFF) < 0)
-      return -1;
-  }
-
-  return 0;
-}
-
-static inline int writeUint16(
-  BitstreamWriterPtr bitStream,
-  uint16_t value
-)
-{
-  int i = 2;
-  while (i--) {
-    if (writeByte(bitStream, (uint8_t) (value >> (8 * i)) & 0xFF) < 0)
-      return -1;
-  }
-
-  return 0;
-}
-
-static inline int writeReservedBytes(
-  BitstreamWriterPtr bitStream,
-  const uint8_t reservedByte,
-  const size_t dataLen
-)
-{
-  size_t i;
-
-  for (i = 0; i < dataLen; i++)
-    if (writeByte(bitStream, reservedByte) < 0)
-      return -1;
-
-  return 0;
-}
 
 void crcTableGenerator(
   CrcParam param

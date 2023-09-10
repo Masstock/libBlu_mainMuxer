@@ -22,42 +22,42 @@ int initLibbluESFormatUtilities(
 )
 {
   assert(NULL != dst);
-  assert(!dst->initialized);
 
+  LibbluAnalyze_fun analyze_fun;
   switch (codingType) {
     case STREAM_CODING_TYPE_MPEG1:
     case STREAM_CODING_TYPE_H262:
-      dst->analyze = analyzeH262;
+      analyze_fun = analyzeH262;
       break;
 
     case STREAM_CODING_TYPE_AVC:
-      dst->analyze = analyzeH264;
+      analyze_fun = analyzeH264;
       break;
 
     case STREAM_CODING_TYPE_LPCM:
-      dst->analyze = analyzeLpcm;
+      analyze_fun = analyzeLpcm;
       break;
 
     case STREAM_CODING_TYPE_AC3:
     case STREAM_CODING_TYPE_TRUEHD:
     case STREAM_CODING_TYPE_EAC3:
     case STREAM_CODING_TYPE_EAC3_SEC:
-      dst->analyze = analyzeAc3;
+      analyze_fun = analyzeAc3;
       break;
 
     case STREAM_CODING_TYPE_DTS:
     case STREAM_CODING_TYPE_HDHR:
     case STREAM_CODING_TYPE_HDMA:
     case STREAM_CODING_TYPE_DTSE_SEC:
-      dst->analyze = analyzeDts;
+      analyze_fun = analyzeDts;
       break;
 
     case STREAM_CODING_TYPE_PG:
-      dst->analyze = analyzePgs;
+      analyze_fun = analyzePgs;
       break;
 
     case STREAM_CODING_TYPE_IG:
-      dst->analyze = analyzeIgs;
+      analyze_fun = analyzeIgs;
       break;
 
 #if 0
@@ -69,14 +69,17 @@ int initLibbluESFormatUtilities(
     default:
       LIBBLU_ERROR_RETURN(
         "Currently unsupported stream coding type '%s' (0x%02X).\n",
-        streamCodingTypeStr(codingType),
+        LibbluStreamCodingTypeStr(codingType),
         codingType
       );
   }
 
-  dst->codingType = codingType;
-  dst->preparePesHeader = preparePesHeaderCommon;
-  dst->initialized = true;
+  *dst = (LibbluESFormatUtilities) {
+    .initialized = true,
+    .codingType = codingType,
+    .analyze = analyze_fun,
+    .preparePesHeader = preparePesHeaderCommon
+  };
 
   return 0;
 }
@@ -100,7 +103,6 @@ int generateScriptES(
   do {
     if (utilities.analyze(&parsingSettings) < 0)
       return -1;
-
 #if 0
     switch (codingType) {
       case STREAM_CODING_TYPE_MPEG1:
@@ -149,7 +151,7 @@ int generateScriptES(
       case STREAM_CODING_TYPE_TEXT:
         LIBBLU_ERROR_RETURN(
           "Unable to generate script for ES type '%s' (0x%02X).\n",
-          streamCodingTypeStr(codingType),
+          LibbluStreamCodingTypeStr(codingType),
           codingType
         );
     }

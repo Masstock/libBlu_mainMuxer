@@ -32,13 +32,10 @@ typedef struct {
   EsmsPesPacketExtData extData;  /**< PES packet header extension
     data. Used if #extDataPresent is set to true.                            */
 
-  /* EsmsCommandNodePtr buildingCommands; */
   size_t payloadSize;
-  PesPacketHeaderParam header;
-  size_t headerSize;
 } LibbluESPesPacketProperties;
 
-typedef int (*LibbluESPesPacketHeaderPrepFun) (
+typedef int (*LibbluPesPacketHeaderPrep_fun) (
   PesPacketHeaderParam *,
   LibbluESPesPacketProperties,
   LibbluStreamCodingType
@@ -46,11 +43,9 @@ typedef int (*LibbluESPesPacketHeaderPrepFun) (
 
 int prepareLibbluESPesPacketProperties(
   LibbluESPesPacketProperties * dst,
-  EsmsPesPacketNodePtr scriptNode,
+  EsmsPesPacket * esms_pes,
   uint64_t referentialStc,
-  uint64_t referentialTs,
-  LibbluESPesPacketHeaderPrepFun preparePesHeader,
-  LibbluStreamCodingType codingType
+  uint64_t referentialTs
 );
 
 int preparePesHeaderCommon(
@@ -60,6 +55,8 @@ int preparePesHeaderCommon(
 );
 
 /* ### ES Pes Packet Properties Node : ##################################### */
+
+#if 0
 
 typedef struct LibbluESPesPacketPropertiesNode {
   struct LibbluESPesPacketPropertiesNode * next;
@@ -82,7 +79,7 @@ LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   EsmsPesPacketNodePtr scriptNode,
   uint64_t referentialStc,
   uint64_t referentialTs,
-  LibbluESPesPacketHeaderPrepFun preparePesHeader,
+  LibbluPesPacketHeaderPrep_fun preparePesHeader,
   LibbluStreamCodingType codingType
 );
 
@@ -101,15 +98,16 @@ size_t averageSizeLibbluESPesPacketPropertiesNode(
   unsigned maxNbSamples
 );
 
+#endif
+
 /* ### ES Pes Packet Data : ################################################ */
 
 typedef struct {
-  uint8_t * data;
-  size_t dataOffset;         /**< Current PES packet data writing offset.    */
-  size_t dataUsedSize;       /**< PES packet data array used size in
-    bytes.                                                                   */
-  size_t dataAllocatedSize;  /**< PES packet data array allocated size in
-    bytes.                                                                   */
+  uint8_t * data;       /**< PES packet data.                                */
+  uint32_t alloc_size;  /**< PES packet data array allocated size in bytes.  */
+
+  uint32_t offset;  /**< PES packet data writing offset.                     */
+  uint32_t size;    /**< PES packet data array used size in bytes.           */
 } LibbluESPesPacketData;
 
 static inline void initLibbluESPesPacketData(
@@ -122,10 +120,10 @@ static inline void initLibbluESPesPacketData(
 }
 
 static inline void cleanLibbluESPesPacketData(
-  LibbluESPesPacketData data
+  LibbluESPesPacketData pes_packet_data
 )
 {
-  free(data.data);
+  free(pes_packet_data.data);
 }
 
 int allocateLibbluESPesPacketData(

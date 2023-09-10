@@ -61,7 +61,7 @@ static int increaseReplacementParamsAllocationDtsAU(
   /* Update links */
   for (i = 0; i < frm->nbUsedContentCells; i++) {
     inner = frm->contentCells + i;
-    if (inner->replace)
+    if (DTS_AU_REPLACE == inner->treatment)
       inner->param = newArray + (inner->param - frm->replacementParams);
   }
 
@@ -76,8 +76,6 @@ DtsAUCellPtr initDtsAUCell(
   DtsAUInnerType type
 )
 {
-  DtsAUCellPtr cell;
-
   assert(NULL != frm);
 
   if (frm->initializedCell)
@@ -88,10 +86,9 @@ DtsAUCellPtr initDtsAUCell(
       return NULL;
   }
 
-  cell = frm->contentCells + frm->nbUsedContentCells;
+  DtsAUCellPtr cell = &frm->contentCells[frm->nbUsedContentCells];
   cell->type = type;
-  cell->skip = false;
-  cell->replace = false;
+  cell->treatment = DTS_AU_KEEP;
 
   frm->initializedCell = true;
 
@@ -108,9 +105,10 @@ int replaceCurDtsAUCell(
   if (NULL == (cell = recoverCurDtsAUCell(frm)))
     return -1;
 
-  if (cell->replace)
+  if (DTS_AU_KEEP != cell->treatment)
     LIBBLU_DTS_ERROR_RETURN(
-      "Replacement parameters already defined for current AU cell.\n"
+      "Replacement parameters already defined for current AU cell "
+      "or marked as skipped.\n"
     );
 
   if (frm->nbAllocatedReplacementParam <= frm->nbUsedReplacementParam) {
@@ -119,10 +117,9 @@ int replaceCurDtsAUCell(
   }
 
   frm->replacementParams[frm->nbUsedReplacementParam] = param;
-  cell->param = frm->replacementParams + frm->nbUsedReplacementParam;
 
-  frm->nbUsedReplacementParam++;
-  cell->replace = true;
+  cell->treatment = DTS_AU_REPLACE;
+  cell->param = &frm->replacementParams[frm->nbUsedReplacementParam++];
 
   return 0;
 }
@@ -136,7 +133,7 @@ int discardCurDtsAUCell(
   if (NULL == (cell = recoverCurDtsAUCell(frm)))
     return -1;
 
-  if (cell->replace)
+  if (DTS_AU_REPLACE == cell->treatment)
     frm->nbUsedReplacementParam--;
   frm->initializedCell = false;
 
@@ -165,32 +162,26 @@ static void optimizeContiguousCellsDtsAUFrame(
   DtsAUFramePtr frm
 )
 {
-  unsigned i;
-  DtsAUCell * destCell, * cell;
+  DtsAUCell * dst = NULL;
+  for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
+    DtsAUCell * src = frm->contentCells + i;
 
-  destCell = NULL;
-  for (i = 0; i < frm->nbUsedContentCells; i++) {
-    cell = frm->contentCells + i;
-
-    if (cell->replace) {
+    if (DTS_AU_REPLACE == src->treatment) {
       /**
        * This cell is marked as replaced and so can't be used as destination
        * of a contiguous region and break current contiguous region.
        */
-      destCell = NULL;
+      dst = NULL;
     }
     else {
-      if (
-        NULL == destCell
-        || destCell->startOffset + destCell->length != cell->startOffset
-      ) {
+      if (NULL == dst || dst->offset + dst->size != src->offset) {
         /**
          * This cell is the first non-replaced one of potential contiguous
          * region or its start offset does not match the end offset of
          * the precedent one.
          * Setting it as a potential new contiguous region start.
          */
-        destCell = cell;
+        dst = src;
       }
       else {
         /**
@@ -198,8 +189,8 @@ static void optimizeContiguousCellsDtsAUFrame(
          * the precedent one.
          * Merging it with saved contiguous region start cell.
          */
-        destCell->length += cell->length;
-        cell->skip = true; /* Mark newly useless cell as skipped. */
+        dst->size += src->size;
+        src->treatment = DTS_AU_SKIP; // Mark newly useless cell as skipped.
       }
     }
   }
@@ -209,14 +200,12 @@ DtsAUContentType identifyContentTypeDtsAUFrame(
   DtsAUFramePtr frm
 )
 {
-  unsigned i;
-  bool coreSSPres;
 
-  coreSSPres = false;
-  for (i = 0; i < frm->nbUsedContentCells; i++) {
+  bool core_ss_present = false;
+  for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
     switch (frm->contentCells[i].type) {
       case DTS_FRM_INNER_CORE_SS:
-        coreSSPres = true;
+        core_ss_present = true;
         break;
 
       case DTS_FRM_INNER_EXT_SS_HDR:
@@ -227,100 +216,110 @@ DtsAUContentType identifyContentTypeDtsAUFrame(
     }
   }
 
-  return coreSSPres ? DTS_AU_CORE_SS : DTS_AU_EMPTY;
+  return core_ss_present ? DTS_AU_CORE_SS : DTS_AU_EMPTY;
+}
+
+static int _appendReplacementParameters(
+  DtsAUCell * cell,
+  EsmsHandlerPtr script,
+  uint32_t cur_off,
+  unsigned src_file_idx
+)
+{
+  const DtsAUInnerReplacementParam * param = cell->param;
+
+  switch (cell->type) {
+    case DTS_FRM_INNER_EXT_SS_HDR:
+      return appendDcaExtSSHeader(script, cur_off, &param->ext_ss_hdr);
+    case DTS_FRM_INNER_EXT_SS_ASSET:
+      return appendDcaExtSSAsset(script, cur_off, &param->ext_ss_asset, src_file_idx);
+    default:
+      LIBBLU_DTS_ERROR_RETURN(
+        "Unknown replacement for AU cell type code: %u.\n",
+        cell->type
+      );
+  }
 }
 
 int processCompleteFrameDtsAUFrame(
   BitstreamWriterPtr output,
-  EsmsFileHeaderPtr script,
+  EsmsHandlerPtr script,
   DtsAUFramePtr frm,
-  unsigned srcFileScriptIdx,
-  uint64_t framePts
+  unsigned src_file_idx,
+  uint64_t pts
 )
 {
   if (frm->initializedCell)
     LIBBLU_DTS_ERROR_RETURN("Incomplete AU cell in pipeline.\n");
 
+  LIBBLU_DTS_DEBUG("Processing complete DTS Access Unit.\n");
+
   if (!frm->nbUsedContentCells) {
+    LIBBLU_DTS_DEBUG(" Empty AU, reset.\n");
     resetDtsAU(frm);
     return 0;
   }
 
   optimizeContiguousCellsDtsAUFrame(frm); /* Merge contiguous cells */
 
-  bool isExtFrame;
+  bool is_ext;
   switch (identifyContentTypeDtsAUFrame(frm)) {
     case DTS_AU_CORE_SS:
-      isExtFrame = false;
+      LIBBLU_DTS_DEBUG(" AU type: Core substream.\n");
+      is_ext = false;
       break;
-
     case DTS_AU_EXT_SS:
-      isExtFrame = true;
+      LIBBLU_DTS_DEBUG(" AU type: Extension substream.\n");
+      is_ext = true;
       break;
-
     default:
       LIBBLU_DTS_ERROR_RETURN("Unexpected AU content.\n");
   }
 
-  if (initEsmsAudioPesFrame(script, isExtFrame, false, framePts, 0) < 0)
+  if (initAudioPesPacketEsmsHandler(script, is_ext, false, pts, 0) < 0)
     return -1;
 
-  uint32_t cur_insert_off = 0;
+  LIBBLU_DTS_DEBUG(" Adding %u cells:\n", frm->nbUsedContentCells);
+
+  uint32_t cur_off = 0;
   for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
     DtsAUCell * cell = &frm->contentCells[i];
+    LIBBLU_DTS_DEBUG(
+      "  Cell %u (%s, %s):\n",
+      i,
+      DtsAUInnerTypeStr(cell->type),
+      DtsAUCellTreatmentStr(cell->treatment)
+    );
 
-    if (cell->skip)
-      continue;
-
-    if (cell->replace) {
-      uint32_t appended_bytes;
-
-      switch (cell->type) {
-        case DTS_FRM_INNER_EXT_SS_HDR:
-          appended_bytes = appendDcaExtSSHeader(
-            script,
-            cur_insert_off,
-            &cell->param->ext_ss_hdr
-          );
-          break;
-
-        case DTS_FRM_INNER_EXT_SS_ASSET:
-           appended_bytes = appendDcaExtSSAsset(
-            script,
-            cur_insert_off,
-            &cell->param->ext_ss_asset,
-            srcFileScriptIdx
-          );
-          break;
-
-        default:
-          LIBBLU_DTS_ERROR_RETURN(
-            "Unknown replacement for AU cell type code: %u.\n",
-            cell->type
-          );
+    size_t added_size = 0;
+    switch (cell->treatment) {
+      case DTS_AU_KEEP: {
+        int ret = appendAddPesPayloadCommandEsmsHandler(
+          script, src_file_idx, cur_off, cell->offset, cell->size
+        );
+        if (0 <= ret)
+          added_size = cell->size; // Only set if successfull
+        break;
       }
 
-      if (!appended_bytes)
-        return -1;
-      cur_insert_off += appended_bytes;
-    }
-    else {
-      if (
-        appendAddPesPayloadCommand(
-          script,
-          srcFileScriptIdx,
-          cur_insert_off,
-          cell->startOffset,
-          cell->length
-        ) < 0
-      )
-        return -1;
+      case DTS_AU_SKIP:
+        continue; // Skip, do nothing.
 
-      cur_insert_off += cell->length;
+      case DTS_AU_REPLACE: {
+        LIBBLU_DTS_DEBUG("   Replacement parameters:\n");
+        added_size = _appendReplacementParameters(
+          cell, script, cur_off, src_file_idx
+        );
+      }
     }
+
+    if (!added_size)
+      return -1; // Unable to add, error.
+    LIBBLU_DTS_DEBUG("   Cell size: %zu byte(s).\n", added_size);
+    cur_off += added_size;
   }
 
-  if (writeEsmsPesPacket(output, script) < 0)
+  if (writePesPacketEsmsHandler(output, script) < 0)
     return -1;
 
   resetDtsAU(frm);

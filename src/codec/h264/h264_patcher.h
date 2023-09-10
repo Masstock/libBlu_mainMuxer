@@ -85,14 +85,14 @@ bool isH264SeiBufferingPeriodPatchMessage(
 
 size_t appendH264Sei(
   H264ParametersHandlerPtr handle,
-  EsmsFileHeaderPtr h264Infos,
+  EsmsHandlerPtr h264Infos,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 );
 
 size_t appendH264SeiBufferingPeriodPlaceHolder(
   H264ParametersHandlerPtr handle,
-  EsmsFileHeaderPtr h264Infos,
+  EsmsHandlerPtr h264Infos,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 );
@@ -111,7 +111,7 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
 int completeH264SeiBufferingPeriodComputation(
   H264ParametersHandlerPtr handle,
-  EsmsFileHeaderPtr h264Infos
+  EsmsHandlerPtr h264Infos
 );
 #endif
 

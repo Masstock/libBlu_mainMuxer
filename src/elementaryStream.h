@@ -154,9 +154,9 @@ static inline void setRequestedPIDLibbluESSettings(
  *
  */
 typedef struct {
-  LibbluESSettings * settings;  /**< Pointer to ES settings.   */
+  LibbluESSettings * settings_ref;  /**< Pointer to ES settings.   */
   LibbluESProperties prop;      /**< ES properties.            */
-  LibbluESFmtSpecProp fmtSpecProp;  /**<
+  LibbluESFmtProp fmt_prop;  /**<
     ES format specific properties.                                           */
 
   /* Timing information */
@@ -171,7 +171,7 @@ typedef struct {
   BitstreamReaderPtr scriptFile;
   EsmsESSourceFiles sourceFiles;
   EsmsDataBlocks scriptDataSections;
-  EsmsCommandParsingData scriptCommandParsing;
+  EsmsCommandParsingData commands_data_parsing;
 
 #if 0
   /* Input stream files */
@@ -181,18 +181,16 @@ typedef struct {
 #endif
 
   /* PES packets */
-  EsmsPesPacketNodePtr pesPacketsScriptsQueue;
-  EsmsPesPacketNodePtr pesPacketsScriptsQueueLastNode;
-  unsigned pesPacketsScriptsQueueSize;
-
-  LibbluESPesPacketPropertiesNodePtr pesPacketsQueue;
-  LibbluESPesPacketPropertiesNodePtr pesPacketsQueueLastNode;
-  unsigned pesPacketsQueueSize;
+  CircularBuffer pesPacketsScriptsQueue_; // type: EsmsPesPacket
 
   struct {
-    LibbluESPesPacketProperties prop;
+    PesPacketHeaderParam header;
     LibbluESPesPacketData data;
-  } curPesPacket;
+
+    uint64_t pts;
+    uint64_t dts;
+    bool extension_frame;
+  } current_pes_packet;
 
   /* Progression related */
   bool parsedProperties;
@@ -200,49 +198,29 @@ typedef struct {
   bool endOfScriptReached;
 
   unsigned nbPesPacketsMuxed;
-} LibbluES, *LibbluESPtr;
+} LibbluES;
 
 #define LIBBLU_ES_MIN_BUF_PES_SCRIPT_PACKETS  50
 #define LIBBLU_ES_INC_BUF_PES_SCRIPT_PACKETS  200
 #define LIBBLU_ES_MIN_BUF_PES_PACKETS  30
 #define LIBBLU_ES_INC_BUF_PES_PACKETS  50
 
-static inline void initLibbluES(
-  LibbluES * dst,
-  LibbluESSettings * settings
-)
-{
-  *dst = (LibbluES) {
-    .settings = settings,
-    .prop = {
-      .type        = -1,
-      .coding_type = -1
-    },
-  };
-
-  initLibbluESFmtSpecProp(&dst->fmtSpecProp, FMT_SPEC_INFOS_NONE);
-  initEsmsDataBlocks(&dst->scriptDataSections);
-  initEsmsESSourceFiles(&dst->sourceFiles);
-  initLibbluESPesPacketData(&dst->curPesPacket.data);
-}
-
 static inline void cleanLibbluES(
   LibbluES es
 )
 {
-  free(es.fmtSpecProp.shared_ptr);
+  free(es.fmt_prop.shared_ptr);
   destroyBufModelBuffersList(es.lnkdBufList);
   closeBitstreamReader(es.scriptFile);
   cleanEsmsESSourceFiles(es.sourceFiles);
   cleanEsmsDataBlocks(es.scriptDataSections);
-  cleanEsmsCommandParsingData(es.scriptCommandParsing);
-  destroyEsmsPesPacketNode(es.pesPacketsScriptsQueue, true);
-  destroyLibbluESPesPacketPropertiesNode(es.pesPacketsQueue, true);
-  cleanLibbluESPesPacketData(es.curPesPacket.data);
+  cleanEsmsCommandParsingData(es.commands_data_parsing);
+  cleanCircularBuffer(es.pesPacketsScriptsQueue_),
+  cleanLibbluESPesPacketData(es.current_pes_packet.data);
 }
 
 int prepareLibbluES(
-  LibbluESPtr es,
+  LibbluES * es,
   LibbluESFormatUtilities * esAssociatedUtilities,
   bool forceRebuild
 );
@@ -254,14 +232,16 @@ int prepareLibbluES(
  * \return size_t Number of remaining bytes in the ES current PES packet.
  */
 static inline size_t remainingPesDataLibbluES(
-  LibbluES es
+  const LibbluES * es
 )
 {
   return
-    es.curPesPacket.data.dataUsedSize
-    - es.curPesPacket.data.dataOffset
+    es->current_pes_packet.data.size
+    - es->current_pes_packet.data.offset
   ;
 }
+
+#if 0
 
 static inline bool endOfPesPacketsScriptsQueueLibbluES(
   LibbluES es
@@ -269,39 +249,39 @@ static inline bool endOfPesPacketsScriptsQueueLibbluES(
 {
   return
     isEndReachedESPesCuttingEsms(es.scriptFile)
-    && (0 == es.pesPacketsScriptsQueueSize)
+    && (0 == nbEntriesCircularBuffer(&es.pesPacketsScriptsQueue_))
   ;
 }
+
+#endif
 
 static inline bool isPayloadUnitStartLibbluES(
   LibbluES es
 )
 {
-  return 0 == es.curPesPacket.data.dataOffset;
+  return (0 == es.current_pes_packet.data.offset);
 }
 
-int buildAndQueueNextPesPacketPropertiesLibbluES(
-  LibbluESPtr es,
-  uint64_t refPcr,
-  LibbluESPesPacketHeaderPrepFun preparePesHeader
-);
+// size_t averageSizePesPacketLibbluES(
+//   const LibbluES * es,
+//   unsigned maxNbSamples
+// );
 
-size_t averageSizePesPacketLibbluES(
-  const LibbluESPtr es,
-  unsigned maxNbSamples
-);
+#if 0
 
 int buildPesPacketDataLibbluES(
-  const LibbluESPtr es,
+  const LibbluES * es,
   LibbluESPesPacketData * dst,
   const LibbluESPesPacketPropertiesNodePtr node
 );
 
+#endif
+
 int buildNextPesPacketLibbluES(
-  LibbluESPtr es,
+  LibbluES * es,
   uint16_t pid,
   uint64_t refPcr,
-  LibbluESPesPacketHeaderPrepFun preparePesHeader
+  LibbluPesPacketHeaderPrep_fun preparePesHeader
 );
 
 #endif

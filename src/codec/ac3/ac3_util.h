@@ -33,10 +33,10 @@ typedef struct {
 } Ac3AccessUnit;
 
 typedef struct {
-  unsigned src_file_idx;
+  uint8_t src_file_idx;
   BitstreamReaderPtr bs;
   BitstreamWriterPtr script_bs;
-  EsmsFileHeaderPtr script;
+  EsmsHandlerPtr script;
   const lbc * script_fp;
 
   LibbluBitReader br;

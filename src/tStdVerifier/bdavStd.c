@@ -170,7 +170,7 @@ int addSystemToBdavStd(
 
 int addESToBdavStd(
   BufModelNode rootNode,
-  LibbluESPtr es,
+  LibbluES * es,
   uint16_t pid,
   uint64_t initialTimestamp
 )
@@ -277,14 +277,16 @@ int addSystemFramesToBdavStd(
   );
 }
 
-int addESPesFrameToBdavStd(
+#if 0
+
+int addESPesPacketToBdavStd(
   LibbluStreamPtr stream,
   size_t headerLength,
   size_t payloadLength,
   uint64_t referentialStc
 )
 {
-  LibbluESPtr es;
+  LibbluES * es;
 
   uint64_t removalTimestamp, outputTimestamp;
   LibbluESPesPacketProperties curPesPacket;
@@ -303,11 +305,11 @@ int addESPesFrameToBdavStd(
     && 0
   ) {
     removalTimestamp =
-      curPesPacket.extData.h264.cpbRemovalTime
+      curPesPacket.extData.h264.cpb_removal_time
       + referentialStc
     ;
     outputTimestamp =
-      curPesPacket.extData.h264.dpbOutputTime
+      curPesPacket.extData.h264.dpb_output_time
       + referentialStc
     ;
   }
@@ -365,6 +367,8 @@ int addESPesFrameToBdavStd(
     }
   );
 }
+
+#endif
 
 int addESTsFrameToBdavStd(
   BufModelBuffersListPtr dst,

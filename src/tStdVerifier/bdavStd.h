@@ -46,17 +46,17 @@ int addSystemToBdavStd(
 
 int addESToBdavStd(
   BufModelNode rootNode,
-  LibbluESPtr es,
+  LibbluES * es,
   uint16_t pid,
   uint64_t initialTimestamp
 );
 
-int addESPesFrameToBdavStd(
-  LibbluStreamPtr stream,
-  size_t headerLength,
-  size_t payloadLength,
-  uint64_t referentialStc
-);
+// int addESPesPacketToBdavStd(
+//   LibbluStreamPtr stream,
+//   size_t headerLength,
+//   size_t payloadLength,
+//   uint64_t referentialStc
+// );
 
 int addESTsFrameToBdavStd(
   BufModelBuffersListPtr dst,

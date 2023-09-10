@@ -469,7 +469,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
 {
   unsigned RefClock = getDcaExtReferenceClockValue(param->nuRefClockCode);
   LIBBLU_DTS_DEBUG_EXTSS(
-    "   Reference clock code (nuRefClockCode): %u Hz (0x%02" PRIX8 ").\n",
+    "   Reference clock (nuRefClockCode): %u Hz (0x%02" PRIX8 ").\n",
     RefClock,
     param->nuRefClockCode
   );
@@ -487,8 +487,10 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
     );
 
   LIBBLU_DTS_DEBUG_EXTSS(
-    "   Frame duration code (nuExSSFrameDurationCode): 0x%02" PRIX8 ".\n",
-    param->nuExSSFrameDurationCode
+    "   Frame duration code (nuExSSFrameDurationCode): "
+    "%" PRIu32 " (0x%02" PRIX8 ").\n",
+    param->nuExSSFrameDurationCode,
+    param->nuExSSFrameDurationCode_code
   );
   LIBBLU_DTS_DEBUG_EXTSS(
     "    => Frame duration in seconds (ExSSFrameDuration): %f s.\n",
@@ -1363,7 +1365,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
       }
       break;
 
-    case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING:
+    case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING: {
       const DcaAudioAssetDescDecNDAuxiliaryCoding * aux = &param->auxilary_coding;
 
       LIBBLU_DTS_DEBUG_EXTSS(
@@ -1392,6 +1394,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
           aux->nuExSSAuxSyncDistInFrames_code
         );
       }
+    }
   }
 
   if (param->mix_md_fields_pres) {

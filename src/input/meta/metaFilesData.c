@@ -148,14 +148,14 @@ LibbluMetaOptionId parseLibbluMetaOption(
             "Option '%s%" PRI_LBCS "' can only be used in header.\n",
             prefix,
             selectedOpt.name,
-            streamCodingTypeStr(trackCodingType)
+            LibbluStreamCodingTypeStr(trackCodingType)
           );
 
         LIBBLU_ERROR_RETURN(
           "Option '%s%" PRI_LBCS "' cannot be used on a %" PRI_LBCS " track.\n",
           prefix,
           selectedOpt.name,
-          streamCodingTypeStr(trackCodingType)
+          LibbluStreamCodingTypeStr(trackCodingType)
         );
       }
 

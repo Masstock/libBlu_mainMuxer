@@ -12,14 +12,13 @@ LibbluStreamPtr createLibbluStream(
   uint16_t pid
 )
 {
-  LibbluStreamPtr stream;
 
-  if (NULL == (stream = (LibbluStreamPtr) malloc(sizeof(LibbluStream))))
+  LibbluStreamPtr stream;
+  if (NULL == (stream = (LibbluStreamPtr) calloc(1, sizeof(LibbluStream))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
   stream->type = type;
   stream->pid = pid;
-  stream->packetNb = 0;
 
   return stream;
 }
@@ -40,87 +39,69 @@ void destroyLibbluStream(
 }
 
 int requestESPIDLibbluStream(
-  LibbluPIDValues * values,
-  uint16_t * pid,
+  LibbluPIDValues * pid_vals,
+  uint16_t * pid_ret,
   LibbluStreamPtr stream
 )
 {
-  int ret;
-
-  LibbluESPtr es;
-  LibbluESSettings * streamSettings;
-  LibbluESProperties streamProperties;
-
-  uint16_t basePid;
-  unsigned * curEsTypeNb;
-  unsigned limitEsTypeNb;
-  const char * selectedTypeStr;
-
-  uint16_t selectedPid;
-  bool validPid;
-
-  assert(NULL != values);
-  assert(NULL != pid);
+  assert(NULL != pid_vals);
+  assert(NULL != pid_ret);
   assert(NULL != stream);
   assert(isESLibbluStream(stream));
 
-  es = &stream->es;
-  streamSettings = es->settings;
-  streamProperties = es->prop;
+  const LibbluESSettings * es_sets = stream->es.settings_ref;
+  const LibbluESProperties * es_prop = &stream->es.prop;
 
   /* Get the base PID and the current number of ES of stream type */
-  if (streamProperties.type == ES_VIDEO) {
-    if (!streamSettings->options.secondaryStream) {
-      basePid = PRIM_VIDEO_PID;
-      curEsTypeNb = &values->nbStreams.primaryVideo;
-      limitEsTypeNb = values->limits.primaryVideo;
+  uint16_t sel_es_type_base_pid;
+  unsigned * sel_es_type_cur_nb_ptr, sel_es_type_limit;
+  const char * sel_es_type_str;
 
-      selectedTypeStr = "Primary Video";
+  if (es_prop->type == ES_VIDEO) {
+    if (!es_sets->options.secondaryStream) {
+      sel_es_type_base_pid   = PRIM_VIDEO_PID;
+      sel_es_type_cur_nb_ptr = &pid_vals->nb_streams.primaryVideo;
+      sel_es_type_limit      = pid_vals->limits.primaryVideo;
+      sel_es_type_str        = "Primary Video";
     }
     else {
-      basePid = SEC_VIDEO_PID;
-      curEsTypeNb = &values->nbStreams.secondaryVideo;
-      limitEsTypeNb = values->limits.secondaryVideo;
-
-      selectedTypeStr = "Secondary Video";
+      sel_es_type_base_pid   = SEC_VIDEO_PID;
+      sel_es_type_cur_nb_ptr = &pid_vals->nb_streams.secondaryVideo;
+      sel_es_type_limit      = pid_vals->limits.secondaryVideo;
+      sel_es_type_str        = "Secondary Video";
     }
   }
-  else if (streamProperties.type == ES_AUDIO) {
-    if (!streamSettings->options.secondaryStream) {
-      basePid = PRIM_AUDIO_PID;
-      curEsTypeNb = &values->nbStreams.primaryAudio;
-      limitEsTypeNb = values->limits.primaryAudio;
-
-      selectedTypeStr = "Primary Audio";
+  else if (es_prop->type == ES_AUDIO) {
+    if (!es_sets->options.secondaryStream) {
+      sel_es_type_base_pid   = PRIM_AUDIO_PID;
+      sel_es_type_cur_nb_ptr = &pid_vals->nb_streams.primaryAudio;
+      sel_es_type_limit      = pid_vals->limits.primaryAudio;
+      sel_es_type_str        = "Primary Audio";
     }
     else {
-      basePid = SEC_AUDIO_PID;
-      curEsTypeNb = &values->nbStreams.secondaryAudio;
-      limitEsTypeNb = values->limits.secondaryAudio;
-
-      selectedTypeStr = "Secondary Audio";
+      sel_es_type_base_pid   = SEC_AUDIO_PID;
+      sel_es_type_cur_nb_ptr = &pid_vals->nb_streams.secondaryAudio;
+      sel_es_type_limit      = pid_vals->limits.secondaryAudio;
+      sel_es_type_str        = "Secondary Audio";
     }
   }
-  else if (streamProperties.coding_type == STREAM_CODING_TYPE_PG) {
-    basePid = PG_PID;
-    curEsTypeNb = &values->nbStreams.pg;
-    limitEsTypeNb = values->limits.pg;
-
-    selectedTypeStr = "Presentation Graphics (PG) subtitles";
+  else if (es_prop->coding_type == STREAM_CODING_TYPE_PG) {
+    sel_es_type_base_pid     = PG_PID;
+    sel_es_type_cur_nb_ptr   = &pid_vals->nb_streams.pg;
+    sel_es_type_limit        = pid_vals->limits.pg;
+    sel_es_type_str          = "Presentation Graphics (PG) subtitles";
   }
-  else if (streamProperties.coding_type == STREAM_CODING_TYPE_IG) {
-    basePid = IG_PID;
-    curEsTypeNb = &values->nbStreams.ig;
-    limitEsTypeNb = values->limits.ig;
-
-    selectedTypeStr = "Interactive Graphics (IG) menus";
+  else if (es_prop->coding_type == STREAM_CODING_TYPE_IG) {
+    sel_es_type_base_pid     = IG_PID;
+    sel_es_type_cur_nb_ptr   = &pid_vals->nb_streams.ig;
+    sel_es_type_limit        = pid_vals->limits.ig;
+    sel_es_type_str          = "Interactive Graphics (IG) menus";
   }
-  else if (streamProperties.coding_type == STREAM_CODING_TYPE_TEXT) {
-    basePid = TXT_SUB_PID;
-    curEsTypeNb = &values->nbStreams.txtSubtitles;
-    limitEsTypeNb = values->limits.txtSubtitles;
-
-    selectedTypeStr = "Text Subtitles (TextST)";
+  else if (es_prop->coding_type == STREAM_CODING_TYPE_TEXT) {
+    sel_es_type_base_pid     = TXT_SUB_PID;
+    sel_es_type_cur_nb_ptr   = &pid_vals->nb_streams.txtSubtitles;
+    sel_es_type_limit        = pid_vals->limits.txtSubtitles;
+    sel_es_type_str          = "Text Subtitles (TextST)";
   }
   else
     LIBBLU_ERROR_RETURN(
@@ -128,72 +109,68 @@ int requestESPIDLibbluStream(
     );
 
   /* Check number of already registered ES */
-  if (limitEsTypeNb <= *curEsTypeNb)
+  if (sel_es_type_limit <= *sel_es_type_cur_nb_ptr)
     LIBBLU_ERROR_RETURN(
       "Too many %s streams.\n",
-      selectedTypeStr
+      sel_es_type_str
     );
 
-  selectedPid = basePid;
-
-  if (streamSettings->pid != 0x0000) {
+  uint16_t sel_pid = sel_es_type_base_pid;
+  if (es_sets->pid != 0x0000) {
     /* Custom requested PID */
-    bool valid;
+    bool valid = true;
 
-    selectedPid = streamSettings->pid;
+    sel_pid = es_sets->pid;
 
-    valid = true;
-    if (isReservedPIDValue(selectedPid)) {
-      if (values->errorOnInvalidPIDRequest)
+    if (isReservedPIDValue(sel_pid)) {
+      if (pid_vals->fail_on_invalid_request)
         LIBBLU_ERROR_RETURN(
           "Unable to use PID value 0x%04" PRIX16 ", this value is reserved.\n",
-          streamSettings->pid
+          es_sets->pid
         );
-      selectedPid = 0x0000;
+      sel_pid = 0x0000;
     }
 
-    if (selectedPid < basePid || basePid + limitEsTypeNb <= selectedPid) {
+    if (sel_pid < sel_es_type_base_pid || sel_es_type_base_pid + sel_es_type_limit <= sel_pid) {
       /* Out of range PID request */
-      if (values->errorOnInvalidPIDRequest)
+      if (pid_vals->fail_on_invalid_request)
         LIBBLU_ERROR_RETURN(
           "Unable to use PID value 0x%04" PRIX16 ", it is not in the allowed "
           "range for a %s stream.\n",
-          streamSettings->pid,
-          selectedTypeStr
+          es_sets->pid,
+          sel_es_type_str
         );
 
+      sel_pid = sel_es_type_base_pid;
       valid = false;
-      selectedPid = basePid;
     }
 
     if (!valid)
       LIBBLU_INFO(
         "Unable to use PID value 0x%04" PRIX16 ", "
         ", selection of a replacement available value.\n",
-        streamSettings->pid,
-        selectedPid
+        es_sets->pid,
+        sel_pid
       );
   }
 
-  validPid = false;
-
-  while (!validPid) {
+  bool is_valid_sel_pid = false;
+  while (!is_valid_sel_pid) {
     /* Check PID value range */
-    if (basePid + limitEsTypeNb <= selectedPid)
+    if (sel_es_type_base_pid + sel_es_type_limit <= sel_pid)
       LIBBLU_ERROR_RETURN(
         "Unable to select a valid PID value for a %s stream.\n",
-        selectedTypeStr
+        sel_es_type_str
       );
 
     /* Try to insert value */
-    ret = insertLibbluRegisteredPIDValues(&values->registeredValues, selectedPid);
-    switch (ret) {
+    switch (insertLibbluRegisteredPIDValues(&pid_vals->reg_values, sel_pid)) {
       case 0: /* Unable to insert value */
-        selectedPid++;
+        sel_pid++;
         break;
 
       case 1: /* Insertion successfull */
-        validPid = true;
+        is_valid_sel_pid = true;
         break;
 
       default: /* Error */
@@ -201,9 +178,9 @@ int requestESPIDLibbluStream(
     }
   }
 
-  if (NULL != pid)
-    *pid = selectedPid;
-  (*curEsTypeNb)++;
+  if (NULL != pid_ret)
+    *pid_ret = sel_pid;
+  (*sel_es_type_cur_nb_ptr)++;
 
   return 0;
 }

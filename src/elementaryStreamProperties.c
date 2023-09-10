@@ -8,11 +8,11 @@
 #include "elementaryStreamProperties.h"
 
 int initLibbluESFmtSpecProp(
-  LibbluESFmtSpecProp * dst,
+  LibbluESFmtProp * dst,
   LibbluESFmtSpecPropType type
 )
 {
-  LibbluESFmtSpecProp prop = {0};
+  LibbluESFmtProp prop = {0};
 
   assert(NULL != dst);
 

@@ -276,9 +276,9 @@ static size_t _computeRemovalBufferDataBandwidth(
   BufModelBufferFrame * frame;
 
   dataLength = 0;
-  nbFrames = getNbEntriesCircularBuffer(buf->header.storedFrames);
+  nbFrames = nbEntriesCircularBuffer(buf->header.storedFrames);
   for (frameIdx = 0; frameIdx < nbFrames; frameIdx++) {
-    frame = (BufModelBufferFrame *) getEntryCircularBuffer(
+    frame = (BufModelBufferFrame *) getCircularBuffer(
       buf->header.storedFrames, frameIdx
     );
     if (NULL == frame)
@@ -401,9 +401,9 @@ static uint64_t _computeRemovalBufferDelayForBufferDataOutput(
   BufModelBufferFrame * frame;
   uint64_t delay = 0;
 
-  size_t nbFrames = getNbEntriesCircularBuffer(buf->header.storedFrames);
+  size_t nbFrames = nbEntriesCircularBuffer(buf->header.storedFrames);
   for (size_t frameIdx = 0; frameIdx < nbFrames; frameIdx++) {
-    frame = (BufModelBufferFrame *) getEntryCircularBuffer(
+    frame = (BufModelBufferFrame *) getCircularBuffer(
       buf->header.storedFrames, frameIdx
     );
     if (NULL == frame)
@@ -692,7 +692,7 @@ static int _updateBufModelBuffer(
   emitedData = 0;
 
   for (frameIdx = 0; 0 < dataBandwidth; frameIdx++) {
-    BufModelBufferFrame * frame = (BufModelBufferFrame *) getEntryCircularBuffer(
+    BufModelBufferFrame * frame = (BufModelBufferFrame *) getCircularBuffer(
       buf->header.storedFrames,
       frameIdx
     );
@@ -746,10 +746,10 @@ static int _updateBufModelBuffer(
   /* Delete empty useless frames */
   for (
     frameIdx = 0;
-    frameIdx < getNbEntriesCircularBuffer(buf->header.storedFrames);
+    frameIdx < nbEntriesCircularBuffer(buf->header.storedFrames);
     frameIdx++
   ) {
-    BufModelBufferFrame * frame = (BufModelBufferFrame *) getEntryCircularBuffer(
+    BufModelBufferFrame * frame = (BufModelBufferFrame *) getCircularBuffer(
       buf->header.storedFrames,
       frameIdx
     );
@@ -895,7 +895,7 @@ static BufModelBufferPtr _createLeakingBuffer(
   if (NULL == (buf = (BufModelLeakingBufferPtr) malloc(sizeof(BufModelLeakingBuffer))))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-  CircularBufferPtr frmBuf;
+  CircularBuffer * frmBuf;
   if (NULL == (frmBuf = createCircularBuffer()))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
@@ -972,7 +972,7 @@ static BufModelBufferPtr createRemovalBuffer(
 )
 {
   BufModelRemovalBufferPtr buf;
-  CircularBufferPtr frmBuf;
+  CircularBuffer * frmBuf;
 
   if (NULL == (buf = (BufModelRemovalBufferPtr) malloc(sizeof(BufModelRemovalBuffer))))
     goto free_return; /* Memory allocation error */

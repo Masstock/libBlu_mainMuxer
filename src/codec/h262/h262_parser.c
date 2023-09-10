@@ -2185,8 +2185,8 @@ int analyzeH262(
   LibbluESParsingSettings * settings
 )
 {
-  EsmsFileHeaderPtr h262Infos = NULL;
-  unsigned h262SourceFileIdx;
+  EsmsHandlerPtr h262Infos = NULL;
+  uint8_t h262SourceFileIdx;
 
   BitstreamReaderPtr m2vInput = NULL;
   BitstreamWriterPtr essOutput = NULL;
@@ -2214,12 +2214,12 @@ int analyzeH262(
   H262GopHeaderParameters gopHeaderParam = {0};
 
 
-  h262Infos = createEsmsFileHandler(ES_VIDEO, settings->options, FMT_SPEC_INFOS_NONE);
+  h262Infos = createEsmsHandler(ES_VIDEO, settings->options, FMT_SPEC_INFOS_NONE);
   if (NULL == h262Infos)
     return -1;
 
   /* Pre-gen CRC-32 */
-  if (appendSourceFileEsms(h262Infos, settings->esFilepath, &h262SourceFileIdx) < 0)
+  if (appendSourceFileEsmsHandler(h262Infos, settings->esFilepath, &h262SourceFileIdx) < 0)
     return -1;
 
   /* Open input file : */
@@ -2325,14 +2325,14 @@ int analyzeH262(
 
         .video_format  = sequenceValues.videoFormat,
         .frame_rate    = sequenceValues.frameRateCode,
-        .profile_idc   = sequenceValues.profile,
-        .level_idc     = sequenceValues.level
+        .profile_IDC   = sequenceValues.profile,
+        .level_IDC     = sequenceValues.level
       };
 
       frameDuration = MAIN_CLOCK_27MHZ / frameRateCodeToFloat(h262Infos->prop.frame_rate);
       startPts = (uint64_t) ceil(frameDuration);
 
-      h262Infos->ptsRef = startPts;
+      h262Infos->PTS_reference = startPts;
       h262Infos->bitrate = sequenceValues.bit_rate * 400;
     }
     else {
@@ -2445,7 +2445,7 @@ int analyzeH262(
         h262Dts = 0;
 
       if (
-        initEsmsVideoPesFrame(
+        initVideoPesPacketEsmsHandler(
           h262Infos,
           pictureHeader.picture_coding_type,
           H262_PIC_CODING_TYPE_I == pictureHeader.picture_coding_type
@@ -2453,14 +2453,14 @@ int analyzeH262(
           h262Pts, h262Dts
         ) < 0
 
-        || appendAddPesPayloadCommand(
+        || appendAddPesPayloadCommandEsmsHandler(
           h262Infos, h262SourceFileIdx, 0x0, frameOff,
           tellPos(m2vInput) - frameOff - ignoredBytes
         ) < 0
       )
         return -1;
 
-      if (writeEsmsPesPacket(essOutput, h262Infos) < 0)
+      if (writePesPacketEsmsHandler(essOutput, h262Infos) < 0)
         return -1;
 
       frameOff = tellPos(m2vInput);
@@ -2493,12 +2493,8 @@ int analyzeH262(
 
   closeBitstreamReader(m2vInput);
 
-  /* [u8 endMarker] */
-  if (writeByte(essOutput, ESMS_SCRIPT_END_MARKER) < 0)
-    return -1;
-
   /* Display infos : */
-  duration = ((gopPts + pictureHeader.temporal_reference * frameDuration) - h262Infos->ptsRef) / MAIN_CLOCK_27MHZ;
+  duration = ((gopPts + pictureHeader.temporal_reference * frameDuration) - h262Infos->PTS_reference) / MAIN_CLOCK_27MHZ;
 
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
@@ -2516,14 +2512,14 @@ int analyzeH262(
   );
   lbc_printf("=======================================================================================\n");
 
-  h262Infos->endPts = gopPts + pictureHeader.temporal_reference * frameDuration;
+  h262Infos->PTS_final = gopPts + pictureHeader.temporal_reference * frameDuration;
 
-  if (addEsmsFileEnd(essOutput, h262Infos) < 0)
+  if (completePesCuttingScriptEsmsHandler(essOutput, h262Infos) < 0)
     return -1;
   closeBitstreamWriter(essOutput);
 
-  if (updateEsmsHeader(settings->scriptFilepath, h262Infos) < 0)
+  if (updateEsmsFile(settings->scriptFilepath, h262Infos) < 0)
     return -1;
-  destroyEsmsFileHandler(h262Infos);
+  destroyEsmsHandler(h262Infos);
   return 0;
 }

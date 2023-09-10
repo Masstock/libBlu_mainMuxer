@@ -18,15 +18,18 @@ static int _initOutputHdmvContext(
   );
 
   /* Copy script filepath */
-  if (NULL == (output->filepath = lbc_strdup(settings->scriptFilepath)))
+  output->filepath = lbc_strdup(settings->scriptFilepath);
+  if (NULL == output->filepath)
     LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
 
   /* Output script handle */
-  if (NULL == (output->script = createNfspEsmsFileHandler(ES_HDMV, settings->options)))
+  output->script = createEsmsHandler(ES_HDMV, settings->options, FMT_SPEC_INFOS_NONE);
+  if (NULL == output->script)
     return -1;
 
   /* Script output file */
-  if (NULL == (output->file = createBitstreamWriterDefBuf(settings->scriptFilepath)))
+  output->file = createBitstreamWriterDefBuf(settings->scriptFilepath);
+  if (NULL == output->file)
     return -1;
 
   return 0;
@@ -44,7 +47,7 @@ static void _cleanOutputHdmvContext(
 )
 {
   free(output.filepath);
-  destroyEsmsFileHandler(output.script);
+  destroyEsmsHandler(output.script);
   closeBitstreamWriter(output.file); /* This might be already closed */
 }
 
@@ -63,7 +66,7 @@ static int _initInputHdmvContext(
     return -1;
 
   /* Input file script index */
-  if (appendSourceFileEsms(output.script, infilepath, &input->idx) < 0)
+  if (appendSourceFileEsmsHandler(output.script, infilepath, &input->idx) < 0)
     return -1;
 
   return 0;
@@ -268,7 +271,7 @@ int addOriginalFileHdmvContext(
   const lbc * filepath
 )
 {
-  if (appendSourceFileEsms(ctx->output.script, filepath, NULL) < 0)
+  if (appendSourceFileEsmsHandler(ctx->output.script, filepath, NULL) < 0)
     return -1;
 
   return 0;
@@ -277,12 +280,12 @@ int addOriginalFileHdmvContext(
 void _setEsmsHeader(
   HdmvStreamType type,
   HdmvContextParameters param,
-  EsmsFileHeaderPtr script
+  EsmsHandlerPtr script
 )
 {
-  script->ptsRef  = param.referenceTimecode * 300;
+  script->PTS_reference  = param.referenceTimecode * 300;
   script->bitrate = HDMV_RX_BITRATE;
-  script->endPts  = (param.referenceTimecode + param.last_ds_pres_time) * 300;
+  script->PTS_final  = (param.referenceTimecode + param.last_ds_pres_time) * 300;
   script->prop.coding_type = codingTypeHdmvStreamType(type);
 }
 
@@ -293,13 +296,13 @@ int closeHdmvContext(
   /* Complete script */
   _setEsmsHeader(ctx->type, ctx->param, ctx->output.script);
 
-  if (addEsmsFileEnd(ctx->output.file, ctx->output.script) < 0)
+  if (completePesCuttingScriptEsmsHandler(ctx->output.file, ctx->output.script) < 0)
     return -1;
   closeBitstreamWriter(ctx->output.file);
   ctx->output.file = NULL;
 
   /* Update header */
-  if (updateEsmsHeader(ctx->output.filepath, ctx->output.script) < 0)
+  if (updateEsmsFile(ctx->output.filepath, ctx->output.script) < 0)
     return -1;
 
   return 0;
@@ -1677,10 +1680,10 @@ int _insertSegmentInScript(
     || seg.type == HDMV_SEGMENT_TYPE_ICS
   );
 
-  if (initEsmsHdmvPesFrame(ctx->output.script, dtsPresent, pts, dts) < 0)
+  if (initHDMVPesPacketEsmsHandler(ctx->output.script, dtsPresent, pts, dts) < 0)
     return -1;
 
-  int ret = appendAddPesPayloadCommand(
+  int ret = appendAddPesPayloadCommandEsmsHandler(
     ctx->output.script,
     ctx->input.idx,
     0x0,
@@ -1690,7 +1693,7 @@ int _insertSegmentInScript(
   if (ret < 0)
     return -1;
 
-  return writeEsmsPesPacket(
+  return writePesPacketEsmsHandler(
     ctx->output.file,
     ctx->output.script
   );
@@ -2076,8 +2079,6 @@ static int _checkNumberOfSequencesInEpoch(
     ctx->nbSequences,
     idx
   );
-
-  fprintf(stderr, "%s) %u/%u\n", segmentTypeIndexStr(idx), curSeqTypeNb, seqTypeNbUpLimitEpoch);
 
   if (seqTypeNbUpLimitEpoch <= curSeqTypeNb) {
     if (!seqTypeNbUpLimitEpoch)

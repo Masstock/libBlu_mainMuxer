@@ -13,18 +13,12 @@ DtsPatcherBitstreamHandlePtr createDtsPatcherBitstreamHandle(
 {
   DtsPatcherBitstreamHandlePtr handle;
 
-  handle = (DtsPatcherBitstreamHandlePtr) malloc(
+  handle = (DtsPatcherBitstreamHandlePtr) calloc(
+    1,
     sizeof(DtsPatcherBitstreamHandle)
   );
   if (NULL == handle)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  handle->data = NULL;
-  handle->dataAllocatedLength = 0;
-  handle->dataUsedLength = 0;
-  handle->currentByte = 0x00;
-  handle->currentByteUsedBits = 0;
-  resetCrcContext(&handle->crc);
 
   return handle;
 }
@@ -55,7 +49,7 @@ static int growDtsPatcherBitstreamHandle(
   if (newLength <= handle->dataAllocatedLength)
     LIBBLU_DTS_ERROR_RETURN("Too many bytes in bitstream patcher.\n");
 
-  newArray = (uint8_t *) realloc(handle->data, newLength * sizeof(uint8_t));
+  newArray = (uint8_t *) realloc(handle->data, newLength);
   if (NULL == newArray)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -68,14 +62,14 @@ static int growDtsPatcherBitstreamHandle(
 int getGeneratedArrayDtsPatcherBitstreamHandle(
   DtsPatcherBitstreamHandlePtr handle,
   const uint8_t ** array,
-  size_t * arraySize
+  uint16_t * arr_size
 )
 {
 
   if (NULL != array)
     *array = handle->data;
-  if (NULL != arraySize)
-    *arraySize = handle->dataUsedLength;
+  if (NULL != arr_size)
+    *arr_size = handle->dataUsedLength;
 
   return 0;
 }
@@ -212,8 +206,6 @@ int writeBitsDtsPatcherBitstreamHandle(
   bool bit;
 
   assert(size <= 32);
-
-  /* lbc_printf("%zu bits: 0x%" PRIX32 "\n", size, bits); */
 
   for (i = 0; i < size; i++) {
     bit = (bits >> (size - i - 1)) & 0x1;

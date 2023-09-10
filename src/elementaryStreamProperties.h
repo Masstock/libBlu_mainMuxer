@@ -38,8 +38,8 @@ typedef struct {
 typedef struct {
   uint8_t constraint_flags;
 
-  uint32_t cpbSize;  /**< CpbSize[cpb_cnt_minus1] value from SPS VUI.        */
-  uint32_t bitrate;  /**< BitRate[0] value from SPS VUI.                     */
+  uint32_t CpbSize;  /**< CpbSize[cpb_cnt_minus1] value from SPS VUI.        */
+  uint32_t BitRate;  /**< BitRate[0] value from SPS VUI.                     */
 } LibbluESH264SpecProperties;
 
 /** \~english
@@ -51,7 +51,7 @@ typedef union {
   LibbluESAc3SpecProperties * ac3;    /**< AC-3 audio and
     derived.                                                                 */
   LibbluESH264SpecProperties * h264;  /**< H.264 video.                      */
-} LibbluESFmtSpecProp;
+} LibbluESFmtProp;
 
 /** \~english
  * \brief Elementary Stream format specific properties type.
@@ -79,7 +79,7 @@ static inline size_t sizeofLibbluESFmtSpecPropType(
 }
 
 int initLibbluESFmtSpecProp(
-  LibbluESFmtSpecProp * dst,
+  LibbluESFmtProp * dst,
   LibbluESFmtSpecPropType type
 );
 
@@ -93,6 +93,27 @@ typedef enum {
   HDMV_VIDEO_FORMAT_576P   = 0x7,
   HDMV_VIDEO_FORMAT_2160P  = 0x8
 } HdmvVideoFormat;
+
+static inline const char * HdmvVideoFormatStr(
+  HdmvVideoFormat video_format
+)
+{
+  static const char * strings[] = {
+    "reserved",
+    "480i",
+    "576i",
+    "480p",
+    "1080i",
+    "720p",
+    "1080p",
+    "576p",
+    "2160p"
+  };
+
+  if (video_format < ARRAY_SIZE(strings))
+    return strings[video_format];
+  return "reserved";
+}
 
 HdmvVideoFormat getHdmvVideoFormat(
   unsigned width,
@@ -113,6 +134,25 @@ typedef enum {
   FRAME_RATE_CODE_50     = 0x06,  /**< 50                                    */
   FRAME_RATE_CODE_59940  = 0x07   /**< 59.940 (60000/1001)                   */
 } HdmvFrameRateCode;
+
+static inline const char * HdmvFrameRateCodeStr(
+  HdmvFrameRateCode frame_rate_code
+)
+{
+  static const char * strings[] = {
+    "unspecified",
+    "23.976 (24000/1001)",
+    "24",
+    "25",
+    "29.970 (30000/1001)",
+    "50",
+    "59.940 (60000/1001)"
+  };
+
+  if (frame_rate_code < ARRAY_SIZE(strings))
+    return strings[frame_rate_code];
+  return "reserved";
+}
 
 /** \~english
  * \brief Convert a frame-rate value to its HDMV code.
@@ -172,7 +212,7 @@ static inline const char * AudioFormatCodeStr(
     case AUDIO_FORMAT_STEREO_MULTI_CHANNEL:
       return "Stereo core + Multi-channel extension";
   }
-  return 0;
+  return "Unknown";
 }
 
 typedef enum {
@@ -270,8 +310,8 @@ typedef struct {
       HdmvFrameRateCode frame_rate;   /**< Video stream frame-rate value.    */
       bool still_picture;             /**< Video stream is a still picture.  */
 
-      uint8_t profile_idc;            /**< Video stream profile indice.      */
-      uint8_t level_idc;              /**< Video stream level indice.        */
+      uint8_t profile_IDC;            /**< Video stream profile indice.      */
+      uint8_t level_IDC;              /**< Video stream level indice.        */
     };  /**< If type == VIDEO.                                               */
 
     struct {

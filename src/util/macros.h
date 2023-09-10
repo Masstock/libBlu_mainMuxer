@@ -471,7 +471,7 @@
 /* Multiplexer Macros :                                                      */
 #define READ_BUFFER_LEN                                                    8192
 #define WRITE_BUFFER_LEN                                                   4096
-#define DIFF_TRIGGER_REALLOC_OPTIMIZATION                                131072
+#define DIFF_TRIGGER_REALLOC_OPTI                                131072
 
 /* Multiplex Parameters :                                                    */
 
@@ -504,7 +504,7 @@
  * of the biggest PES frame size, reducing number of memory
  * reallocations.
  * Otherwise, buffer size will be reduced in size if a PES frame
- * size difference is greater than #DIFF_TRIGGER_REALLOC_OPTIMIZATION
+ * size difference is greater than #DIFF_TRIGGER_REALLOC_OPTI
  * bytes, minimizing memory usage at cost of memory reallocations.
  *
  * This parameter is enabled by default.

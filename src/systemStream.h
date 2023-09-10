@@ -500,7 +500,7 @@ static inline unsigned programInfoLengthPmtParameters(
 int preparePMTParam(
   PmtParameters * dst,
   LibbluESProperties * esStreamsProp,
-  LibbluESFmtSpecProp * esStreamsFmtSpecProp,
+  LibbluESFmtProp * esStreamsFmtSpecProp,
   uint16_t * esStreamsPids,
   unsigned nbEsStreams,
   LibbluDtcpSettings dtcpSettings,

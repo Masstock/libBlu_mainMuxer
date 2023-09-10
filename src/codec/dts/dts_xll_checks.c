@@ -19,142 +19,134 @@ int checkDtsXllCommonHeader(
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Version number (nVersion): %u (0x%x).\n",
-    param.version, param.version - 1
+    param.nVersion, param.nVersion - 1
   );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    XLL frame Common Header length (nHeaderSize): "
-    "%zu byte(s) (0x%zx).\n",
-    param.headerSize, param.headerSize - 1
+    "% byte(s) (0x%02" PRIX8 ").\n",
+    param.nHeaderSize,
+    param.nHeaderSize - 1u
   );
-  if (param.headerSize < DTS_XLL_HEADER_MIN_SIZE)
-    LIBBLU_DTS_ERROR_RETURN(
-      "Too short DTS XLL Common Header size, "
-      "expect at least %zu bytes, got %zu.\n",
-      DTS_XLL_HEADER_MIN_SIZE,
-      param.headerSize
-    );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Size of field nBytesFrameLL (nBits4FrameFsize): "
-    "%zu bits (0x%zx).\n",
-    param.frameSizeFieldLength, param.frameSizeFieldLength - 1
+    "%" PRIu8 " bits (0x%02" PRIX8 ").\n",
+    param.nBits4FrameFsize,
+    param.nBits4FrameFsize - 1
   );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Number of bytes in LossLess Frame (nLLFrameSize): "
-    "%zu bytes (0x%zx).\n",
-    param.frameSize, param.frameSize - 1
+    "%" PRIu32 " bytes (0x%" PRIX32 ").\n",
+    param.nLLFrameSize,
+    param.nLLFrameSize - 1u
   );
 
-  if (DTS_XLL_MAX_PBR_BUFFER_SIZE < param.frameSize)
+  if (DTS_XLL_MAX_PBR_BUFFER_SIZE < param.nLLFrameSize)
     LIBBLU_DTS_ERROR_RETURN(
-      "Unexpected DTS XLL frame size "
-      "(exceed maximum possible size: %zu < %zu bytes).\n",
+      "Invalid DTS XLL frame size, "
+      "exceed maximum possible size: %" PRIu32 " < %" PRIu32 " bytes.\n",
       DTS_XLL_MAX_PBR_BUFFER_SIZE,
-      param.frameSize
+      param.nLLFrameSize
+    );
+  if (0 == param.nLLFrameSize)
+    LIBBLU_DTS_ERROR_RETURN(
+      "Invalid DTS XLL frame size, "
+      "overflow.\n"
     );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Number of Channels Sets per Frame (nNumChSetsInFrame): "
     "%u set(s) (0x%X).\n",
-    param.nbChSetsPerFrame,
-    param.nbChSetsPerFrame - 1
+    param.nNumChSetsInFrame,
+    param.nNumChSetsInFrame - 1
   );
 
-  if (DTS_XLL_MAX_CHSETS_NB < param.nbChSetsPerFrame)
+  if (DTS_XLL_MAX_CHSETS_NB < param.nNumChSetsInFrame)
     LIBBLU_DTS_ERROR_RETURN(
       "Too many Channel Sets in DTS XLL frame (%u < %u).\n",
       DTS_XLL_MAX_CHSETS_NB,
-      param.nbChSetsPerFrame
+      param.nNumChSetsInFrame
     );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Number of Segments per Frame (nSegmentsInFrame): "
     "%u segment(s) (0x%X).\n",
-    param.nbSegmentsInFrame,
-    param.nbSegmentsInFrameCode
+    param.nSegmentsInFrame,
+    param.nSegmentsInFrame_code
   );
 
-  if (DTS_XLL_MAX_SEGMENTS_NB < param.nbSegmentsInFrame)
+  if (DTS_XLL_MAX_SEGMENTS_NB < param.nSegmentsInFrame)
     LIBBLU_DTS_ERROR_RETURN(
       "Too many Segments in DTS XLL frame (%u < %u).\n",
       DTS_XLL_MAX_SEGMENTS_NB,
-      param.nbSegmentsInFrame
+      param.nSegmentsInFrame
     );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Number of Samples in a Segment (nSmplInSeg): %u sample(s) (0x%X).\n",
-    param.nbSamplesPerSegment,
-    param.nbSamplesPerSegmentCode
+    param.nSmplInSeg,
+    param.nSmplInSeg_code
   );
   LIBBLU_DTS_DEBUG_XLL(
     "     -> NOTE: This value is applied for each frequency band "
     "of the first channel set.\n"
   );
 
-  if (!param.nbSamplesPerSegment)
-    LIBBLU_DTS_ERROR_RETURN(
-      "Unexpected zero number of Samples in DTS XLL frame.\n"
-    );
-  if (DTS_XLL_MAX_SAMPLES_PER_SEGMENT_MT_48KHZ < param.nbSamplesPerSegment)
+  if (DTS_XLL_MAX_SAMPLES_PER_SEGMENT_MT_48KHZ < param.nSmplInSeg)
     LIBBLU_DTS_ERROR_RETURN(
       "Too high number of Samples in DTS XLL frame (%u < %u).\n",
       DTS_XLL_MAX_SAMPLES_PER_SEGMENT_MT_48KHZ,
-      param.nbSamplesPerSegment
+      param.nSmplInSeg
     );
 
   /* TODO: nSmplInSeg shall be checked for <= 48KHz. */
 
-  if (
-    DTS_XLL_MAX_SAMPLES_NB
-    < param.nbSegmentsInFrame * param.nbSamplesPerSegment
-  )
+  if (DTS_XLL_MAX_SAMPLES_NB < param.nSegmentsInFrame * param.nSmplInSeg)
     LIBBLU_DTS_ERROR_RETURN(
       "Too many Samples in DTS XLL frame (product of number of samples per "
       "segment and number of segments %u exceed %u samples).\n",
-      param.nbSegmentsInFrame * param.nbSamplesPerSegment,
+      param.nSegmentsInFrame * param.nSmplInSeg,
       DTS_XLL_MAX_SAMPLES_NB
     );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Length of the size field in NAVI table (nBits4SSize): "
-    "%u bit(s) (0x%X).\n",
-    param.nbBitsSegmentSizeField,
-    param.nbBitsSegmentSizeField - 1
+    "%" PRIu8 " bit(s) (0x%X).\n",
+    param.nBits4SSize,
+    param.nBits4SSize - 1
   );
 
   LIBBLU_DTS_DEBUG_XLL(
-    "    Frequency bands CRC16 checksum presence code (nBandDataCRCEn): "
-    "0x%X.\n",
-    param.crc16Pres
-  );
-  LIBBLU_DTS_DEBUG_XLL(
-    "     => %s.\n",
-    dtsXllCommonHeaderCrc16PresenceCodeStr(param.crc16Pres)
+    "    Frequency bands CRC16 checksum presence code "
+    "(nBandDataCRCEn): %s (0x%" PRIX8 ").\n",
+    dtsXllCommonHeaderCrc16PresenceCodeStr(param.nBandDataCRCEn),
+    param.nBandDataCRCEn
   );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Frequency band 0 MSB/LSB blocks spliting (bScalableLSBs): "
     "%s (0b%x).\n",
-    BOOL_INFO(param.scalableLSBs),
-    param.scalableLSBs
+    BOOL_INFO(param.bScalableLSBs),
+    param.bScalableLSBs
   );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Length of the Channels position Mask field (nBits4ChMask): "
-    "%u bit(s) (0x%X).\n",
-    param.nbBitsChMaskField,
-    param.nbBitsChMaskField - 1
+    "%" PRIu8 " bit(s) (0x%" PRIX8 ").\n",
+    param.nBits4ChMask,
+    param.nBits4ChMask - 1
   );
 
-  if (param.scalableLSBs) {
+  if (param.bScalableLSBs) {
     LIBBLU_DTS_DEBUG_XLL(
-      "    Size of the frequency bands' LSB part code (nuFixedLSBWidth): "
-      "0x%X.\n",
-      param.fixedLsbWidth
+      "    Size of the frequency bands' LSB part code "
+      "(nuFixedLSBWidth): 0x%" PRIu8 ".\n",
+      param.nuFixedLSBWidth
     );
-    if (0 < param.fixedLsbWidth)
+
+    if (0 < param.nuFixedLSBWidth)
       LIBBLU_DTS_DEBUG_XLL(
         "     => nuFixedLSBWidth == 0, size of LSB part is variable.\n"
       );
@@ -162,24 +154,19 @@ int checkDtsXllCommonHeader(
       LIBBLU_DTS_DEBUG_XLL(
         "     => nuFixedLSBWidth > 0, size of LSB part is fixed, "
         "equal to %u bit(s).\n",
-        param.fixedLsbWidth
+        param.nuFixedLSBWidth
       );
   }
 
   LIBBLU_DTS_DEBUG_XLL(
-    "    Reserved data field length (Reserved): %zu byte(s).\n",
-    param.reservedFieldSize
-  );
-
-  LIBBLU_DTS_DEBUG_XLL(
-    "    Byte boundary padding field (ByteAlign): %u bit(s).\n",
-    param.ZeroPadForFsize_size
+    "    Reserved/Byte alignment field (Reserved): %" PRIu32 " byte(s).\n",
+    param.Reserved_size
   );
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Common Header CRC16 checksum protection (nCRC16Header): "
     "0x%04" PRIX16 ".\n",
-    param.headerCrc
+    param.nCRC16Header
   );
 #if !DCA_EXT_SS_DISABLE_CRC
   LIBBLU_DTS_DEBUG_XLL(
@@ -202,35 +189,34 @@ int checkDtsXllChannelSetSubHeader(
 
   LIBBLU_DTS_DEBUG_XLL(
     "    Channel Set Sub-Header length (nChSetHeaderSize): "
-    "%zu byte(s) (0x%zx).\n",
-    param.chSetHeaderSize,
-    param.chSetHeaderSize - 1
+    "%" PRIu16 " byte(s) (0x%06" PRIX16 ").\n",
+    param.nChSetHeaderSize,
+    param.nChSetHeaderSize - 1
   );
 
   LIBBLU_DTS_DEBUG_XLL(
-    "    Number of Channels in Set (nChSetLLChannel): %u (0x%x).\n",
-    param.nbChannels,
-    param.nbChannels - 1
+    "    Number of Channels in Set (nChSetLLChannel): "
+    "%" PRIu8 " (0x%" PRIX8 ").\n",
+    param.nChSetLLChannel,
+    param.nChSetLLChannel - 1
   );
 
   LIBBLU_DTS_DEBUG_XLL(
-    "    Channels Residual coding Type (nResidualChEncode): 0x%" PRIu32 ".\n",
-    param.residualChType
+    "    Channels Residual coding Type (nResidualChEncode): "
+    "0x%" PRIu16 ".\n",
+    param.nResidualChEncode
   );
 
-  for (i = 0; i < param.nbChannels; i++)
+  for (i = 0; i < param.nChSetLLChannel; i++) {
+    bool standalone_residual = (param.nResidualChEncode >> i) & 0x1;
+
     LIBBLU_DTS_DEBUG_XLL(
       "     => Channel %u: %s (0b%x).\n",
       i,
-      (param.residualChType & (1 << i)) ?
-        "Coded residual"
-      :
-        "Substractive residual",
-      (param.residualChType & (1 << i)) ?
-        1
-      :
-        0
+      standalone_residual ? "Original" : "Residual",
+      standalone_residual
     );
+  }
 
   return 0;
 }

@@ -10,8 +10,8 @@
 #ifndef __LIBBLU_MUXER__CODECS__DTS__PATCHER_H__
 #define __LIBBLU_MUXER__CODECS__DTS__PATCHER_H__
 
-#include "dts_patcher_util.h"
 #include "dts_data.h"
+#include "dts_patcher_util.h"
 
 /** \~english
  * \brief Append on given ESMS script handle a reconstruction of the Extension
@@ -23,13 +23,13 @@
  * \return size_t Number of bytes written.
  */
 uint32_t appendDcaExtSSHeader(
-  EsmsFileHeaderPtr script,
+  EsmsHandlerPtr script,
   uint32_t insert_off,
   const DcaExtSSHeaderParameters * param
 );
 
 uint32_t appendDcaExtSSAsset(
-  EsmsFileHeaderPtr script,
+  EsmsHandlerPtr script,
   uint32_t insert_off,
   const DcaXllFrameSFPosition * param,
   unsigned scriptSourceFileId

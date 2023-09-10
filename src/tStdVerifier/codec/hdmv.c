@@ -8,7 +8,7 @@
 
 int createHdmvBufferingChainBdavStd(
   BufModelNode * root,
-  LibbluESPtr stream,
+  LibbluES * stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 )

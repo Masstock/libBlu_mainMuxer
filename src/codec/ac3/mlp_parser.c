@@ -756,8 +756,6 @@ static int _decodeVlcMlpSubstreamBitsReader(
   getLibbluBitReader(br, &input, max_code_size);
   input <<= (MLP_HUFFMAN_LONGEST_CODE_SIZE - max_code_size);
 
-  // LIBBLU_MLP_DEBUG_PARSING_SS("%u %u 0x%X\n", lut_size, max_code_size, input);
-
   for (unsigned i = 0; i < lut_size; i++) {
     if ((input & entries[i].mask) == entries[i].code) {
       /* Huffman code match! */

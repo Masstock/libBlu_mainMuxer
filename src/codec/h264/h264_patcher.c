@@ -181,10 +181,10 @@ size_t appendH264SequenceParametersSet(
 
     if (constantSps) {
       /* Compatible, write pre-builded Nal. */
-      ret = appendAddDataBlockCommand(
+      ret = appendAddDataBlockCommandEsmsHandler(
         handle->esms,
         insertingOffset,
-        INSERTION_MODE_ERASE,
+        INSERTION_MODE_OVERWRITE,
         modNalUnit.dataSectionIdx
       );
       if (ret < 0)
@@ -567,7 +567,7 @@ size_t appendH264SequenceParametersSet(
    */
 
 #if !DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION
-  if (!isDataBlocksNbLimitReachedEsms(handle->esms)) {
+  if (!isDataBlocksNbLimitReachedEsmsHandler(handle->esms)) {
     H264ModifiedNalUnit * modNalUnit;
 
     handle->modNalLst.sequenceParametersSets =
@@ -601,7 +601,7 @@ size_t appendH264SequenceParametersSet(
     modNalUnit->linkedParam = ofSpsH264AUNalUnitReplacementData(*param);
     modNalUnit->dataSectionSize = nbBytesH264NalByteArrayHandler(spsNal);
 
-    ret = appendDataBlockEsms(
+    ret = appendDataBlockEsmsHandler(
       handle->esms,
       spsNal->array,
       nbBytesH264NalByteArrayHandler(spsNal),
@@ -610,28 +610,30 @@ size_t appendH264SequenceParametersSet(
     if (ret < 0)
       goto free_return;
 
-    ret = appendAddDataBlockCommand(
+    ret = appendAddDataBlockCommandEsmsHandler(
       handle->esms,
-      insertingOffset, INSERTION_MODE_ERASE,
+      insertingOffset, INSERTION_MODE_OVERWRITE,
       modNalUnit->dataSectionIdx
     );
   }
   else {
     /* Direct NAL injection : */
-    ret = appendAddDataCommand(
+    ret = appendAddDataCommandEsmsHandler(
       handle->esms,
-      insertingOffset, INSERTION_MODE_ERASE,
-      nbBytesH264NalByteArrayHandler(spsNal),
-      spsNal->array
+      insertingOffset,
+      INSERTION_MODE_OVERWRITE,
+      spsNal->array,
+      nbBytesH264NalByteArrayHandler(spsNal)
     );
   }
 #else
   /* Direct NAL injection : */
-  ret = appendAddDataCommand(
+  ret = appendAddDataCommandEsmsHandler(
     handle->esms,
-    insertingOffset, INSERTION_MODE_ERASE,
-    nbBytesH264NalByteArrayHandler(spsNal),
-    spsNal->array
+    insertingOffset,
+    INSERTION_MODE_OVERWRITE,
+    spsNal->array,
+    nbBytesH264NalByteArrayHandler(spsNal)
   );
 #endif
 
@@ -1061,7 +1063,7 @@ bool isH264SeiBufferingPeriodPatchMessage(
 
 size_t appendH264Sei(
   H264ParametersHandlerPtr handle,
-  EsmsFileHeaderPtr handle->esms,
+  EsmsHandlerPtr handle->esms,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 )
@@ -1097,11 +1099,12 @@ size_t appendH264Sei(
   /* lbc_printf("Written bytes: %" PRIu64 " byte(s).\n", seiNal->writtenBytes); */
 
   /* Direct NAL injection : */
-  ret = appendAddDataCommand(
+  ret = appendAddDataCommandEsmsHandler(
     handle->esms,
-    insertingOffset, INSERTION_MODE_ERASE,
-    nbBytesH264NalByteArrayHandler(seiNal),
-    seiNal->array
+    insertingOffset,
+    INSERTION_MODE_OVERWRITE,
+    seiNal->array,
+    nbBytesH264NalByteArrayHandler(seiNal)
   );
   if (ret < 0)
     return 0;
@@ -1115,7 +1118,7 @@ size_t appendH264Sei(
 
 size_t appendH264SeiBufferingPeriodPlaceHolder(
   H264ParametersHandlerPtr handle,
-  EsmsFileHeaderPtr handle->esms,
+  EsmsHandlerPtr handle->esms,
   size_t insertingOffset,
   H264SeiRbspParameters * param
 )
@@ -1168,7 +1171,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 
     seiModNalUnit->length = nbBytesH264NalByteArrayHandler(seiNal);
 
-    ret = appendDataBlockEsms(
+    ret = appendDataBlockEsmsHandler(
       handle->esms,
       seiNal->array,
       nbBytesH264NalByteArrayHandler(seiNal),
@@ -1183,10 +1186,10 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 
   assert(NULL != seiModNalUnit->linkedParam);
 
-  ret = appendAddDataBlockCommand(
+  ret = appendAddDataBlockCommandEsmsHandler(
     handle->esms,
     insertingOffset,
-    INSERTION_MODE_ERASE,
+    INSERTION_MODE_OVERWRITE,
     seiModNalUnit->dataSectionIdx
   );
   if (ret < 0)
@@ -1340,7 +1343,7 @@ int insertH264SeiBufferingPeriodPlaceHolder(
 
 int completeH264SeiBufferingPeriodComputation(
   H264ParametersHandlerPtr handle,
-  EsmsFileHeaderPtr handle->esms
+  EsmsHandlerPtr handle->esms
 )
 {
   /* Only support first one schedSel. */
@@ -1499,7 +1502,7 @@ int completeH264SeiBufferingPeriodComputation(
     );
 
   /* Replace place-holder NALU with updated one. */
-  ret = updateDataBlockEsms(
+  ret = updateDataBlockEsmsHandler(
     handle->esms,
     seiNal->array,
     nbBytesH264NalByteArrayHandler(seiNal),

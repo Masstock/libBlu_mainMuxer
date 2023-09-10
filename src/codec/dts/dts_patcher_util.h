@@ -26,6 +26,7 @@ typedef struct {
   uint8_t * data;               /**< Constructed bitstream byte array.       */
   size_t dataAllocatedLength;   /**< Current array allocation size.          */
   size_t dataUsedLength;        /**< Current array used size.                */
+  // TODO: Change to uint16_t as size cannot reach such values.
 
   uint8_t currentByte;          /**< Bit-level temporary byte.               */
   unsigned currentByteUsedBits; /**< Currently used bits in temporary byte.  */
@@ -61,7 +62,7 @@ void destroyDtsPatcherBitstreamHandle(
 int getGeneratedArrayDtsPatcherBitstreamHandle(
   DtsPatcherBitstreamHandlePtr handle,
   const uint8_t ** array,
-  size_t * arraySize
+  uint16_t * arr_size
 );
 
 /** \~english

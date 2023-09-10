@@ -83,111 +83,6 @@ static inline void cleanDtsDcaExtSSContext(
     free(ctx.curFrames[i]);
 }
 
-typedef enum {
-  DCA_EXT_SS_MIX_ADJ_LVL_ONLY_BITSTREAM_META   = 0x0,
-  DCA_EXT_SS_MIX_ADJ_LVL_SYS_META_FEATURE_1    = 0x1,
-  DCA_EXT_SS_MIX_ADJ_LVL_SYS_META_FEATURE_1_2  = 0x2,
-  DCA_EXT_SS_MIX_ADJ_LVL_RESERVED              = 0x3
-} DcaExtMixMetadataAdjLevel;
-
-static inline const char * dcaExtMixMetadataAjdLevelStr(
-  DcaExtMixMetadataAdjLevel lvl
-)
-{
-  static const char * strings[] = {
-    "Use only bitstream embedded metadata",
-    "Allow system to adjust feature 1",
-    "Allow system to adjust both feature 1 and feature 2",
-    "Reserved value"
-  };
-
-  if (lvl < ARRAY_SIZE(strings))
-    return strings[lvl];
-  return "Reserved value";
-}
-
-typedef enum {
-  DCA_EXT_SS_CH_MASK_C        = 0x0001,
-  DCA_EXT_SS_CH_MASK_L_R      = 0x0002,
-  DCA_EXT_SS_CH_MASK_LS_RS    = 0x0004,
-  DCA_EXT_SS_CH_MASK_LFE      = 0x0008,
-  DCA_EXT_SS_CH_MASK_CS       = 0x0010,
-  DCA_EXT_SS_CH_MASK_LH_RH    = 0x0020,
-  DCA_EXT_SS_CH_MASK_LSR_RSR  = 0x0040,
-  DCA_EXT_SS_CH_MASK_CH       = 0x0080,
-  DCA_EXT_SS_CH_MASK_OH       = 0x0100,
-  DCA_EXT_SS_CH_MASK_LC_RC    = 0x0200,
-  DCA_EXT_SS_CH_MASK_LW_RW    = 0x0400,
-  DCA_EXT_SS_CH_MASK_LSS_RSS  = 0x0800,
-  DCA_EXT_SS_CH_MASK_LFE2     = 0x1000,
-  DCA_EXT_SS_CH_MASK_LHS_RHS  = 0x2000,
-  DCA_EXT_SS_CH_MASK_CHR      = 0x4000,
-  DCA_EXT_SS_CH_MASK_LHR_RHR  = 0x8000
-} DcaExtChMaskCode;
-
-#define DCA_CHMASK_STR_BUFSIZE  240
-
-unsigned buildDcaExtChMaskString(
-  char dst[static DCA_CHMASK_STR_BUFSIZE],
-  uint16_t Channel_Mask
-);
-
-unsigned nbChDcaExtChMaskCode(
-  const uint16_t mask
-);
-
-typedef enum {
-  DCA_EXT_SS_ASSET_TYPE_DESC_MUSIC                              = 0x0,
-  DCA_EXT_SS_ASSET_TYPE_DESC_EFFECTS                            = 0x1,
-  DCA_EXT_SS_ASSET_TYPE_DESC_DIALOG                             = 0x2,
-  DCA_EXT_SS_ASSET_TYPE_DESC_COMMENTARY                         = 0x3,
-  DCA_EXT_SS_ASSET_TYPE_DESC_VISUALLY_IMPAIRED                  = 0x4,
-  DCA_EXT_SS_ASSET_TYPE_DESC_HEARING_IMPAIRED                   = 0x5,
-  DCA_EXT_SS_ASSET_TYPE_DESC_ISOLATED_MUSIC_OBJ                 = 0x6,
-  DCA_EXT_SS_ASSET_TYPE_DESC_MUSIC_AND_EFFECTS                  = 0x7,
-  DCA_EXT_SS_ASSET_TYPE_DESC_DIALOG_AND_COMMENTARY              = 0x8,
-  DCA_EXT_SS_ASSET_TYPE_DESC_EFFECTS_AND_COMMENTARY             = 0x9,
-  DCA_EXT_SS_ASSET_TYPE_DESC_ISOLATED_MUSIC_OBJ_AND_COMMENTARY  = 0xA,
-  DCA_EXT_SS_ASSET_TYPE_DESC_ISOLATED_MUSIC_OBJ_AND_EFFECTS     = 0xB,
-  DCA_EXT_SS_ASSET_TYPE_DESC_KARAOKE                            = 0xC,
-  DCA_EXT_SS_ASSET_TYPE_DESC_MUSIC_EFFECTS_AND_DIALOG           = 0xD,
-  DCA_EXT_SS_ASSET_TYPE_DESC_COMPLETE_PRESENTATION              = 0xE,
-  DCA_EXT_SS_ASSET_TYPE_DESC_RESERVED                           = 0xF
-} DcaExtAssetTypeDescCode;
-
-const char * dtsExtAssetTypeDescCodeStr(
-  const DcaExtAssetTypeDescCode code
-);
-
-typedef enum {
-  DCA_EXT_SS_MIX_REPLACEMENT         = 0x0,
-  DCA_EXT_SS_NOT_APPLICABLE_1        = 0x1,
-  DCA_EXT_SS_LT_RT_MATRIX_SURROUND   = 0x2,
-  DCA_EXT_SS_LH_RH_HEADPHONE  = 0x3,
-  DCA_EXT_SS_NOT_APPLICABLE_2        = 0x4,
-} DcaExtRepresentationTypeCode;
-
-const char * dtsExtRepresentationTypeCodeStr(
-  const DcaExtRepresentationTypeCode code
-);
-
-const char * dtsAudioAssetCodingModeStr(
-  const DcaAudioAssetCodingMode mode
-);
-
-#define DTS_PERIOD_MAX_SUPPORTED_SYNC_FRAMES 1
-
-typedef enum {
-  DCA_XLL_CRC16_ABSENCE                        = 0x0,
-  DCA_XLL_CRC16_AT_END_OF_MSB0                 = 0x1,
-  DCA_XLL_CRC16_AT_END_OF_MSB0_AND_LSB0        = 0x2,
-  DCA_XLL_CRC16_AT_END_OF_MSB0_LSB0_AND_BANDS  = 0x3
-} DtsXllCommonHeaderCrc16PresenceCode;
-
-const char * dtsXllCommonHeaderCrc16PresenceCodeStr(
-  DtsXllCommonHeaderCrc16PresenceCode code
-);
-
 #if 0
 typedef struct {
   bool initialized;
@@ -218,10 +113,10 @@ typedef enum {
 typedef struct {
   DtsContextParsingMode mode;
 
-  unsigned src_file_idx;
+  uint8_t src_file_idx;
   BitstreamReaderPtr bs;
   BitstreamWriterPtr script_bs;
-  EsmsFileHeaderPtr script;
+  EsmsHandlerPtr script;
   const lbc * script_fp;
 
   DtshdFileHandler dtshd;

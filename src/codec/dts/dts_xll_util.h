@@ -22,11 +22,9 @@
  * Used during PBR smoothing process.
  */
 typedef struct {
-  uint32_t * targetFrmSize; /* TODO: Add frames offsets #DcaXllFrameSFPosition */
-  unsigned nbAllocatedFrames;
-  unsigned nbUsedFrames;
-
-  float framesPerSec;
+  uint32_t * target_frame_size; /* TODO: Add frames offsets #DcaXllFrameSFPosition */
+  unsigned nb_alloc_frames;
+  unsigned nb_used_frames;
 
   uint32_t avg_frame_size;
   bool avg_frame_size_set;
@@ -42,42 +40,46 @@ int saveFrameSizeDtsPbrSmoothing(
 typedef struct {
   DcaXllFrameSFPosition position;
   unsigned number;
-  bool unpackingStarted;
+  bool unpack_started;
 } DtsXllDecodedFrame;
 
 /** \~english
  * \brief DTS XLL extension substream parsing handle.
  *
- * A difference is made between PBR frames and current XLL frames. A PBR frame
- * is referenced by Extension Substream XLL parameters in Audio Asset, with
- * its start offset at start of Encoded Audio Asset Data if XLL sync word
- * is set as present (or otherwise 'nuExSSXLLSyncOffset' if non zero)
- * and end at start of the next PBR frame. Meaning a PBR frame may contain
- * one or more XLL frames (the first one identified by audio asset header,
- * other nasted at the end of the first one, unsignaled by audio asset header).
+ * A difference is made between regrouped XLL coding components from DTS
+ * Extension Substream, called Peak Bit-Rate Smoothed (PBRS) frames and XLL
+ * Lossless frames.
+ *
+ * A PBRS frame is referenced by XLL coding component parameters within Audio
+ * Asset header of the DTS Extension Substream. Containing XLL coding component
+ * payload from previous indicated XLL Sync (or first payload byte if no
+ * previous XLL Sync) to last byte prior to next XLL Sync (or the last payload
+ * byte if no following XLL Sync).
+ * A PBRS frame contains one XLL Lossless frame, followed by any number of fol-
+ * lowing XLL Lossless frames (zero included).
  *
  * The following diagram shows possible Extension Substream payload (headers
  * removed) containing shared PBR frame :
  *
- * [ExtSS frame #0 Audio Asset Data 0 <PBR frame #0... ]
- * [ExtSS frame #1 Audio Asset Data 0 ...End of PBR frame #0> <PBR frame #1... ]
+ * [ExtSS frame #0 XLL Coding Component 0 <PBRSF #0... ]
+ * [ExtSS frame #1 XLL Coding Component 0 ...End of PBRSF #0> <PBRSF #1... ]
  * ...
  *
- * With start offset (from container Encoded Asset Data start offset) of
- * "PBR frame #1" indicated by 'nuExSSXLLSyncOffset' of linked Audio Asset
- * header.
+ * With start offset (from XLL Coding Component within Audio Asset data first
+ * byte) of "PBRSF #1" indicated by associated Audio Asset header
+ * 'nuExSSXLLSyncOffset' field.
  *
- * And the first PBR frame of previous diagram may be composed as shown in
+ * And the first PBRS frame of previous diagram may be composed as shown in
  * following diagram:
  *
- * [PBR frame 0 <XLL frame #0> <XLL frame #1>]
+ * [PBRS Frame 0 <XLL Lossless frame #0> <XLL Lossless frame #1>]
  *
- * With "XLL frame #1" start offset at "XLL frame #0" end plus 32-bit bistream
- * boundary alignment.
+ * With "XLL Lossless frame #1" start offset at "XLL Lossless frame #0" end
+ * plus observed 32-bit bistream boundary alignment.
  *
- * This difference is used since at high level, without parsing XLL frame
- * content from PBR buffer, its impossible to identify presence of multiple
- * XLL frames in one Audio Asset Data.
+ * This difference is used since at high level, without parsing XLL content
+ * from PBRS buffer, it is impossible to identify presence of multiple
+ * XLL Lossless frames in one XLL Coding Component.
  *
  *
  * PBR buffer usage is only compared to Audio Asset header specified size at
@@ -86,21 +88,20 @@ typedef struct {
  * only check if decoding delayed XLL frames cause overflow.
  */
 typedef struct {
-  uint8_t * pbrBuffer;         /**< PBR buffer used to re-assemble XLL
+  uint8_t * pbrs_buf;          /**< PBRS buffer used to re-assemble XLL
     frames prior to decoding.                                                */
-  size_t pbrBufferSize;        /**< PBR buffer allocated size in bytes.      */
-  size_t pbrBufferActiveSize;  /**< PBR buffer active max size according to
+  uint32_t pbrs_buf_alloc_size;  /**< PBR buffer allocated size in bytes.      */
+  uint32_t pbr_buf_size;         /**< PBR buffer active max size according to
     audio asset parameters. If this value is exceed, an error is returned.   */
-  size_t pbrBufferUsedSize;    /**< PBR buffer current usage level in bytes. */
-  size_t maxPbrBufferUsedSize; /**< Maximal PBR buffer usage level at end
-    of ExtSS parsing in bytes.                                               */
+  uint32_t pbr_buf_used_size;    /**< PBR buffer current usage level in bytes. */
 
   /* PBR buffer unpacking related */
   bool initializedPbrUnpack;   /**< Is PBR buffer data unpacking is active.  */
-  size_t pbrBufferParsedSize;
+  LibbluBitReader bit_reader;
+  // uint32_t pbrBufferParsedSize;
 
-  uint8_t byteBuf;
-  unsigned remainingBits;
+  // uint8_t byteBuf;
+  // unsigned remainingBits;
 
   CrcContext crcCtx;
 
@@ -117,22 +118,24 @@ typedef struct {
 
   /* PBR smoothing process related */
   DtsPbrSmoothingStats pbrSmoothing;
+
+  uint32_t pbr_buf_peak_size;  /**< Maximal PBR buffer usage level at end of
+    ExtSS parsing in bytes.                                                  */
 } DtsXllFrameContext;
 
 static inline void cleanDtsXllFrameContext(
   DtsXllFrameContext ctx
 )
 {
-  free(ctx.pbrBuffer);
+  free(ctx.pbrs_buf);
   cleanCircularBuffer(ctx.pendingFrames);
   cleanCircularBuffer(ctx.decodedFramesOff);
-  free(ctx.pbrSmoothing.targetFrmSize);
+  free(ctx.pbrSmoothing.target_frame_size);
 }
 
 int initDtsXllFrameContext(
   DtsXllFrameContext * ctx,
   DcaAudioAssetDescParameters asset,
-  const DcaExtSSHeaderParameters * ext_ss_hdr,
   DtshdFileHandler * dtshd
 );
 
@@ -140,16 +143,18 @@ int parseDtsXllToPbrBuffer(
   BitstreamReaderPtr dtsInput,
   DtsXllFrameContext * ctx,
   DcaAudioAssetExSSXllParameters asset,
-  size_t assetLength
+  uint32_t asset_size
 );
 
-int initUnpackDtsXllPbr(
+LibbluBitReader * initUnpackDtsXllPbr(
   DtsXllFrameContext * ctx
 );
 
 int completeUnpackDtsXllPbr(
   DtsXllFrameContext * ctx
 );
+
+#if 0
 
 int unpackBitsDtsXllPbr(
   DtsXllFrameContext * ctx,
@@ -182,9 +187,11 @@ int skipBytesDtsXllPbr(
   size_t length
 );
 
-size_t tellPosDtsXllPbr(
+uint32_t tellPosDtsXllPbr(
   DtsXllFrameContext * ctx
 );
+
+#endif
 
 int registerDecodedFrameOffsetsDtsXllFrameContext(
   DtsXllFrameContext * ctx,
@@ -195,13 +202,13 @@ int registerDecodedFrameOffsetsDtsXllFrameContext(
  * \brief Produce a PBR frame of requested size using slices of decoded frames.
  *
  * \param ctx DTS XLL handler context.
- * \param requestedFrameSize Requested builded PBR frame size in bytes.
- * \param pbrFramePosition Generated PBR frame source file offsets.
- * \param syncPresenceIndex If produced PBR frame contain the start of a
+ * \param req_frame_size Requested builded PBR frame size in bytes.
+ * \param builded_frame_pos_ret Generated PBR frame source file offsets.
+ * \param sync_word_off_idx_ret If produced PBR frame contain the start of a
  * decoded frame (starting with a sync word), its entry index is set. If no
  * sync word is in produced PBR frame, the value is set to -1. This parameter
  * may be set to NULL to disable this functionnality.
- * \param syncDecodingDelay If produced PBR frame contain the start
+ * \param init_dec_delay_ret If produced PBR frame contain the start
  * of a decoded frame (starting with a sync word), its delay in decoded
  * frames is returned using this pointer. Otherwise, value is untouched.
  * This parameter may be set to NULL to disable this functionnality.
@@ -213,13 +220,13 @@ int registerDecodedFrameOffsetsDtsXllFrameContext(
  */
 int substractPbrFrameSliceDtsXllFrameContext(
   DtsXllFrameContext * ctx,
-  size_t requestedFrameSize,
-  DcaXllFrameSFPosition * pbrFramePosition,
-  int * syncPresenceIndex,
-  unsigned * syncDecodingDelay
+  uint32_t req_frame_size,
+  DcaXllFrameSFPosition * builded_frame_pos_ret,
+  int * sync_word_off_idx_ret,
+  unsigned * init_dec_delay_ret
 );
 
-void printDcaXllFrameSFPositionIndexes(
+void debugPrintDcaXllFrameSFPositionIndexes(
   DcaXllFrameSFPosition position,
   unsigned indent
 );
@@ -231,14 +238,14 @@ void substractDtsXllFrameOriginalPosition(
 
 int collectFrameDataDcaXllFrameSFPosition(
   DcaXllFrameSFPosition * src,
-  size_t * dataAmount,
+  uint32_t * req_frame_size,
   DcaXllFrameSFPosition * dst
 );
 
 int getRelativeOffsetDcaXllFrameSFPosition(
   const DcaXllFrameSFPosition frame,
-  uint64_t abs_offset,
-  uint64_t * rel_offset
+  int64_t abs_offset,
+  uint32_t * rel_offset
 );
 
 /** \~english

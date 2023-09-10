@@ -101,6 +101,16 @@
     LIBBLU_DEBUG_DTS_PARSING_XLL, "DTS/XLL", format, ##__VA_ARGS__            \
   )
 
+#define LIBBLU_DTS_DEBUG_PATCHER(format, ...)                                 \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_DTS_PATCHER, "DTS Patch", format, ##__VA_ARGS__              \
+  )
+
+#define LIBBLU_DTS_DEBUG_PATCHER_NH(format, ...)                              \
+  LIBBLU_DEBUG_NO_HEADER(                                                     \
+    LIBBLU_DEBUG_DTS_PATCHER, format, ##__VA_ARGS__                           \
+  )
+
 #define LIBBLU_DTS_DEBUG_PBR(format, ...)                                     \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_DTS_PBR, "DTS/XLL", format, ##__VA_ARGS__                    \

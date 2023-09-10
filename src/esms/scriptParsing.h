@@ -65,7 +65,7 @@ static inline int seekESFmtPropertiesEsms(
 int parseESFmtPropertiesEsms(
   BitstreamReaderPtr script,
   LibbluESProperties * dst,
-  LibbluESFmtSpecProp * fmtSpecDst
+  LibbluESFmtProp * fmtSpecDst
 );
 
 /* ### ESMS ES Data Blocks Definition section : ############################ */
@@ -114,23 +114,16 @@ static inline int seekESPesCuttingEsms(
 /* ###### ESMS PES Cutting commands data parsing structure : ############### */
 
 typedef struct {
-  uint8_t * data;
-  size_t dataUsedSize;
-  size_t dataAllocatedSize;
+  uint8_t * command_data;
+  uint16_t command_data_alloc_size;
+  uint16_t command_size;
 } EsmsCommandParsingData;
-
-static inline void initEsmsCommandParsingData(
-  EsmsCommandParsingData * dst
-)
-{
-  *dst = (EsmsCommandParsingData) {0};
-}
 
 static inline void cleanEsmsCommandParsingData(
   EsmsCommandParsingData data
 )
 {
-  free(data.data);
+  free(data.command_data);
 }
 
 /* ######################################################################### */
@@ -144,14 +137,16 @@ static inline bool isEndReachedESPesCuttingEsms(
   BitstreamReaderPtr script
 )
 {
-  /* [v8 endMarker] */
-  return (0xFF == nextUint8(script));
+  /* [v8 end_marker] */
+  return (ESMS_SCRIPT_END_MARKER == nextUint8(script));
 }
 
-EsmsPesPacketNodePtr parseFrameNodeESPesCuttingEsms(
-  BitstreamReaderPtr script,
-  LibbluStreamCodingType codingType,
-  EsmsCommandParsingData * data
+int parseFrameNodeESPesCuttingEsms(
+  EsmsPesPacket * dst,
+  BitstreamReaderPtr esms_bs,
+  LibbluESType type,
+  LibbluStreamCodingType coding_type,
+  EsmsCommandParsingData * command_data
 );
 
 #endif

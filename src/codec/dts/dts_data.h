@@ -645,14 +645,14 @@ typedef struct {
  * \brief DCA Core frame bit-stream header minimal size in bytes.
  *
  */
-#define DCA_CORE_BSH_MINSIZE  13
+#define DCA_CORE_BSH_MINSIZE  13u
 
-static inline unsigned getSizeDcaCoreBSHeader(
+static inline uint32_t getSizeDcaCoreBSHeader(
   const DcaCoreBSHeaderParameters * bsh
 )
 {
   if (bsh->CPF)
-    return DCA_CORE_BSH_MINSIZE + 2; // Extra HCRC field word.
+    return DCA_CORE_BSH_MINSIZE + 2u; // Extra HCRC field word.
   return DCA_CORE_BSH_MINSIZE;
 }
 
@@ -734,6 +734,198 @@ static inline unsigned getSampleFrequencyDcaExtMaxSampleRate(
   return 0;
 }
 
+typedef enum {
+  DCA_EXT_SS_MIX_ADJ_LVL_ONLY_BITSTREAM_META   = 0x0,
+  DCA_EXT_SS_MIX_ADJ_LVL_SYS_META_FEATURE_1    = 0x1,
+  DCA_EXT_SS_MIX_ADJ_LVL_SYS_META_FEATURE_1_2  = 0x2,
+  DCA_EXT_SS_MIX_ADJ_LVL_RESERVED              = 0x3
+} DcaExtMixMetadataAdjLevel;
+
+static inline const char * dcaExtMixMetadataAjdLevelStr(
+  DcaExtMixMetadataAdjLevel lvl
+)
+{
+  static const char * strings[] = {
+    "Use only bitstream embedded metadata",
+    "Allow system to adjust feature 1",
+    "Allow system to adjust both feature 1 and feature 2",
+    "Reserved value"
+  };
+
+  if (lvl < ARRAY_SIZE(strings))
+    return strings[lvl];
+  return "Reserved value";
+}
+
+typedef enum {
+  DCA_EXT_SS_ASSET_TYPE_DESC_MUSIC                              = 0x0,
+  DCA_EXT_SS_ASSET_TYPE_DESC_EFFECTS                            = 0x1,
+  DCA_EXT_SS_ASSET_TYPE_DESC_DIALOG                             = 0x2,
+  DCA_EXT_SS_ASSET_TYPE_DESC_COMMENTARY                         = 0x3,
+  DCA_EXT_SS_ASSET_TYPE_DESC_VISUALLY_IMPAIRED                  = 0x4,
+  DCA_EXT_SS_ASSET_TYPE_DESC_HEARING_IMPAIRED                   = 0x5,
+  DCA_EXT_SS_ASSET_TYPE_DESC_ISOLATED_MUSIC_OBJ                 = 0x6,
+  DCA_EXT_SS_ASSET_TYPE_DESC_MUSIC_AND_EFFECTS                  = 0x7,
+  DCA_EXT_SS_ASSET_TYPE_DESC_DIALOG_AND_COMMENTARY              = 0x8,
+  DCA_EXT_SS_ASSET_TYPE_DESC_EFFECTS_AND_COMMENTARY             = 0x9,
+  DCA_EXT_SS_ASSET_TYPE_DESC_ISOLATED_MUSIC_OBJ_AND_COMMENTARY  = 0xA,
+  DCA_EXT_SS_ASSET_TYPE_DESC_ISOLATED_MUSIC_OBJ_AND_EFFECTS     = 0xB,
+  DCA_EXT_SS_ASSET_TYPE_DESC_KARAOKE                            = 0xC,
+  DCA_EXT_SS_ASSET_TYPE_DESC_MUSIC_EFFECTS_AND_DIALOG           = 0xD,
+  DCA_EXT_SS_ASSET_TYPE_DESC_COMPLETE_PRESENTATION              = 0xE,
+  DCA_EXT_SS_ASSET_TYPE_DESC_RESERVED                           = 0xF
+} DcaExtAssetTypeDescCode;
+
+static inline const char * dtsExtAssetTypeDescCodeStr(
+  const DcaExtAssetTypeDescCode code
+)
+{
+  static const char * typStr[] = {
+    "Music",
+    "Effects",
+    "Dialog",
+    "Commentary",
+    "Visually impaired",
+    "Hearing impaired",
+    "Isolated music object",
+    "Music and Effects",
+    "Dialog and Commentary",
+    "Effects and Commentary",
+    "Isolated Music Object and Commentary",
+    "Isolated Music Object and Effects",
+    "Karaoke",
+    "Music, Effects and Dialog",
+    "Complete Audio Presentation",
+    "Reserved value"
+  };
+
+  if (code < ARRAY_SIZE(typStr))
+    return typStr[code];
+  return "unk";
+}
+
+#define DTS_PERIOD_MAX_SUPPORTED_SYNC_FRAMES 1
+
+typedef enum {
+  DCA_EXT_SS_CH_MASK_C        = 0x0001,
+  DCA_EXT_SS_CH_MASK_L_R      = 0x0002,
+  DCA_EXT_SS_CH_MASK_LS_RS    = 0x0004,
+  DCA_EXT_SS_CH_MASK_LFE      = 0x0008,
+  DCA_EXT_SS_CH_MASK_CS       = 0x0010,
+  DCA_EXT_SS_CH_MASK_LH_RH    = 0x0020,
+  DCA_EXT_SS_CH_MASK_LSR_RSR  = 0x0040,
+  DCA_EXT_SS_CH_MASK_CH       = 0x0080,
+  DCA_EXT_SS_CH_MASK_OH       = 0x0100,
+  DCA_EXT_SS_CH_MASK_LC_RC    = 0x0200,
+  DCA_EXT_SS_CH_MASK_LW_RW    = 0x0400,
+  DCA_EXT_SS_CH_MASK_LSS_RSS  = 0x0800,
+  DCA_EXT_SS_CH_MASK_LFE2     = 0x1000,
+  DCA_EXT_SS_CH_MASK_LHS_RHS  = 0x2000,
+  DCA_EXT_SS_CH_MASK_CHR      = 0x4000,
+  DCA_EXT_SS_CH_MASK_LHR_RHR  = 0x8000
+} DcaExtChMaskCode;
+
+#define DCA_CHMASK_STR_BUFSIZE  240
+
+static inline unsigned buildDcaExtChMaskString(
+  char dst[static DCA_CHMASK_STR_BUFSIZE],
+  uint16_t Channel_Mask
+)
+{
+  static const char * ch_config_str[16] = {
+    "C",
+    "L, R",
+    "Ls, Rs",
+    "LFE",
+    "Cs",
+    "Lh, Rh",
+    "Lsr, Rsr",
+    "Ch",
+    "Oh",
+    "Lc, Rc",
+    "Lw, Rw",
+    "Lss, Rss",
+    "LFE2",
+    "Lhs, Rhs",
+    "Chr",
+    "Lhr, Rhr"
+  };
+  static const unsigned nb_ch_config[16] = {
+    1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 1, 2
+  };
+
+  unsigned nb_channels = 0;
+  char * str_ptr = dst;
+
+  const char * sep = "";
+  for (unsigned i = 0; i < 16; i++) {
+    if (Channel_Mask & (1 << i)) {
+      lb_str_cat(&str_ptr, sep);
+      lb_str_cat(&str_ptr, ch_config_str[i]);
+      nb_channels += nb_ch_config[i];
+      sep = ", ";
+    }
+  }
+
+  return nb_channels;
+}
+
+static inline unsigned nbChDcaExtChMaskCode(
+  const uint16_t mask
+)
+{
+  unsigned nbCh, i;
+
+  static const uint16_t chConfigs[16][2] = {
+    {DCA_EXT_SS_CH_MASK_C,       1},
+    {DCA_EXT_SS_CH_MASK_L_R,     2},
+    {DCA_EXT_SS_CH_MASK_LS_RS,   2},
+    {DCA_EXT_SS_CH_MASK_LFE,     1},
+    {DCA_EXT_SS_CH_MASK_CS,      1},
+    {DCA_EXT_SS_CH_MASK_LH_RH,   2},
+    {DCA_EXT_SS_CH_MASK_LSR_RSR, 2},
+    {DCA_EXT_SS_CH_MASK_CH,      1},
+    {DCA_EXT_SS_CH_MASK_OH,      1},
+    {DCA_EXT_SS_CH_MASK_LC_RC,   2},
+    {DCA_EXT_SS_CH_MASK_LW_RW,   2},
+    {DCA_EXT_SS_CH_MASK_LSS_RSS, 2},
+    {DCA_EXT_SS_CH_MASK_LFE2,    1},
+    {DCA_EXT_SS_CH_MASK_LHS_RHS, 2},
+    {DCA_EXT_SS_CH_MASK_CHR,     1},
+    {DCA_EXT_SS_CH_MASK_LHR_RHR, 2}
+  };
+
+  for (nbCh = i = 0; i < ARRAY_SIZE(chConfigs); i++)
+    nbCh += (mask & chConfigs[i][0]) ? chConfigs[i][1] : 0;
+
+  return nbCh;
+}
+
+typedef enum {
+  DCA_EXT_SS_MIX_REPLACEMENT         = 0x0,
+  DCA_EXT_SS_NOT_APPLICABLE_1        = 0x1,
+  DCA_EXT_SS_LT_RT_MATRIX_SURROUND   = 0x2,
+  DCA_EXT_SS_LH_RH_HEADPHONE         = 0x3,
+  DCA_EXT_SS_NOT_APPLICABLE_2        = 0x4,
+} DcaExtRepresentationTypeCode;
+
+static inline const char * dtsExtRepresentationTypeCodeStr(
+  const DcaExtRepresentationTypeCode code
+)
+{
+  static const char * typStr[] = {
+    "Audio Asset for Mixing/Replacement purpose",
+    "Not applicable",
+    "Lt/Rt Encoded for Matrix Surround",
+    "Lh/Rh Headphone playback",
+    "Not Applicable"
+  };
+
+  if (code < ARRAY_SIZE(typStr))
+    return typStr[code];
+  return "Reserved value";
+}
+
 typedef struct {
   bool bAssetTypeDescrPresent;
   uint8_t nuAssetTypeDescriptor;
@@ -811,6 +1003,22 @@ typedef enum {
   DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE            = 0x2,
   DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING              = 0x3
 } DcaAudioAssetCodingMode;
+
+static inline const char * dtsAudioAssetCodingModeStr(
+  const DcaAudioAssetCodingMode mode
+)
+{
+  static const char * modStr[] = {
+    "DTS-HD Components Coding Mode",
+    "DTS-HD Lossless (without Core) Coding Mode",
+    "DTS-HD Low bit-rate (without Core) Coding Mode",
+    "Auxilary Coding Mode"
+  };
+
+  if (mode < ARRAY_SIZE(modStr))
+    return modStr[mode];
+  return "unk";
+}
 
 typedef enum {
   DCA_EXT_SS_COD_COMP_CORE_DCA         = (1 <<  0),
@@ -990,12 +1198,12 @@ static inline float getExSSFrameDurationDcaExtRefClockCode(
   const DcaExtSSHeaderSFParameters * sf
 )
 {
-  float RefClockPeriod = getRefClockPeriodDcaExtRefClockCode(
+  unsigned RefClockPeriod_den = getDcaExtReferenceClockValue(
     sf->nuRefClockCode
   );
-  if (RefClockPeriod < 0)
-    return -1.f;
-  return sf->nuExSSFrameDurationCode * 512.f * RefClockPeriod;
+  assert(0 != RefClockPeriod_den);
+
+  return (1.f * sf->nuExSSFrameDurationCode) / RefClockPeriod_den;
 }
 
 #define DCA_EXT_SS_CRC_LENGTH 16
@@ -1003,7 +1211,7 @@ static inline float getExSSFrameDurationDcaExtRefClockCode(
 #define DCA_EXT_SS_CRC_MODULO 0x10000
 #define DCA_EXT_SS_CRC_INITIAL_V 0xFFFF
 
-#define DCA_EXT_SS_CRC_PARAM()                                                \
+#define DCA_EXT_SS_CRC_PARAM                                                  \
   (CrcParam) {.table = ccitt_crc_16_table, .length = 16}
 
 #define DCA_EXT_SS_MAX_NB_INDEXES 4
@@ -1044,7 +1252,7 @@ typedef struct {
 #define DTS_XLL_MAX_SUPPORTED_OFILE_POS 8
 
 typedef struct {
-  uint64_t offset;
+  int64_t offset;
   uint32_t size;
 } DcaXllFrameSFPositionIndex;
 
@@ -1061,7 +1269,7 @@ typedef struct {
 
 static inline int addDcaXllFrameSFPosition(
   DcaXllFrameSFPosition * dst,
-  uint64_t offset,
+  int64_t offset,
   uint32_t size
 )
 {
@@ -1092,7 +1300,7 @@ typedef struct {
  *
  * Value is equal to 240 kBytes in binary representation (245 760 bytes).
  */
-#define DTS_XLL_MAX_PBR_BUFFER_SIZE (240 << 10)
+#define DTS_XLL_MAX_PBR_BUFFER_SIZE (240ul << 10)
 
 /** \~english
  * \brief Max supported DTS-HDMA nVersion number.
@@ -1129,43 +1337,73 @@ typedef struct {
  */
 #define DTS_XLL_MAX_SAMPLES_NB 65536
 
+typedef enum {
+  DCA_XLL_CRC16_ABSENCE                        = 0x0,
+  DCA_XLL_CRC16_AT_END_OF_MSB0                 = 0x1,
+  DCA_XLL_CRC16_AT_END_OF_MSB0_AND_LSB0        = 0x2,
+  DCA_XLL_CRC16_AT_END_OF_MSB0_LSB0_AND_BANDS  = 0x3
+} DtsXllCommonHeaderCrc16PresenceCode;
+
+static inline const char * dtsXllCommonHeaderCrc16PresenceCodeStr(
+  DtsXllCommonHeaderCrc16PresenceCode code
+)
+{
+  static const char * codeStr[] = {
+    "No CRC16 checksum within frequency bands",
+    "CRC16 checksum present at the end of frequency band 0's MSB",
+    "CRC16 checksums present at the end of frequency band 0's MSB and LSB",
+    "CRC checksums present at the end of frequency band 0's MSB and LSB and "
+    "other frequency bands where they exists"
+  };
+
+  if (code < ARRAY_SIZE(codeStr))
+    return codeStr[code];
+  return "unk";
+}
+
 typedef struct {
-  unsigned version;
+  uint8_t nVersion;
 
-  size_t headerSize;
-  size_t frameSize;
-  unsigned frameSizeFieldLength;
-  unsigned nbChSetsPerFrame;
-  unsigned nbSegmentsInFrameCode;
-  unsigned nbSamplesPerSegmentCode;
-  unsigned nbBitsSegmentSizeField;
-  uint8_t crc16Pres;
-  bool scalableLSBs;
-  unsigned nbBitsChMaskField;
-  unsigned fixedLsbWidth;
+  uint8_t nHeaderSize;
+  uint8_t nBits4FrameFsize;
+  uint32_t nLLFrameSize;
 
-  size_t reservedFieldSize;
-  unsigned ZeroPadForFsize_size;
+  uint8_t nNumChSetsInFrame;
+  uint8_t nSegmentsInFrame_code;
+  uint16_t nSegmentsInFrame;
+  uint8_t nSmplInSeg_code;
+  uint16_t nSmplInSeg;
+  uint8_t nBits4SSize;
+  uint8_t nBandDataCRCEn;
+  bool bScalableLSBs;
+  uint8_t nBits4ChMask;
+  uint8_t nuFixedLSBWidth;
 
-  uint16_t headerCrc;
+  uint32_t Reserved_size;
+
+  uint16_t nCRC16Header;
 
   /* Computed parameters : */
-  unsigned nbSegmentsInFrame;
-  unsigned nbSamplesPerSegment;
+  // unsigned nbSegmentsInFrame;
+  // unsigned nbSamplesPerSegment;
 } DtsXllCommonHeader;
 
-#define DTS_XLL_MAX_CH_NB DTS_EXT_SS_MAX_CHANNELS_NB
+#define DTS_XLL_MIN_HEADER_SIZE  90u
+
+#define DTS_XLL_MAX_CH_NB  DTS_EXT_SS_MAX_CHANNELS_NB
 
 #define DTS_XLL_MAX_DOWMIX_COEFF_NB                                           \
-  (                                                                           \
-    (DTS_XLL_MAX_CH_NB + 1)                                                   \
-    * (DTS_XLL_MAX_CH_NB * (DTS_XLL_MAX_CHSETS_NB - 1))                       \
-  )
+  ((DTS_XLL_MAX_CH_NB+1) * (DTS_XLL_MAX_CH_NB * (DTS_XLL_MAX_CHSETS_NB-1)))
 
 typedef struct {
-  size_t chSetHeaderSize;
-  unsigned nbChannels;
-  uint32_t residualChType;
+  uint16_t nChSetHeaderSize;
+  uint8_t nChSetLLChannel;
+  uint16_t nResidualChEncode;
+  uint8_t nBitResolution;
+  uint8_t nBitWidth;
+  uint8_t sFreqIndex;
+
+#if 0
   unsigned bitRes;
   unsigned bitWidth;
   uint8_t origSamplFreqIdx;
@@ -1204,6 +1442,7 @@ typedef struct {
   };
 
   unsigned nbFreqBands;
+#endif
 
   /* Computed parameters : */
   unsigned samplingFreq;

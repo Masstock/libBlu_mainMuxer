@@ -378,12 +378,10 @@ static inline Descriptor * getNewDescriptorPmtProgramElement(
   PmtProgramElement * elem
 )
 {
-  Descriptor * desc;
-
   if (PMT_MAX_NB_ALLOWED_PROGRAM_ELEMENT_DESCRIPTORS <= elem->usedDescriptors)
     return NULL;
 
-  desc = elem->descriptors + elem->usedDescriptors++;
+  Descriptor * desc = &elem->descriptors[elem->usedDescriptors++];
   desc->tag = 0x00; /* Set to Reserved */
   desc->data = NULL;
   desc->allocatedSize = desc->usedSize = 0;
@@ -394,7 +392,7 @@ static inline Descriptor * getNewDescriptorPmtProgramElement(
 static int prepareElementDescriptorsPMTParam(
   PmtProgramElement * dst,
   LibbluESProperties prop,
-  LibbluESFmtSpecProp fmtSpecProp
+  LibbluESFmtProp fmt_prop
 )
 {
   int ret;
@@ -427,7 +425,7 @@ static int prepareElementDescriptorsPMTParam(
       /* VC-1 Additional Identification */
       /* [u8 subDescriptorTag] [v8 VC1ProfileLevel] */
       addFmtIdInfo[0] = 0x01; /* Profile and Level sub-descriptor */
-      addFmtIdInfo[1] = (prop.profile_idc << 4) | (prop.level_idc & 0xF);
+      addFmtIdInfo[1] = (prop.profile_IDC << 4) | (prop.level_IDC & 0xF);
       addFmtIdInfoLen = 2;
       break;
 
@@ -478,7 +476,7 @@ static int prepareElementDescriptorsPMTParam(
       LIBBLU_ERROR_RETURN(
         "Unable to define the PMT content for a program element "
         "of type '%s' ('stream_coding_type' == 0x%02" PRIX8 ").\n",
-        streamCodingTypeStr(prop.coding_type),
+        LibbluStreamCodingTypeStr(prop.coding_type),
         prop.coding_type
       );
   }
@@ -519,8 +517,8 @@ static int prepareElementDescriptorsPMTParam(
     /* AVC video descriptor */
     descTag = DESC_TAG_AVC_VIDEO_DESCRIPTOR;
     descParam.avcVideoDescriptor = (AVCVideoDescriptorParameters) {
-      .profileIdc = prop.profile_idc,
-      .constraint_flags = fmtSpecProp.h264->constraint_flags,
+      .profileIdc = prop.profile_IDC,
+      .constraint_flags = fmt_prop.h264->constraint_flags,
       .levelIdc = prop.still_picture,
       .avc24HourPictureFlag = false,
       .framePackingSetNotPresentFlag = true
@@ -538,13 +536,13 @@ static int prepareElementDescriptorsPMTParam(
     /* AC-3 Audio DescriptorPtr */
     descTag = DESC_TAG_AC3_AUDIO_DESCRIPTOR;
     descParam.ac3AudioDescriptor = (AC3AudioDescriptorParameters) {
-      .sample_rate_code = fmtSpecProp.ac3->sample_rate_code,
-      .bsid             = fmtSpecProp.ac3->bsid,
-      .bit_rate_code    = fmtSpecProp.ac3->bit_rate_code,
-      .surround_mode    = fmtSpecProp.ac3->surround_mode,
-      .bsmod            = fmtSpecProp.ac3->bsmod,
-      .num_channels     = fmtSpecProp.ac3->num_channels,
-      .full_svc         = fmtSpecProp.ac3->full_svc,
+      .sample_rate_code = fmt_prop.ac3->sample_rate_code,
+      .bsid             = fmt_prop.ac3->bsid,
+      .bit_rate_code    = fmt_prop.ac3->bit_rate_code,
+      .surround_mode    = fmt_prop.ac3->surround_mode,
+      .bsmod            = fmt_prop.ac3->bsmod,
+      .num_channels     = fmt_prop.ac3->num_channels,
+      .full_svc         = fmt_prop.ac3->full_svc,
     };
     descSetFun = setAC3AudioDescriptorParameters;
   }
@@ -601,7 +599,7 @@ static inline PmtProgramElement * getNewProgramElementPmtParameters(
 int preparePMTParam(
   PmtParameters * dst,
   LibbluESProperties * esStreamsProp,
-  LibbluESFmtSpecProp * esStreamsFmtSpecProp,
+  LibbluESFmtProp * esStreamsFmtSpecProp,
   uint16_t * esStreamsPids,
   unsigned nbEsStreams,
   LibbluDtcpSettings dtcpSettings,

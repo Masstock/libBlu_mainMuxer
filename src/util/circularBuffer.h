@@ -26,13 +26,13 @@ typedef struct {
 
   size_t top;                  /**< Buffer first stored element index.       */
   size_t slot_size;            /**< Size in bytes of a buffer slot.          */
-} CircularBuffer, *CircularBufferPtr;
+} CircularBuffer;
 
 /** \~english
  * \brief Creates and initialize a circular buffer.
  *
  * \param entrySize Buffer array entries size in bytes.
- * \return CircularBufferPtr On sucess, created object is returned. Otherwise,
+ * \return CircularBuffer * On sucess, created object is returned. Otherwise,
  * a NULL pointer is returned.
  *
  * Supplied entrySize is the size of buffer saved entries. This value can't
@@ -42,7 +42,7 @@ typedef struct {
  *
  * Created object must be passed to #destroyCircularBuffer() after use.
  */
-CircularBufferPtr createCircularBuffer(
+CircularBuffer * createCircularBuffer(
   void
 );
 
@@ -52,7 +52,7 @@ CircularBufferPtr createCircularBuffer(
  * \param buf Circulat buffer object to free.
  */
 static inline void destroyCircularBuffer(
-  CircularBufferPtr buf
+  CircularBuffer * buf
 )
 {
   if (NULL == buf)
@@ -83,12 +83,12 @@ static inline void cleanCircularBuffer(
  * allocation occurs, an error is returned.
  */
 void * newEntryCircularBuffer(
-  CircularBufferPtr buf,
+  CircularBuffer * buf,
   size_t slot_size
 );
 
-static inline size_t getNbEntriesCircularBuffer(
-  CircularBufferPtr buf
+static inline size_t nbEntriesCircularBuffer(
+  const CircularBuffer * buf
 )
 {
   assert(NULL != buf);
@@ -96,8 +96,8 @@ static inline size_t getNbEntriesCircularBuffer(
   return buf->used_size;
 }
 
-static inline void * getEntryCircularBuffer(
-  CircularBufferPtr buf,
+static inline void * getCircularBuffer(
+  const CircularBuffer * buf,
   size_t index
 )
 {
@@ -125,7 +125,7 @@ static inline void * getEntryCircularBuffer(
  * If buffer is empty, an error is returned.
  */
 static inline int popCircularBuffer(
-  CircularBufferPtr buf,
+  CircularBuffer * buf,
   void ** entry
 )
 {

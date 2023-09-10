@@ -443,11 +443,11 @@ int setBufferingInformationsAccessUnit(
   }
 
   param = (EsmsPesPacketExtData) {
-    .h264.cpbRemovalTime = cpbRemovalTime,
-    .h264.dpbOutputTime  = dpbOutputTime
+    .h264.cpb_removal_time = cpbRemovalTime,
+    .h264.dpb_output_time  = dpbOutputTime
   };
 
-  return setEsmsPesPacketExtensionData(
+  return setExtensionDataPesPacketEsmsHandler(
     handle->esms, param
   );
 }
@@ -538,11 +538,11 @@ static int64_t _computeDtsIncrement(
 }
 
 static void setEsmsPtsRef(
-  EsmsFileHeaderPtr script,
+  EsmsHandlerPtr script,
   const H264CurrentProgressParam * curProgParam
 )
 {
-  script->ptsRef = (uint64_t) (
+  script->PTS_reference = (uint64_t) (
     curProgParam->initDecPicNbCntShift
     * curProgParam->frameDuration
   );
@@ -576,7 +576,7 @@ static int64_t _computeStreamPicOrderCnt(
 }
 
 static int _initProperties(
-  EsmsFileHeaderPtr esms,
+  EsmsHandlerPtr esms,
   H264CurrentProgressParam * curProgParam,
   const H264SPSDataParameters * sps,
   H264ConstraintsParam constraints
@@ -610,19 +610,19 @@ static int _initProperties(
     .coding_type   = STREAM_CODING_TYPE_AVC,
     .video_format  = videoFormat,
     .frame_rate    = frameRate,
-    .profile_idc   = sps->profile_idc,
-    .level_idc     = sps->level_idc
+    .profile_IDC   = sps->profile_idc,
+    .level_IDC     = sps->level_idc
   };
 
-  LibbluESH264SpecProperties * param = esms->fmtSpecProp.h264;
+  LibbluESH264SpecProperties * param = esms->fmt_prop.h264;
   param->constraint_flags = valueH264ContraintFlags(sps->constraint_set_flags);
   if (
     sps->vui_parameters_present_flag
     && sps->vui_parameters.nal_hrd_parameters_present_flag
   ) {
     const H264HrdParameters * hrd = &sps->vui_parameters.nal_hrd_parameters;
-    param->cpbSize = hrd->schedSel[hrd->cpb_cnt_minus1].CpbSize;
-    param->bitrate = hrd->schedSel[0].BitRate;
+    param->CpbSize = hrd->schedSel[hrd->cpb_cnt_minus1].CpbSize;
+    param->BitRate = hrd->schedSel[0].BitRate;
     esms->bitrate = hrd->schedSel[0].BitRate;
   }
   else {
@@ -634,8 +634,8 @@ static int _initProperties(
      * BitRate[SchedSelIdx] based on profile and level defined in Rec. ITU-T
      * H.264 Annex E.
      */
-    param->cpbSize = 1200 * constraints.MaxCPB;
-    param->bitrate = constraints.brNal;
+    param->CpbSize = 1200 * constraints.MaxCPB;
+    param->BitRate = constraints.brNal;
     esms->bitrate = constraints.brNal;
   }
 
@@ -713,7 +713,7 @@ static int _registerAccessUnitNALUs(
     else {
       assert(curInsertingOffset <= UINT32_MAX);
 
-      int ret = appendAddPesPayloadCommand(
+      int ret = appendAddPesPayloadCommandEsmsHandler(
         handle->esms,
         handle->esmsSrcFileIdx,
         curInsertingOffset,
@@ -854,7 +854,7 @@ static int _processPESFrame(
   curProgParam->lstPic.dts  = dts;
   curProgParam->decPicNbCnt++;
 
-  int ret = initEsmsVideoPesFrame(
+  int ret = initVideoPesPacketEsmsHandler(
     handle->esms,
     handle->slice.header.slice_type,
     pts != dts,
@@ -869,7 +869,7 @@ static int _processPESFrame(
   if (_registerAccessUnitNALUs(handle) < 0)
     return -1;
 
-  if (writeEsmsPesPacket(handle->esmsFile, handle->esms) < 0)
+  if (writePesPacketEsmsHandler(handle->esmsFile, handle->esms) < 0)
     return -1;
 
   /* Clean H264AUNalUnit : */
@@ -888,7 +888,7 @@ static int _processPESFrame(
   /* Reset settings for the next Access Unit : */
   resetH264ParametersHandler(handle);
 
-  handle->esms->endPts = pts;
+  handle->esms->PTS_final = pts;
 
   return 0;
 }
@@ -4161,7 +4161,7 @@ int analyzeH264(
     goto free_return;
 
   if (
-    appendSourceFileEsmsWithCrc(
+    appendSourceFileWithCrcEsmsHandler(
       h264Infos, settings->esFilepath,
       CRC32_USED_BYTES, lb_compute_crc32(crcBuf, 0, CRC32_USED_BYTES),
       &handle->esmsSrcFileIdx
@@ -4404,7 +4404,7 @@ int analyzeH264(
   if (handle->curProgParam.nbPics == 1) {
     /* Only one picture = Still picture. */
     LIBBLU_INFO("Stream is detected as still picture.\n");
-    setStillPicture(handle->esms);
+    setStillPictureEsmsHandler(handle->esms);
   }
 
   /* Complete Buffering Period SEI computation if needed. */
@@ -4415,12 +4415,8 @@ int analyzeH264(
 
   lbc_printf(" === Parsing finished with success. ===              \n");
 
-  /* [u8 endMarker] */
-  if (writeByte(handle->esmsFile, ESMS_SCRIPT_END_MARKER) < 0)
-    goto free_return;
-
   /* Display infos : */
-  duration = (handle->esms->endPts - handle->esms->ptsRef) / MAIN_CLOCK_27MHZ;
+  duration = (handle->esms->PTS_final - handle->esms->PTS_reference) / MAIN_CLOCK_27MHZ;
 
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: Video/H.264-AVC, %ux%u%c, ",

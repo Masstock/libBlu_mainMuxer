@@ -23,32 +23,56 @@ typedef enum {
   DTS_FRM_INNER_EXT_SS_ASSET
 } DtsAUInnerType;
 
+static inline const char * DtsAUInnerTypeStr(
+  DtsAUInnerType type
+)
+{
+  static const char * strings[] = {
+    "Core SS",
+    "Ext SS Header",
+    "Ext SS Asset"
+  };
+
+  if (type < ARRAY_SIZE(strings))
+    return strings[type];
+  return "Unknown";
+}
+
 typedef union {
   DcaExtSSHeaderParameters ext_ss_hdr;
   DcaXllFrameSFPosition ext_ss_asset;
 } DtsAUInnerReplacementParam;
 
+typedef enum {
+  DTS_AU_KEEP,
+  DTS_AU_SKIP,
+  DTS_AU_REPLACE
+} DtsAUCellTreatment;
+
+static inline const char * DtsAUCellTreatmentStr(
+  DtsAUCellTreatment treatment
+)
+{
+  static const char * strings[] = {
+    "keep",
+    "skip",
+    "replace"
+  };
+
+  if (treatment < ARRAY_SIZE(strings))
+    return strings[treatment];
+  return "Unknown";
+}
+
 typedef struct {
   DtsAUInnerType type;
 
-  int64_t startOffset;
-  int64_t length;
+  int64_t offset;
+  uint32_t size;
 
-  bool skip;
-  bool replace;
-
+  DtsAUCellTreatment treatment;
   DtsAUInnerReplacementParam * param;
 } DtsAUCell, *DtsAUCellPtr;
-
-static inline void setPositionDtsAUCell(
-  DtsAUCellPtr cell,
-  uint64_t src_file_offset,
-  uint32_t size
-)
-{
-  cell->startOffset = src_file_offset;
-  cell->length = size;
-}
 
 typedef struct {
   DtsAUCell * contentCells;
@@ -57,7 +81,7 @@ typedef struct {
 
   bool initializedCell;
 
-  DtsAUInnerReplacementParam * replacementParams;
+  DtsAUInnerReplacementParam * replacementParams; // TODO: Simplify this.
   unsigned nbUsedReplacementParam;
   unsigned nbAllocatedReplacementParam;
 } DtsAUFrame, *DtsAUFramePtr;
@@ -109,7 +133,7 @@ DtsAUContentType identifyContentTypeDtsAUFrame(
 
 int processCompleteFrameDtsAUFrame(
   BitstreamWriterPtr output,
-  EsmsFileHeaderPtr script,
+  EsmsHandlerPtr script,
   DtsAUFramePtr frm,
   unsigned srcFileScriptIdx,
   uint64_t framePts

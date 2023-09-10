@@ -8,18 +8,18 @@
 
 #include "circularBuffer.h"
 
-CircularBufferPtr createCircularBuffer(
+CircularBuffer * createCircularBuffer(
   void
 )
 {
-  CircularBufferPtr buf;
-  if (NULL == (buf = (CircularBufferPtr) calloc(1, sizeof(CircularBuffer))))
+  CircularBuffer * buf;
+  if (NULL == (buf = (CircularBuffer *) calloc(1, sizeof(CircularBuffer))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
   return buf;
 }
 
 void * newEntryCircularBuffer(
-  CircularBufferPtr buf,
+  CircularBuffer * buf,
   size_t slot_size
 )
 {

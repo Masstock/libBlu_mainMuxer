@@ -40,12 +40,12 @@ typedef struct {
 
 typedef struct {
   BitstreamReaderPtr file;
-  unsigned idx;              /**< Input file script index reference.         */
+  uint8_t idx;               /**< Input file script index reference.         */
 } HdmvContextInput;
 
 typedef struct {
   lbc * filepath;            /**< Script filepath.                           */
-  EsmsFileHeaderPtr script;  /**< Script building handle.                    */
+  EsmsHandlerPtr script;  /**< Script building handle.                    */
   BitstreamWriterPtr file;   /**< Script file handle.                        */
 } HdmvContextOutput;
 

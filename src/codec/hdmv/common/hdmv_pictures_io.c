@@ -56,8 +56,6 @@ HdmvPicturePtr openHdmvPicture(
 )
 {
   HdmvPicturePtr pic;
-
-  uint8_t signature[HDMV_PIC_SIGNATURE_SIZE];
   FILE * file;
 
   assert(NULL != filepath);
@@ -66,6 +64,7 @@ HdmvPicturePtr openHdmvPicture(
     ERROR_FRETURN("Unable to open picture");
 
   /* Read file signature (first n bytes) */
+  uint8_t signature[HDMV_PIC_SIGNATURE_SIZE];
   if (!RA_FILE(file, signature, HDMV_PIC_SIGNATURE_SIZE))
     ERROR_FRETURN("Unable to read picture");
 

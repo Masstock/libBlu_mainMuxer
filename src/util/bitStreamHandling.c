@@ -644,22 +644,19 @@ int readValueBigEndian(
 }
 
 int readValue64BigEndian(
-  BitstreamReaderPtr bitStream,
-  const size_t length,
+  BitstreamReaderPtr bs,
+  size_t size,
   uint64_t * value
 )
 {
-  size_t idx;
-  uint64_t v;
-  uint8_t byte;
+  assert(0 < size && size <= 8);
 
-  assert(0 < length && length <= 8);
-
-  v = 0;
-  for (idx = 0; idx < length; idx++) {
-    if (readByte(bitStream, &byte) < 0)
+  uint64_t v = 0;
+  for (size_t idx = 0; idx < size; idx++) {
+    uint8_t byte;
+    if (readByte(bs, &byte) < 0)
       return -1;
-    v |= ((uint64_t) byte << (8 * (length - idx - 1)));
+    v |= ((uint64_t) byte) << ((size - idx - 1) << 3ull);
   }
 
   if (NULL != value)

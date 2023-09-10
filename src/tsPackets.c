@@ -39,7 +39,7 @@ static void _prepareESTransportPacketMainHeader(
   bool pcrInjectReq
 )
 {
-  size_t remDataSize = remainingPesDataLibbluES(stream->es);
+  size_t remDataSize = remainingPesDataLibbluES(&stream->es);
 
   assert(0 < remDataSize);
 
@@ -109,7 +109,7 @@ static void _prepareAdaptationField(
 
   size_t remainingPayload;
   if (isESLibbluStream(stream))
-    remainingPayload = remainingPesDataLibbluES(stream->es);
+    remainingPayload = remainingPesDataLibbluES(&stream->es);
   else
     remainingPayload = _remainingTableDataLibbluSystemStream(stream);
   assert(remainingPayload <= TP_PAYLOAD_SIZE);
@@ -405,12 +405,12 @@ static size_t _insertPayload(
 {
   if (isESLibbluStream(stream)) {
 #if 1
-    LibbluESPesPacketData * pesPacket = &stream->es.curPesPacket.data;
+    LibbluESPesPacketData * pesPacket = &stream->es.current_pes_packet.data;
 
-    assert(payloadSize <= pesPacket->dataUsedSize - pesPacket->dataOffset);
+    assert(payloadSize <= pesPacket->size - pesPacket->offset);
 
-    WA_ARRAY(tp, offset, pesPacket->data + pesPacket->dataOffset, payloadSize);
-    pesPacket->dataOffset += payloadSize;
+    WA_ARRAY(tp, offset, &pesPacket->data[pesPacket->offset], payloadSize);
+    pesPacket->offset += payloadSize;
 #else
   LIBBLU_ERROR_EXIT("Missing code " __FILE__ ", line %d\n", __LINE__);
 #endif
@@ -420,7 +420,7 @@ static size_t _insertPayload(
 
     assert(payloadSize <= sys->dataLength - sys->dataOffset);
 
-    WA_ARRAY(tp, offset, sys->data + sys->dataOffset, payloadSize);
+    WA_ARRAY(tp, offset, &sys->data[sys->dataOffset], payloadSize);
     sys->dataOffset += payloadSize;
 
     /* Reset the table writing offset if its end is reached

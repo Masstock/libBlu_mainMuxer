@@ -139,22 +139,6 @@ static inline int isEsStreamType(
   return typ == TYPE_ES;
 }
 
-typedef struct {
-  uint16_t primaryVideo;
-  uint16_t rightView;
-#if 0 /* Not implemented */
-  uint16_t depthMap;
-#endif
-  uint16_t hdrView;
-
-  uint16_t primaryAudio;
-  uint16_t pg;
-  uint16_t ig;
-  uint16_t secAudio;
-  uint16_t secVideo;
-  uint16_t txtSubtitle;
-} nbStreams;
-
 #if 0
 
 typedef struct {

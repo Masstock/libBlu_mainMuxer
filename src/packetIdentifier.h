@@ -24,15 +24,6 @@ typedef struct {
   unsigned txtSubtitles;
 } LibbluNumberOfESTypes;
 
-static inline void cleanLibbluNumberOfESTypes(
-  LibbluNumberOfESTypes * dst
-)
-{
-  *dst = (LibbluNumberOfESTypes) {
-    0
-  };
-}
-
 void setBDAVStdLibbluNumberOfESTypes(
   LibbluNumberOfESTypes * dst
 );
@@ -98,19 +89,11 @@ typedef struct {
   LibbluRegisteredPIDValuesEntryPtr entries;
 } LibbluRegisteredPIDValues;
 
-static inline void initLibbluRegisteredPIDValues(
-  LibbluRegisteredPIDValues * dst
-)
-{
-  *dst = (LibbluRegisteredPIDValues) {0};
-}
-
 static inline void cleanLibbluRegisteredPIDValues(
   LibbluRegisteredPIDValues set
 )
 {
   LibbluRegisteredPIDValuesEntryPtr cur, next;
-
   for (cur = set.entries; NULL != cur; cur = next) {
     next = cur->nextEntry;
     free(cur);
@@ -124,29 +107,26 @@ int insertLibbluRegisteredPIDValues(
 
 typedef struct {
   LibbluNumberOfESTypes limits;
-  LibbluNumberOfESTypes nbStreams;
-  LibbluRegisteredPIDValues registeredValues;
+  LibbluNumberOfESTypes nb_streams;
+  LibbluRegisteredPIDValues reg_values;
 
-  bool errorOnInvalidPIDRequest;
+  bool fail_on_invalid_request;
 } LibbluPIDValues;
 
 static inline void initLibbluPIDValues(
   LibbluPIDValues * dst,
-  void (*limitsInitializationFun) (LibbluNumberOfESTypes *)
+  void (*limits_init_fun) (LibbluNumberOfESTypes *)
 )
 {
-  limitsInitializationFun(&dst->limits);
-  cleanLibbluNumberOfESTypes(&dst->nbStreams);
-  initLibbluRegisteredPIDValues(&dst->registeredValues);
-
-  dst->errorOnInvalidPIDRequest = false;
+  *dst = (LibbluPIDValues) {0};
+  limits_init_fun(&dst->limits);
 }
 
 static inline void cleanLibbluPIDValues(
   LibbluPIDValues values
 )
 {
-  cleanLibbluRegisteredPIDValues(values.registeredValues);
+  cleanLibbluRegisteredPIDValues(values.reg_values);
 }
 
 #endif

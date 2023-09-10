@@ -36,6 +36,9 @@
 #define LIBBLU_ERROR(format, ...)                                             \
   LIBBLU_ECHO(LIBBLU_FATAL_ERROR, "[ERROR] " format, ##__VA_ARGS__)
 
+#define LIBBLU_ERROR_NO_HEADER(format, ...)                                   \
+  LIBBLU_ECHO(LIBBLU_FATAL_ERROR, format, ##__VA_ARGS__)
+
 #define LIBBLU_WARNING(format, ...)                                           \
   LIBBLU_ECHO(LIBBLU_WARNING, "[WARNING] " format, ##__VA_ARGS__)
 
@@ -138,6 +141,10 @@ typedef enum {
   LIBBLU_DEBUG_GLB,
 
   LIBBLU_DEBUG_SCRIPTS,
+  LIBBLU_DEBUG_SCRIPTS_WRITING,
+  LIBBLU_DEBUG_SCRIPTS_WRITING_OPERATIONS,
+  LIBBLU_DEBUG_SCRIPTS_READING,
+  LIBBLU_DEBUG_SCRIPTS_READING_OPERATIONS,
 
   LIBBLU_DEBUG_MUXER_DECISION,
   LIBBLU_DEBUG_PES_BUILDING,
@@ -164,6 +171,7 @@ typedef enum {
   LIBBLU_DEBUG_DTS_PARSING_CORE,
   LIBBLU_DEBUG_DTS_PARSING_EXTSS,
   LIBBLU_DEBUG_DTS_PARSING_XLL,
+  LIBBLU_DEBUG_DTS_PATCHER,
   LIBBLU_DEBUG_DTS_PBR,
   LIBBLU_DEBUG_DTS_OPERATIONS,
 
@@ -223,6 +231,14 @@ bool isEnabledLibbbluStatus(
   LibbluStatus status
 );
 
+int initDebugLogFile(
+  const lbc * log_filepath
+);
+
+int closeDebugLogFile(
+  void
+);
+
 void echoMessageFd(
   FILE * fd,
   LibbluStatus status,
@@ -236,11 +252,15 @@ void echoMessage(
   ...
 );
 
-void printListLibbbluStatus(
+void printDebuggingMessageCategoriesList(
   unsigned indent
 );
 
-void printListWithDescLibbbluStatus(
+void printDebuggingMessageCategoriesListWithDesc(
+  unsigned indent
+);
+
+void printDebuggingMessageRangesListWithDesc(
   unsigned indent
 );
 

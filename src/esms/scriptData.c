@@ -9,6 +9,27 @@
 
 #include "scriptData.h"
 
+#define FREAD(fd, d, s, e)                                                    \
+  do {                                                                        \
+    uint8_t _buf[s];                                                          \
+    size_t _s = (s);                                                          \
+    if (!fread(_buf, _s, 1, fd))                                              \
+      e;                                                                      \
+    uint64_t _v = 0;                                                          \
+    for (size_t _i = 0; _i < _s; _i++)                                        \
+      _v = (_v << 8) | _buf[_i];                                              \
+    *(d) = _v;                                                                \
+  } while (0)
+
+#define READ_VALUE(f, s, d, e)                                                \
+  do {                                                                        \
+    uint64_t _val;                                                            \
+    if (readValue64BigEndian(f, s, &_val) < 0)                                \
+      e;                                                                      \
+    if (NULL != (d))                                                          \
+      *(d) = _val;                                                            \
+  } while (0)
+
 /* ### ESMS ES Source Files : ############################################## */
 
 static lbc * checkAndDupFilepathEsmsESSourceFiles(
@@ -33,61 +54,30 @@ static lbc * checkAndDupFilepathEsmsESSourceFiles(
 int appendEsmsESSourceFiles(
   EsmsESSourceFiles * dst,
   const lbc * filepath,
-  EsmsESSourceFile properties
+  EsmsESSourceFileProperties properties
 )
 {
-  unsigned idx;
-  lbc * copy;
-
-  if (NULL != dst->handles)
+  if (dst->opened)
     LIBBLU_ERROR_RETURN(
       "ESMS source files list can no longer be edited after opening them.\n"
     );
 
-  if (NULL == (copy = checkAndDupFilepathEsmsESSourceFiles(filepath)))
+  lbc * filepath_copy;
+  if (NULL == (filepath_copy = checkAndDupFilepathEsmsESSourceFiles(filepath)))
     return -1;
 
-  if (dst->nbAllocatedFiles <= dst->nbUsedFiles) {
-    lbc ** newPathsArray;
-    EsmsESSourceFile * newPropArray;
-    size_t newSize;
+  if (ESMS_MAX_SUPPORTED_NB_ES_SOURCE_FILES <= dst->nb_source_files)
+    LIBBLU_ERROR_FRETURN("ESMS source files number limit reached.\n");
 
-    if (ESMS_MAX_SUPPORTED_NB_ES_SOURCE_FILES <= dst->nbUsedFiles)
-      LIBBLU_ERROR_FRETURN("ESMS source files number limit reached.\n");
-
-    newSize = GROW_ALLOCATION(
-      dst->nbAllocatedFiles,
-      ESMS_DEFAULT_NB_ES_SOURCE_FILES
-    );
-    if (lb_mul_overflow(newSize, sizeof(lbc *)))
-      LIBBLU_ERROR_FRETURN("ESMS source files number overflow.\n");
-    if (lb_mul_overflow(newSize, sizeof(EsmsESSourceFile)))
-      LIBBLU_ERROR_FRETURN("ESMS source files number overflow.\n");
-
-    newPathsArray = (lbc **) realloc(dst->filepaths, newSize * sizeof(lbc *));
-    newPropArray = (EsmsESSourceFile *) realloc(dst->properties, newSize * sizeof(EsmsESSourceFile));
-    if (NULL == newPathsArray || NULL == newPropArray) {
-      /* Set fields to avoid use-after free if one of the calls succeed */
-      if (NULL != newPathsArray)
-        dst->filepaths = newPathsArray;
-      if (NULL != newPropArray)
-        dst->properties = newPropArray;
-      LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-    }
-
-    dst->filepaths = newPathsArray;
-    dst->properties = newPropArray;
-    dst->nbAllocatedFiles = newSize;
-  }
-
-  idx = dst->nbUsedFiles++;
-  dst->filepaths[idx] = copy;
-  dst->properties[idx] = properties;
+  dst->entries[dst->nb_source_files++] = (EsmsESSourceFilesEntry) {
+    .filepath = filepath_copy,
+    .properties = properties
+  };
 
   return 0;
 
 free_return:
-  free(copy);
+  free(filepath_copy);
   return -1;
 }
 
@@ -95,23 +85,15 @@ int openAllEsmsESSourceFiles(
   EsmsESSourceFiles * dst
 )
 {
-  unsigned i;
 
-  if (!dst->nbUsedFiles)
+  if (!dst->nb_source_files)
     LIBBLU_ERROR_RETURN("No ESMS source file to open.\n");
-  if (NULL != dst->handles)
+  if (dst->opened)
     LIBBLU_ERROR_RETURN("ESMS source files opening already done.\n");
 
-  dst->handles = (BitstreamReaderPtr *) malloc(
-    dst->nbUsedFiles * sizeof(BitstreamReaderPtr)
-  );
-  if (NULL == dst->handles)
-    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-
-  for (i = 0; i < dst->nbUsedFiles; i++)
-    dst->handles[i] = NULL;
-  for (i = 0; i < dst->nbUsedFiles; i++) {
-    if (NULL == (dst->handles[i] = createBitstreamReaderDefBuf(dst->filepaths[i])))
+  for (unsigned i = 0; i < dst->nb_source_files; i++) {
+    EsmsESSourceFilesEntry * entry = &dst->entries[i];
+    if (NULL == (entry->handle = createBitstreamReaderDefBuf(entry->filepath)))
       return -1;
   }
 
@@ -125,60 +107,56 @@ int openAllEsmsESSourceFiles(
 int appendEsmsDataBlocks(
   EsmsDataBlocks * dst,
   EsmsDataBlockEntry entry,
-  unsigned * idx
+  unsigned * data_block_id
 )
 {
-  unsigned dstIdx;
+  unsigned dst_id;
 
   assert(NULL != dst);
 
-  if (ESMS_MAX_SUPPORTED_DATA_BLOCKS_ENTRIES <= dst->nbUsedEntries)
+  if (ESMS_MAX_SUPPORTED_DATA_BLOCKS_ENTRIES <= dst->nb_data_blocks)
     LIBBLU_ERROR_RETURN("Too many Data Blocks definitions.\n");
 
-  if (dst->nbAllocatedEntries <= dst->nbUsedEntries) {
-    EsmsDataBlockEntry * newArray;
-    unsigned newSize;
-
-    newSize = GROW_ALLOCATION(
-      dst->nbAllocatedEntries,
+  if (dst->nb_alloc_data_blocks <= dst->nb_data_blocks) {
+    unsigned new_size = GROW_ALLOCATION(
+      dst->nb_alloc_data_blocks,
       ESMS_DEFAULT_NB_DATA_BLOCKS_ENTRIES
     );
-    if (lb_mul_overflow(newSize, sizeof(EsmsDataBlockEntry)))
-      LIBBLU_ERROR_RETURN("Data Blocks definitions number overflow.\n");
 
-    newArray = (EsmsDataBlockEntry *) realloc(
-      dst->entries,
-      newSize * sizeof(EsmsDataBlockEntry)
-    );
-    if (NULL == newArray)
+    if (lb_mul_overflow(new_size, sizeof(EsmsDataBlockEntry)))
+      LIBBLU_ERROR_RETURN("Data Blocks definitions number overflow.\n");
+    size_t alloc_size = new_size * sizeof(EsmsDataBlockEntry);
+
+    EsmsDataBlockEntry * new_array = realloc(dst->entries, alloc_size);
+    if (NULL == new_array)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
-    dst->entries = newArray;
-    dst->nbAllocatedEntries = newSize;
+    dst->entries = new_array;
+    dst->nb_alloc_data_blocks = new_size;
   }
 
-  dstIdx = dst->nbUsedEntries++;
-  dst->entries[dstIdx] = entry;
+  dst_id = dst->nb_data_blocks++;
+  dst->entries[dst_id] = entry;
 
-  if (NULL != idx)
-    *idx = dstIdx;
+  if (NULL != data_block_id)
+    *data_block_id = dst_id;
 
   return 0;
 }
 
 int updateEsmsDataBlocks(
   EsmsDataBlocks * dst,
-  EsmsDataBlockEntry newEntry,
+  EsmsDataBlockEntry updated_entry,
   unsigned dstIdx
 )
 {
   assert(NULL != dst);
 
-  if (dst->nbUsedEntries <= dstIdx)
+  if (dst->nb_data_blocks <= dstIdx)
     LIBBLU_ERROR_RETURN("Out of range Data Block definition idx %u.\n", dstIdx);
 
   cleanEsmsDataBlockEntry(dst->entries[dstIdx]);
-  dst->entries[dstIdx] = newEntry;
+  dst->entries[dstIdx] = updated_entry;
 
   return 0;
 }
@@ -187,60 +165,33 @@ int updateEsmsDataBlocks(
 
 /* ###### Add Data command : ############################################### */
 
-int setEsmsAddDataCommand(
-  EsmsAddDataCommand * dst,
-  uint32_t offset,
-  EsmsDataInsertionMode mode,
-  const uint8_t * data,
-  uint16_t dataLength
-)
-{
-  assert(NULL != dst);
-  assert(NULL != data);
-  assert(0 < dataLength);
-
-  uint8_t * new_data;
-  if (NULL == (new_data = (uint8_t *) malloc(dataLength)))
-    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
-  memcpy(new_data, data, dataLength);
-
-  *dst = (EsmsAddDataCommand) {
-    .offset = offset,
-    .mode = mode,
-    .data = new_data,
-    .dataLength = dataLength
-  };
-
-  return 0;
-}
-
 int applyEsmsAddDataCommand(
   EsmsAddDataCommand command,
-  uint8_t * packetData,
-  size_t packetSize
+  uint8_t * payload_dst,
+  uint32_t payload_size
 )
 {
-  assert(NULL != packetData);
+  assert(NULL != payload_dst);
 
-  if (packetSize < command.offset + command.dataLength)
+  if (payload_size < command.insert_offset + command.data_size)
     LIBBLU_ERROR_RETURN(
       "Broken script, out of range add data insertion position "
-      "(%zu < %" PRIu32 " + %" PRIu16 ").\n",
-      packetSize,
-      command.offset,
-      command.dataLength
+      "(%" PRIu32 " < %" PRIu32 " + %" PRIu16 ").\n",
+      payload_size,
+      command.insert_offset,
+      command.data_size
     );
 
-  if (command.mode == INSERTION_MODE_INSERT) {
+  if (command.insert_mode == INSERTION_MODE_INSERT) {
     /* Firstly shifting frame data, before data insertion. */
     memmove(
-      packetData + command.offset,
-      packetData + command.offset + command.dataLength,
-      packetSize - command.offset - command.dataLength
+      payload_dst + command.insert_offset,
+      payload_dst + command.insert_offset + command.data_size,
+      payload_size - command.insert_offset - command.data_size
     );
   }
 
-  memcpy(packetData + command.offset, command.data, command.dataLength);
+  memcpy(payload_dst + command.insert_offset, command.data, command.data_size);
 
   return 0;
 }
@@ -249,25 +200,25 @@ int applyEsmsAddDataCommand(
 
 int applyEsmsChangeByteOrderCommand(
   EsmsChangeByteOrderCommand command,
-  uint8_t * packetData,
-  size_t packetSize
+  uint8_t * payload_dst,
+  uint32_t payload_size
 )
 {
   uint8_t temp[32];
   size_t off, halfUnitSize;
 
-  assert(NULL != packetData);
+  assert(NULL != payload_dst);
 
-  if (packetSize < command.offset + command.length)
+  if (payload_size < command.section_offset + command.section_size)
     LIBBLU_ERROR_RETURN(
       "Broken script, out of range byte order swapping domain "
-      "(%zu < %" PRIu32 " + %" PRIu32 ").\n",
-      packetSize,
-      command.offset,
-      command.length
+      "(%" PRIu32 " < %" PRIu32 " + %" PRIu32 ").\n",
+      payload_size,
+      command.section_offset,
+      command.section_size
     );
 
-  if (32 < (halfUnitSize = command.unitSize >> 1))
+  if (32 < (halfUnitSize = command.unit_size >> 1))
     LIBBLU_ERROR_RETURN(
       "Broken script, unexpected byte order swapping value length "
       "of %zu bytes.",
@@ -275,18 +226,18 @@ int applyEsmsChangeByteOrderCommand(
     );
 
   for (
-    off = command.offset;
-    off < command.offset + command.length;
-    off += command.unitSize
+    off = command.section_offset;
+    off < command.section_offset + command.section_size;
+    off += command.unit_size
   ) {
-    memcpy(temp, packetData + off, halfUnitSize);
+    memcpy(temp, payload_dst + off, halfUnitSize);
     memcpy(
-      packetData + off,
-      packetData + off + command.unitSize - halfUnitSize,
+      payload_dst + off,
+      payload_dst + off + command.unit_size - halfUnitSize,
       halfUnitSize
     );
     memcpy(
-      packetData + off + command.unitSize - halfUnitSize,
+      payload_dst + off + command.unit_size - halfUnitSize,
       temp,
       halfUnitSize
     );
@@ -299,84 +250,79 @@ int applyEsmsChangeByteOrderCommand(
 
 int applyEsmsAddPesPayloadCommand(
   EsmsAddPesPayloadCommand command,
-  uint8_t * packetData,
-  size_t packetSize,
-  const BitstreamReaderPtr * sourceFilesHandles,
-  unsigned nbSourceFiles
+  uint8_t * payload_dst,
+  uint32_t payload_size,
+  const EsmsESSourceFiles * src_files
 )
 {
-  BitstreamReaderPtr srcFileHandle;
-  int64_t srcFileOff;
+  assert(NULL != payload_dst);
 
-  assert(NULL != packetData);
-
-  if (packetSize < command.dstOffset + command.size)
+  if (payload_size < command.insert_offset + command.size)
     LIBBLU_ERROR_RETURN(
-      "Broken script, "
-      "out of range data insertion domain (%zu < %zu + %zu).\n",
-      packetSize,
-      command.dstOffset,
+      "Broken script, out of range data insertion domain "
+      "(%" PRIu32 " < %" PRIu32 " + %" PRIu32 ").\n",
+      payload_size,
+      command.insert_offset,
       command.size
     );
 
-  if (nbSourceFiles <= command.fileIdx)
+  if (src_files->nb_source_files <= command.src_file_id)
     LIBBLU_ERROR_RETURN(
-      "Broken script, out of range file idx handle (%u <= %zu).\n",
-      nbSourceFiles,
-      command.fileIdx
+      "Broken script, out of range file idx handle (%u <= %u).\n",
+      src_files->nb_source_files,
+      command.src_file_id
     );
 
-  srcFileHandle = sourceFilesHandles[command.fileIdx];
-  srcFileOff = tellPos(srcFileHandle);
+  BitstreamReaderPtr esfile_bs = src_files->entries[command.src_file_id].handle;
+  int64_t esfile_off = tellPos(esfile_bs);
 
   /* Reaching PES frame data start reading offset in source file */
-  if (command.srcOffset < srcFileOff) {
+  if (command.src_offset < esfile_off) {
     /* Lower position, use of seeking. */
-    if (seekPos(srcFileHandle, command.srcOffset, SEEK_SET) < 0)
+    if (seekPos(esfile_bs, command.src_offset, SEEK_SET) < 0)
       LIBBLU_ERROR_RETURN("Broken script, invalid seeking offset.\n");
   }
-  else if (srcFileOff < command.srcOffset) {
+  else if (esfile_off < command.src_offset) {
     /* Greater position, use of skipping. */
-    if (skipBytes(srcFileHandle, command.srcOffset - srcFileOff) < 0)
+    if (skipBytes(esfile_bs, command.src_offset - esfile_off) < 0)
       LIBBLU_ERROR_RETURN("Broken script, invalid seeking offset.\n");
   }
 
-  return readBytes(
-    srcFileHandle,
-    packetData + command.dstOffset,
-    command.size
-  );
+  if (readBytes(esfile_bs, &payload_dst[command.insert_offset], command.size) < 0)
+    return -1;
+
+  return 0;
 }
 
 /* ###### ESMS Add Padding command : ####################################### */
 
 int applyEsmsAddPaddingCommand(
   EsmsAddPaddingCommand command,
-  uint8_t * packetData,
-  size_t packetSize
+  uint8_t * payload_dst,
+  uint32_t payload_size
 )
 {
-  assert(NULL != packetData);
+  assert(NULL != payload_dst);
 
-  if (packetSize < command.offset + command.length)
+  if (payload_size < command.insert_offset + command.size)
     LIBBLU_ERROR_RETURN(
       "Broken script, out of range padding insertion domain "
-      "(%zu < %" PRIu32 " + %" PRIu32 ").\n",
-      packetSize,
-      command.offset,
-      command.length
+      "(%" PRIu32 " < %" PRIu32 " + %" PRIu32 ").\n",
+      payload_size,
+      command.insert_offset,
+      command.size
     );
 
-  if (command.mode == INSERTION_MODE_INSERT) {
+  if (command.insert_mode == INSERTION_MODE_INSERT) {
     /* Firstly shifting frame data, before data insertion. */
     memmove(
-      packetData + command.offset + command.length,
-      packetData + command.offset,
-      packetSize - command.offset - command.length
+      &payload_dst[command.insert_offset + command.size],
+      &payload_dst[command.insert_offset],
+      payload_size - command.insert_offset - command.size
     );
   }
 
-  memset(packetData + command.offset, command.byte, command.length);
+  memset(&payload_dst[command.insert_offset], command.filling_byte, command.size);
 
   return 0;
 }
@@ -385,65 +331,50 @@ int applyEsmsAddPaddingCommand(
 
 int applyEsmsAddDataBlockCommand(
   EsmsAddDataBlockCommand command,
-  uint8_t * packetData,
-  size_t packetSize,
-  EsmsDataBlocks dataBlocks
+  uint8_t * payload_dst,
+  uint32_t payload_size,
+  EsmsDataBlocks data_blocks
 )
 {
-  EsmsDataBlockEntry entry;
+  assert(NULL != payload_dst);
 
-  assert(NULL != packetData);
-
-  if (dataBlocks.nbUsedEntries <= command.blockIdx)
+  if (data_blocks.nb_data_blocks <= command.data_block_id)
     LIBBLU_ERROR_RETURN(
       "Broken script, out of range data block idx (%u <= %" PRIu8 ").\n",
-      dataBlocks.nbUsedEntries,
-      command.blockIdx
+      data_blocks.nb_data_blocks,
+      command.data_block_id
     );
 
-  entry = dataBlocks.entries[command.blockIdx];
-  if (packetSize < command.offset + entry.size)
+  const EsmsDataBlockEntry * entry = &data_blocks.entries[command.data_block_id];
+  if (payload_size < command.insert_offset + entry->data_block_size)
     LIBBLU_ERROR_RETURN(
       "Broken script, out of range data block insertion domain "
-      "(%zu < %" PRIu32 " + %" PRIu32 ").\n",
-      packetSize,
-      command.offset,
-      entry.size
+      "(%" PRIu32 " < %" PRIu32 " + %" PRIu32 ").\n",
+      payload_size,
+      command.insert_offset,
+      entry->data_block_size
     );
 
-  if (!entry.size)
+  if (0 == entry->data_block_size)
     return 0; /* No data */
 
-  if (command.mode == INSERTION_MODE_INSERT) {
+  if (command.insert_mode == INSERTION_MODE_INSERT) {
     /* Firstly shifting frame data, before data insertion. */
     memmove(
-      packetData + command.offset + entry.size,
-      packetData + command.offset,
-      packetSize - command.offset - entry.size
+      &payload_dst[command.insert_offset + entry->data_block_size],
+      &payload_dst[command.insert_offset],
+      payload_size - command.insert_offset - entry->data_block_size
     );
   }
 
-  memcpy(packetData + command.offset, entry.data, entry.size);
+  memcpy(&payload_dst[command.insert_offset], entry->data_block, entry->data_block_size);
 
   return 0;
 }
 
 /* ###### ESMS script command node : ####################################### */
 
-EsmsCommandNodePtr createEsmsCommandNode(
-  EsmsCommandType type
-)
-{
-  EsmsCommandNodePtr node;
-
-  if (NULL == (node = (EsmsCommandNodePtr) malloc(sizeof(EsmsCommandNode))))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  node->next = NULL;
-  initEsmsCommand(&node->command, type);
-
-  return node;
-}
+#if 0
 
 /** \~english
  * \brief
@@ -464,7 +395,7 @@ void destroyEsmsCommandNode(
   if (recursive)
     destroyEsmsCommandNode(node->next, true);
 
-  cleanEsmsCommand(node->command);
+  cleanEsmsCommand(&node->command);
   free(node);
 }
 
@@ -475,19 +406,8 @@ EsmsPesPacketNodePtr createEsmsPesPacketNode(
 )
 {
   EsmsPesPacketNodePtr node;
-
-  node = (EsmsPesPacketNodePtr) malloc(sizeof(EsmsPesPacketNode));
-  if (NULL == node)
+  if (NULL == (node = calloc(1, sizeof(EsmsPesPacketNode))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  node->next = NULL;
-  node->extensionFrame = false;
-  node->dtsPresent = false;
-  node->pts = 0;
-  node->dts = 0;
-  node->length = 0;
-  node->commands = NULL;
-
   return node;
 }
 
@@ -506,69 +426,49 @@ void destroyEsmsPesPacketNode(
   free(node);
 }
 
+#endif
+
 /* ### ESMS files utilities : ############################################## */
 
-const char * ESMSDirectoryIdStr(
-  ESMSDirectoryId id
-)
-{
-  static const char * dirs[] = {
-    "unknown",
-    "ES Properties",
-    "ES PES Cutting",
-    "ES Format Properties",
-    "ES Data Blocks Definition"
-  };
-
-  if (id < ARRAY_SIZE(dirs))
-    return dirs[id];
-  return "unknown";
-}
-
 ESMSDirectoryFetcherErrorCodes getDirectoryOffset(
-  const lbc * essFilename,
-  ESMSDirectoryId id,
-  uint64_t * offset
+  const lbc * esms_filepath,
+  ESMSDirectoryId looked_dir_ID,
+  int64_t * offset
 )
 {
   ESMSDirectoryFetcherErrorCodes ret;
-  FILE * essInputFile;
-  uint64_t offsetValue;
-  uint8_t i, directoryNb, directoryId;
 
-  if (NULL == (essInputFile = lbc_fopen(essFilename, "rb")))
-    return ESMS_DF_READ_ERROR; /* Opening error */
+  FILE * esms_fd = lbc_fopen(esms_filepath, "rb");
+  if (NULL == esms_fd)
+    return ESMS_DF_READ_ERROR; // Opening error
 
-  /* [u32 esmsFileHeader] */
-  /* [u8 formatVersion] */
-  /* [u8 completedFile] */
-  if (fseek(essInputFile, 0x6, SEEK_CUR) < 0) {
-    ret = ESMS_DF_READ_ERROR;
-    goto free_return;
-  }
+  /* [u32 ESMS_magic] */
+  /* [u8 ESMS_version] */
+  /* [u8 flags_byte] */
+  if (fseek(esms_fd, 0x6, SEEK_CUR) < 0)
+    goto read_error;
 
-  /* [u8 directoryNb] */
-  if (!RA_FILE(essInputFile, &directoryNb, 1)) {
-    ret = ESMS_DF_READ_ERROR;
-    goto free_return;
-  }
+  /* [u8 nb_directory] */
+  uint8_t nb_directory;
+  FREAD(esms_fd, &nb_directory, 1, goto read_error);
 
-  for (i = 0; i < directoryNb; i++) {
-    /* [u8 directoryId] */
-    if (!RA_FILE(essInputFile, &directoryId, 1)) {
-      ret = ESMS_DF_READ_ERROR;
+  for (unsigned i = 0; i < nb_directory; i++) {
+    /* [u8 dir_ID] */
+    uint8_t dir_ID;
+    FREAD(esms_fd, &dir_ID, 1, goto read_error);
+
+    /* [u64 dir_offset] */
+    uint64_t dir_offset;
+    FREAD(esms_fd, &dir_offset, 8, goto read_error);
+
+    if (INT64_MAX < dir_offset) {
+      ret = ESMS_DF_INVALID;
       goto free_return;
     }
 
-    /* [u64 directoryOffset] */
-    if (!RA_FILE(essInputFile, &offsetValue, 8)) {
-      ret = ESMS_DF_READ_ERROR;
-      goto free_return;
-    }
-
-    if (directoryId == id) {
+    if (dir_ID == looked_dir_ID) {
       if (NULL != offset)
-        *offset = offsetValue;
+        *offset = (int64_t) dir_offset;
       ret = ESMS_DF_OK;
       goto free_return;
     }
@@ -577,9 +477,13 @@ ESMSDirectoryFetcherErrorCodes getDirectoryOffset(
   ret = ESMS_DF_NOT_FOUND;
 
 free_return:
-  if (fclose(essInputFile) != 0)
+  if (fclose(esms_fd) != 0)
     return ESMS_DF_READ_ERROR;
   return ret;
+
+read_error:
+  ret = ESMS_DF_READ_ERROR;
+  goto free_return;
 }
 
 int isPresentDirectory(
@@ -590,26 +494,22 @@ int isPresentDirectory(
   switch (getDirectoryOffset(essFilename, id, NULL)) {
     case ESMS_DF_OK:
       return 1;
-
-    case ESMS_DF_READ_ERROR:
-      break;
-
     case ESMS_DF_NOT_FOUND:
       return 0;
+    default: // Error
+      return -1;
   }
-
-  return -1;
 }
 
 int seekDirectoryOffset(
-  BitstreamReaderPtr essHandle,
+  BitstreamReaderPtr esms_bs,
   const lbc * essFilename,
   ESMSDirectoryId id
 )
 {
-  uint64_t offset;
 
-  switch (getDirectoryOffset(essFilename, id, &offset)) {
+  int64_t dir_offset;
+  switch (getDirectoryOffset(essFilename, id, &dir_offset)) {
     case ESMS_DF_OK:
       break; /* OK */
 
@@ -627,12 +527,19 @@ int seekDirectoryOffset(
         essFilename,
         ESMSDirectoryIdStr(id)
       );
+
+    case ESMS_DF_INVALID:
+      LIBBLU_ERROR_RETURN(
+        "Broken script '%" PRI_LBCS "', "
+        "invalid directory \"%s\".\n",
+        essFilename,
+        ESMSDirectoryIdStr(id)
+      );
   }
 
-  if (seekPos(essHandle, offset, SEEK_SET) < 0)
+  if (seekPos(esms_bs, dir_offset, SEEK_SET) < 0)
     LIBBLU_ERROR_RETURN(
-      "Broken script '%" PRI_LBCS "', "
-      "offset pointing outside of file.\n",
+      "Broken script '%" PRI_LBCS "', offset pointing outside of file.\n",
       essFilename
     );
 
@@ -640,23 +547,21 @@ int seekDirectoryOffset(
 }
 
 int checkDirectoryMagic(
-  BitstreamReaderPtr script,
-  const char * magic,
-  size_t magicSize
+  BitstreamReaderPtr esms_bs,
+  uint64_t expected,
+  unsigned size
 )
 {
-  uint8_t buf[9] = {'\0'};
+  assert(0 < size && size <= 8);
 
-  assert(0 < magicSize && magicSize <= 8);
+  uint64_t magic;
+  READ_VALUE(esms_bs, size, &magic, return -1);
 
-  if (readBytes(script, buf, magicSize) < 0)
-    return -1;
-
-  if (0 != memcmp(buf, (void *) magic, magicSize))
+  if (expected != magic)
     LIBBLU_ERROR_RETURN(
-      "Broken script, unexpected section header '%s', expect '%s'.\n",
-      (char *) buf,
-      magic
+      "Broken script, unexpected section header 0x%0*X, expect 0x%0*X.\n",
+      2*size, magic,
+      2*size, expected
     );
 
   return 0;
@@ -704,14 +609,14 @@ static ESMSFileValidatorRet isValidESMSFileSourceFile(
 {
   ESMSFileValidatorRet ret;
 
-  BitstreamReaderPtr file;
+  BitstreamReaderPtr esms_bs;
   uint8_t * crcBuffer;
 
   if (lbc_access_fp(sourceFilepath, "rb") < 0)
     return ESMS_FV_INVALID_SOURCE_FILE;
 
-  file = createBitstreamReader(sourceFilepath, READ_BUFFER_LEN);
-  if (NULL == file)
+  esms_bs = createBitstreamReader(sourceFilepath, READ_BUFFER_LEN);
+  if (NULL == esms_bs)
     return ESMS_FV_INVALID_SOURCE_FILE;
 
   if (NULL == (crcBuffer = (uint8_t *) malloc(crcControlledSize))) {
@@ -720,7 +625,7 @@ static ESMSFileValidatorRet isValidESMSFileSourceFile(
   }
 
   if (
-    readBytes(file, crcBuffer, crcControlledSize) < 0
+    readBytes(esms_bs, crcBuffer, crcControlledSize) < 0
     || crcExpectedResult != lb_compute_crc32(crcBuffer, 0, crcControlledSize)
   ) {
     /* CRC-32 values mismatch */
@@ -729,181 +634,154 @@ static ESMSFileValidatorRet isValidESMSFileSourceFile(
   }
 
   free(crcBuffer);
-  closeBitstreamReader(file);
+  closeBitstreamReader(esms_bs);
 
   return ESMS_FV_OK;
 
 free_return:
   free(crcBuffer);
-  closeBitstreamReader(file);
+  closeBitstreamReader(esms_bs);
 
   return ret;
 }
 
+/** \~english
+ * \brief ESMS "ES properties" flags fiels relative offset in bytes.
+ *
+ * Relative offset of the "scriptingFlags" field first byte from the "ES
+ * properties" section's field "esPropertiesHeader" first byte.
+ */
+#define ES_SCRIPTING_FLAGS_FIELD_POS  0x1A
+
 ESMSFileValidatorRet isAValidESMSFile(
-  const lbc * essFileName,
-  const uint64_t flags,
+  const lbc * esms_fp,
+  uint64_t expected_flags,
   unsigned * version
 )
 {
-  ESMSFileValidatorRet ret;
+  ESMSFileValidatorRet ret = ESMS_FV_OK;
 
-  FILE * scriptFile;
-  uint8_t buf[8];
-
-  ESMSDirectoryFetcherErrorCodes dirErrCode;
-  uint64_t dirOff;
-
-  unsigned i, nbStreams;
-
-  unsigned scriptVersion;
-  uint64_t calculatedFlags;
-
-  assert(NULL != essFileName);
-
-  if (NULL == essFileName)
+  assert(NULL != esms_fp);
+  if (NULL == esms_fp)
     return ESMS_FV_NO_SCRIPT;
 
-  if (NULL == (scriptFile = lbc_fopen(essFileName, "rb"))) {
+  FILE * esms_fd;
+  if (NULL == (esms_fd = lbc_fopen(esms_fp, "rb"))) {
     ret = (errno == ENOENT) ? ESMS_FV_NO_SCRIPT : ESMS_FV_READ_ERROR;
     errno = 0; /* Clear errno */
-
     return ret;
   }
 
-  /* [v32 esmsFileHeader] */
-  if (!RA_FILE(scriptFile, buf, 4))
-    goto read_error;
+  /* [v32 ESMS_magic] */
+  uint32_t ESMS_magic;
+  FREAD(esms_fd, &ESMS_magic, 4, goto read_error);
 
-  if (!lb_strn_equal((char *) buf, (char *) ESMS_FILE_HEADER, 4)) {
+  if (ESMS_FILE_HEADER_MAGIC != ESMS_magic) {
     ret = ESMS_FV_HEADER_ERROR;
     goto free_return;
   }
 
-  /* [u8 formatVersion] */
-  if (!RA_FILE(scriptFile, buf, 1))
-    goto read_error;
-  scriptVersion = buf[0];
+  /* [u8 ESMS_version] */
+  uint8_t ESMS_version;
+  FREAD(esms_fd, &ESMS_version, 1, goto read_error);
 
-  if (CURRENT_ESMS_FORMAT_VER != scriptVersion) {
+  if (CURRENT_ESMS_FORMAT_VER != ESMS_version) {
     ret = ESMS_FV_VERSION_ERROR;
     goto free_return;
   }
 
   if (NULL != version)
-    *version = scriptVersion;
+    *version = ESMS_version;
 
-  /* [u8 completedFile] */
-  if (!RA_FILE(scriptFile, buf, 1))
-    goto read_error;
+  /* [v8 flags_byte] */
+  uint8_t flags_byte;
+  FREAD(esms_fd, &flags_byte, 1, goto read_error);
 
-  if (buf[0] != 0x01) {
+  if ((flags_byte & 0x1) != 0x1) {
     ret = ESMS_FV_INCOMPLETE_FILE;
     goto free_return;
   }
 
-  dirErrCode = getDirectoryOffset(
-    essFileName,
-    ESMS_DIRECTORY_ID_ES_PROP,
-    &dirOff
-  );
-  if (dirErrCode < 0)
+  int64_t dir_offset;
+  if (getDirectoryOffset(esms_fp, ESMS_DIRECTORY_ID_ES_PROP, &dir_offset) < 0)
     return ESMS_FV_READ_ERROR;
 
-  /* Check 'scriptingFlags' */
-  if (fseek(scriptFile, dirOff + ES_SCRIPTING_FLAGS_FIELD_POS, SEEK_SET) < 0)
+  /* Check 'scripting_flags' */
+  if (fseek(esms_fd, dir_offset + ES_SCRIPTING_FLAGS_FIELD_POS, SEEK_SET) < 0)
     goto read_error;
 
-  /* [v64 scriptingFlags] */
-  if (!RA_FILE(scriptFile, buf, 8))
-    goto read_error;
-  calculatedFlags = UINT8A_TO_UINT64(buf);
+  /* [v64 scripting_flags] */
+  uint64_t scripting_flags;
+  FREAD(esms_fd, &scripting_flags, 8, goto read_error);
 
-  if (calculatedFlags != flags) {
+  if (scripting_flags != expected_flags) {
     ret = ESMS_FV_INCOMPATIBLE_FLAGS;
     goto free_return;
   }
 
   /* Check input files checksums */
   /* [u8 nbSourceFiles] */
-  if (!RA_FILE(scriptFile, buf, 1))
-    goto read_error;
-  nbStreams = buf[0];
+  uint8_t nb_source_files;
+  FREAD(esms_fd, &nb_source_files, 1, goto read_error);
 
-  if (ESMS_MAX_ALLOWED_DIR < nbStreams) {
+  if (ESMS_MAX_SUPPORTED_NB_ES_SOURCE_FILES < nb_source_files) {
     ret = ESMS_FV_HEADER_ERROR;
     goto free_return;
   }
 
-  for (i = 0; i < nbStreams; i++) {
-    unsigned utf8FilepathSize;
-    uint8_t * utf8Filepath;
-    lbc * filepath;
+  for (unsigned i = 0; i < nb_source_files; i++) {
+    /* [u16 src_filepath_size] */
+    uint16_t src_filepath_size;
+    FREAD(esms_fd, &src_filepath_size, 2, goto read_error);
 
-    unsigned crcControlledSize;
-    uint32_t crcExpectedResult;
-
-    /* [u16 sourceFileNameLength] */
-    if (!RA_FILE(scriptFile, buf, 2))
-      goto read_error;
-    utf8FilepathSize = UINT8A_TO_UINT16(buf);
-
-    if (!utf8FilepathSize) {
+    if (!src_filepath_size) {
       ret = ESMS_FV_HEADER_ERROR;
       goto free_return;
     }
 
-    if (NULL == (utf8Filepath = (uint8_t *) malloc(utf8FilepathSize + 1))) {
+    uint8_t * src_filepath_utf8;
+    if (NULL == (src_filepath_utf8 = calloc(src_filepath_size + 1u, 1))) {
       ret = ESMS_FV_MEMORY_ERROR;
       goto free_return;
     }
 
-    /* [v<sourceFileNameLength> sourceFileName] */
-    if (!RA_FILE(scriptFile, utf8Filepath, utf8FilepathSize)) {
-      free(utf8Filepath);
-      goto read_error;
+    /* [u<8*src_filepath_size> src_filepath] */
+    if (!fread(src_filepath_utf8, src_filepath_size, 1, esms_fd)) {
+      free(src_filepath_utf8);
+      goto free_return;
     }
-    utf8Filepath[utf8FilepathSize] = '\0'; /* Add the terminating NUL */
 
-    if (NULL == (filepath = lbc_utf8_convto(utf8Filepath))) {
+    lbc * src_filepath;
+    if (NULL == (src_filepath = lbc_utf8_convto(src_filepath_utf8))) {
       ret = ESMS_FV_INVALID_SOURCE_FILE;
       goto free_return;
     }
-    free(utf8Filepath);
+    free(src_filepath_utf8);
 
-    /* [u16 crcCheckedBytes] */
-    if (!RA_FILE(scriptFile, buf, 2)) {
-      free(filepath);
-      goto read_error;
-    }
-    crcControlledSize = UINT8A_TO_UINT16(buf);
+#define FRETURN  do {free(src_filepath); goto free_return;} while (0)
+    /* [u16 crc_checked_bytes] */
+    uint16_t crc_checked_bytes;
+    FREAD(esms_fd, &crc_checked_bytes, 2, FRETURN);
 
     /* [u32 crc] */
-    if (!RA_FILE(scriptFile, buf, 4)) {
-      free(filepath);
-      goto read_error;
-    }
-    crcExpectedResult = UINT8A_TO_UINT32(buf);
+    uint32_t crc;
+    FREAD(esms_fd, &crc, 4, FRETURN);
 
-    ret = isValidESMSFileSourceFile(
-      filepath,
-      crcControlledSize,
-      crcExpectedResult
-    );
-
-    free(filepath);
+    ret = isValidESMSFileSourceFile(src_filepath, crc_checked_bytes, crc);
+#undef FRETURN
+    free(src_filepath);
 
     if (ret < 0)
       goto free_return;
   }
 
-  fclose(scriptFile);
+  fclose(esms_fd);
   return ESMS_FV_OK;
 
 read_error:
   ret = ESMS_FV_READ_ERROR;
 free_return:
-  fclose(scriptFile);
+  fclose(esms_fd);
   errno = 0; /* Clear errno */
 
   return ret;

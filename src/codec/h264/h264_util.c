@@ -211,13 +211,13 @@ static int initOutputFileH264ParametersHandle(
 {
   assert(NULL != handle);
 
-  if (NULL == (handle->esms = createEsmsFileHandler(ES_VIDEO, settings->options, FMT_SPEC_INFOS_H264)))
+  if (NULL == (handle->esms = createEsmsHandler(ES_VIDEO, settings->options, FMT_SPEC_INFOS_H264)))
     return -1;
 
   if (NULL == (handle->esmsFile = createBitstreamWriterDefBuf(settings->scriptFilepath)))
     return -1;
 
-  if (appendSourceFileEsms(handle->esms, settings->esFilepath, &handle->esmsSrcFileIdx) < 0)
+  if (appendSourceFileEsmsHandler(handle->esms, settings->esFilepath, &handle->esmsSrcFileIdx) < 0)
     return -1;
 
   if (writeEsmsHeader(handle->esmsFile) < 0)
@@ -284,13 +284,13 @@ int completeH264ParametersHandler(
   const LibbluESParsingSettings * settings
 )
 {
-  if (addEsmsFileEnd(handle->esmsFile, handle->esms) < 0)
+  if (completePesCuttingScriptEsmsHandler(handle->esmsFile, handle->esms) < 0)
     return -1;
 
   closeBitstreamWriter(handle->esmsFile);
   handle->esmsFile = NULL;
 
-  if (updateEsmsHeader(settings->scriptFilepath, handle->esms) < 0)
+  if (updateEsmsFile(settings->scriptFilepath, handle->esms) < 0)
     return -1;
 
   return 0;
@@ -305,7 +305,7 @@ void destroyH264ParametersHandler(
   if (NULL == handle)
     return;
 
-  destroyEsmsFileHandler(handle->esms);
+  destroyEsmsHandler(handle->esms);
   closeBitstreamWriter(handle->esmsFile);
   cleanH264NalDeserializerContext(handle->file);
 

@@ -64,278 +64,390 @@ int readSettingsExplodeLevels(
   return 0;
 }
 
+typedef enum {
+  SINGLE_OPTION,
+  RANGE
+} debugging_option_type;
 
 static const struct {
-  LibbluStatus opt;
-  char * name;
+  debugging_option_type type;
   char * desc;
-} debuggingOptions[] = {
-#define DECLARE_OPTION(o, n, d)  {.opt = o, .name = n, .desc = d}
+
+  union {
+    struct {
+      LibbluStatus opt;
+      char ** names;
+    } single;
+    struct {
+      char * name;
+      LibbluStatus * values;
+    } range;
+  };
+} debugging_options[] = {
+#define DECLARE_OPTION(o, d, ...)  \
+  {.type = SINGLE_OPTION, .desc = d, .single = {.opt = o, .names = (char *[]) {__VA_ARGS__, NULL}}}
+#define DECLARE_RANGE(d, n, ...)  \
+  {.type = RANGE, .desc = d, .range = {.name = n, .values = (LibbluStatus[]) {__VA_ARGS__, 0}}}
 
   DECLARE_OPTION(
     LIBBLU_DEBUG_GLB,
-    "all",
-    "Enable all available categories, as '-d' option"
+    "Enable all available categories, as '-d' option",
+    "all"
   ),
 
   DECLARE_OPTION(
     LIBBLU_DEBUG_SCRIPTS,
-    "esms_scripts",
-    "Muxer scripts management"
+    "Muxer scripts management",
+    "esms_operations"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_SCRIPTS_WRITING,
+    "Muxer script files fields writing",
+    "esms_writing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_SCRIPTS_WRITING_OPERATIONS,
+    "Muxer scripts creation operations",
+    "esms_writing_operations",
+    "esms_writing_op"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_SCRIPTS_READING,
+    "Muxer script files fields parsing",
+    "esms_parsing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_SCRIPTS_READING_OPERATIONS,
+    "Muxer scripts reading operations",
+    "esms_parsing_operations",
+    "esms_parsing_op"
+  ),
+  DECLARE_RANGE(
+    "Muxer scripts management, creation and parsing",
+    "esms",
+    LIBBLU_DEBUG_SCRIPTS,
+    LIBBLU_DEBUG_SCRIPTS_WRITING,
+    LIBBLU_DEBUG_SCRIPTS_WRITING_OPERATIONS,
+    LIBBLU_DEBUG_SCRIPTS_READING,
+    LIBBLU_DEBUG_SCRIPTS_READING_OPERATIONS
   ),
 
   DECLARE_OPTION(
     LIBBLU_DEBUG_MUXER_DECISION,
-    "muxer_decisions",
-    "Muxer packets decision"
+    "Muxer packets decision",
+    "muxer_decisions"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_PES_BUILDING,
-    "pes_building",
-    "PES packets building information"
+    "PES packets building information",
+    "pes_building"
   ),
 
   /* Muxer T-STD Buffer Verifier : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_T_STD_VERIF_TEST,
-    "t_std_test",
-    "T-STD Buffer Verifier tests"
+    "T-STD Buffer Verifier tests",
+    "t_std_test"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_T_STD_VERIF_DECLARATIONS,
-    "t_std_decl",
-    "T-STD Buffer Verifier packets data declaration"
+    "T-STD Buffer Verifier packets data declaration",
+    "t_std_decl"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_T_STD_VERIF_OPERATIONS,
-    "t_std_operations",
-    "T-STD Buffer Verifier operations"
+    "T-STD Buffer Verifier operations",
+    "t_std_operations"
   ),
 
   /* LCPM Audio : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_LPCM_PARSING,
-    "lcpm_parsing",
-    "LPCM audio content"
+    "LPCM audio content",
+    "lcpm_parsing"
   ),
 
   /* AC-3 Audio : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_AC3_PARSING,
-    "ac3_parsing",
-    "AC-3 audio content"
+    "AC-3 audio content",
+    "ac3_parsing"
   ),
 
   /* DTS Audio : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PARSING_DTSHD,
-    "dts_parsing_dtshd",
-    "DTS audio DTSHD file headers content"
+    "DTS audio DTSHD file headers content",
+    "dts_parsing_dtshd"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PARSING_PBRFILE,
-    "dts_parsing_pbrfile",
-    "DTS audio dtspbr statistics file content"
+    "DTS audio dtspbr statistics file content",
+    "dts_parsing_pbrfile"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PARSING_CORE,
-    "dts_parsing_core",
-    "DTS audio Core Substream content"
+    "DTS audio Core Substream content",
+    "dts_parsing_core"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PARSING_EXTSS,
-    "dts_parsing_extSS",
-    "DTS audio Extension Substreams content"
+    "DTS audio Extension Substreams content",
+    "dts_parsing_extSS"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PARSING_XLL,
-    "dts_parsing_xll",
-    "DTS audio XLL extension content"
+    "DTS audio XLL extension content",
+    "dts_parsing_xll"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_DTS_PATCHER,
+    "DTS audio patcher",
+    "dts_patcher"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PBR,
-    "dts_pbr",
-    "DTS audio PBR smoothing process informations"
+    "DTS audio PBR smoothing process informations",
+    "dts_pbr"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_OPERATIONS,
-    "dts_operations",
-    "DTS audio parser operations"
+    "DTS audio parser operations",
+    "dts_operations"
+  ),
+  DECLARE_RANGE(
+    "DTS audio parsing and operations",
+    "dts",
+    LIBBLU_DEBUG_DTS_PARSING_DTSHD,
+    LIBBLU_DEBUG_DTS_PARSING_PBRFILE,
+    LIBBLU_DEBUG_DTS_PARSING_CORE,
+    LIBBLU_DEBUG_DTS_PARSING_EXTSS,
+    LIBBLU_DEBUG_DTS_PARSING_XLL,
+    LIBBLU_DEBUG_DTS_PATCHER,
+    LIBBLU_DEBUG_DTS_PBR,
+    LIBBLU_DEBUG_DTS_OPERATIONS
   ),
 
   /* H.262 Video : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_H262_PARSING,
-    "h262_parsing",
-    "H.262 video content"
+    "H.262 video content",
+    "h262_parsing"
   ),
 
   /* H.264 Video : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_NAL,
-    "h264_parsing_nalu",
-    "H.264 video NAL Units headers content"
+    "H.264 video NAL Units headers content",
+    "h264_parsing_nalu"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_AUD,
-    "h264_parsing_aud",
-    "H.264 video Access Unit Delimiter and other structural NALUs content"
+    "H.264 video Access Unit Delimiter and other structural NALUs content",
+    "h264_parsing_aud"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_SPS,
-    "h264_parsing_sps",
-    "H.264 video Sequence Parameter Set NALUs content"
+    "H.264 video Sequence Parameter Set NALUs content",
+    "h264_parsing_sps"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_VUI,
-    "h264_parsing_vui",
-    "H.264 video SPS Video Usability Information content"
+    "H.264 video SPS Video Usability Information content",
+    "h264_parsing_vui"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_PPS,
-    "h264_parsing_pps",
-    "H.264 video Picture Parameter Set NALUs content"
+    "H.264 video Picture Parameter Set NALUs content",
+    "h264_parsing_pps"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_SEI,
-    "h264_parsing_sei",
-    "H.264 video Supplemental Enhancement Information messages NALUs content"
+    "H.264 video Supplemental Enhancement Information messages NALUs content",
+    "h264_parsing_sei"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_PARSING_SLICE,
-    "h264_parsing_slice",
-    "H.264 video Slice headers NALUs content"
+    "H.264 video Slice headers NALUs content",
+    "h264_parsing_slice"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_OPERATIONS,
-    "h264_operations",
-    "H.264 video parser operations"
+    "H.264 video parser operations",
+    "h264_operations"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_AU_PROCESSING,
-    "h264_access_units_processing",
-    "H.264 video Access Units detection and stitching"
+    "H.264 video Access Units detection and stitching",
+    "h264_access_units_processing"
   ),
 
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_HRD,
-    "h264_hrd",
-    "H.264 HRD informations"
+    "H.264 HRD informations",
+    "h264_hrd"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_HRD_CPB,
-    "h264_hrd_cpb",
-    "H.264 HRD Coded Picture Buffer status"
+    "H.264 HRD Coded Picture Buffer status",
+    "h264_hrd_cpb"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_HRD_DPB,
-    "h264_hrd_dpb",
-    "H.264 HRD Decoded Picture Buffer status"
+    "H.264 HRD Decoded Picture Buffer status",
+    "h264_hrd_dpb"
   ),
 
   /* HDMV Common : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_COMMON,
-    "hdmv_common",
-    "HDMV bitstreams common operations"
+    "HDMV bitstreams common operations",
+    "hdmv_common"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_PARSER,
-    "hdmv_parser",
-    "HDMV bitstreams common parsing informations"
+    "HDMV bitstreams common parsing informations",
+    "hdmv_parser"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_CHECKS,
-    "hdmv_checks",
-    "HDMV bitstreams compliance checks"
+    "HDMV bitstreams compliance checks",
+    "hdmv_checks"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_TS_COMPUTE,
-    "hdmv_ts_compute",
-    "HDMV bitstreams timestamps computation"
+    "HDMV bitstreams timestamps computation",
+    "hdmv_ts_compute"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_SEG_BUILDER,
-    "hdmv_seg_builder",
-    "HDMV bitstreams segments builder"
+    "HDMV bitstreams segments builder",
+    "hdmv_seg_builder"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_QUANTIZER,
-    "hdmv_quantizer",
-    "HDMV pictures color quantization using Octree (in fact. an Hexatree)"
+    "HDMV pictures color quantization using Octree (in fact. an Hexatree)",
+    "hdmv_quantizer"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_PAL,
-    "hdmv_pal",
-    "HDMV palettes contruction"
+    "HDMV palettes contruction",
+    "hdmv_pal"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_PICTURES,
-    "hdmv_pic",
-    "HDMV pictures handling"
+    "HDMV pictures handling",
+    "hdmv_pic"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_LIBPNG,
-    "hdmv_libpng",
-    "HDMV pictures LibPng IO operations"
+    "HDMV pictures LibPng IO operations",
+    "hdmv_libpng"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_HDMV_TC,
-    "hdmv_timecode",
-    "HDMV streams generation timecodes management"
+    "HDMV streams generation timecodes management",
+    "hdmv_timecode"
   ),
 
   /* HDMV IGS Parser : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_IGS_PARSER,
-    "pgs_parser",
-    "HDMV PGS (subtitles) content"
+    "HDMV PGS (subtitles) content",
+    "pgs_parser"
   ),
 
   /* HDMV IGS Parser : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_IGS_PARSER,
-    "igs_parser",
-    "HDMV IGS (menus) content"
+    "HDMV IGS (menus) content",
+    "igs_parser"
   ),
 
   /* HDMV IGS Compiler : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_IGS_COMPL_XML_OPERATIONS,
-    "igs_compl_xml_operations",
-    "HDMV IGS (menus) compiler XML file operations"
+    "HDMV IGS (menus) compiler XML file operations",
+    "igs_compl_xml_operations"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_IGS_COMPL_XML_PARSING,
-    "igs_compl_xml_parsing",
-    "HDMV IGS (menus) compiler XML file content"
+    "HDMV IGS (menus) compiler XML file content",
+    "igs_compl_xml_parsing"
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_IGS_COMPL_OPERATIONS,
-    "igs_compl_operations",
-    "HDMV IGS (menus) compiler operations"
+    "HDMV IGS (menus) compiler operations",
+    "igs_compl_operations"
   )
 #undef DECLARE_OPTION
+#undef DECLARE_RANGE
 };
 
-static char enabledStatus[LIBBLU_NB_STATUS] = {
+static void _printDebugOptions(
+  void
+)
+{
+  LIBBLU_ERROR("List of all available debugging options: ");
+  const char * sep = "";
+  for (size_t i = 0; i < ARRAY_SIZE(debugging_options); i++) {
+    if (SINGLE_OPTION == debugging_options[i].type) {
+      LIBBLU_ERROR_NO_HEADER("%s'%s'", sep, debugging_options[i].single.names[0]);
+      sep = ", ";
+    }
+  }
+  LIBBLU_ERROR_NO_HEADER(".\n");
+}
+
+static char enabled_status[LIBBLU_NB_STATUS] = {
   0
 };
-static bool enabledDebug = false;
+static bool enabled_debug = false;
+
+static int _checkApplyDebugOption(
+  const char * req_opt_name,
+  size_t i
+)
+{
+
+  if (SINGLE_OPTION == debugging_options[i].type) {
+    char * const * opt_name = debugging_options[i].single.names;
+    for (; NULL != *opt_name; opt_name++) {
+      if (0 == strcmp(req_opt_name, *opt_name)) {
+        LibbluStatus status = debugging_options[i].single.opt;
+
+        enabled_debug = true;
+        enabled_status[status] = 1;
+
+        if (status == LIBBLU_DEBUG_GLB)
+          memset(enabled_status, 1, ARRAY_SIZE(enabled_status));
+        return 1;
+      }
+    }
+  }
+  else { // RANGE == debugging_options[i].type
+    if (0 == strcmp(req_opt_name, debugging_options[i].range.name)) {
+      for (size_t j = 0; 0 < debugging_options[i].range.values[j]; j++)
+        enabled_status[debugging_options[i].range.values[j]] = 1;
+      return 1;
+    }
+  }
+
+  return 0;
+}
 
 int enableDebugStatusString(
   const char * string
 )
 {
   do {
-    LibbluStatus status;
-    char modeName[50];
-    size_t i;
-    int ret;
-
+    // Skip empty prefix
     while (isspace(*string) || ispunct(*string))
       string++;
-    if (EOF == (ret = sscanf(string, "%49[A-Za-z0-9_]s", modeName)))
+
+    char req_opt_name[50];
+    int ret;
+    if (EOF == (ret = sscanf(string, "%49[A-Za-z0-9_]s", req_opt_name)))
       return -1;
     if (!ret)
       LIBBLU_ERROR_RETURN(
@@ -343,27 +455,19 @@ int enableDebugStatusString(
         string
       );
 
-    status = LIBBLU_FATAL_ERROR;
-    for (i = 0; i < ARRAY_SIZE(debuggingOptions); i++) {
-      if (0 == strcmp(modeName, debuggingOptions[i].name)) {
-        status = debuggingOptions[i].opt;
-        break;
-      }
+    bool valid = false;
+    for (size_t i = 0; !valid && i < ARRAY_SIZE(debugging_options); i++) {
+      if (_checkApplyDebugOption(req_opt_name, i))
+        valid = true;
     }
 
-    if (status <= LIBBLU_FATAL_ERROR)
-      LIBBLU_ERROR_RETURN(
-        "Unknown debugging mode '%s'.\n",
-        string
-      );
-
-    enabledDebug = true;
-    enabledStatus[status] = 1;
-    if (status == LIBBLU_DEBUG_GLB) {
-      memset(enabledStatus, 1, ARRAY_SIZE(enabledStatus));
+    if (!valid) {
+      LIBBLU_ERROR("Unknown debugging mode '%s'.\n", string);
+      _printDebugOptions();
+      return -1;
     }
 
-    string += strlen(modeName);
+    string += strlen(req_opt_name);
   } while (*string != '\0');
 
   return 0;
@@ -373,14 +477,47 @@ bool isDebugEnabledLibbbluStatus(
   void
 )
 {
-  return enabledDebug;
+  return enabled_debug;
 }
 
 bool isEnabledLibbbluStatus(
   LibbluStatus status
 )
 {
-  return enabledStatus[status];
+  return enabled_status[status];
+}
+
+static FILE * debugging_fd = NULL;
+
+int initDebugLogFile(
+  const lbc * log_filepath
+)
+{
+  FILE * fd = lbc_fopen(log_filepath, "w");
+  if (NULL == fd)
+    LIBBLU_ERROR_RETURN(
+      "Unable to create output log file '%" PRI_LBCS "', %s (errno: %d).\n",
+      log_filepath,
+      strerror(errno),
+      errno
+    );
+
+  LIBBLU_DEBUG_COM("Set output log file to '%" PRI_LBCS "'.\n", log_filepath);
+  debugging_fd = fd;
+  return 0;
+}
+
+int closeDebugLogFile(
+  void
+)
+{
+  if (NULL != debugging_fd && fclose(debugging_fd) < 0)
+    LIBBLU_ERROR_RETURN(
+      "Unable to close output log file, %s (errno: %d).\n",
+      strerror(errno),
+      errno
+    );
+  return 0;
 }
 
 void echoMessageFdVa(
@@ -390,7 +527,11 @@ void echoMessageFdVa(
   va_list args
 )
 {
-  if (status < LIBBLU_DEBUG_GLB || enabledStatus[status])
+  assert(NULL != fd);
+  assert(NULL != format);
+  assert(status < ARRAY_SIZE(enabled_status));
+
+  if (status < LIBBLU_DEBUG_GLB || enabled_status[status])
     lbc_vfprintf(fd, format, args);
 }
 
@@ -400,9 +541,17 @@ void echoMessageVa(
   va_list args
 )
 {
-  if (LIBBLU_WARNING <= status)
+  // Print everything to log file if enabled:
+  if (NULL != debugging_fd)
+    echoMessageFdVa(debugging_fd, status, format, args);
+  // Print debug to stderr if log is not enabled:
+  if (LIBBLU_DEBUG_GLB <= status && NULL == debugging_fd)
     echoMessageFdVa(stderr, status, format, args);
-  else
+  // Print warning and errors to stderr:
+  if (LIBBLU_WARNING <= status && status < LIBBLU_DEBUG_GLB)
+    echoMessageFdVa(stderr, status, format, args);
+  // Print info to stdout:
+  if (status <= LIBBLU_INFO)
     echoMessageFdVa(stdout, status, format, args);
 }
 
@@ -433,37 +582,70 @@ void echoMessage(
   va_end(args);
 }
 
-void printListLibbbluStatus(
+void printDebuggingMessageCategoriesList(
+  unsigned indent
+)
+{
+  for (size_t i = 0; i < ARRAY_SIZE(debugging_options); i++) {
+    if (SINGLE_OPTION != debugging_options[i].type)
+      continue;
+
+    lbc_printf("%-*c- %s", indent, ' ', debugging_options[i].single.names[0]);
+
+    char * prefix = " (";
+    char * suffix = "";
+    char * const * name = &debugging_options[i].single.names[1];
+    for (; NULL != *name; name++) {
+      lbc_printf("%s%s", prefix, *name);
+      prefix = ", ";
+      suffix = ")";
+    }
+
+    lbc_printf("%s;\n", suffix);
+  }
+}
+
+void printDebuggingMessageCategoriesListWithDesc(
   unsigned indent
 )
 {
   size_t i;
 
-  for (i = 0; i < ARRAY_SIZE(debuggingOptions); i++) {
+  for (i = 0; i < ARRAY_SIZE(debugging_options); i++) {
+    if (SINGLE_OPTION != debugging_options[i].type)
+      continue;
+
+    lbc_printf("%-*c- '%s'", indent, ' ', debugging_options[i].single.names[0]);
+
+    char * prefix = " (aliase(s): ";
+    char * suffix = "";
+    char * const * name = &debugging_options[i].single.names[1];
+    for (; NULL != *name; name++) {
+      lbc_printf("%s'%s'", prefix, *name);
+      prefix = ", ";
+      suffix = ")";
+    }
+    lbc_printf("%s:\n", suffix);
+
     lbc_printf(
-      "%-*c- %s;\n",
+      "%-*c   %s.\n",
       indent, ' ',
-      debuggingOptions[i].name
+      debugging_options[i].desc
     );
   }
 }
 
-void printListWithDescLibbbluStatus(
+void printDebuggingMessageRangesListWithDesc(
   unsigned indent
 )
 {
   size_t i;
 
-  for (i = 0; i < ARRAY_SIZE(debuggingOptions); i++) {
-    lbc_printf(
-      "%-*c- %s;\n",
-      indent, ' ',
-      debuggingOptions[i].name
-    );
-    lbc_printf(
-      "%-*c   %s.\n",
-      indent, ' ',
-      debuggingOptions[i].desc
-    );
+  for (i = 0; i < ARRAY_SIZE(debugging_options); i++) {
+    if (RANGE != debugging_options[i].type)
+      continue;
+
+    lbc_printf("%-*c- '%s':\n", indent, ' ', debugging_options[i].range.name);
+    lbc_printf("%-*c   %s.\n", indent, ' ', debugging_options[i].desc);
   }
 }

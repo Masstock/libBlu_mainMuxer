@@ -41,11 +41,11 @@ typedef struct {
 } H264WarningFlags;
 
 typedef struct {
-  EsmsFileHeaderPtr esms;
+  EsmsHandlerPtr esms;
   BitstreamWriterPtr esmsFile;
 
   H264NalDeserializerContext file;
-  unsigned esmsSrcFileIdx;
+  uint8_t esmsSrcFileIdx;
 
   H264AccessUnitDelimiterParameters accessUnitDelimiter;
   bool accessUnitDelimiterPresent;
@@ -126,7 +126,7 @@ typedef struct {
   uint8_t * writingPointer;  /**< Byte array writting offset pointer.        */
   uint8_t * endPointer;      /**< Pointer to the byte following the end of
     the allocated byte array.                                                */
-  size_t allocatedSize;      /**< Byte array allocated size.                 */
+  uint16_t allocatedSize;    /**< Byte array allocated size.                 */
 
   bool rbspZone;             /**< Set to true to append following bits as
     'rbsp_byte' fields, requiring insertion of 'emulation_prevention_
@@ -139,7 +139,7 @@ typedef struct {
   unsigned nbZeroBytes;      /**< Current number of consecutive zero bytes.  */
 } H264NalByteArrayHandler, *H264NalByteArrayHandlerPtr;
 
-static inline size_t nbBytesH264NalByteArrayHandler(
+static inline uint16_t nbBytesH264NalByteArrayHandler(
   const H264NalByteArrayHandlerPtr baHandler
 )
 {

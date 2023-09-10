@@ -82,6 +82,11 @@ static void printHelp(
   P("  --printdebug             Display every debugging option with a short ");
   P("                           description.                                ");
   P("                                                                       ");
+  P("  --log <logfile>          Set a log file that will be used to save    ");
+  P("                           enabled debug messages instead of using     ");
+  P("                           standard error output. The other messages   ");
+  P("                           (info, error) are also recorded.            ");
+  P("                                                                       ");
   P(" If no output filename is specified, \"out.m2ts\" default filename     ");
   P(" is used.                                                              ");
   P("                                                                       ");
@@ -313,27 +318,32 @@ static void printHelp(
   // P("                      overwritten by --disable-hrd-verifier.           ");
   // P("                                                                       ");
   // TODO
-  P(" = Debugging options : =============================================== ");
+  P(" = Debugging messages : ============================================== ");
   P("                                                                       ");
   P(" Enabling debugging mode allows to show various informations about     ");
   P(" program activities. Including bitstreams parsed data, muxer decisions ");
   P(" based on T-STD Buffering Verifier etc.                                ");
   P("                                                                       ");
-  P(" Debugging messages are categorized and can be activated by name with  ");
-  P(" the '--debug' command line option. if no option is specified, every   ");
-  P(" option is enabled (as if the option \"all\" is used). Otherwise,      ");
-  P("syntax to enable requested options is as following.                    ");
   P("                                                                       ");
-  P("  --debug=\"categoryOne, categoryTwo, categoryThree, ...\"             ");
+  P(" Debugging messages are categorized (per module, type of operation...) ");
+  P(" and can be triggered using the --debug/-d command line option. Without");
+  P(" further argument, the command enables every message category.         ");
+  P(" Otherwise, a selected list of categories can be enabled using the     ");
+  P(" following syntax:                                                     ");
   P("                                                                       ");
-  P(" Here is the list of available categories:                             ");
-  printListLibbbluStatus(3);
+  P("  --debug=\"category_one, category_two...\"                            ");
   P("                                                                       ");
-  P(" NOTE: Use option --printdebug to see description of each category.    ");
+  P(" where category_one, category_two and so long are one of the following ");
+  P(" list:                                                                 ");
+  printDebuggingMessageCategoriesList(3);
+  P("                                                                       ");
+  P(" Categories can also be enabled by topic range:                        ");
+  P("                                                                       ");
+  P(" See --printdebug to print list of categories and ranges of categories ");
+  P(" with descriptions.                                                    ");
   P("                                                                       ");
   P(" Example:                                                              ");
-  P("                                                                       ");
-  P("  ./mainMuxer inputMetafile.meta out.m2ts --debug=\"all\"              ");
+  P("  ./mainMuxer input.meta output.m2ts --debug=\"h264_parsing_nalu, t_std_operations\"");
   P("                                                                       ");
   P(" = IGS compiler : ==================================================== ");
   P("                                                                       ");
@@ -391,9 +401,12 @@ static void printDebugOptions(
 )
 {
 #define P(str) lbc_printf(str "\n")
-  P(" = Debugging categories : ============================================ ");
-  P(" List of available debugging options (see -h/--help for use).          ");
-  printListWithDescLibbbluStatus(3);
+  P(" = Debugging messages categories : =================================== ");
+  P(" List of debugging messages categories:                                ");
+  printDebuggingMessageCategoriesListWithDesc(3);
+  P("                                                                       ");
+  P(" List of ranges:                                                       ");
+  printDebuggingMessageRangesListWithDesc(3);
   P(" ===================================================================== ");
 #undef P
 
@@ -436,7 +449,8 @@ int main(
     HELP,
     INPUT,
     OUTPUT,
-    PRINT_DEBUG_OPTIONS
+    PRINT_DEBUG_OPTIONS,
+    LOG_FILE
   };
 
   static const struct option programOptions[] = {
@@ -455,6 +469,7 @@ int main(
     {"o"               , required_argument, NULL, OUTPUT                     },
     {"output"          , required_argument, NULL, OUTPUT                     },
     {"printdebug"      , no_argument      , NULL, PRINT_DEBUG_OPTIONS        },
+    {"log"             , required_argument, NULL, LOG_FILE                   },
     {NULL              , no_argument      , NULL, END_OF_LIST                }
   };
 
@@ -553,6 +568,13 @@ int main(
       case PRINT_DEBUG_OPTIONS:
         printDebugOptions();
         return 0;
+
+      case LOG_FILE:
+        if (NULL == optarg)
+          LIBBLU_ERROR_RETURN("Expect a log filename after '--log'.\n");
+        if (initDebugLogFile(ARG_VAL) < 0)
+          return -1;
+        break;
 
       default:
         LIBBLU_ERROR_RETURN(

@@ -109,4 +109,16 @@ static inline int padWordLibbluBitReader(
   return 0;
 }
 
+static inline int padDwordLibbluBitReader(
+  LibbluBitReader * br
+)
+{
+  unsigned padding_size = (~(br->offset - 1)) & 0x1F;
+
+  if (remainingBitsLibbluBitReader(br) < padding_size)
+    LIBBLU_ERROR_RETURN("Prematurate end of file.\n");
+  skipLibbluBitReader(br, padding_size);
+  return 0;
+}
+
 #endif

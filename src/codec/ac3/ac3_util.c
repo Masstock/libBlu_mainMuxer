@@ -11,8 +11,8 @@ int initAc3Context(
   const LibbluESSettingsOptions options = settings->options;
   BitstreamReaderPtr es_bs = NULL;
   BitstreamWriterPtr script_bs = NULL;
-  EsmsFileHeaderPtr script = NULL;
-  unsigned src_file_idx;
+  EsmsHandlerPtr script = NULL;
+  uint8_t src_file_idx;
 
   /* ES input */
   es_bs = createBitstreamReaderDefBuf(settings->esFilepath);
@@ -25,11 +25,11 @@ int initAc3Context(
     LIBBLU_AC3_ERROR_FRETURN("Unable to create output script file.\n");
 
   /* Prepare ESMS output file */
-  script = createEsmsFileHandler(ES_AUDIO, options, FMT_SPEC_INFOS_AC3);
+  script = createEsmsHandler(ES_AUDIO, options, FMT_SPEC_INFOS_AC3);
   if (NULL == script)
     LIBBLU_AC3_ERROR_FRETURN("Unable to create output script handler.\n");
 
-  if (appendSourceFileEsms(script, settings->esFilepath, &src_file_idx) < 0)
+  if (appendSourceFileEsmsHandler(script, settings->esFilepath, &src_file_idx) < 0)
     LIBBLU_AC3_ERROR_FRETURN("Unable to add source file to script handler.\n");
 
   /* Write script header */
@@ -51,7 +51,7 @@ int initAc3Context(
 
 free_return:
   closeBitstreamWriter(script_bs);
-  destroyEsmsFileHandler(script);
+  destroyEsmsHandler(script);
 
   return -1;
 }
@@ -239,29 +239,29 @@ int completeFrameAc3Context(
 
   switch (au->type) {
     case AC3_CORE:
-      if (initEsmsAudioPesFrame(ctx->script, false, false, ctx->core.pts, 0) < 0)
+      if (initAudioPesPacketEsmsHandler(ctx->script, false, false, ctx->core.pts, 0) < 0)
         return -1;
       break;
 
     case AC3_EAC3:
       if (ctx->skip_ext)
         return 0; // Skip extensions.
-      if (initEsmsAudioPesFrame(ctx->script, true, false, ctx->eac3.pts, 0) < 0)
+      if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->eac3.pts, 0) < 0)
         return -1;
       break;
 
     case AC3_TRUEHD:
       if (ctx->skip_ext)
         return 0; // Skip extensions.
-      if (initEsmsAudioPesFrame(ctx->script, true, false, ctx->mlp.pts, 0) < 0)
+      if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->mlp.pts, 0) < 0)
         return -1;
       break;
   }
 
-  if (appendAddPesPayloadCommand(ctx->script, sfile_idx, 0x0, au->start_offset, au->size) < 0)
+  if (appendAddPesPayloadCommandEsmsHandler(ctx->script, sfile_idx, 0x0, au->start_offset, au->size) < 0)
     return -1;
 
-  if (writeEsmsPesPacket(ctx->script_bs, ctx->script) < 0)
+  if (writePesPacketEsmsHandler(ctx->script_bs, ctx->script) < 0)
     return -1;
 
   return 0;
@@ -311,16 +311,6 @@ static int _detectStreamType(
   else
     *type = AC3_CORE;
 
-  return 0;
-}
-
-static int _writeScriptEndMarker(
-  Ac3Context * ctx
-)
-{
-  /* [v8 endMarker] */
-  if (writeByte(ctx->script_bs, ESMS_SCRIPT_END_MARKER) < 0)
-    LIBBLU_AC3_ERROR_RETURN("Unable to write script end marker.\n");
   return 0;
 }
 
@@ -416,14 +406,14 @@ static void _setScriptProperties(
   Ac3ContentType stream_type
 )
 {
-  EsmsFileHeaderPtr script = ctx->script;
+  EsmsHandlerPtr script = ctx->script;
 
-  assert(NULL != script->fmtSpecProp.ac3);
+  assert(NULL != script->fmt_prop.ac3);
 
   _setLibbluESProperties(ctx, &script->prop, stream_type);
-  _setLibbluESAc3SpecProperties(ctx, script->fmtSpecProp.ac3);
+  _setLibbluESAc3SpecProperties(ctx, script->fmt_prop.ac3);
 
-  script->endPts = ctx->core.pts;
+  script->PTS_final = ctx->core.pts;
   script->bitrate = _peakBitrateAc3FrameType(stream_type);
 }
 
@@ -475,23 +465,19 @@ int completeAc3Context(
   Ac3Context * ctx
 )
 {
-  Ac3ContentType stream_type;
 
+  Ac3ContentType stream_type;
   if (_detectStreamType(ctx, &stream_type) < 0)
     return -1;
-
-  if (_writeScriptEndMarker(ctx) < 0)
-    return -1;
-
   _setScriptProperties(ctx, stream_type);
   _printStreamInfos(ctx, stream_type);
 
-  if (addEsmsFileEnd(ctx->script_bs, ctx->script) < 0)
+  if (completePesCuttingScriptEsmsHandler(ctx->script_bs, ctx->script) < 0)
     return -1;
   closeBitstreamWriter(ctx->script_bs);
   ctx->script_bs = NULL;
 
-  if (updateEsmsHeader(ctx->script_fp, ctx->script) < 0)
+  if (updateEsmsFile(ctx->script_fp, ctx->script) < 0)
     return -1;
 
   cleanAc3Context(ctx);
@@ -506,6 +492,6 @@ void cleanAc3Context(
     return;
   closeBitstreamReader(ctx->bs);
   closeBitstreamWriter(ctx->script_bs);
-  destroyEsmsFileHandler(ctx->script);
+  destroyEsmsHandler(ctx->script);
   free(ctx->buffer);
 }

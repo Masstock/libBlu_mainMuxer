@@ -28,22 +28,15 @@ LibbluStreamCodingType guessESStreamCodingType(
 
 /* ### ES Format Utilities : ############################################### */
 
+typedef int (*LibbluAnalyze_fun) (LibbluESParsingSettings *);
+
 typedef struct {
   bool initialized;
   LibbluStreamCodingType codingType;
 
-  int (*analyze) (LibbluESParsingSettings *);
-  LibbluESPesPacketHeaderPrepFun preparePesHeader;
+  LibbluAnalyze_fun analyze;
+  LibbluPesPacketHeaderPrep_fun preparePesHeader;
 } LibbluESFormatUtilities;
-
-static inline void cleanLibbluESFormatUtilities(
-  LibbluESFormatUtilities * dst
-)
-{
-  *dst = (LibbluESFormatUtilities) {
-    .initialized = false
-  };
-}
 
 int initLibbluESFormatUtilities(
   LibbluESFormatUtilities * dst,

@@ -173,9 +173,6 @@ static unsigned getBranchHdmvQuantizationHexatree(
 
 } */
 
-/* #define getBranchHdmvQuantizationHexatree(d, r) \
-  ({fprintf(stderr, "%d getBranchHdmvQuantizationHexatree()", __LINE__); getBranchHdmvQuantizationHexatree(d, r); }) */
-
 static int splitLeafHdmvQuantizationHexatree(
   HdmvQuantHexTreeNodesInventoryPtr inv,
   HdmvQuantHexTreeNodePtr * tree,

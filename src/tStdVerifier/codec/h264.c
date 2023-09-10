@@ -10,7 +10,7 @@
 
 int createH264BufferingChainBdavStd(
   BufModelNode * root,
-  LibbluESPtr stream,
+  LibbluES * stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 )
@@ -20,34 +20,34 @@ int createH264BufferingChainBdavStd(
   BufModelNode tb, mb, eb;
   BufModelBufferParameters tbParam, mbParam, ebParam;
 
-  size_t maxCpb, maxBr, cpb_size, bit_rate;
+  size_t maxCpb, maxBr, CpbSize, BitRate;
   size_t mbs, bsmux, bsoh;
 
-  if (!(maxCpb = getH264MaxCPB(stream->prop.level_idc)))
+  if (!(maxCpb = getH264MaxCPB(stream->prop.level_IDC)))
     LIBBLU_ERROR_RETURN(
       "Unable to define input stream buffering parameters, "
       "unknown level_idc %u for getH264MaxCPB().\n",
-      stream->prop.level_idc
+      stream->prop.level_IDC
     );
-  if (!(maxBr = getH264MaxBR(stream->prop.level_idc)))
+  if (!(maxBr = getH264MaxBR(stream->prop.level_IDC)))
     LIBBLU_ERROR_RETURN(
       "Unable to define input stream buffering parameters, "
       "unknown level_idc %u for getH264MaxCPB().\n",
-      stream->prop.level_idc
+      stream->prop.level_IDC
     );
 
-  if (NULL == stream->fmtSpecProp.h264) {
-    cpb_size = 1200 * maxCpb;
-    bit_rate = 1.2 * stream->prop.bitrate;
+  if (NULL == stream->fmt_prop.h264) {
+    CpbSize = 1200 * maxCpb;
+    BitRate = 1.2 * stream->prop.bitrate;
   }
   else {
-    cpb_size = stream->fmtSpecProp.h264->cpbSize;
-    bit_rate = 1.2 * stream->fmtSpecProp.h264->bitrate;
+    CpbSize = stream->fmt_prop.h264->CpbSize;
+    BitRate = 1.2 * stream->fmt_prop.h264->BitRate;
   }
 
   /* Clipping values to BDAV constraints */
-  cpb_size = MIN(cpb_size, 30000000);
-  bit_rate = MIN(bit_rate, 48000000);
+  CpbSize = MIN(CpbSize, 30000000);
+  BitRate = MIN(BitRate, 48000000);
 
   tbParam = (BufModelBufferParameters) {
     .name = TRANSPORT_BUFFER,
@@ -58,7 +58,7 @@ int createH264BufferingChainBdavStd(
 
   bsmux = 0.004 * MAX(1200 * maxBr, 2000000);
   bsoh = (1.0 / 750.0) * MAX(1200 * maxBr, 2000000);
-  mbs = MAX(bsmux + bsoh + 1200 * maxCpb, cpb_size) - cpb_size;
+  mbs = MAX(bsmux + bsoh + 1200 * maxCpb, CpbSize) - CpbSize;
 
   mbParam = (BufModelBufferParameters) {
     .name = MULTIPLEX_BUFFER,
@@ -71,7 +71,7 @@ int createH264BufferingChainBdavStd(
     .name = ELEMENTARY_BUFFER,
     .instantFilling = true,
     .dontOverflowOutput = false,
-    .bufferSize = cpb_size
+    .bufferSize = CpbSize
   };
 
   /* Create TB */
@@ -79,7 +79,7 @@ int createH264BufferingChainBdavStd(
     buffersList, &tb,
     tbParam,
     initialTimestamp,
-    bit_rate /* Rx */
+    BitRate /* Rx */
   );
   if (ret < 0)
     return -1;

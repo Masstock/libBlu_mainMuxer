@@ -228,7 +228,7 @@ typedef struct {
 
   uint64_t lastUpdate;             /**< Last buffer updating timestamp.      */
 
-  CircularBufferPtr storedFrames;  /**< Buffer pending data frames. FIFO
+  CircularBuffer * storedFrames;  /**< Buffer pending data frames. FIFO
     of #BufferFrame.                                                         */
 } BufModelBufferCommonHeader;
 

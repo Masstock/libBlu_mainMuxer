@@ -122,7 +122,7 @@ static int _initPmtSystemStream(
 )
 {
   LibbluESProperties esProperties[LIBBLU_MAX_NB_STREAMS];
-  LibbluESFmtSpecProp esFmtSpecProperties[LIBBLU_MAX_NB_STREAMS];
+  LibbluESFmtProp esFmtSpecProperties[LIBBLU_MAX_NB_STREAMS];
   uint16_t esStreamsPids[LIBBLU_MAX_NB_STREAMS];
   uint16_t pcrPID;
 
@@ -143,7 +143,7 @@ static int _initPmtSystemStream(
 
   for (unsigned i = 0; i < nbEsStreams; i++) {
     esProperties[i] = ctx->elementaryStreams[i]->es.prop;
-    esFmtSpecProperties[i] = ctx->elementaryStreams[i]->es.fmtSpecProp;
+    esFmtSpecProperties[i] = ctx->elementaryStreams[i]->es.fmt_prop;
     esStreamsPids[i] = ctx->elementaryStreams[i]->pid;
   }
 
@@ -387,21 +387,23 @@ static int _initiateElementaryStreamsTStdModel(
 
 static int _computePesTiming(
   StreamHeapTimingInfos * timing,
-  const LibbluESPtr es,
+  const LibbluES * es,
   const LibbluMuxingContextPtr ctx
 )
 {
-  uint64_t dts;
-  size_t avgPesPacketSize;
-
-  assert(ctx->stdBufDelay <= es->curPesPacket.prop.dts);
-  dts = es->curPesPacket.prop.dts - ctx->stdBufDelay;
+  if (es->current_pes_packet.dts < ctx->stdBufDelay)
+    LIBBLU_ERROR_RETURN(
+      "Broken DTS/STD Buffering delay (%" PRIu64 " < %" PRIu64 ").\n",
+      es->current_pes_packet.dts,
+      ctx->stdBufDelay
+    );
+  uint64_t dts = es->current_pes_packet.dts - ctx->stdBufDelay;
 
   if (0 == (timing->bitrate = es->prop.bitrate))
     LIBBLU_ERROR_RETURN("Unable to get ES bitrate, broken script.");
 
   if (!es->prop.br_based_on_duration) {
-    if (!es->curPesPacket.prop.extensionFrame)
+    if (!es->current_pes_packet.extension_frame)
       timing->nb_pes_per_sec = es->prop.nb_pes_per_sec;
     else
       timing->nb_pes_per_sec = es->prop.nb_ped_sec_per_sec;
@@ -412,28 +414,29 @@ static int _computePesTiming(
      * use rather PES size compared to bit-rate to compute PES frame duration.
      */
     timing->nb_pes_per_sec = es->prop.bitrate / (
-      es->curPesPacket.data.dataUsedSize * 8
+      es->current_pes_packet.data.size * 8
     );
   }
 
   if (0 == timing->nb_pes_per_sec)
     LIBBLU_ERROR_RETURN("Unable to get ES nb_pes_per_sec, broken script.\n");
 
+  size_t avg_pes_packet_size;
 #if USE_AVERAGE_PES_SIZE
-  if (0 == (avgPesPacketSize = averageSizePesPacketLibbluES(es, 10)))
+  if (0 == (avg_pes_packet_size = averageSizePesPacketLibbluES(es, 10)))
     LIBBLU_ERROR_RETURN("Unable to get a average PES packet size.\n");
 #else
-  avgPesPacketSize = remainingPesDataLibbluES(*es);
+  avg_pes_packet_size = remainingPesDataLibbluES(es);
 #endif
 
-  avgPesPacketSize = MAX(es->prop.bitrate / timing->nb_pes_per_sec / 8, avgPesPacketSize);
+  avg_pes_packet_size = MAX(es->prop.bitrate / timing->nb_pes_per_sec / 8, avg_pes_packet_size);
 
   /** Compute timing values:
    * NOTE: Performed at each PES frame, preventing introduction
    * of variable parameters issues.
    */
   timing->pesDuration = floor(MAIN_CLOCK_27MHZ / timing->nb_pes_per_sec);
-  timing->pesTsNb = DIV_ROUND_UP(avgPesPacketSize, TP_PAYLOAD_SIZE);
+  timing->pesTsNb = DIV_ROUND_UP(avg_pes_packet_size, TP_PAYLOAD_SIZE);
   timing->tsDuration = timing->pesDuration / MAX(1, timing->pesTsNb);
 
 #if SHIFT_PACKETS_BEFORE_DTS
@@ -560,40 +563,40 @@ static int _findValidESScript(
 
 static int _prepareLibbluESStream(
   LibbluMuxingContextPtr ctx,
-  unsigned esStrmId,
-  bool forceRebuildScript
+  unsigned es_stream_id,
+  bool do_force_rebuild_script
 )
 {
-  LibbluESSettings * esSettings;
-  LibbluStreamPtr stream;
-  LibbluESFormatUtilities utilities;
   uint16_t pid;
 
   LIBBLU_DEBUG_COM(" Find/check script filepath.\n");
 
-  esSettings = &ctx->settings.inputStreams[esStrmId];
-  if (_findValidESScript(esSettings, ctx->settings.inputStreams, esStrmId) < 0)
+  LibbluESSettings * es_settings_arr = ctx->settings.inputStreams;
+  LibbluESSettings * es_settings = &es_settings_arr[es_stream_id];
+  if (_findValidESScript(es_settings, es_settings_arr, es_stream_id) < 0)
     return -1;
 
   LIBBLU_DEBUG_COM(" Creation of the Elementary Stream handle.\n");
 
   /* Use a fake PID value (0x0000), real PID value requested later. */
+  LibbluStreamPtr stream;
   if (NULL == (stream = createLibbluStream(TYPE_ES, 0x0000)))
     goto free_return;
-  initLibbluES(&stream->es, esSettings);
+  stream->es.settings_ref = es_settings;
 
   LIBBLU_DEBUG_COM(" Preparation of the ES handle.\n");
 
   /* Get the forced script rebuilding option */
-  forceRebuildScript |= esSettings->options.forcedScriptBuilding;
+  do_force_rebuild_script |= es_settings->options.forcedScriptBuilding;
 
   LIBBLU_DEBUG_COM(
     " Force rebuilding of script: %s.\n",
-    BOOL_STR(forceRebuildScript)
+    BOOL_STR(do_force_rebuild_script)
   );
 
-  if (prepareLibbluES(&stream->es, &utilities, forceRebuildScript) < 0)
-   goto free_return;;
+  LibbluESFormatUtilities utilities;
+  if (prepareLibbluES(&stream->es, &utilities, do_force_rebuild_script) < 0)
+   goto free_return;
 
   LIBBLU_DEBUG_COM(" Request and set PID value.\n");
 
@@ -601,8 +604,8 @@ static int _prepareLibbluESStream(
     goto free_return;
   stream->pid = pid;
 
-  ctx->elementaryStreams[esStrmId] = stream;
-  ctx->elementaryStreamsUtilities[esStrmId] = utilities;
+  ctx->elementaryStreams[es_stream_id] = stream;
+  ctx->elementaryStreamsUtilities[es_stream_id] = utilities;
   return 0;
 
 free_return:
@@ -719,7 +722,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
         LIBBLU_ERROR_FRETURN(
           "Empty script, unable to build a single PES packet, "
           "'%" PRI_LBCS "'.\n",
-          stream->es.settings->scriptFilepath
+          stream->es.settings_ref->scriptFilepath
         );
       case 1: /* Success */
         break;
@@ -1199,7 +1202,7 @@ static int _muxNextESPacket(
   }
 
   /* Check remaining data in processed PES packet : */
-  if (0 == remainingPesDataLibbluES(stream->es)) {
+  if (0 == remainingPesDataLibbluES(&stream->es)) {
     /* If no more data, build new PES packet */
     LibbluESFormatUtilities utilities;
 
@@ -1225,14 +1228,14 @@ static int _muxNextESPacket(
       LIBBLU_DEBUG_PES_BUILDING, "PES building",
       "PID 0x%04" PRIX16 ", %zu bytes, "
       "DTS: %" PRIu64 ", PTS: %" PRIu64 ", currentStcTs: %" PRIu64
-      "(end of script ? %s, Queued frames nb: %u).\n",
+      "(end of script ? %s, Queued frames nb: %zu).\n",
       stream->pid,
-      stream->es.curPesPacket.data.dataUsedSize,
-      stream->es.curPesPacket.prop.dts,
-      stream->es.curPesPacket.prop.pts,
+      stream->es.current_pes_packet.data.size,
+      stream->es.current_pes_packet.dts,
+      stream->es.current_pes_packet.pts,
       ctx->currentStcTs,
       BOOL_INFO(stream->es.endOfScriptReached),
-      stream->es.pesPacketsScriptsQueueSize
+      nbEntriesCircularBuffer(&stream->es.pesPacketsScriptsQueue_)
     );
 
 #if 1
@@ -1259,7 +1262,7 @@ static int _muxNextESPacket(
     /* Update progression bar : */
     ctx->progress =
       (double) (
-        stream->es.curPesPacket.prop.pts
+        stream->es.current_pes_packet.pts
         - ctx->referentialStc
         + stream->es.refPts
       ) / stream->es.endPts

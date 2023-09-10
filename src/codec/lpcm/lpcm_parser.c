@@ -681,7 +681,7 @@ static int _setLPCMAudioDataHeader(
 }
 
 static int _setPesHeader(
-  EsmsFileHeaderPtr script,
+  EsmsHandlerPtr script,
   const WaveFile * chunks,
   unsigned * header_block_idx
 )
@@ -691,7 +691,7 @@ static int _setPesHeader(
   if (_setLPCMAudioDataHeader(header, chunks) < 0)
     return -1;
 
-  if (appendDataBlockEsms(script, header, 4, header_block_idx) < 0)
+  if (appendDataBlockEsmsHandler(script, header, 4, header_block_idx) < 0)
     return -1;
   return 0;
 }
@@ -700,12 +700,12 @@ int analyzeLpcm(
   LibbluESParsingSettings * settings
 )
 {
-  EsmsFileHeaderPtr esms;
-  if (NULL == (esms = createEsmsFileHandler(ES_AUDIO, settings->options, FMT_SPEC_INFOS_NONE)))
+  EsmsHandlerPtr esms;
+  if (NULL == (esms = createEsmsHandler(ES_AUDIO, settings->options, FMT_SPEC_INFOS_NONE)))
     return -1;
 
-  unsigned src_file_idx;
-  if (appendSourceFileEsms(esms, settings->esFilepath, &src_file_idx) < 0)
+  uint8_t src_file_idx;
+  if (appendSourceFileEsmsHandler(esms, settings->esFilepath, &src_file_idx) < 0)
     return -1;
 
   /* Open input/output files : */
@@ -747,20 +747,15 @@ int analyzeLpcm(
       chunks.fmt.common_fields.nSamplesPerSec
     );
 
-  if (16 == chunks.fmt.fmt_spec.pcm.wBitsPerSample)
-    esms->prop.bit_depth = BIT_DEPTH_16_BITS;
-  else if (20 == chunks.fmt.fmt_spec.pcm.wBitsPerSample)
-    esms->prop.bit_depth = BIT_DEPTH_20_BITS;
-  else if (24 == chunks.fmt.fmt_spec.pcm.wBitsPerSample)
-    esms->prop.bit_depth = BIT_DEPTH_24_BITS;
-  else
+  uint16_t wBitsPerSample = chunks.fmt.fmt_spec.pcm.wBitsPerSample;
+  if (16 != wBitsPerSample && 20 != wBitsPerSample && 24 != wBitsPerSample)
     LIBBLU_LPCM_ERROR_RETURN(
       "Invalid audio bit depth value %u, "
       "shall be one of 16, 20 or 24.\n",
       chunks.fmt.fmt_spec.pcm.wBitsPerSample
     );
 
-  esms->prop.bit_depth = ((chunks.fmt.fmt_spec.pcm.wBitsPerSample - 12) >> 2);
+  esms->prop.bit_depth = ((wBitsPerSample - 12) >> 2);
 
   /* Prepare Script Parameters : */
 
@@ -788,21 +783,21 @@ int analyzeLpcm(
     // fprintf(stderr, "0x%llX\n", start_off);
 
     if (
-      initEsmsAudioPesFrame(
+      initAudioPesPacketEsmsHandler(
         esms, false, false, pts, 0
       ) < 0
 
-      || appendAddDataBlockCommand(
-        esms, 0x0, INSERTION_MODE_ERASE, pes_hdr_blk_idx
+      || appendAddDataBlockCommandEsmsHandler(
+        esms, 0x0, INSERTION_MODE_OVERWRITE, pes_hdr_blk_idx
       ) < 0
 
-      || appendAddPesPayloadCommand(
+      || appendAddPesPayloadCommandEsmsHandler(
         esms,
         src_file_idx, LPCM_AUDIO_DATA_HEADER_SIZE, start_off,
         MIN(pes_size, remaining_size)
       ) < 0
 
-      || appendChangeByteOrderCommand(
+      || appendChangeByteOrderCommandEsmsHandler(
         esms,
         sample_size,
         LPCM_AUDIO_DATA_HEADER_SIZE,
@@ -817,10 +812,10 @@ int analyzeLpcm(
       LIBBLU_INFO("Addition of silence at the end of the stream for packets padding.\n");
 
       if (
-        appendPaddingDataCommand(
+        appendPaddingDataCommandEsmsHandler(
           esms,
           LPCM_AUDIO_DATA_HEADER_SIZE + remaining_size,
-          INSERTION_MODE_ERASE,
+          INSERTION_MODE_OVERWRITE,
           pes_size - remaining_size,
           0x00
         )
@@ -828,7 +823,7 @@ int analyzeLpcm(
         return -1;
     }
 
-    if (writeEsmsPesPacket(essOutput, esms) < 0)
+    if (writePesPacketEsmsHandler(essOutput, esms) < 0)
       return -1;
 
     size_t frame_size = MIN(remaining_size, pes_size);
@@ -839,10 +834,6 @@ int analyzeLpcm(
   }
 
   closeBitstreamReader(waveInput);
-
-  /* [u8 endMarker] */
-  if (writeByte(essOutput, ESMS_SCRIPT_END_MARKER) < 0)
-    return -1;
 
   esms->bitrate = (
     fmt->common_fields.nSamplesPerSec
@@ -857,28 +848,28 @@ int analyzeLpcm(
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
     "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
-    streamCodingTypeStr(esms->prop.coding_type),
+    LibbluStreamCodingTypeStr(esms->prop.coding_type),
     AudioFormatCodeStr(esms->prop.audio_format),
     fmt->common_fields.wChannels,
     valueSampleRateCode(esms->prop.sample_rate),
     valueBitDepthCode(esms->prop.bit_depth)
   );
   lbc_printf(
-    "Stream Duration: %02ld:%02ld:%02ld\n",
+    "Stream Duration: %02u:%02u:%02u\n",
     stream_duration / 60 / 60,
     stream_duration / 60 % 60,
     stream_duration % 60
   );
   lbc_printf("=======================================================================================\n");
 
-  esms->endPts = pts;
+  esms->PTS_final = pts;
 
-  if (addEsmsFileEnd(essOutput, esms) < 0)
+  if (completePesCuttingScriptEsmsHandler(essOutput, esms) < 0)
     return -1;
   closeBitstreamWriter(essOutput);
 
-  if (updateEsmsHeader(settings->scriptFilepath, esms) < 0)
+  if (updateEsmsFile(settings->scriptFilepath, esms) < 0)
     return -1;
-  destroyEsmsFileHandler(esms);
+  destroyEsmsHandler(esms);
   return 0;
 }

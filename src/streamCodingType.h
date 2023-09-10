@@ -45,7 +45,7 @@ typedef enum {
   STREAM_CODING_TYPE_DTSE_SEC  =  0xA2   /**< DTS-Express secondary audio.   */
 } LibbluStreamCodingType;
 
-const lbc * streamCodingTypeStr(
+const lbc * LibbluStreamCodingTypeStr(
   LibbluStreamCodingType sct
 );
 
@@ -144,54 +144,54 @@ static inline const char * libbluESTypeStr(
 )
 {
   static const char * types[] = {
-    "video",
-    "audio",
+    "Video",
+    "Audio",
     "HDMV"
   };
 
-  if (0 <= type && type < ARRAY_SIZE(types))
-    return types[type];
-  return "unknown";
+  return types[type];
 }
 
-static inline LibbluESType determineLibbluESType(
-  LibbluStreamCodingType codingType
+static inline int determineLibbluESType(
+  LibbluStreamCodingType coding_type,
+  LibbluESType * type_ret
 )
 {
-  switch (codingType) {
-    /* Video :                                               */
-    case STREAM_CODING_TYPE_MPEG1:    /* MPEG-1 (deprecated) */
-    case STREAM_CODING_TYPE_H262:    /* MPEG-2              */
-    case STREAM_CODING_TYPE_AVC:      /* H264-AVC            */
-    case STREAM_CODING_TYPE_VC1:      /* VC-1                */
-    case STREAM_CODING_TYPE_MVC:      /* H264-MVC Dependency */
-    case STREAM_CODING_TYPE_HEVC:     /* H265-HEVC           */
-      return ES_VIDEO;
+  switch (coding_type) {
+    /* Video :                                                               */
+    case STREAM_CODING_TYPE_MPEG1:    /* MPEG-1 (deprecated)                 */
+    case STREAM_CODING_TYPE_H262:     /* H.262/MPEG-2                        */
+    case STREAM_CODING_TYPE_AVC:      /* H.264/AVC                           */
+    case STREAM_CODING_TYPE_VC1:      /* VC-1                                */
+    case STREAM_CODING_TYPE_MVC:      /* H.264/MVC                           */
+    case STREAM_CODING_TYPE_HEVC:     /* H.265/HEVC                          */
+      *type_ret = ES_VIDEO;
+      return 0;
 
-    /* Audio :                                               */
-    case STREAM_CODING_TYPE_LPCM:     /* LPCM                */
-    case STREAM_CODING_TYPE_AC3:      /* AC3 (Dolby Digital) */
-    case STREAM_CODING_TYPE_DTS:      /* DTS                 */
-    case STREAM_CODING_TYPE_TRUEHD:   /* Dolby-TrueHD        */
-    case STREAM_CODING_TYPE_EAC3:     /* E-AC3 (DD Plus)     */
-    case STREAM_CODING_TYPE_HDHR:     /* DTS-HDHR            */
-    case STREAM_CODING_TYPE_HDMA:     /* DTS-HDMA            */
-    /* Secondary Audio :                                     */
-    case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC3 (DD Plus)     */
-    case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express         */
-      return ES_AUDIO;
+    /* Primary Audio :                                                       */
+    case STREAM_CODING_TYPE_LPCM:     /* LPCM                                */
+    case STREAM_CODING_TYPE_AC3:      /* AC-3                                */
+    case STREAM_CODING_TYPE_DTS:      /* DCA                                 */
+    case STREAM_CODING_TYPE_TRUEHD:   /* AC-3+MLP                            */
+    case STREAM_CODING_TYPE_EAC3:     /* E-AC-3                              */
+    case STREAM_CODING_TYPE_HDHR:     /* DTS-HDHR                            */
+    case STREAM_CODING_TYPE_HDMA:     /* DTS-HDMA                            */
+    /* Secondary Audio :                                                     */
+    case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC3 (DD Plus)                     */
+    case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express                         */
+      *type_ret = ES_AUDIO;
+      return 0;
 
-    /* HDMV Streams :                                        */
-    case STREAM_CODING_TYPE_PG:       /* Presentation Graph. */
-    case STREAM_CODING_TYPE_IG:       /* Interactive Graph.  */
-    case STREAM_CODING_TYPE_TEXT:     /* Text-Subtitles      */
-      return ES_HDMV;
+    /* HDMV Streams :                                                        */
+    case STREAM_CODING_TYPE_PG:       /* Presentation Graphics (PG)          */
+    case STREAM_CODING_TYPE_IG:       /* Interactive Graphics (IG)           */
+    case STREAM_CODING_TYPE_TEXT:     /* Text-Subtitles                      */
+      *type_ret = ES_HDMV;
+      return 0;
 
     default:
-      break;
+      return -1; // Error, unknow id
   }
-
-  return -1; /* Error, unknow id                     */
 }
 
 #endif
