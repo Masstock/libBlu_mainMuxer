@@ -72,7 +72,6 @@ SOURCE_FILES =																\
 	codec/dts/dts_dtshd_file.o												\
 	codec/dts/dts_frame.o													\
 	codec/dts/dts_parser.o													\
-	codec/dts/dts_patcher_util.o											\
 	codec/dts/dts_patcher.o													\
 	codec/dts/dts_pbr_file.o												\
 	codec/dts/dts_util.o													\
@@ -137,6 +136,7 @@ SOURCE_FILES =																\
 	tStdVerifier/systemStreams.o											\
 	util.o																	\
 	util/bitStreamHandling.o												\
+	util/bitWriter.o														\
 	util/circularBuffer.o													\
 	util/common.o															\
 	util/crcLookupTables.o													\

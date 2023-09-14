@@ -13,12 +13,12 @@ int parseAc3SyncInfo(
 );
 
 int parseAc3Addbsi(
-  LibbluBitReaderPtr br,
+  LibbluBitReader * br,
   Ac3Addbsi * addbsi
 );
 
 int parseAc3BitStreamInfo(
-  LibbluBitReaderPtr br,
+  LibbluBitReader * br,
   Ac3BitStreamInfoParameters * bsi
 );
 

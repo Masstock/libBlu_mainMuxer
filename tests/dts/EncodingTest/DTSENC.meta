@@ -1,3 +1,4 @@
 MUXOPT --disable-tstd
 A_DTS, "DTSENC.dtshd" --force-esms --pbr="DTSENC.dtspbr"
-# A_DTS, "DTSENC_1509.dtshd" --force-esms --pbr="DTSENC_1509.dtspbr"
+A_DTS, "DTSENC_1152.dtshd" --force-esms --pbr="DTSENC_1152.dtspbr"
+A_DTS, "DTSENC_1509.dtshd" --force-esms --pbr="DTSENC_1509.dtspbr"

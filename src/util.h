@@ -11,6 +11,7 @@
 #define __LIBBLU_MUXER__UTIL_H__
 
 #include "util/bitReader.h"
+#include "util/bitWriter.h"
 #include "util/bitStreamHandling.h"
 #include "util/circularBuffer.h"
 #include "util/common.h"

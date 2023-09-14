@@ -27,7 +27,7 @@
 
 
 int parseEac3SyncInfo(
-  LibbluBitReaderPtr br
+  LibbluBitReader * br
 )
 {
   /* For (bsid == 16) syntax */
@@ -50,7 +50,7 @@ int parseEac3SyncInfo(
 
 
 int parseEac3BitStreamInfo(
-  LibbluBitReaderPtr br,
+  LibbluBitReader * br,
   Eac3BitStreamInfoParameters * bsi
 )
 {

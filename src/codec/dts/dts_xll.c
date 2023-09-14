@@ -29,8 +29,7 @@ static int _checkHeaderCrc(
 )
 {
   CrcContext crc_ctx;
-  initCrcContext(&crc_ctx, DCA_EXT_SS_CRC_PARAM(), DCA_EXT_SS_CRC_INITIAL_V);
-
+  initCrcContext(&crc_ctx, DCA_EXT_SS_CRC_PARAM, DCA_EXT_SS_CRC_INITIAL_V);
   applyTableCrcContext(&crc_ctx, &br->buf[4], ch->nHeaderSize - 6);
 
   if (ch->nCRC16Header != bswap16(completeCrcContext(&crc_ctx)))

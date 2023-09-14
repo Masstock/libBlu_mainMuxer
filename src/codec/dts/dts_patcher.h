@@ -10,8 +10,10 @@
 #ifndef __LIBBLU_MUXER__CODECS__DTS__PATCHER_H__
 #define __LIBBLU_MUXER__CODECS__DTS__PATCHER_H__
 
+#include "../../esms/scriptCreation.h"
+
 #include "dts_data.h"
-#include "dts_patcher_util.h"
+#include "dts_error.h"
 
 /** \~english
  * \brief Append on given ESMS script handle a reconstruction of the Extension
