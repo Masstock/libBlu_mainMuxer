@@ -16,7 +16,8 @@
  *  [1] AC-3/E-AC3 - ETSI TS 102 366 V1.4.1;\n
  *  [2] AC-3/E-AC3 - ATSC Standard A52-2018;\n
  *  [3] TrueHD - Dolby TrueHD (MLP) - High-level bitstream description;\n
- *  [4] Object Audio E-AC3 - ETSI TS 103 420 V1.2.1.
+ *  [4] Object Audio E-AC3 - ETSI TS 103 420 V1.2.1;\n
+ *  [5] ffmpeg source code.
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__AC3__PARSER_H__

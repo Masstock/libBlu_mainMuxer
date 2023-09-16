@@ -66,15 +66,47 @@ static uint8_t _getSyncFrameBsid(
   return (value >> 19) & 0x1F;
 }
 
+
+/** \~english
+ * \brief Return 'format_sync' field from 'major_sync_info()' if present.
+ *
+ * \param input
+ * \return uint32_t
+ */
+static uint32_t _getMlpMajorSyncFormatSyncWord(
+  BitstreamReaderPtr input
+)
+{
+  /* [v4 check_nibble] [u12 access_unit_length] [u16 input_timing] */
+  /* [v32 format_sync] */
+  return (nextUint64(input) & 0xFFFFFFFF);
+}
+
+
+static bool _isPresentMlpMajorSyncFormatSyncWord(
+  BitstreamReaderPtr input
+)
+{
+  uint32_t format_sync = _getMlpMajorSyncFormatSyncWord(input) >> 8;
+
+  return (MLP_SYNCWORD_PREFIX == format_sync);
+}
+
+
 Ac3ContentType initNextFrameAc3Context(
   Ac3Context * ctx
 )
 {
-  Ac3ContentType type = -1;
+  Ac3ContentType type;
 
   if (nextUint16(ctx->bs) == AC3_SYNCWORD) {
     /* AC-3 Core / E-AC-3 */
     uint8_t bsid = _getSyncFrameBsid(ctx->bs);
+
+    LIBBLU_AC3_DEBUG_UTIL(
+      "Next frame syncword 0x%04X with bsid %u.\n",
+      AC3_SYNCWORD, bsid
+    );
 
     if (bsid <= 8) {
       /* AC-3 bit stream syntax */
@@ -95,16 +127,27 @@ Ac3ContentType initNextFrameAc3Context(
     }
   }
 
-  else if (ctx->contains_mlp) {
+  else if (ctx->contains_mlp || _isPresentMlpMajorSyncFormatSyncWord(ctx->bs)) {
+    if (!ctx->contains_mlp) {
+      LIBBLU_AC3_DEBUG_UTIL("Detection of MLP major sync word.\n");
+      ctx->contains_mlp = true;
+    }
+
     /* Expect MLP/TrueHD Access Unit */
     uint64_t next_words = nextUint64(ctx->bs);
 
-    if (!ctx->core.nb_frames) {
+    LIBBLU_AC3_DEBUG_UTIL(
+      "Next frame words 0x%016X.\n",
+      next_words
+    );
+
+    if (!ctx->mlp.nb_frames) {
       /* Expect first Access Unit to contain major sync */
       if (((next_words >> 8) & 0xFFFFFF) == MLP_SYNCWORD_PREFIX) {
         type = AC3_TRUEHD;
       }
-      // TODO: Add support for Dolby_TrueHD_file syntax described in [3].
+      else
+        LIBBLU_TODO(); // TODO: Add support for Dolby_TrueHD_file syntax described in [3].
     }
     else {
       /* Access Unit may contain minor sync, meaning no magic word */
@@ -112,12 +155,18 @@ Ac3ContentType initNextFrameAc3Context(
     }
   }
 
-  if (type < 0)
+  else {
     LIBBLU_AC3_ERROR_RETURN(
       "Unknown sync word 0x%016" PRIX64 " at 0x%" PRIX64 ".\n",
       nextUint64(ctx->bs),
       tellPos(ctx->bs)
     );
+  }
+
+  LIBBLU_AC3_DEBUG_UTIL(
+    "Next frame initialized with %s content detected.\n",
+    Ac3ContentTypeStr(type)
+  );
 
   ctx->cur_au = (Ac3AccessUnit) {
     .type = type,
@@ -452,6 +501,12 @@ static void _printStreamInfos(
     ctx->core.bsi.nbChannels,
     valueSampleRateCode(ctx->script->prop.sample_rate)
   );
+
+  if (ctx->contains_mlp) {
+    const MlpInformations * mi = &ctx->mlp.info;
+    lbc_printf("MLP max output bit-depth: %u bits.\n", mi->observed_bit_depth);
+  }
+
   lbc_printf(
     "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
     (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 / 60,

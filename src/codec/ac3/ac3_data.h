@@ -875,6 +875,8 @@ typedef struct {
   bool mono_audio;
   bool atmos;
   MlpInformationsMatrixSurroundEncoding matrix_surround;
+
+  unsigned observed_bit_depth;
 } MlpInformations;
 
 /** \~english
@@ -1462,6 +1464,10 @@ typedef struct {
  */
 #define MLP_RH_SW_NOISE_TYPE_MASK  0x1
 
+#define MLP_MAX_NB_CHANNELS  8
+
+#define MLP_MAX_NB_MATRIX_CHANNELS  8
+
 typedef struct {
   uint16_t restart_sync_word;
   bool noise_type;
@@ -1470,6 +1476,9 @@ typedef struct {
   uint8_t max_chan;
   uint8_t max_matrix_chan;
   // uint8_t dither_shift;
+  int8_t max_shift;            /**< Max output applied left-shift.           */
+  uint8_t max_lsbs;            /**< Maximum coded LSB size.                  */
+  uint8_t max_bits;
   bool error_protect;
 } MlpRestartHeader;
 
@@ -1517,15 +1526,45 @@ typedef struct {
   MlpMatrix matrices[MLP_MAX_NB_MATRICES];
 } MlpMatrixParameters;
 
+typedef enum {
+  MLP_HUFFCB_NONE,
+  MLP_HUFFCB_TABLE_0,
+  MLP_HUFFCB_TABLE_1,
+  MLP_HUFFCB_TABLE_2
+} MlpHuffmanCodebook;
+
+static const char * MlpHuffmanCodebookStr(
+  MlpHuffmanCodebook huffman_codebook
+)
+{
+  static const char * strings[] = {
+    "None, no entropy coded MSB",
+    "Table 0, -7 to +10 values",
+    "Table 1, -7 to +8 values",
+    "Table 2, -7 to +7 values"
+  };
+
+  return strings[huffman_codebook];
+}
+
+#define MLP_FIR_MAX_ORDER  8
+#define MLP_IIR_MAX_ORDER  4
+#define MLP_FIR_IIR_TOTAL_MAX_ORDER  8
+
+typedef struct {
+  uint8_t filter_order;
+  uint8_t shift;
+} MlpFilter;
+
 typedef struct {
   unsigned fir_filter_nb_changes;
+  MlpFilter fir_filter;
   unsigned iir_filter_nb_changes;
+  MlpFilter iir_filter;
 
-  unsigned huffman_codebook;
-  unsigned num_huffman_lsbs;
+  MlpHuffmanCodebook huffman_codebook;
+  uint8_t num_huffman_lsbs;
 } MlpChannelParameters;
-
-#define MLP_MAX_NB_CHANNELS  8
 
 typedef struct {
   MlpRestartHeader restart_header;
@@ -1538,10 +1577,12 @@ typedef struct {
   MlpMatrixParameters matrix_parameters;
   unsigned matrix_parameters_nb_changes;
 
-  unsigned quant_step_size[MLP_MAX_NB_CHANNELS];
+  uint8_t quant_step_size[MLP_MAX_NB_CHANNELS];
 
   MlpChannelParameters channels_parameters[MLP_MAX_NB_CHANNELS];
 } MlpSubstreamParameters;
+
+#define MLP_MAX_NB_SS  4
 
 #define TRUE_HD_UNITS_PER_SEC  1200
 

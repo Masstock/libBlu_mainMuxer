@@ -6,8 +6,6 @@
 #include "ac3_error.h"
 #include "ac3_data.h"
 
-#define MLP_MAX_NB_SS  4
-
 typedef struct {
   MlpSyncHeaderParameters mlp_sync_header;
   MlpSubstreamDirectoryEntry substream_directory[MLP_MAX_NB_SS];

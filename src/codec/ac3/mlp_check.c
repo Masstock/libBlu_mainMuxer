@@ -229,12 +229,13 @@ static int _checkMlpMajorSyncFormatInfo(
 
   if (
     !((2 == u8chNbCh && b8chMainLRPres) || b8chOnlyLsRsPres)
-    && 0 < fi->u6ch_presentation_channel_modifier
+    && 0 < fi->u8ch_presentation_channel_modifier
   ) {
     LIBBLU_MLP_WARNING(
       "Unexpected '8ch_presentation_channel_modifier' == 0x%" PRIX8 ", "
       "for a %u channels presentation without surround channels nor "
       "Main L/R channels.\n",
+      fi->u8ch_presentation_channel_modifier,
       u8chNbCh
     );
   }

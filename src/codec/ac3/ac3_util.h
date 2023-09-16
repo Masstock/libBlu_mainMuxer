@@ -25,6 +25,21 @@ typedef enum {
   AC3_TRUEHD
 } Ac3ContentType;
 
+static inline const char * Ac3ContentTypeStr(
+  Ac3ContentType type
+)
+{
+  static const char * strings[] = {
+    "AC-3 core",
+    "E-AC-3 extension",
+    "MLP extension"
+  };
+
+  if (0 <= type && type < ARRAY_SIZE(strings))
+    return strings[type];
+  return "unknown";
+}
+
 typedef struct {
   Ac3ContentType type;
 

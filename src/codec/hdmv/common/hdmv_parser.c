@@ -294,7 +294,7 @@ static int _parseHdmvPdsSegment(
     );
 #endif
 
-    memset(param.palette_entries, 0, HDMV_MAX_NB_PDS_ENTRIES * sizeof(HdmvPaletteEntryParameters));
+    memset(param.palette_entries, 0, sizeof(param.palette_entries));
     for (unsigned i = 0; i < param.number_of_palette_entries; i++) {
       if (_parseHdmvPaletteEntry(ctx, param.palette_entries, i) < 0)
         goto free_return;

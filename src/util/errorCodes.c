@@ -170,8 +170,50 @@ static const struct {
   /* AC-3 Audio : */
   DECLARE_OPTION(
     LIBBLU_DEBUG_AC3_PARSING,
-    "AC-3 audio content",
+    "AC-3 audio content parsing",
     "ac3_parsing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_EAC3_PARSING,
+    "Enhanced AC-3 audio content parsing",
+    "eac3_parsing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_MLP_PARSING_HDR,
+    "MLP audio content headers parsing",
+    "mlp_hdr_parsing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_MLP_PARSING_MS,
+    "MLP audio content major sync parsing",
+    "mlp_ms_parsing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_MLP_PARSING_SS,
+    "MLP audio content substreams parsing",
+    "mlp_ss_parsing"
+  ),
+  DECLARE_RANGE(
+    "MLP audio content parsing",
+    "mlp_parsing",
+    LIBBLU_DEBUG_MLP_PARSING_HDR,
+    LIBBLU_DEBUG_MLP_PARSING_MS,
+    LIBBLU_DEBUG_MLP_PARSING_SS
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_AC3_OPERATIONS,
+    "AC-3 audio family parsers operations",
+    "ac3_operations"
+  ),
+  DECLARE_RANGE(
+    "AC-3 audio family parsing and operations",
+    "ac3",
+    LIBBLU_DEBUG_AC3_PARSING,
+    LIBBLU_DEBUG_EAC3_PARSING,
+    LIBBLU_DEBUG_MLP_PARSING_HDR,
+    LIBBLU_DEBUG_MLP_PARSING_MS,
+    LIBBLU_DEBUG_MLP_PARSING_SS,
+    LIBBLU_DEBUG_AC3_OPERATIONS
   ),
 
   /* DTS Audio : */
@@ -399,10 +441,8 @@ static void _printDebugOptions(
   LIBBLU_ERROR_NO_HEADER(".\n");
 }
 
-static char enabled_status[LIBBLU_NB_STATUS] = {
-  0
-};
-static bool enabled_debug = false;
+static char enabled_status[LIBBLU_NB_STATUS];
+static bool enabled_debug;
 
 static int _checkApplyDebugOption(
   const char * req_opt_name,

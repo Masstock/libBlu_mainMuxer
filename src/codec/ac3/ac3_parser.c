@@ -10,37 +10,6 @@
 #include "ac3_parser.h"
 
 
-/* ### MLP : ############################################################### */
-
-
-/** \~english
- * \brief Return 'format_sync' field from 'major_sync_info()' if present.
- *
- * \param input
- * \return uint32_t
- */
-static uint32_t _getMlpMajorSyncFormatSyncWord(
-  BitstreamReaderPtr input
-)
-{
-  /* [v4 check_nibble] [u12 access_unit_length] [u16 input_timing] */
-  /* [v32 format_sync] */
-  return (nextUint64(input) & 0xFFFFFFFF);
-}
-
-static bool _isPresentMlpMajorSyncFormatSyncWord(
-  BitstreamReaderPtr input
-)
-{
-  uint32_t format_sync = _getMlpMajorSyncFormatSyncWord(input) >> 8;
-
-  return (MLP_SYNCWORD_PREFIX == format_sync);
-}
-
-
-/* ######################################################################### */
-
-
 static int _parseAc3CoreSyncFrame(
   Ac3Context * ctx
 )
@@ -84,13 +53,6 @@ static int _parseAc3CoreSyncFrame(
 
   skipLibbluBitReader(&ctx->br, remainingBitsLibbluBitReader(&ctx->br));
 
-  if (!ctx->core.nb_frames) {
-    if (_isPresentMlpMajorSyncFormatSyncWord(ctx->bs)) {
-      LIBBLU_DEBUG_COM("Detection of MLP major sync word.\n");
-      ctx->contains_mlp = true;
-    }
-  }
-
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
@@ -117,8 +79,7 @@ static int _parseEac3SyncFrame(
     return -1;
 
   /* bsi() */
-  Eac3BitStreamInfoParameters bsi;
-  memset(&bsi, 0, sizeof(Eac3BitStreamInfoParameters));
+  Eac3BitStreamInfoParameters bsi = {0};
   if (parseEac3BitStreamInfo(&ctx->br, &bsi) < 0)
     return -1;
 
@@ -234,38 +195,41 @@ static int _parseMlpSyncFrame(
 }
 
 
+static int _parseNextFrame(
+  Ac3Context * ctx
+)
+{
+  switch (initNextFrameAc3Context(ctx)) {
+    case AC3_CORE:
+      return _parseAc3CoreSyncFrame(ctx);
+    case AC3_EAC3:
+      return _parseEac3SyncFrame(ctx);
+    case AC3_TRUEHD:
+      return _parseMlpSyncFrame(ctx);
+  }
+
+  LIBBLU_AC3_DEBUG_UTIL("Unable to parse next frame.\n");
+  return -1;
+}
+
+
 int analyzeAc3(
   LibbluESParsingSettings * settings
 )
 {
-  Ac3Context context;
+  Ac3Context ctx;
 
-  if (initAc3Context(&context, settings) < 0)
+  if (initAc3Context(&ctx, settings) < 0)
     return -1;
 
-  while (!isEofAc3Context(&context)) {
-    printFileParsingProgressionBar(context.bs);
+  while (!isEofAc3Context(&ctx)) {
+    printFileParsingProgressionBar(ctx.bs);
 
-    int ret;
-    switch (initNextFrameAc3Context(&context)) {
-      case AC3_CORE:
-        ret = _parseAc3CoreSyncFrame(&context);
-        break;
-
-      case AC3_EAC3:
-        ret = _parseEac3SyncFrame(&context);
-        break;
-
-      case AC3_TRUEHD:
-        ret = _parseMlpSyncFrame(&context);
-        break;
-    }
-
-    if (ret < 0)
+    if (_parseNextFrame(&ctx) < 0)
       return -1;
   }
 
-  if (completeAc3Context(&context) < 0)
+  if (completeAc3Context(&ctx) < 0)
     return -1;
 
   return 0;

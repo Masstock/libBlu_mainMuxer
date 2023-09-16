@@ -1552,13 +1552,13 @@ uint32_t appendDcaExtSSHeader(
 )
 {
   const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
+  LibbluBitWriter br = {0};
 
   /* Compute size fields */
   unsigned nuBits4Header    = (param->bHeaderSizeType) ? 12 : 8;
   unsigned nuBits4ExSSFsize = (param->bHeaderSizeType) ? 20 : 16;
 
-  uint16_t nuAssetDescriptFsizeArr[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS];
-  MEMSET_ARRAY(nuAssetDescriptFsizeArr, 0);
+  uint16_t nuAssetDescriptFsizeArr[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS] = {0};
 
   for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
     nuAssetDescriptFsizeArr[nAst] = _computeDcaExtSSAudioAssetDescriptorSize(
@@ -1577,9 +1577,6 @@ uint32_t appendDcaExtSSHeader(
   uint32_t nuExtSSFsize = nuExtSSHeaderSize;
   for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++)
     nuExtSSFsize += param->audioAssetsLengths[nAst];
-
-  /* Create destination bitarray handle */
-  LibbluBitWriter br = (LibbluBitWriter) {0};
 
   /* [v32 SYNCEXTSSH] */
   WRITE_BITS(&br, DCA_SYNCEXTSSH, 32, goto free_return);

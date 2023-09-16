@@ -790,6 +790,27 @@ static int _isValidMlpRestartSyncWord(
   );
 }
 
+static const char * _matrixChanStr(
+  uint8_t matrix_chan_idx
+)
+{
+  static const char * strings[] = {
+    "L",
+    "R",
+    "C",
+    "LFE",
+    "Ls",
+    "Rs",
+    "Lb",
+    "Rb",
+    "Cb"
+  };
+
+  if (matrix_chan_idx < ARRAY_SIZE(strings))
+    return strings[matrix_chan_idx];
+  return "unk";
+}
+
 static int _decodeMlpRestartHeader(
   LibbluBitReader * br,
   MlpRestartHeader * restart_hdr,
@@ -844,7 +865,7 @@ static int _decodeMlpRestartHeader(
   restart_hdr->min_chan = min_chan;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (min_chan): "
+    "        Substream minimum carried channel number (min_chan): "
     "%u channels (0x%" PRIX8 ").\n",
     min_chan + 1,
     min_chan
@@ -856,13 +877,26 @@ static int _decodeMlpRestartHeader(
   restart_hdr->max_chan = max_chan;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (max_chan): "
+    "        Substream maximum carried channel number (max_chan): "
     "%u channels (0x%" PRIX8 ").\n",
     max_chan + 1,
     max_chan
   );
 
-  // TODO: Check 'max_chan' according to ss carriage.
+  if (max_chan + 1 < min_chan)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Unexpected min/max number of encoded channels in a substream "
+      "(min_chan = %u, max_chan = %u).\n",
+      min_chan, max_chan
+    );
+
+  if (MLP_MAX_NB_CHANNELS < max_chan + 1)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Maximum number of encoded channels in a substream (max_chan) exceed "
+      "maximum (%u < %u).\n",
+      MLP_MAX_NB_CHANNELS,
+      max_chan + 1
+    );
 
   if (max_chan <= min_chan)
     LIBBLU_MLP_ERROR_RETURN(
@@ -884,7 +918,13 @@ static int _decodeMlpRestartHeader(
     max_matrix_chan
   );
 
-  // TODO: Check 'max_matrix_chan'.
+  if (MLP_MAX_NB_MATRIX_CHANNELS < max_matrix_chan + 1)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Substream number of encoded matrix channels (max_matrix_chan) "
+      "exceed maximum (%u < %u).\n",
+      MLP_MAX_NB_MATRIX_CHANNELS,
+      max_matrix_chan + 1
+    );
 
   /* [u4 dither_shift] */
   uint8_t dither_shift;
@@ -907,18 +947,36 @@ static int _decodeMlpRestartHeader(
   );
 
   /* [s4 max_shift] */
-  uint8_t max_shift;
-  MLP_READ_BITS(&max_shift, br, 4, return -1);
+  uint8_t max_shift_val;
+  MLP_READ_BITS(&max_shift_val, br, 4, return -1);
+  int8_t max_shift = restart_hdr->max_shift = lb_sign_extend(max_shift_val, 4);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (max_shift): %d (0x%" PRIX8 ").\n",
-    lb_sign_extend(max_shift, 4),
-    max_shift
+    "        Maximum LSBs applied left-shift (max_shift): "
+    "%d (0x%" PRIX8 ").\n",
+    max_shift,
+    max_shift_val
   );
+
+  if (max_shift < 0)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Negative applied LSBs max left-shift (max_shift) in substream %u "
+      "restart header (%d).\n",
+      ss_idx,
+      max_shift
+    );
+  if (24 < max_shift)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Invalid applied LSBs max left-shift (max_shift) larger than 24 bits "
+      "in substream %u restart header (%d).\n",
+      ss_idx,
+      max_shift
+    );
 
   /* [u5 max_lsbs] */
   uint8_t max_lsbs;
   MLP_READ_BITS(&max_lsbs, br, 5, return -1);
+  restart_hdr->max_lsbs = max_lsbs;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Maximum bit width of LSBs (max_lsbs): %u (0x%" PRIX8 ").\n",
@@ -926,25 +984,43 @@ static int _decodeMlpRestartHeader(
     max_lsbs
   );
 
-  /* [u5 max_bits] */
-  uint8_t max_bits;
-  MLP_READ_BITS(&max_bits, br, 5, return -1);
-
-  LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (max_bits): %u (0x%" PRIX8 ").\n",
-    max_bits,
-    max_bits
-  );
+  if (24 < max_lsbs)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Invalid max bit width of LSBs (max_lsbs) larger than 24 bits "
+      "in restart header of substream %u (%u).\n",
+      ss_idx,
+      max_lsbs
+    );
 
   /* [u5 max_bits] */
-  // uint8_t max_bits;
-  MLP_READ_BITS(&max_bits, br, 5, return -1);
+  uint8_t max_bits_1;
+  MLP_READ_BITS(&max_bits_1, br, 5, return -1);
+
+  /* [u5 max_bits] */
+  uint8_t max_bits_2;
+  MLP_READ_BITS(&max_bits_2, br, 5, return -1);
+
+  if (max_bits_1 != max_bits_2)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Unexpected non-equal 'max_bits' fields in restart header of "
+      "substream %u.\n",
+      ss_idx
+    );
+  restart_hdr->max_bits = max_bits_1;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (max_bits): %u (0x%" PRIX8 ").\n",
-    max_bits,
-    max_bits
+    "        Maximum output audio bit-depth (max_bits): %u (0x%" PRIX8 ").\n",
+    max_bits_1,
+    max_bits_1
   );
+
+  if (24 < max_bits_1)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Invalid max output audio bit-depth (max_bits) larger than 24 bits "
+      "in restart header of substream %u (%u).\n",
+      ss_idx,
+      max_bits_1
+    );
 
   /* [b1 error_protect] */
   bool error_protect;
@@ -952,8 +1028,8 @@ static int _decodeMlpRestartHeader(
   restart_hdr->error_protect = error_protect;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (error_protect): %s (0b%x).\n",
-    BOOL_STR(error_protect),
+    "        Additional error protection (error_protect): %s (0b%x).\n",
+    BOOL_PRESENCE(error_protect),
     error_protect
   );
 
@@ -962,7 +1038,8 @@ static int _decodeMlpRestartHeader(
   MLP_READ_BITS(&lossless_check, br, 8, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (lossless_check): 0x%02" PRIX8 ".\n",
+    "        Reconstructed lossless audio data parity (lossless_check): "
+    "0x%02" PRIX8 ".\n",
     lossless_check
   );
 
@@ -985,9 +1062,17 @@ static int _decodeMlpRestartHeader(
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "        Channel assignment for matrix channel %u (ch_assign[%u]): "
-      "0x%02" PRIX8 ".\n",
-      ch, ch, ch_assign
+      "%s (0x%02" PRIX8 ").\n",
+      ch, ch,
+      _matrixChanStr(ch_assign),
+      ch_assign
     );
+
+    if (max_matrix_chan < ch_assign)
+      LIBBLU_MLP_ERROR_RETURN(
+        "Out of range channel assignment in substream %u.\n",
+        ss_idx
+      );
   }
 
   uint8_t computed_crc = _computeRestartHeaderChecksum(
@@ -999,7 +1084,7 @@ static int _decodeMlpRestartHeader(
   MLP_READ_BITS(&restart_header_CRC, br, 8, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        TODO (restart_header_CRC): 0x%02" PRIX8 ".\n",
+    "        Restart header checksum (restart_header_CRC): 0x%02" PRIX8 ".\n",
     restart_header_CRC
   );
 
@@ -1021,9 +1106,13 @@ static void _defaultMlpSubstreamParameters(
   unsigned min_chan = ss_param->restart_header.min_chan;
   unsigned max_chan = ss_param->restart_header.max_chan;
   for (unsigned ch = min_chan; ch <= max_chan; ch++) {
-    MlpChannelParameters * ch_param = &ss_param->channels_parameters[ch];
-    ch_param->huffman_codebook = 0x0; // TODO
-    ch_param->num_huffman_lsbs = 24; // 24 bits.
+    MlpChannelParameters * cp = &ss_param->channels_parameters[ch];
+    cp->fir_filter.filter_order = 0;
+    cp->fir_filter.shift = 0;
+    cp->iir_filter.filter_order = 0;
+    cp->iir_filter.shift = 0;
+    cp->huffman_codebook = 0x0; // TODO
+    cp->num_huffman_lsbs = 24; // 24 bits.
   }
 }
 
@@ -1045,7 +1134,7 @@ static int _decodeMlpMatrixParameters(
   matrix_param->num_primitive_matrices = num_primitive_matrices;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "         TODO (num_primitive_matrices): %u (0x%X).\n",
+    "         Number of matrices (num_primitive_matrices): %u (0x%X).\n",
     num_primitive_matrices,
     num_primitive_matrices
   );
@@ -1063,7 +1152,7 @@ static int _decodeMlpMatrixParameters(
     MLP_READ_BITS(&matrix_output_chan, br, 4, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "           TODO (matrix_output_chan[%u]): 0x%" PRIX8 ".\n",
+      "           Output channel (matrix_output_chan[%u]): 0x%" PRIX8 ".\n",
       mat, matrix_output_chan
     );
 
@@ -1072,7 +1161,9 @@ static int _decodeMlpMatrixParameters(
     MLP_READ_BITS(&num_frac_bits, br, 4, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "           TODO (num_frac_bits): %u bit(s).\n",
+      "           Matrix coefficients number of bits (num_frac_bits): "
+      "%u bit(s) (0x%" PRIX8 ").\n",
+      num_frac_bits + 2,
       num_frac_bits
     );
 
@@ -1082,7 +1173,8 @@ static int _decodeMlpMatrixParameters(
     mat_param->lsb_bypass_exists = lsb_bypass_exists;
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "           TODO (lsb_bypass_exists[%u]): %s (0b%x).\n",
+      "           LSB coding bypass fields presence (lsb_bypass_exists[%u]): "
+      "%s (0b%x).\n",
       mat, BOOL_STR(lsb_bypass_exists),
       lsb_bypass_exists
     );
@@ -1092,25 +1184,34 @@ static int _decodeMlpMatrixParameters(
       max_nb_channels += 2; // TODO: +2 noise channels?
 
     for (unsigned ch = 0; ch <= max_nb_channels; ch++) {
+      LIBBLU_MLP_DEBUG_PARSING_SS(
+        "           Channel %u:\n",
+        ch
+      );
+
       /* [b1 matrix_coeff_present[mat][ch]] */
       bool matrix_coeff_present;
       MLP_READ_BITS(&matrix_coeff_present, br, 1, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "           TODO (matrix_coeff_present[%u][%u]): %s (0b%x).\n",
-        mat, ch, BOOL_STR(matrix_coeff_present),
+        "            Matrix coefficient presence (matrix_coeff_present[%u][%u]): "
+        "%s (0b%x).\n",
+        mat, ch,
+        BOOL_STR(matrix_coeff_present),
         matrix_coeff_present
       );
 
       if (matrix_coeff_present) {
         /* [s(2+num_frac_bits) coeff_value[mat][ch]] */
-        unsigned coeff_value;
-        MLP_READ_BITS(&coeff_value, br, 2+num_frac_bits, return -1);
+        unsigned coeff_value_val;
+        MLP_READ_BITS(&coeff_value_val, br, 2+num_frac_bits, return -1);
+        int coeff_value = lb_sign_extend(coeff_value_val, 2+num_frac_bits);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
-          "            TODO (coeff_value[%u][%u]): %d (0x%X).\n",
-          mat, ch, lb_sign_extend(coeff_value, 2+num_frac_bits),
-          coeff_value
+          "             Coefficient value (coeff_value[%u][%u]): %d (0x%X).\n",
+          mat, ch,
+          coeff_value,
+          coeff_value_val
         );
       }
     }
@@ -1121,7 +1222,7 @@ static int _decodeMlpMatrixParameters(
       MLP_READ_BITS(&matrix_noise_shift, br, 4, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "           TODO (matrix_noise_shift[%u]): "
+        "           Matrix noise shift value (matrix_noise_shift[%u]): "
         "%" PRIu8 " (0x%" PRIX8 ").\n",
         mat, matrix_noise_shift,
         matrix_noise_shift
@@ -1137,35 +1238,63 @@ typedef enum {
   MLP_IIR
 } MlpFilterType;
 
+static const char * MlpFilterTypeStr(
+  MlpFilterType filter_type
+)
+{
+  return (MLP_FIR == filter_type) ? "FIR" : "IIR";
+}
+
+static unsigned _filterMaxOrder(
+  MlpFilterType filter_type
+)
+{
+  // Max order for FIR filter: 4
+  // Max order for IIR filter: 8
+  return (MLP_FIR == filter_type) ? MLP_FIR_MAX_ORDER : MLP_IIR_MAX_ORDER;
+}
+
 static int _decodeMlpFilterParameters(
   LibbluBitReader * br,
+  MlpFilter * filter,
   MlpFilterType filter_type
 )
 {
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "          %s filter parameters, filter_parameters(%s)\n",
-    (MLP_FIR == filter_type) ? "FIR" : "IIR",
-    (MLP_FIR == filter_type) ? "FIR_filter_type" : "IIR_filter_type"
+    "          %s filter parameters, filter_parameters(%s_filter_type)\n",
+    MlpFilterTypeStr(filter_type),
+    MlpFilterTypeStr(filter_type)
   );
 
   /* [u4 filter_order] */
   unsigned filter_order;
   MLP_READ_BITS(&filter_order, br, 4, return -1);
+  filter->filter_order = filter_order;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "           TODO (filter_order): %u (0x%X).\n",
+    "           Filter order N (filter_order): %u (0x%X).\n",
     filter_order,
     filter_order
   );
+
+  unsigned max_filter_order = _filterMaxOrder(filter_type);
+  if (max_filter_order < filter_order)
+    LIBBLU_MLP_ERROR_RETURN(
+      "%s filter order exceed max allowed value (%u < %u).\n",
+      MlpFilterTypeStr(filter_type),
+      max_filter_order,
+      filter_order
+    );
 
   if (0 < filter_order) {
     /* [u4 shift] */
     unsigned shift;
     MLP_READ_BITS(&shift, br, 4, return -1);
+    filter->shift = shift;
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "           TODO (shift): %u (0x%X).\n",
+      "           Left shift applied on filter predictions (shift): %u (0x%X).\n",
       shift,
       shift
     );
@@ -1175,28 +1304,48 @@ static int _decodeMlpFilterParameters(
     MLP_READ_BITS(&coeff_bits, br, 5, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "           TODO (coeff_bits): %u (0x%02X).\n",
+      "           Coefficients size (coeff_bits): %u bits (0x%X).\n",
       coeff_bits,
       coeff_bits
     );
+
+    if (coeff_bits < 1 || 16 < coeff_bits)
+      LIBBLU_MLP_ERROR_RETURN(
+        "%s filter coefficients size (coeff_bits) "
+        "shall be between 1 and 16 bits (%u).\n",
+        MlpFilterTypeStr(filter_type),
+        coeff_bits
+      );
 
     /* [u3 coeff_shift] */
     unsigned coeff_shift;
     MLP_READ_BITS(&coeff_shift, br, 3, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "           TODO (coeff_shift): %u (0x%02X).\n",
+      "           Coefficients applied left-shift (coeff_shift): %u (0x%X).\n",
       coeff_shift,
       coeff_shift
     );
 
+    if (16 < coeff_bits + coeff_shift)
+      LIBBLU_MLP_ERROR_RETURN(
+        "%s filter coefficients dimensions, "
+        "sum of their size (coeff_bits = %u) and the applied left-shift "
+        "(coeff_shift = %u), exceed 16 bits.\n",
+        MlpFilterTypeStr(filter_type),
+        coeff_bits,
+        coeff_shift
+      );
+
     for (unsigned i = 0; i < filter_order; i++) {
       /* [u<coeff_bits> coeff[i]] */
-      uint32_t coeff;
+      uint16_t coeff;
       MLP_READ_BITS(&coeff, br, coeff_bits, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "            TODO (coeff[i]): %" PRIu32 " (0x%0*" PRIX32 ").\n",
+        "            Filter coefficient %u (coeff[%u]): "
+        "%" PRIu16 " (0x%0*" PRIX16 ").\n",
+        i, i,
         coeff,
         (coeff_bits + 3) >> 2,
         coeff
@@ -1208,10 +1357,15 @@ static int _decodeMlpFilterParameters(
     MLP_READ_BITS(&state_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "            TODO (state_present): %s (0b%x).\n",
+      "           Filter state values (state_present): %s (0b%x).\n",
       BOOL_PRESENCE(state_present),
       state_present
     );
+
+    if (state_present && filter_type == MLP_FIR)
+      LIBBLU_MLP_ERROR_RETURN(
+        "FIR filter shall not have defined state values.\n"
+      );
 
     if (state_present) {
       /* [u4 state_bits] */
@@ -1219,7 +1373,7 @@ static int _decodeMlpFilterParameters(
       MLP_READ_BITS(&state_bits, br, 4, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "             TODO (state_bits): %u (0x%X).\n",
+        "            State values size (state_bits): %u bit(s) (0x%X).\n",
         state_bits,
         state_bits
       );
@@ -1229,22 +1383,35 @@ static int _decodeMlpFilterParameters(
       MLP_READ_BITS(&state_shift, br, 4, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "             TODO (state_shift): %u (0x%X).\n",
+        "            State values left-shift (state_shift): %u (0x%X).\n",
         state_shift,
         state_shift
       );
 
-      for (unsigned i = 0; i < filter_order; i++) {
-        /* [u<state_bits> state[i]] */
-        uint32_t state;
-        MLP_READ_BITS(&state, br, state_bits, return -1);
-
-        LIBBLU_MLP_DEBUG_PARSING_SS(
-          "             TODO (state[i]): %" PRIu32 " (0x%0*" PRIX32 ").\n",
-          state,
-          (state_bits + 3) >> 2,
-          state
+      if (24 < state_bits + state_shift)
+        LIBBLU_MLP_ERROR_RETURN(
+          "%s filter state values dimensions, sum of their size (state_bits = %u) "
+          "and the applied left-shift (state_shift = %u) exceed 24 bits.\n",
+          MlpFilterTypeStr(filter_type),
+          state_bits,
+          state_shift
         );
+
+      if (0 < state_bits) {
+        for (unsigned i = 0; i < filter_order; i++) {
+          /* [u<state_bits> state[i]] */
+          uint32_t state_val;
+          MLP_READ_BITS(&state_val, br, state_bits, return -1);
+          int state = lb_sign_extend(state_val, state_bits);
+
+          LIBBLU_MLP_DEBUG_PARSING_SS(
+            "             Filter state %u (state[%u]): %d (0x%0*" PRIX32 ").\n",
+            i, i,
+            state,
+            (state_bits + 3) >> 2,
+            state_val
+          );
+        }
       }
     }
   }
@@ -1255,23 +1422,25 @@ static int _decodeMlpFilterParameters(
 static int _decodeMlpChannelParameters(
   LibbluBitReader * br,
   MlpSubstreamParameters * ss_param,
-  unsigned ch_idx
+  unsigned ch_idx,
+  unsigned ss_idx
 )
 {
   MlpChannelParameters * ch_param = &ss_param->channels_parameters[ch_idx];
 
-  LIBBLU_MLP_DEBUG_PARSING_SS(
-    "        Channel %u parameters, channel_parameters[%u]()\n",
-    ch_idx, ch_idx
-  );
-
   if (ss_param->block_header_content & MLP_BHC_FIR_FILTER_PARAMETERS) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "        FIR filter parameters section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_FIR_FILTER_PARAMETERS
+    );
+
     /* [b1 fir_filter_parameters_present] */
     bool fir_filter_parameters_present;
     MLP_READ_BITS(&fir_filter_parameters_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "         TODO (fir_filter_parameters_present): %s (0b%x).\n",
+      "         FIR filter parameters presence "
+      "(fir_filter_parameters_present): %s (0b%x).\n",
       BOOL_PRESENCE(fir_filter_parameters_present),
       fir_filter_parameters_present
     );
@@ -1284,18 +1453,24 @@ static int _decodeMlpChannelParameters(
         );
 
       /* [vn filter_parameters(FIR_filter_type)] */
-      if (_decodeMlpFilterParameters(br, MLP_FIR) < 0)
+      if (_decodeMlpFilterParameters(br, &ch_param->fir_filter, MLP_FIR) < 0)
         return -1;
     }
   }
 
   if (ss_param->block_header_content & MLP_BHC_IIR_FILTER_PARAMETERS) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "        IIR filter parameters section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_IIR_FILTER_PARAMETERS
+    );
+
     /* [b1 iir_filter_parameters_present] */
     bool iir_filter_parameters_present;
     MLP_READ_BITS(&iir_filter_parameters_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "         TODO (iir_filter_parameters_present): %s (0b%x).\n",
+      "         IIR filter parameters presence "
+      "(iir_filter_parameters_present): %s (0b%x).\n",
       BOOL_PRESENCE(iir_filter_parameters_present),
       iir_filter_parameters_present
     );
@@ -1308,31 +1483,59 @@ static int _decodeMlpChannelParameters(
         );
 
       /* [vn filter_parameters(IIR_filter_type)] */
-      if (_decodeMlpFilterParameters(br, MLP_IIR) < 0)
+      if (_decodeMlpFilterParameters(br, &ch_param->iir_filter, MLP_IIR) < 0)
         return -1;
     }
   }
 
+  unsigned fir_order = ch_param->fir_filter.filter_order;
+  unsigned fir_shift = ch_param->fir_filter.shift;
+  unsigned iir_order = ch_param->iir_filter.filter_order;
+  unsigned iir_shift = ch_param->iir_filter.shift;
+  unsigned filters_order = fir_order + iir_order;
+  if (MLP_FIR_IIR_TOTAL_MAX_ORDER < filters_order)
+    LIBBLU_MLP_ERROR_RETURN(
+      "FIR & IIR filters order sum exceed 8 (%u + %u = %u).\n",
+      fir_order,
+      iir_order,
+      filters_order
+    );
+
+  if (fir_order && iir_order && fir_shift != iir_shift)
+    LIBBLU_MLP_ERROR_RETURN(
+      "FIR & IIR filters precision mismatch (%u != %u).\n",
+      fir_order,
+      iir_order
+    );
+
   if (ss_param->block_header_content & MLP_BHC_HUFFMAN_OFFSET) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "        Entropy coded samples offset section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_HUFFMAN_OFFSET
+    );
+
     /* [b1 huffman_offset_present] */
     bool huffman_offset_present;
     MLP_READ_BITS(&huffman_offset_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "         TODO (huffman_offset_present): %s (0b%x).\n",
+      "         Entropy coded samples offset present "
+      "(huffman_offset_present): %s (0b%x).\n",
       BOOL_PRESENCE(huffman_offset_present),
       huffman_offset_present
     );
 
     if (huffman_offset_present) {
       /* [s15 huffman_offset] */
-      uint16_t huffman_offset;
-      MLP_READ_BITS(&huffman_offset, br, 15, return -1);
+      uint16_t huffman_offset_val;
+      MLP_READ_BITS(&huffman_offset_val, br, 15, return -1);
+      int huffman_offset = lb_sign_extend(huffman_offset_val, 15);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "          TODO (huffman_offset): %d (0x%04" PRIX16 ").\n",
-        lb_sign_extend(huffman_offset, 15),
-        huffman_offset
+        "          Offset added to entropy decoded samples (huffman_offset): "
+        "%d (0x%04" PRIX16 ").\n",
+        huffman_offset,
+        huffman_offset_val
       );
     }
   }
@@ -1343,7 +1546,8 @@ static int _decodeMlpChannelParameters(
   ch_param->huffman_codebook = huffman_codebook;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "         TODO (huffman_codebook): %u.\n",
+    "        Huffman codebook (huffman_codebook): %s (0x%X).\n",
+    MlpHuffmanCodebookStr(huffman_codebook),
     huffman_codebook
   );
 
@@ -1353,20 +1557,25 @@ static int _decodeMlpChannelParameters(
   ch_param->num_huffman_lsbs = num_huffman_lsbs;
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "         TODO (num_huffman_lsbs): %u (0x%02X).\n",
+    "        LSB residual size (num_huffman_lsbs): %u bits (0x%02X).\n",
     num_huffman_lsbs,
     num_huffman_lsbs
   );
 
-  // TODO
-  assert(0 == huffman_codebook || num_huffman_lsbs <= 24);
+  if (/* 0 < huffman_codebook && */ 24 < num_huffman_lsbs)
+    LIBBLU_MLP_ERROR_RETURN(
+      "LSB residual size (num_huffman_lsbs) exceed 24 bits "
+      "for channel %u of substream %u (%u).\n",
+      ch_idx, ss_idx, num_huffman_lsbs
+    );
 
   return 0;
 }
 
 static int _decodeMlpBlockHeader(
   LibbluBitReader * br,
-  MlpSubstreamParameters * ss_param
+  MlpSubstreamParameters * ss_param,
+  unsigned ss_idx
 )
 {
   unsigned max_matrix_chan = ss_param->restart_header.max_matrix_chan;
@@ -1378,12 +1587,17 @@ static int _decodeMlpBlockHeader(
   );
 
   if (ss_param->block_header_content & MLP_BHC_BLOCK_HEADER_CONTENT) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "       Block content section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_BLOCK_HEADER_CONTENT
+    );
+
     /* [b1 block_header_content_exists] */
     bool block_header_content_exists;
     MLP_READ_BITS(&block_header_content_exists, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "       TODO (block_header_content_exists): %s (0b%x).\n",
+      "        Block header (block_header_content_exists): %s (0b%x).\n",
       BOOL_PRESENCE(block_header_content_exists),
       block_header_content_exists
     );
@@ -1394,7 +1608,8 @@ static int _decodeMlpBlockHeader(
       MLP_READ_BITS(&block_header_content, br, 8, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "        TODO (block_header_content): 0x%02" PRIX8 ".\n",
+        "        Block header content byte (block_header_content): "
+        "0x%02" PRIX8 ".\n",
         block_header_content
       );
       ss_param->block_header_content = block_header_content;
@@ -1402,12 +1617,17 @@ static int _decodeMlpBlockHeader(
   }
 
   if (ss_param->block_header_content & MLP_BHC_BLOCK_SIZE) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "       Block size section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_BLOCK_SIZE
+    );
+
     /* [b1 block_size_present] */
     bool block_size_present;
     MLP_READ_BITS(&block_size_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "       TODO (block_size_present): %s (0b%x).\n",
+      "        Block size presence (block_size_present): %s (0b%x).\n",
       BOOL_PRESENCE(block_size_present),
       block_size_present
     );
@@ -1418,7 +1638,7 @@ static int _decodeMlpBlockHeader(
       MLP_READ_BITS(&block_size, br, 9, return -1);
 
       LIBBLU_MLP_DEBUG_PARSING_SS(
-        "        TODO (block_size): %u samples (0x%03X).\n",
+        "        Block size (block_size): %u samples (0x%03X).\n",
         block_size,
         block_size
       );
@@ -1427,12 +1647,18 @@ static int _decodeMlpBlockHeader(
   }
 
   if (ss_param->block_header_content & MLP_BHC_MATRIX_PARAMETERS) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "       Matrix parameters section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_MATRIX_PARAMETERS
+    );
+
     /* [b1 matrix_parameters_present] */
     bool matrix_parameters_present;
     MLP_READ_BITS(&matrix_parameters_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "       TODO (matrix_parameters_present): %s (0b%x).\n",
+      "        Matrix parameters presence (matrix_parameters_present): "
+      "%s (0b%x).\n",
       BOOL_PRESENCE(matrix_parameters_present),
       matrix_parameters_present
     );
@@ -1455,12 +1681,17 @@ static int _decodeMlpBlockHeader(
   }
 
   if (ss_param->block_header_content & MLP_BHC_OUTPUT_SHIFT) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "       Output shift section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_OUTPUT_SHIFT
+    );
+
     /* [b1 output_shift_present] */
     bool output_shift_present;
     MLP_READ_BITS(&output_shift_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "       TODO (output_shift_present): %s (0b%x).\n",
+      "        Output shift presence (output_shift_present): %s (0b%x).\n",
       BOOL_PRESENCE(output_shift_present),
       output_shift_present
     );
@@ -1468,25 +1699,41 @@ static int _decodeMlpBlockHeader(
     if (output_shift_present) {
       for (unsigned ch = 0; ch <= max_matrix_chan; ch++) {
         /* [s4 output_shift[ch]] */
-        uint8_t output_shift;
-        MLP_READ_BITS(&output_shift, br, 4, return -1);
+        uint8_t output_shift_val;
+        MLP_READ_BITS(&output_shift_val, br, 4, return -1);
+        int ouput_shift = lb_sign_extend(output_shift_val, 4);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
-          "        TODO (output_shift[%u]): %d (0x%" PRIX8 ").\n",
-          ch, lb_sign_extend(output_shift, 4),
-          output_shift
+          "         Left shift applied on ouput samples of channel %u "
+          "(output_shift[%u]): %d (0x%" PRIX8 ").\n",
+          ch, ch,
+          ouput_shift,
+          output_shift_val
         );
+
+        if (ouput_shift < 0 || 23 < ouput_shift)
+          LIBBLU_MLP_ERROR_RETURN(
+            "Invalid output samples shift parameter (output_shift) "
+            "for channel %u of substream %u (%d).\n",
+            ch, ss_idx, ouput_shift
+          );
       }
     }
   }
 
   if (ss_param->block_header_content & MLP_BHC_QUANT_STEP_SIZE) {
+    LIBBLU_MLP_DEBUG_PARSING_SS(
+      "       Quant step size section (block_header_content & 0x%02" PRIX8 "):\n",
+      MLP_BHC_QUANT_STEP_SIZE
+    );
+
     /* [b1 quant_step_size_present] */
     bool quant_step_size_present;
     MLP_READ_BITS(&quant_step_size_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "       TODO (quant_step_size_present): %s (0b%x).\n",
+      "        Quant step size presence (quant_step_size_present): "
+      "%s (0b%x).\n",
       BOOL_PRESENCE(quant_step_size_present),
       quant_step_size_present
     );
@@ -1499,8 +1746,10 @@ static int _decodeMlpBlockHeader(
         ss_param->quant_step_size[ch] = quant_step_size;
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
-          "        TODO (quant_step_size[%u]): %u (0x%" PRIX8 ").\n",
-          ch, quant_step_size,
+          "         Quantization shift applied to entropy decoded "
+          "samples of channel %u (quant_step_size[%u]): %u (0x%" PRIX8 ").\n",
+          ch, ch,
+          quant_step_size,
           quant_step_size
         );
       }
@@ -1513,25 +1762,18 @@ static int _decodeMlpBlockHeader(
     MLP_READ_BITS(&channel_parameters_present, br, 1, return -1);
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
-      "       TODO (channel_parameters_present[%u]): %s (0b%x).\n",
-      ch, BOOL_PRESENCE(channel_parameters_present),
+      "       Channel %u parameters presence "
+      "(channel_parameters_present[%u]): %s (0b%x).\n",
+      ch, ch,
+      BOOL_PRESENCE(channel_parameters_present),
       channel_parameters_present
     );
 
     if (channel_parameters_present) {
       /* [vn channel_parameters()] */
-      if (_decodeMlpChannelParameters(br, ss_param, ch) < 0)
+      if (_decodeMlpChannelParameters(br, ss_param, ch, ss_idx) < 0)
         return -1;
     }
-  }
-
-  for (unsigned ch = 0; ch <= max_chan; ch++) {
-    const MlpChannelParameters * ch_param = &ss_param->channels_parameters[ch];
-
-    assert(
-      0 == ch_param->huffman_codebook
-      || ss_param->quant_step_size[ch] <= ch_param->num_huffman_lsbs
-    ); // TODO
   }
 
   return 0;
@@ -1539,13 +1781,14 @@ static int _decodeMlpBlockHeader(
 
 static int _decodeMlpBlockData(
   LibbluBitReader * br,
-  MlpSubstreamParameters * ss_param
+  MlpSubstreamParameters * ss_param,
+  unsigned ss_idx
 )
 {
   unsigned min_chan   = ss_param->restart_header.min_chan;
   unsigned max_chan   = ss_param->restart_header.max_chan;
   unsigned block_size = ss_param->block_size;
-  const unsigned * quant_step_size = ss_param->quant_step_size;
+  const uint8_t * quant_step_size = ss_param->quant_step_size;
 
   const MlpMatrixParameters * matrix_param = &ss_param->matrix_parameters;
   unsigned num_pmat = matrix_param->num_primitive_matrices;
@@ -1567,8 +1810,10 @@ static int _decodeMlpBlockData(
         MLP_READ_BITS(&lsb_bypass, br, 1, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
-          "        TODO (lsb_bypass[%u]): %s (0b%x).\n",
-          mat, BOOL_STR(lsb_bypass),
+          "        Bypassed sample LSB value for primitive matrix %u "
+          "(lsb_bypass[%u]): %u (0b%x).\n",
+          mat, mat,
+          lsb_bypass,
           lsb_bypass
         );
       }
@@ -1577,10 +1822,18 @@ static int _decodeMlpBlockData(
     for (unsigned ch = min_chan; ch <= max_chan; ch++) {
       const MlpChannelParameters * ch_param = &ss_param->channels_parameters[ch];
       unsigned huffman_codebook = ch_param->huffman_codebook;
-      unsigned num_huffman_lsbs = ch_param->num_huffman_lsbs;
-      int num_lsb_bits = num_huffman_lsbs - quant_step_size[ch];
 
-      assert(0 <= num_lsb_bits);
+      uint8_t num_huffman_lsbs = ch_param->num_huffman_lsbs;
+      if (num_huffman_lsbs < quant_step_size[ch])
+        LIBBLU_MLP_ERROR_RETURN(
+          "Decoded sample quantization size (quant_step_size) "
+          "exceed LSB residual size (num_huffman_lsbs) "
+          "of channel %u of substream %u (%u < %u).\n",
+          ch, ss_idx,
+          num_huffman_lsbs,
+          quant_step_size[ch]
+        );
+      unsigned num_lsb_bits = num_huffman_lsbs - quant_step_size[ch];
 
       if (0 < huffman_codebook) {
         /* Huffman VLC */
@@ -1592,18 +1845,21 @@ static int _decodeMlpBlockData(
           return -1;
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
-          "        TODO (huffman_code[%u]): %" PRId32 ".\n",
+          "        Huffman entropy-coded MSB sample (huffman_code[%u]): "
+          "%" PRId32 ".\n",
           ch, value
         );
       }
 
       if (0 < num_lsb_bits) {
+        /* Residual */
         /* [u<num_lsb_bits> lsb_bits[ch]] */
         uint32_t lsb_bits;
         MLP_READ_BITS(&lsb_bits, br, num_lsb_bits, return -1);
 
         LIBBLU_MLP_DEBUG_PARSING_SS(
-          "        TODO (lsb_bits[%u]): 0x%0*" PRIX32 " (%u bit(s)).\n",
+          "        Plain LSB sample residual (lsb_bits[%u]): "
+          "0x%0*" PRIX32 " (%u bit(s)).\n",
           ch, (num_lsb_bits + 3) >> 2,
           lsb_bits,
           num_lsb_bits
@@ -1661,7 +1917,7 @@ static int _decodeMlpBlock(
     }
 
     /* [vn block_header()] */
-    if (_decodeMlpBlockHeader(br, ss_param) < 0)
+    if (_decodeMlpBlockHeader(br, ss_param, ss_idx) < 0)
       return -1;
   }
 
@@ -1683,7 +1939,7 @@ static int _decodeMlpBlock(
   }
 
   /* [vn block_data()] */
-  if (_decodeMlpBlockData(br, ss_param) < 0)
+  if (_decodeMlpBlockData(br, ss_param, ss_idx) < 0)
     return -1;
 
   if (ss_param->restart_header.error_protect) {
@@ -1714,11 +1970,8 @@ static int _decodeMlpSubstreamSegment(
     ss_idx
   );
 
-  /* Init bitstream reader */
-  unsigned ss_size = entry->substream_size << 4;
-  size_t start_offset = offsetLibbluBitReader(br);
-  // if (_initMlpSubstreamBitsReader(&br, br, ss_size, &parity) < 0)
-  //   return -1;
+  size_t ss_start_offset = offsetLibbluBitReader(br);
+  unsigned ss_size       = entry->substream_size << 4;
 
   /* Clear substream changes counters */
   substream->matrix_parameters_nb_changes = 0;
@@ -1748,7 +2001,7 @@ static int _decodeMlpSubstreamSegment(
   if (padWordLibbluBitReader(br) < 0)
     return -1;
 
-  size_t blocks_size = offsetLibbluBitReader(br) - start_offset;
+  size_t blocks_size = offsetLibbluBitReader(br) - ss_start_offset;
   if (ss_size < blocks_size)
     LIBBLU_MLP_ERROR_RETURN("Substream audio blocks size exceed size.\n");
 
@@ -1825,6 +2078,18 @@ static int _decodeMlpSubstreamSegment(
 }
 
 
+static uint32_t _getSSCodedChMask(
+  MlpSubstreamParameters * ss
+)
+{
+  assert(ss->restart_header_seen);
+
+  uint8_t min_chan = ss->restart_header.min_chan;
+  uint8_t max_chan = ss->restart_header.max_chan;
+
+  return ((1u << (1u + max_chan - min_chan)) - 1) << min_chan;
+}
+
 int decodeMlpSubstreamSegments(
   LibbluBitReader * br,
   MlpParsingContext * ctx
@@ -1838,6 +2103,8 @@ int decodeMlpSubstreamSegments(
       ctx->substreams[i].restart_header_seen = false;
   }
 
+  uint32_t coded_ch_mask = 0x0;
+
   for (unsigned i = 0; i < msi->substreams; i++) {
     const MlpSubstreamDirectoryEntry * entry = &ctx->substream_directory[i];
     MlpSubstreamParameters * ss = &ctx->substreams[i];
@@ -1845,6 +2112,22 @@ int decodeMlpSubstreamSegments(
     /* substream_segment(i) */
     if (_decodeMlpSubstreamSegment(br, ss, entry, i) < 0)
       return -1;
+
+    /* Check for min_chan/max_chan non-overlapping between substreams */
+    uint32_t ss_coded_ch_mask = _getSSCodedChMask(ss);
+    if (0 != (coded_ch_mask & ss_coded_ch_mask))
+      LIBBLU_MLP_ERROR_RETURN(
+        "Substream %u has overlapping coded channels with previous "
+        "substream(s).\n"
+      );
+    coded_ch_mask |= ss_coded_ch_mask;
+
+    /* Get maximum output bit-depth to guess source audio bit-depth */
+    ctx->info.observed_bit_depth = MAX(
+      ctx->info.observed_bit_depth,
+      ss->restart_header.max_bits
+    );
+
     // substream_parity/substream_CRC parsed/checked in substream_segment.
   }
 

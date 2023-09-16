@@ -651,14 +651,12 @@ int checkChangeEac3BitStreamInfoCompliance(
   const Eac3BitStreamInfoParameters * new_bsi
 )
 {
-  char changed_param_str[20 * 10];
+  char changed_param_str[20 * 10] = {0};
   char * cpstr_ptr = changed_param_str;
 
   LIBBLU_EAC3_DEBUG(" Changes in bsi(), check change compliance.\n");
   if (checkEac3BitStreamInfoCompliance(new_bsi) < 0)
     return -1;
-
-  memset(changed_param_str, 0, sizeof(changed_param_str));
 
   if (old_bsi->frmsiz != new_bsi->frmsiz)
     lb_str_cat_comma(&cpstr_ptr, "frmsiz", cpstr_ptr != changed_param_str);
