@@ -10,6 +10,7 @@ typedef struct {
   MlpSyncHeaderParameters mlp_sync_header;
   MlpSubstreamDirectoryEntry substream_directory[MLP_MAX_NB_SS];
   MlpSubstreamParameters substreams[MLP_MAX_NB_SS];
+  bool terminator_reached;
   MlpInformations info;
 
   unsigned nb_frames;

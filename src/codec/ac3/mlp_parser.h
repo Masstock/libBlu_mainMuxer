@@ -10,7 +10,8 @@
 
 int parseMlpMinorSyncHeader(
   BitstreamReaderPtr bs,
-  MlpSyncHeaderParameters * sh
+  MlpSyncHeaderParameters * sh,
+  uint8_t * parity
 );
 
 int parseMlpMajorSyncInfo(

@@ -113,16 +113,28 @@ static int _parseMlpSyncFrame(
   Ac3Context * ctx
 )
 {
+  MlpParsingContext * mlp = &ctx->mlp;
 
   LIBBLU_AC3_DEBUG(
     "0x%08" PRIX64 " === MLP/TrueHD Access Unit ===\n",
     ctx->cur_au.start_offset
   );
 
+  if (mlp->terminator_reached) {
+    LIBBLU_MLP_WARNING("Unexpected Access Unit, previous one indicated end-of-stream.\n");
+
+    MlpMajorSyncInfoParameters * msi = &mlp->mlp_sync_header.major_sync_info;
+    for (unsigned i = 0; i < msi->substreams; i++) {
+      mlp->substreams[i].restart_header_seen = false;
+      mlp->substreams[i].terminator_reached  = false;
+    }
+  }
+
   /* mlp_sync_header */
   MlpSyncHeaderParameters mlp_sync_header;
   LIBBLU_MLP_DEBUG_PARSING_HDR(" MLP Sync, mlp_sync_header\n");
-  if (parseMlpMinorSyncHeader(ctx->bs, &mlp_sync_header) < 0)
+  uint8_t ms_parity;
+  if (parseMlpMinorSyncHeader(ctx->bs, &mlp_sync_header, &ms_parity) < 0)
     return -1;
 
   if (fillMlpBitReaderAc3Context(ctx, &mlp_sync_header) < 0)
@@ -139,16 +151,18 @@ static int _parseMlpSyncFrame(
       return -1;
   }
 
-  if (ctx->mlp.nb_frames) {
+  if (mlp->nb_frames && !mlp->terminator_reached) {
     // TODO: Constant check
 
     updateMlpSyncHeaderParametersParameters(
-      &ctx->mlp.mlp_sync_header,
+      &mlp->mlp_sync_header,
       mlp_sync_header
     );
   }
   else {
-    if (checkMlpSyncHeader(&mlp_sync_header, &ctx->mlp.info, true) < 0)
+    mlp->terminator_reached = false;
+
+    if (checkMlpSyncHeader(&mlp_sync_header, &mlp->info, true) < 0)
       return -1;
 
     // TODO: Check compliance (only if !ctx.extractCore)
@@ -164,15 +178,26 @@ static int _parseMlpSyncFrame(
   );
 
   // substream_directory
-  if (decodeMlpSubstreamDirectory(&ctx->br, &ctx->mlp) < 0)
+  uint8_t ssdir_offset = offsetLibbluBitReader(&ctx->br);
+  if (decodeMlpSubstreamDirectory(&ctx->br, mlp) < 0)
     return -1;
+
+  size_t ssdir_size = offsetLibbluBitReader(&ctx->br) - ssdir_offset;
+  uint8_t ssdir_parity = computeParityLibbluBitReader(
+    &ctx->br, ssdir_offset, ssdir_size
+  );
+
+  uint8_t parity = ms_parity ^ ssdir_parity;
+  parity = (parity ^ (parity >> 4)) & 0xF;
+  if (0xF != parity)
+    LIBBLU_MLP_ERROR_RETURN("Unexpected sync header checksum (check_nibble).\n");
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "  Substream data, start\n"
   );
 
   // substream_data
-  if (decodeMlpSubstreamSegments(&ctx->br, &ctx->mlp) < 0)
+  if (decodeMlpSubstreamSegments(&ctx->br, mlp) < 0)
     return -1;
 
   /* extra_start */
@@ -189,8 +214,8 @@ static int _parseMlpSyncFrame(
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
-  ctx->mlp.pts += ((uint64_t) MAIN_CLOCK_27MHZ) / TRUE_HD_UNITS_PER_SEC;
-  ctx->mlp.nb_frames++;
+  mlp->pts += ((uint64_t) MAIN_CLOCK_27MHZ) / TRUE_HD_UNITS_PER_SEC;
+  mlp->nb_frames++;
   return 0;
 }
 

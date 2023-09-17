@@ -220,6 +220,23 @@ static inline uint32_t binswap32(
   ;
 }
 
+static inline uint8_t lb_xor_32_to_8(
+  uint32_t value
+)
+{
+  value ^= value >> 16;
+  value ^= value >> 8;
+  return value;
+}
+
+static inline uint8_t lb_xor_16_to_8(
+  uint16_t value
+)
+{
+  value ^= value >> 8;
+  return value;
+}
+
 /** \~english
  * \brief Unsigned Greater Common Divisor.
  *

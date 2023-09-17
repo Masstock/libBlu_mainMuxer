@@ -1458,12 +1458,6 @@ typedef struct {
 #define MLP_RH_CRC_PARAMS                                                     \
   (CrcParam) {.table = mlp_rh_crc_8_table, .length = 8, .shifted = true}
 
-/** \~english
- * \brief MLP restart header 'restart_sync_word' noise type mask.
- *
- */
-#define MLP_RH_SW_NOISE_TYPE_MASK  0x1
-
 #define MLP_MAX_NB_CHANNELS  8
 
 #define MLP_MAX_NB_MATRIX_CHANNELS  8
@@ -1471,7 +1465,7 @@ typedef struct {
 typedef struct {
   uint16_t restart_sync_word;
   bool noise_type;
-  // uint16_t output_timing;
+  uint16_t output_timing;
   uint8_t min_chan;
   uint8_t max_chan;
   uint8_t max_matrix_chan;
@@ -1527,13 +1521,13 @@ typedef struct {
 } MlpMatrixParameters;
 
 typedef enum {
-  MLP_HUFFCB_NONE,
-  MLP_HUFFCB_TABLE_0,
-  MLP_HUFFCB_TABLE_1,
-  MLP_HUFFCB_TABLE_2
+  MLP_HUFFCB_NONE     = 0x0,
+  MLP_HUFFCB_TABLE_0  = 0x1,
+  MLP_HUFFCB_TABLE_1  = 0x2,
+  MLP_HUFFCB_TABLE_2  = 0x3
 } MlpHuffmanCodebook;
 
-static const char * MlpHuffmanCodebookStr(
+static inline const char * MlpHuffmanCodebookStr(
   MlpHuffmanCodebook huffman_codebook
 )
 {
@@ -1566,13 +1560,21 @@ typedef struct {
   uint8_t num_huffman_lsbs;
 } MlpChannelParameters;
 
+#define MLP_TERMINATOR_A  0x348D3
+#define MLP_TERMINATOR_B  0x1234
+
+#define MLP_SS_CRC_PARAMS                                                     \
+  (CrcParam) {.table = mlp_ss_crc_8_table, .length = 8, .shifted = true}
+  // (CrcParam) {.length = 8, .poly = 0x63, .shifted = true}
+
 typedef struct {
   MlpRestartHeader restart_header;
   bool restart_header_seen;
 
   uint8_t block_header_content;
 
-  unsigned block_size;
+  unsigned block_size;  /**< Number of samples carried in one block.
+    Can be redefined in block header, 8 by default.                          */
 
   MlpMatrixParameters matrix_parameters;
   unsigned matrix_parameters_nb_changes;
@@ -1580,6 +1582,10 @@ typedef struct {
   uint8_t quant_step_size[MLP_MAX_NB_CHANNELS];
 
   MlpChannelParameters channels_parameters[MLP_MAX_NB_CHANNELS];
+
+  uint16_t cur_output_timing;  /**< Parsed samples counter, used to check
+    output_timing fields. Modulo 0xFFFF. */
+  bool terminator_reached;
 } MlpSubstreamParameters;
 
 #define MLP_MAX_NB_SS  4

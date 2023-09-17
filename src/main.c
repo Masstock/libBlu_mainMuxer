@@ -499,8 +499,9 @@ int main(
 
 #if 0
   CrcParam crc_param = (CrcParam) {
-    .length = 16,
-    .poly = 0x1002D
+    .length = 8,
+    .poly = 0x163,
+    .shifted = true
   };
 
   crcTableGenerator(crc_param);
