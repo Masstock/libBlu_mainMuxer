@@ -136,17 +136,20 @@ static inline uint8_t computeParityLibbluBitReader(
 {
   const uint8_t * buf = &accessLibbluBitReader(br)[start_offset >> 3];
 
+  assert(0x0 == (start_offset & 0x7));
+  start_offset >>= 3;
   assert(0x0 == (size & 0x7));
   size >>= 3;
 
   uint32_t dword = 0x00;
+  for (; start_offset++ & 0x3; size--)
+    dword ^= *(buf++);
   for (size_t i = 0; i < (size >> 2); i++)
     dword ^= ((uint32_t *) buf)[i];
-  uint8_t byte = lb_xor_32_to_8(dword);
   for (size_t i = size & ~0x3; i < size; i++)
-    byte ^= buf[i];
+    dword ^= buf[i];
 
-  return byte;
+  return lb_xor_32_to_8(dword);
 }
 
 #endif

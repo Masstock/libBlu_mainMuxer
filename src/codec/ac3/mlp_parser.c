@@ -488,44 +488,6 @@ int parseMlpSyncHeader(
   return 0;
 }
 
-static int _parseMlpSubstreamDirectoryEntry(
-  LibbluBitReader * br,
-  MlpSubstreamDirectoryEntry * entry
-)
-{
-
-  /** [v4 flags]
-   * -> b1: extra_substream_word
-   * -> b1: restart_nonexistent
-   * -> b1: crc_present
-   * -> v1: reserved
-   */
-  uint8_t flags;
-  MLP_READ_BITS(&flags, br, 4, return -1);
-  entry->extra_substream_word = flags & 0x8;
-  entry->restart_nonexistent  = flags & 0x4;
-  entry->crc_present          = flags & 0x2;
-  entry->reserved_field_1     = flags & 0x1;
-
-  /* [u12 substream_end_ptr] */
-  MLP_READ_BITS(&entry->substream_end_ptr, br, 12, return -1);
-
-  if (entry->extra_substream_word) {
-    /** [v16 extra_substream_word]
-     * -> s9: drc_gain_update
-     * -> u3: drc_time_update
-     * -> v4: reserved_field_2
-     */
-    uint16_t drc_fields;
-    MLP_READ_BITS(&drc_fields, br, 16, return -1);
-    entry->drc_gain_update  = (drc_fields >> 7);
-    entry->drc_time_update  = (drc_fields >> 4) & 0x7;
-    entry->reserved_field_2 = (drc_fields     ) & 0xF;
-  }
-
-  return 0;
-}
-
 /** \~english
  * \brief Return the size in 16-bits words of the 'mlp_sync' section.
  *
@@ -563,19 +525,52 @@ static unsigned _computeLengthMlpSync(
   return au_hdr_length;
 }
 
+
 int decodeMlpSubstreamDirectory(
   LibbluBitReader * br,
-  MlpParsingContext * ctx
+  MlpParsingContext * ctx,
+  uint8_t * parity
 )
 {
   const MlpMajorSyncInfoParameters * msi = &ctx->mlp_sync_header.major_sync_info;
 
+  uint16_t parity_word = 0x0000;
   for (unsigned i = 0; i < msi->substreams; i++) {
-    MlpSubstreamDirectoryEntry entry;
-    if (_parseMlpSubstreamDirectoryEntry(br, &entry) < 0)
-      return -1;
+    MlpSubstreamDirectoryEntry * entry = &ctx->substream_directory[i];
 
-    ctx->substream_directory[i] = entry;
+    uint16_t word;
+    MLP_READ_BITS(&word, br, 16, return -1);
+    parity_word ^= word;
+
+    /** [v4 flags]
+     * -> b1: extra_substream_word
+     * -> b1: restart_nonexistent
+     * -> b1: crc_present
+     * -> v1: reserved
+     */
+    uint8_t flags = word >> 12;
+    entry->extra_substream_word = flags & 0x8;
+    entry->restart_nonexistent  = flags & 0x4;
+    entry->crc_present          = flags & 0x2;
+    entry->reserved_field_1     = flags & 0x1;
+
+    /* [u12 substream_end_ptr] */
+    entry->substream_end_ptr = word & 0xFFF;
+
+    if (entry->extra_substream_word) {
+      /** [v16 extra_substream_word]
+       * -> s9: drc_gain_update
+       * -> u3: drc_time_update
+       * -> v4: reserved_field_2
+       */
+      uint16_t drc_fields;
+      MLP_READ_BITS(&drc_fields, br, 16, return -1);
+      parity_word ^= drc_fields;
+
+      entry->drc_gain_update  = (drc_fields >> 7);
+      entry->drc_time_update  = (drc_fields >> 4) & 0x7;
+      entry->reserved_field_2 = (drc_fields     ) & 0xF;
+    }
   }
 
   unsigned access_unit_length = ctx->mlp_sync_header.access_unit_length;
@@ -603,6 +598,7 @@ int decodeMlpSubstreamDirectory(
   if (ret < 0)
     return -1;
 
+  *parity = lb_xor_16_to_8(parity_word);
   return 0;
 }
 
@@ -873,7 +869,7 @@ static int _decodeMlpRestartHeader(
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Substream minimum carried channel number (min_chan): "
-    "%u channels (0x%" PRIX8 ").\n",
+    "channel %u (0x%" PRIX8 ").\n",
     min_chan + 1,
     min_chan
   );
@@ -885,7 +881,7 @@ static int _decodeMlpRestartHeader(
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "        Substream maximum carried channel number (max_chan): "
-    "%u channels (0x%" PRIX8 ").\n",
+    "channel %u (0x%" PRIX8 ").\n",
     max_chan + 1,
     max_chan
   );
@@ -897,11 +893,13 @@ static int _decodeMlpRestartHeader(
       min_chan, max_chan
     );
 
-  if (MLP_MAX_NB_CHANNELS < max_chan + 1)
+  unsigned max_nb_channels = getMlpMaxNbChannels(ss_idx);
+  if (max_nb_channels < max_chan + 1u)
     LIBBLU_MLP_ERROR_RETURN(
-      "Maximum number of encoded channels in a substream (max_chan) exceed "
+      "Maximum number of encoded channels in substream %u (max_chan) exceed "
       "maximum (%u < %u).\n",
-      MLP_MAX_NB_CHANNELS,
+      ss_idx,
+      max_nb_channels,
       max_chan + 1
     );
 
@@ -1881,12 +1879,10 @@ static int _decodeMlpBlockData(
 static int _decodeMlpBlock(
   LibbluBitReader * br,
   MlpSubstreamParameters * ss_param,
-  const MlpSubstreamDirectoryEntry * entry,
   unsigned ss_idx,
   unsigned blk_idx
 )
 {
-  (void) entry; // TODO
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
     "    Audio data block %u, block()\n",
@@ -1994,6 +1990,61 @@ static uint8_t _computeSubstreamCrc(
 }
 
 
+static int _decodeMlpSSParityCrc(
+  LibbluBitReader * br,
+  size_t ss_start_offset,
+  size_t seg_data_size,
+  unsigned ss_idx
+)
+{
+  uint8_t seg_parity = computeParityLibbluBitReader(
+    br, ss_start_offset, seg_data_size
+  );
+  uint8_t expected_ss_parity = seg_parity ^ 0xA9;
+
+  /* [v8 substream_parity[i]] */
+  uint8_t substream_parity;
+  MLP_READ_BITS(&substream_parity, br, 8, return -1);
+
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "    Substream parity checksum (substream_parity[%u]): "
+    "0x%02" PRIX8 ".\n",
+    ss_idx,
+    substream_parity
+  );
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "     -> Computed: 0x%02" PRIX8 ".\n",
+    expected_ss_parity
+  );
+
+  if (expected_ss_parity != substream_parity)
+    LIBBLU_MLP_ERROR_RETURN("Invalid substream parity checksum.\n");
+
+  uint8_t expected_ss_crc = _computeSubstreamCrc(
+    br, ss_start_offset, seg_data_size
+  );
+
+  /* [v8 substream_CRC[i]] */
+  uint8_t substream_CRC;
+  MLP_READ_BITS(&substream_CRC, br, 8, return -1);
+
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "    Substream CRC checksum (substream_CRC[%u]): 0x%02" PRIX8 ".\n",
+    ss_idx,
+    substream_CRC
+  );
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "     -> Computed: 0x%02" PRIX8 ".\n",
+    expected_ss_crc
+  );
+
+  if (expected_ss_crc != substream_CRC)
+    LIBBLU_MLP_ERROR_RETURN("Invalid substream CRC checksum.\n");
+
+  return 0;
+}
+
+
 static int _decodeMlpSubstreamSegment(
   LibbluBitReader * br,
   MlpSubstreamParameters * ss,
@@ -2011,6 +2062,22 @@ static int _decodeMlpSubstreamSegment(
   size_t ss_start_offset = offsetLibbluBitReader(br);
   size_t ss_size         = entry->substream_size << 4;
 
+  if (3 <= ss_idx) {
+    LIBBLU_MLP_DEBUG_PARSING_SS("    Skipping substream.\n");
+    size_t seg_data_size = ss_size - (entry->crc_present << 4);
+
+    if (remainingBitsLibbluBitReader(br) < seg_data_size)
+      LIBBLU_MLP_ERROR_RETURN("Prematurate end of file.\n");
+    skipLibbluBitReader(br, seg_data_size);
+
+    if (entry->crc_present) {
+      if (_decodeMlpSSParityCrc(br, ss_start_offset, seg_data_size, ss_idx) < 0)
+        return -1;
+    }
+
+    return 0;
+  }
+
   /* Clear substream changes counters */
   ss->matrix_parameters_nb_changes = 0;
   for (unsigned i = 0; i < MLP_MAX_NB_CHANNELS; i++) {
@@ -2022,7 +2089,7 @@ static int _decodeMlpSubstreamSegment(
   unsigned block_idx = 0;
   do {
     /* [vn block()] */
-    if (_decodeMlpBlock(br, ss, entry, ss_idx, block_idx++) < 0)
+    if (_decodeMlpBlock(br, ss, ss_idx, block_idx++) < 0)
       return -1;
     ss->cur_output_timing += ss->block_size;
 
@@ -2118,49 +2185,8 @@ static int _decodeMlpSubstreamSegment(
     LIBBLU_MLP_ERROR_RETURN("Unexpected substream segment size.\n");
 
   if (entry->crc_present) {
-    uint8_t seg_parity = computeParityLibbluBitReader(
-      br, ss_start_offset, seg_data_size
-    );
-    uint8_t expected_ss_parity = seg_parity ^ 0xA9;
-
-    /* [v8 substream_parity[i]] */
-    uint8_t substream_parity;
-    MLP_READ_BITS(&substream_parity, br, 8, return -1);
-
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "     Substream parity checksum (substream_parity[%u]): "
-      "0x%02" PRIX8 ".\n",
-      ss_idx,
-      substream_parity
-    );
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "      -> Computed: 0x%02" PRIX8 ".\n",
-      expected_ss_parity
-    );
-
-    if (expected_ss_parity != substream_parity)
-      LIBBLU_MLP_ERROR_RETURN("Invalid substream parity checksum.\n");
-
-    uint8_t expected_ss_crc = _computeSubstreamCrc(
-      br, ss_start_offset, seg_data_size
-    );
-
-    /* [v8 substream_CRC[i]] */
-    uint8_t substream_CRC;
-    MLP_READ_BITS(&substream_CRC, br, 8, return -1);
-
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "     Substream CRC checksum (substream_CRC[%u]): 0x%02" PRIX8 ".\n",
-      ss_idx,
-      substream_CRC
-    );
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "      -> Computed: 0x%02" PRIX8 ".\n",
-      expected_ss_crc
-    );
-
-    if (expected_ss_crc != substream_CRC)
-      LIBBLU_MLP_ERROR_RETURN("Invalid substream CRC checksum.\n");
+    if (_decodeMlpSSParityCrc(br, ss_start_offset, seg_data_size, ss_idx) < 0)
+      return -1;
   }
 
   return 0;
@@ -2171,7 +2197,8 @@ static uint32_t _getSSCodedChMask(
   MlpSubstreamParameters * ss
 )
 {
-  assert(ss->restart_header_seen);
+  if (!ss->restart_header_seen)
+    return 0x0;
 
   uint8_t min_chan = ss->restart_header.min_chan;
   uint8_t max_chan = ss->restart_header.max_chan;
@@ -2236,7 +2263,8 @@ int decodeMlpSubstreamSegments(
 
 
 int decodeMlpExtraData(
-  LibbluBitReader * br
+  LibbluBitReader * br,
+  int64_t au_offset
 )
 {
   LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -2248,20 +2276,24 @@ int decodeMlpExtraData(
    * -> u12: EXTRA_DATA_length
    */
   uint16_t length_word;
-  MLP_READ_BITS(&length_word, br, 5, return -1);
+  MLP_READ_BITS(&length_word, br, 16, return -1);
 
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "   TODO (length_check_nibble): 0x%X.\n",
+    "   Extension data length field checksum (length_check_nibble): 0x%X.\n",
     length_word >> 12
   );
 
-  uint8_t length_parity = lb_xor_16_to_8(length_word);
-  if (length_parity != 0xF)
-    LIBBLU_MLP_ERROR_RETURN("Invalid EXTRA DATA length nibble check.\n");
+  if (lb_xor_16_to_4(length_word) != 0xF)
+    LIBBLU_MLP_ERROR_RETURN(
+      "Invalid EXTRA DATA length nibble check (0x%04" PRIX16 ").\n",
+      length_word
+    );
 
   unsigned EXTRA_DATA_length = length_word & 0xFFF;
   LIBBLU_MLP_DEBUG_PARSING_SS(
-    "   TODO (EXTRA_DATA_length): 0x%02X.\n",
+    "   Extension data length (EXTRA_DATA_length): %u bytes, 0x%X (0x%02X).\n",
+    (EXTRA_DATA_length + 1) << 1,
+    (EXTRA_DATA_length + 1) << 1,
     EXTRA_DATA_length
   );
 
@@ -2270,18 +2302,28 @@ int decodeMlpExtraData(
   if (remainingBitsLibbluBitReader(br) < EXTRA_DATA_length)
     LIBBLU_MLP_ERROR_RETURN("EXTRA DATA length is out of access unit.\n");
 
-  unsigned data_length = (EXTRA_DATA_length << 4);
-  uint8_t data_parity  = computeParityLibbluBitReader(
-    br, offsetLibbluBitReader(br), data_length
+  unsigned data_length = (EXTRA_DATA_length << 4) - 8;
+  size_t data_offset   = offsetLibbluBitReader(br);
+  uint8_t data_parity  = 0xA9 ^ computeParityLibbluBitReader(
+    br, data_offset, data_length
   );
-  skipLibbluBitReader(br, data_length - 8);
+  skipLibbluBitReader(br, data_length);
 
-  /* [vn EXTRA_DATA_padding] */
-  // Skipped
+  /* [vn data()] [vn EXTRA_DATA_padding] */
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "   Offset of Extension Data content: "
+    "0x%016" PRIX64 ".\n",
+    au_offset + 4 + (data_offset >> 3)
+  );
 
   /* [v8 EXTRA_DATA_parity] */
   uint8_t EXTRA_DATA_parity;
   MLP_READ_BITS(&EXTRA_DATA_parity, br, 8, return -1);
+
+  LIBBLU_MLP_DEBUG_PARSING_SS(
+    "   Extension data checksum (EXTRA_DATA_parity): 0x%02" PRIX8 ".\n",
+    EXTRA_DATA_parity
+  );
 
   if (data_parity != EXTRA_DATA_parity)
     LIBBLU_MLP_ERROR_RETURN("Invalid EXTRA DATA parity check.\n");

@@ -237,6 +237,15 @@ static inline uint8_t lb_xor_16_to_8(
   return value;
 }
 
+static inline uint8_t lb_xor_16_to_4(
+  uint16_t value
+)
+{
+  value ^= value >> 8;
+  value ^= value >> 4;
+  return value & 0xF;
+}
+
 /** \~english
  * \brief Unsigned Greater Common Divisor.
  *

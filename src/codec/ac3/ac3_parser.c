@@ -114,10 +114,11 @@ static int _parseMlpSyncFrame(
 )
 {
   MlpParsingContext * mlp = &ctx->mlp;
+  int64_t au_offset = ctx->cur_au.start_offset;
 
   LIBBLU_AC3_DEBUG(
     "0x%08" PRIX64 " === MLP/TrueHD Access Unit ===\n",
-    ctx->cur_au.start_offset
+    au_offset
   );
 
   if (mlp->terminator_reached) {
@@ -136,6 +137,7 @@ static int _parseMlpSyncFrame(
   uint8_t ms_parity;
   if (parseMlpMinorSyncHeader(ctx->bs, &mlp_sync_header, &ms_parity) < 0)
     return -1;
+  LIBBLU_MLP_DEBUG_PARSING_HDR("  Computed parity: 0x%02X.\n", ms_parity);
 
   if (fillMlpBitReaderAc3Context(ctx, &mlp_sync_header) < 0)
     return -1;
@@ -174,18 +176,16 @@ static int _parseMlpSyncFrame(
   }
 
   LIBBLU_MLP_DEBUG_PARSING_HDR(
-    "  Substream directory, substream_directory\n"
+    "  Substream directory, substream_directory 0x%X\n",
+    offsetLibbluBitReader(&ctx->br) >> 3
   );
 
   // substream_directory
-  uint8_t ssdir_offset = offsetLibbluBitReader(&ctx->br);
-  if (decodeMlpSubstreamDirectory(&ctx->br, mlp) < 0)
+  uint8_t ssdir_parity;
+  if (decodeMlpSubstreamDirectory(&ctx->br, mlp, &ssdir_parity) < 0)
     return -1;
 
-  size_t ssdir_size = offsetLibbluBitReader(&ctx->br) - ssdir_offset;
-  uint8_t ssdir_parity = computeParityLibbluBitReader(
-    &ctx->br, ssdir_offset, ssdir_size
-  );
+  LIBBLU_MLP_DEBUG_PARSING_HDR("   Computed parity: 0x%02X.\n", ssdir_parity);
 
   uint8_t parity = ms_parity ^ ssdir_parity;
   parity = (parity ^ (parity >> 4)) & 0xF;
@@ -201,14 +201,24 @@ static int _parseMlpSyncFrame(
     return -1;
 
   /* extra_start */
-  if (remainingBitsLibbluBitReader(&ctx->br)) {
-    if (decodeMlpExtraData(&ctx->br) < 0)
+  size_t remaining_bits = remainingBitsLibbluBitReader(&ctx->br);
+  assert(0 == (remaining_bits & 0xF));
+
+  if (0 < remaining_bits) {
+    uint32_t next_word;
+    if (getLibbluBitReader(&ctx->br, &next_word, 16) < 0)
       return -1;
+    if (0x0 == next_word) {
+      LIBBLU_MLP_DEBUG_PARSING_SS("  Padding EXTRA_DATA.\n");
+      skipLibbluBitReader(&ctx->br, remaining_bits);
+    }
+    else {
+      if (decodeMlpExtraData(&ctx->br, au_offset) < 0)
+        return -1;
+    }
   }
   else {
-    LIBBLU_MLP_DEBUG_PARSING_SS(
-      "  No EXTRA_DATA.\n"
-    );
+    LIBBLU_MLP_DEBUG_PARSING_SS("  No EXTRA_DATA.\n");
   }
 
   if (completeFrameAc3Context(ctx) < 0)

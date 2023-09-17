@@ -1458,9 +1458,29 @@ typedef struct {
 #define MLP_RH_CRC_PARAMS                                                     \
   (CrcParam) {.table = mlp_rh_crc_8_table, .length = 8, .shifted = true}
 
-#define MLP_MAX_NB_CHANNELS  8
+
+#define MLP_MAX_NB_CHANNELS  16
+
+
+static inline unsigned getMlpMaxNbChannels(
+  unsigned ss_idx
+)
+{
+  switch (ss_idx) {
+    case 0:  // Substream 0
+      return 2;  // 2-channel presentation
+    case 1:  // Substream 1
+      return 6;  // 6-channel presentation
+    case 2:  // Substream 2
+      return 8;  // 8-channel presentation
+    default: // Substream 3
+      return 16; // 16-channel presentation
+  }
+}
+
 
 #define MLP_MAX_NB_MATRIX_CHANNELS  8
+
 
 typedef struct {
   uint16_t restart_sync_word;

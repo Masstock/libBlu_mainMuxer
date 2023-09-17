@@ -29,7 +29,8 @@ int parseMlpSyncHeader(
 
 int decodeMlpSubstreamDirectory(
   LibbluBitReader * br,
-  MlpParsingContext * ctx
+  MlpParsingContext * ctx,
+  uint8_t * parity
 );
 
 int decodeMlpSubstreamSegments(
@@ -38,7 +39,8 @@ int decodeMlpSubstreamSegments(
 );
 
 int decodeMlpExtraData(
-  LibbluBitReader * br
+  LibbluBitReader * br,
+  int64_t au_offset
 );
 
 #endif
