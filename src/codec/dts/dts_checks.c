@@ -488,7 +488,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "   Frame duration code (nuExSSFrameDurationCode): "
-    "%" PRIu32 " (0x%02" PRIX8 ").\n",
+    "%" PRIu32 " clock samples (0x%02" PRIX8 ").\n",
     param->nuExSSFrameDurationCode,
     param->nuExSSFrameDurationCode_code
   );
@@ -1031,64 +1031,68 @@ static int _checkDcaAudioAssetDescSFCompliance(
 }
 
 static int _checkDcaAudioAssetDescDMCompliance(
-  const DcaAudioAssetDescDMParameters * param,
-  const DcaAudioAssetDescSFParameters * sf
+  const DcaAudioAssetDescDMParameters * dm,
+  const DcaAudioAssetDescSFParameters * ad_sf,
+  const DcaExtSSHeaderSFParameters * sf
 )
 {
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "     Dynamic Range Control Presence (bDRCCoefPresent): %s (0b%x).\n",
-    BOOL_PRESENCE(param->bDRCCoefPresent),
-    param->bDRCCoefPresent
+    BOOL_PRESENCE(dm->bDRCCoefPresent),
+    dm->bDRCCoefPresent
   );
 
-  if (param->bDRCCoefPresent) {
+  if (dm->bDRCCoefPresent) {
     LIBBLU_DTS_DEBUG_EXTSS(
       "     Dynamic Range Control Coefficient Code "
       "(nuDRCCode): %" PRIu8 ".\n",
-      param->nuDRCCode
+      dm->nuDRCCode
     );
     LIBBLU_DTS_DEBUG_EXTSS(
       "      -> Gain value (DRC_dB): %.2f dB.\n",
-      -32.0 + 0.25 * param->nuDRCCode
+      -32.0 + 0.25 * dm->nuDRCCode
     );
-    if (sf->bEmbeddedStereoFlag) {
-      LIBBLU_DTS_DEBUG_EXTSS(
-        "     Dynamic Range Control Coefficient Code for Stereo Downmix "
-        "(nuDRC2ChDmixCode): %" PRIu8 ".\n",
-        param->nuDRC2ChDmixCode
-      );
-      LIBBLU_DTS_DEBUG_EXTSS(
-        "      -> Gain value (DRC_dB): %.2f dB.\n",
-        -32.0 + 0.25 * param->nuDRC2ChDmixCode
-      );
-    }
   }
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "     Dialogue Normalization Presence (bDialNormPresent): %s (0b%x).\n",
-    BOOL_PRESENCE(param->bDialNormPresent),
-    param->bDialNormPresent
+    BOOL_PRESENCE(dm->bDialNormPresent),
+    dm->bDialNormPresent
   );
 
-  if (param->bDRCCoefPresent) {
+  if (dm->bDialNormPresent) {
     LIBBLU_DTS_DEBUG_EXTSS(
       "     Dialogue Normalization Code (nuDRCCode): %" PRIu8 ".\n",
-      param->nuDialNormCode
+      dm->nuDialNormCode
     );
     LIBBLU_DTS_DEBUG_EXTSS(
       "      -> Dialog Normlization Gain value (DNG): %d dB.\n",
-      -((int) param->nuDialNormCode)
+      -((int) dm->nuDialNormCode)
     );
   }
 
-  LIBBLU_DTS_DEBUG_EXTSS(
-    "     Mixing Metadata Presence (bMixMetadataPresent): %s (0b%x).\n",
-    BOOL_PRESENCE(param->bMixMetadataPresent),
-    param->bMixMetadataPresent
-  );
+  if (dm->bDRCCoefPresent && ad_sf->bEmbeddedStereoFlag) {
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "     Dynamic Range Control Coefficient Code for Stereo Downmix "
+      "(nuDRC2ChDmixCode): %" PRIu8 ".\n",
+      dm->nuDRC2ChDmixCode
+    );
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "      -> Gain value (DRC_dB): %.2f dB.\n",
+      -32.0 + 0.25 * dm->nuDRC2ChDmixCode
+    );
+  }
 
-  if (param->bMixMetadataPresent) {
+  if (sf->bMixMetadataEnbl) {
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "     Mixing Metadata Presence (bMixMetadataPresent): %s (0b%x).\n",
+      BOOL_PRESENCE(dm->bMixMetadataPresent),
+      dm->bMixMetadataPresent
+    );
+  }
+
+  if (dm->bMixMetadataPresent) {
     LIBBLU_DTS_DEBUG_EXTSS(
       "     Mixing metadata:\n"
     );
@@ -1102,7 +1106,7 @@ static int _checkDcaAudioAssetDescDMCompliance(
 
 static int _checkDcaAudioAssetDescDNDCompliance(
   const DcaAudioAssetDescDecNDParameters * param,
-  const DcaExtSSHeaderMixMetadataParameters mix_meta,
+  const DcaExtSSHeaderMixMetadataParameters * mix_meta,
   bool is_sec_stream
 )
 {
@@ -1191,7 +1195,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         const DcaAudioAssetExSSCoreParameters * p = &param->coding_components.ExSSCore;
 
         LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA Core Component within Extension Substream "
+          "       => DCA Core Component within current Extension Substream "
           "(0x%04" PRIX16 ").\n",
           DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
         );
@@ -1224,7 +1228,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         const DcaAudioAssetExSSXBRParameters * p = &param->coding_components.ExSSXBR;
 
         LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XBR Extended Bit Rate within "
+          "       => DCA XBR Extended Bit Rate within current "
           "Extension Substream (commercial name: DTS-HDHR) "
           "(0x%04" PRIX16 ").\n",
           DCA_EXT_SS_COD_COMP_EXTSUB_XBR
@@ -1242,7 +1246,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         const DcaAudioAssetExSSXXCHParameters * p = &param->coding_components.ExSSXXCH;
 
         LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XXCH 5.1+ Channels Extension within cur-> "
+          "       => DCA XXCH 5.1+ Channels Extension within current "
           "Extension Substream (0x%04" PRIX16 ").\n",
           DCA_EXT_SS_COD_COMP_EXTSUB_XXCH
         );
@@ -1259,7 +1263,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         const DcaAudioAssetExSSX96Parameters * p = &param->coding_components.ExSSX96;
 
         LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA X96 96kHz Sampling Frequency Extension within cur-> "
+          "       => DCA X96 96kHz Sampling Frequency Extension within current "
           "Extension Substream (0x%04" PRIX16 ").\n",
           DCA_EXT_SS_COD_COMP_EXTSUB_X96
         );
@@ -1276,7 +1280,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         const DcaAudioAssetExSSLBRParameters * p = &param->coding_components.ExSSLBR;
 
         LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA LBR Low Bitrate Component within cur-> Extension "
+          "       => DCA LBR Low Bitrate Component within current Extension "
           "Substream (commercial name: DTS-Express) (0x%04" PRIX16 ").\n",
           DCA_EXT_SS_COD_COMP_EXTSUB_LBR
         );
@@ -1309,7 +1313,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         const DcaAudioAssetExSSXllParameters * p = &param->coding_components.ExSSXLL;
 
         LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XLL Lossless Extension within cur-> Extension "
+          "       => DCA XLL Lossless Extension within current Extension "
           "Substream (commercial name: DTS-HDMA) (0x%04" PRIX16 ").\n",
           DCA_EXT_SS_COD_COMP_EXTSUB_XLL
         );
@@ -1356,12 +1360,12 @@ static int _checkDcaAudioAssetDescDNDCompliance(
             p->nuExSSXLLSyncOffset,
             p->nuExSSXLLSyncOffset
           );
-
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        DTS-HD XLL Stream ID (nuDTSHDStreamID): 0x%02" PRIX8 ".\n",
-            p->nuDTSHDStreamID
-          );
         }
+
+        LIBBLU_DTS_DEBUG_EXTSS(
+          "        DTS-HD XLL Stream ID (nuDTSHDStreamID): 0x%02" PRIX8 ".\n",
+          p->nuDTSHDStreamID
+        );
       }
       break;
 
@@ -1418,10 +1422,10 @@ static int _checkDcaAudioAssetDescDNDCompliance(
         "      Scaling Codes of Main Audio (nuMainAudioScaleCode[ns][%s]):\n",
         (param->bEnblPerChMainAudioScale) ? "0" : "ch"
       );
-      for (unsigned ns = 0; ns < mix_meta.nuNumMixOutConfigs; ns++) {
+      for (unsigned ns = 0; ns < mix_meta->nuNumMixOutConfigs; ns++) {
         LIBBLU_DTS_DEBUG_EXTSS("       - Config %u: ", ns);
         if (param->bEnblPerChMainAudioScale) {
-          for (unsigned nCh = 0; nCh < mix_meta.nNumMixOutCh[ns]; nCh++) {
+          for (unsigned nCh = 0; nCh < mix_meta->nNumMixOutCh[ns]; nCh++) {
             if (0 < nCh)
               LIBBLU_DTS_DEBUG_EXTSS_NH(", ");
             LIBBLU_DTS_DEBUG_EXTSS_NH(
@@ -1473,7 +1477,7 @@ static int _checkDcaAudioAssetDescriptorCompliance(
   const DcaAudioAssetDescParameters * param,
   bool is_sec_stream,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderMixMetadataParameters mix_meta,
+  const DcaExtSSHeaderSFParameters * sf,
   DtsDcaExtSSWarningFlags * warn_flags
 )
 {
@@ -1506,11 +1510,11 @@ static int _checkDcaAudioAssetDescriptorCompliance(
   }
 
   LIBBLU_DTS_DEBUG_EXTSS("    Dynamic Metadata:\n");
-  if (_checkDcaAudioAssetDescDMCompliance(ad_dm, ad_sf) < 0)
+  if (_checkDcaAudioAssetDescDMCompliance(ad_dm, ad_sf, sf) < 0)
     return -1;
 
   LIBBLU_DTS_DEBUG_EXTSS("    Decoder Navigation Data:\n");
-  if (_checkDcaAudioAssetDescDNDCompliance(ad_dnd, mix_meta, is_sec_stream) < 0)
+  if (_checkDcaAudioAssetDescDNDCompliance(ad_dnd, &sf->mixMetadata, is_sec_stream) < 0)
     return -1;
 
   LIBBLU_DTS_DEBUG_EXTSS(
@@ -1578,7 +1582,7 @@ int checkDcaExtSSHeaderCompliance(
     BOOL_STR(param->bHeaderSizeType),
     param->bHeaderSizeType
   );
-  if (param->bHeaderSizeType)
+  if (0 == param->bHeaderSizeType)
     LIBBLU_DTS_DEBUG_EXTSS(
       "   => Short size fields, header size expressed using 8 bits "
       "(up to 256 bytes).\n"
@@ -1598,8 +1602,9 @@ int checkDcaExtSSHeaderCompliance(
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "  Extension Substream Frame size "
-    "(nuExtSSFsize): %zu bytes (0x%zx).\n",
+    "(nuExtSSFsize): %" PRIu32 " bytes (0x%*0" PRIu32 ").\n",
     param->nuExtSSFsize,
+    param->bHeaderSizeType ? 5 : 4,
     param->nuExtSSFsize - 1
   );
 
@@ -1652,7 +1657,7 @@ int checkDcaExtSSHeaderCompliance(
       &param->audioAssets[nAst],
       is_sec_stream,
       param->bStaticFieldsPresent,
-      param->static_fields.mixMetadata,
+      &param->static_fields,
       warn_flags
     );
     if (ret < 0)

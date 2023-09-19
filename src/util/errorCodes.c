@@ -243,9 +243,20 @@ static const struct {
     "dts_parsing_xll"
   ),
   DECLARE_OPTION(
-    LIBBLU_DEBUG_DTS_PATCHER,
-    "DTS audio patcher",
+    LIBBLU_DEBUG_DTS_PATCHER_OPERATIONS,
+    "DTS audio patcher operations",
     "dts_patcher"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_DTS_PATCHER_WRITING,
+    "DTS audio patcher fields writing",
+    "dts_patcher"
+  ),
+  DECLARE_RANGE(
+    "DTS audio patcher",
+    "dts_patcher",
+    LIBBLU_DEBUG_DTS_PATCHER_OPERATIONS,
+    LIBBLU_DEBUG_DTS_PATCHER_WRITING
   ),
   DECLARE_OPTION(
     LIBBLU_DEBUG_DTS_PBR,
@@ -265,7 +276,8 @@ static const struct {
     LIBBLU_DEBUG_DTS_PARSING_CORE,
     LIBBLU_DEBUG_DTS_PARSING_EXTSS,
     LIBBLU_DEBUG_DTS_PARSING_XLL,
-    LIBBLU_DEBUG_DTS_PATCHER,
+    LIBBLU_DEBUG_DTS_PATCHER_OPERATIONS,
+    LIBBLU_DEBUG_DTS_PATCHER_WRITING,
     LIBBLU_DEBUG_DTS_PBR,
     LIBBLU_DEBUG_DTS_OPERATIONS
   ),

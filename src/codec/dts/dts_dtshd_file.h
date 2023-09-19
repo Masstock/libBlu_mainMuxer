@@ -14,7 +14,6 @@
 #define __LIBBLU_MUXER__CODECS__DTS__DTSHD_FILE_H__
 
 #include "../../util.h"
-#include "dts_pbr_file.h"
 #include "dts_util.h"
 #include "dts_data.h"
 

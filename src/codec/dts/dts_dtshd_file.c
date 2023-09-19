@@ -102,45 +102,6 @@ static int _getRefClock(
   return 0;
 }
 
-static int _getFrameRateCode(
-  float * frame_rate,
-  bool * frame_rate_drop_frame,
-  uint8_t TC_Frame_Rate
-)
-{
-  static const float fr_values[8] = {
-    -1.f,
-    24000.f / 1001.f,
-    24.f,
-    25.f,
-    30000.f / 1001.f,
-    30000.f / 1001.f,
-    30.f,
-    30.f
-  };
-  static const bool fr_drop_frame[8] = {
-    false,
-    false,
-    false,
-    false,
-    true,
-    false,
-    true,
-    false
-  };
-
-  uint8_t suffix = TC_Frame_Rate & 0xF;
-  if (ARRAY_SIZE(fr_values) <= suffix)
-    LIBBLU_DTS_ERROR_RETURN(
-      "Reserved value in use ('TC_Frame_Rate' == 0x%02" PRIX8 ").\n",
-      TC_Frame_Rate
-    );
-
-  *frame_rate            = fr_values[suffix];
-  *frame_rate_drop_frame = fr_drop_frame[suffix];
-  return 0;
-}
-
 static int _decodeDtshdHeaderChunk(
   BitstreamReaderPtr bs,
   DtshdFileHeaderChunk * param
@@ -225,19 +186,14 @@ static int _decodeDtshdHeaderChunk(
     " Timecode frame-rate code (TC_Frame_Rate): 0x%02" PRIX8 ".\n",
     param->TC_Frame_Rate
   );
+  LIBBLU_DTS_DEBUG_DTSHD(
+    "  => %s.\n",
+    DtshdTCFrameRateStr(param->TC_Frame_Rate)
+  );
 
-  float frame_rate;
-  bool fr_drop_frame;
-  if (_getFrameRateCode(&frame_rate, &fr_drop_frame, param->TC_Frame_Rate) < 0)
-    return -1;
-
-  if (frame_rate < 0)
-    LIBBLU_DTS_DEBUG_DTSHD(" => Timecode rate: NOT_INDICATED (0x0).\n");
-  else
-    LIBBLU_DTS_DEBUG_DTSHD(
-      " => Timecode rate: %.3f FPS %s(0x%02" PRIX8 ").\n",
-      frame_rate,
-      fr_drop_frame ? "Drop " : "",
+  if (DTSHD_TCFR_RESERVED <= param->TC_Frame_Rate)
+    LIBBLU_DTS_ERROR_RETURN(
+      "Reserved value in use ('TC_Frame_Rate' == 0x%02" PRIX8 ").\n",
       param->TC_Frame_Rate
     );
 

@@ -103,12 +103,18 @@
 
 #define LIBBLU_DTS_DEBUG_PATCHER(format, ...)                                 \
   LIBBLU_DEBUG(                                                               \
-    LIBBLU_DEBUG_DTS_PATCHER, "DTS Patch", format, ##__VA_ARGS__              \
+    LIBBLU_DEBUG_DTS_PATCHER_OPERATIONS, "DTS Patch", format, ##__VA_ARGS__   \
   )
 
-#define LIBBLU_DTS_DEBUG_PATCHER_NH(format, ...)                              \
+#define LIBBLU_DTS_DEBUG_PATCHER_WRITE(format, ...)                           \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_DTS_PATCHER_WRITING,                                         \
+    "DTS Patch writer", format, ##__VA_ARGS__                                 \
+  )
+
+#define LIBBLU_DTS_DEBUG_PATCHER_WRITE_NH(format, ...)                        \
   LIBBLU_DEBUG_NO_HEADER(                                                     \
-    LIBBLU_DEBUG_DTS_PATCHER, format, ##__VA_ARGS__                           \
+    LIBBLU_DEBUG_DTS_PATCHER_WRITING, format, ##__VA_ARGS__                   \
   )
 
 #define LIBBLU_DTS_DEBUG_PBR(format, ...)                                     \

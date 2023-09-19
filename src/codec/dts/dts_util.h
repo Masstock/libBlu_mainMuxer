@@ -134,9 +134,12 @@ typedef struct {
   bool is_secondary;
   bool skip_ext;
   unsigned init_skip_delay;
+  bool processed_dtspbr_file;
 
   DtsAUFrame cur_au;
   bool skip_cur_au; /**< Skip all extension substreams until next core frame is parsed. */
+
+  unsigned nb_audio_frames;
 } DtsContext;
 
 /* Handling functions : */

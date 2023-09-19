@@ -10,55 +10,63 @@
 
 int saveFrameSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
-  unsigned size
+  unsigned audio_frame_idx,
+  uint32_t size
 )
 {
   assert(NULL != stats);
 
-  if (stats->nb_alloc_frames <= stats->nb_used_frames) {
+  if (stats->nb_alloc_frames <= audio_frame_idx) {
     unsigned new_len = GROW_ALLOCATION(stats->nb_alloc_frames, 4096);
 
-    if (lb_mul_overflow(new_len, sizeof(unsigned)))
+    if (lb_mul_overflow(new_len, sizeof(uint32_t)))
       LIBBLU_DTS_ERROR_RETURN(
         "Too many DTS XLL frames for PBR smoothing process.\n"
       );
 
-    unsigned * new_array = realloc(
+    uint32_t * new_array = realloc(
       stats->target_frame_size,
-      new_len * sizeof(unsigned)
+      new_len * sizeof(uint32_t)
     );
     if (NULL == new_array)
       LIBBLU_DTS_ERROR_RETURN(
         "Memory allocation error.\n"
       );
 
+    memset(
+      &new_array[stats->nb_alloc_frames],
+      0,
+      (new_len - stats->nb_alloc_frames) * sizeof(uint32_t)
+    );
+
     stats->target_frame_size = new_array;
     stats->nb_alloc_frames = new_len;
   }
 
-  stats->target_frame_size[stats->nb_used_frames++] = size;
+  stats->target_frame_size[audio_frame_idx] += size;
+  stats->last_frame_idx = MAX(stats->last_frame_idx, audio_frame_idx);
 
   return 0;
 }
 
 int _getFrameTargetSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
-  unsigned frame_idx,
+  unsigned audio_frame_idx,
   uint32_t * size
 )
 {
   assert(NULL != stats);
   assert(NULL != size);
 
-  if (stats->nb_used_frames <= frame_idx)
+  if (stats->last_frame_idx < audio_frame_idx)
     LIBBLU_DTS_XLL_ERROR_RETURN(
       "PBR smoothing failure, unknown frame index %u "
       "(%u frames registered).\n",
-      frame_idx,
-      stats->nb_used_frames
+      audio_frame_idx,
+      stats->last_frame_idx + 1
     );
 
-  *size = stats->target_frame_size[frame_idx];
+  *size = stats->target_frame_size[audio_frame_idx];
 
   return 0;
 }
@@ -108,7 +116,7 @@ static int _performComputationDtsPbrSmoothing(
   uint32_t accltd_size = 0; // Amount of future bytes to accumulate
   uint32_t max_accltd_size = 0; // Peak amount of bytes accumulated
 
-  for (unsigned idx = stats->nb_used_frames; 0 < idx; idx--) {
+  for (unsigned idx = stats->last_frame_idx + 1; 0 < idx; idx--) {
     /* Compute amount of bytes accumulated at current frame decoding */
     uint32_t cur_accltd_size = stats->target_frame_size[idx-1] + accltd_size;
 
@@ -123,7 +131,8 @@ static int _performComputationDtsPbrSmoothing(
       if (getMaxSizePbrFileHandler((unsigned) (timestamp * 1000), &maxSize) < 0)
         return -1;
 #else
-      max_frame_size = stats->avg_frame_size;
+      // max_frame_size = stats->avg_frame_size;
+      max_frame_size = 2736;
 #endif
     }
 
@@ -210,7 +219,7 @@ int initDtsXllFrameContext(
     }
   }
 
-  if (canBePerformedPBRSDtshdFileHandler(dtshd)) {
+  if (shallPBRSPerformedDtshdFileHandler(dtshd)) {
     uint32_t pbrs_buf_size = getPBRSmoothingBufSizeKiBDtshdFileHandler(dtshd) << 10;
 
     if (0 == pbrs_buf_size || DTS_XLL_MAX_PBR_BUFFER_SIZE < pbrs_buf_size)
@@ -799,7 +808,7 @@ int getRelativeOffsetDcaXllFrameSFPosition(
 
 int getFrameTargetSizeDtsXllPbr(
   DtsXllFrameContext * ctx,
-  unsigned frame_idx,
+  unsigned audio_frame_idx,
   uint32_t * size
 )
 {
@@ -807,7 +816,7 @@ int getFrameTargetSizeDtsXllPbr(
 
   return _getFrameTargetSizeDtsPbrSmoothing(
     &ctx->pbrSmoothing,
-    frame_idx,
+    audio_frame_idx,
     size
   );
 }

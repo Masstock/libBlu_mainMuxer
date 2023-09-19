@@ -24,7 +24,7 @@
 typedef struct {
   uint32_t * target_frame_size; /* TODO: Add frames offsets #DcaXllFrameSFPosition */
   unsigned nb_alloc_frames;
-  unsigned nb_used_frames;
+  unsigned last_frame_idx;
 
   uint32_t avg_frame_size;
   bool avg_frame_size_set;
@@ -34,7 +34,8 @@ typedef struct {
 
 int saveFrameSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
-  unsigned size
+  unsigned audio_frame_idx,
+  uint32_t size
 );
 
 typedef struct {
@@ -258,7 +259,7 @@ int getRelativeOffsetDcaXllFrameSFPosition(
  */
 int getFrameTargetSizeDtsXllPbr(
   DtsXllFrameContext * ctx,
-  unsigned frameIdx,
+  unsigned audio_frame_idx,
   unsigned * size
 );
 

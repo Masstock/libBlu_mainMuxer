@@ -95,6 +95,22 @@ DtsAUCellPtr initDtsAUCell(
   return cell;
 }
 
+uint32_t getSizeDtsAUFrame(
+  const DtsAUFramePtr frm
+)
+{
+
+  uint32_t size = 0;
+  for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
+    const DtsAUCell * cell = &frm->contentCells[i];
+    assert(DTS_AU_REPLACE != cell->treatment); // Shall not be used after mods.
+    if (DTS_AU_KEEP == cell->treatment)
+      size += cell->size;
+  }
+
+  return size;
+}
+
 int replaceCurDtsAUCell(
   DtsAUFramePtr frm,
   DtsAUInnerReplacementParam param

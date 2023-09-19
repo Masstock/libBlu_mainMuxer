@@ -21,6 +21,70 @@ typedef enum {
 /* ### DTS-HD files : ###################################################### */
 
 typedef enum {
+  DCA_EXT_SS_REF_CLOCK_PERIOD_32000 = 0x0,
+  DCA_EXT_SS_REF_CLOCK_PERIOD_44100 = 0x1,
+  DCA_EXT_SS_REF_CLOCK_PERIOD_48000 = 0x2,
+  DCA_EXT_SS_REF_CLOCK_PERIOD_RES   = 0x3
+} DcaExtRefClockCode;
+
+static inline unsigned getDcaExtReferenceClockValue(
+  DcaExtRefClockCode code
+)
+{
+  static const unsigned clock_periods[3] = {
+    32000,
+    44100,
+    48000
+  };
+
+  if (code < ARRAY_SIZE(clock_periods))
+    return clock_periods[code];
+  return 0;
+}
+
+static inline float getRefClockPeriodDcaExtRefClockCode(
+  DcaExtRefClockCode code
+)
+{
+  unsigned RefClock = getDcaExtReferenceClockValue(code);
+  if (!RefClock)
+    return -1.f;
+  return 1.f / RefClock;
+}
+
+typedef enum {
+  DTSHD_TCFR_NOT_INDICATED  = 0x0,
+  DTSHD_TCFR_23_976         = 0x1,
+  DTSHD_TCFR_24             = 0x2,
+  DTSHD_TCFR_25             = 0x3,
+  DTSHD_TCFR_29_970_DROP    = 0x4,
+  DTSHD_TCFR_29_970         = 0x5,
+  DTSHD_TCFR_30_DROP        = 0x6,
+  DTSHD_TCFR_30             = 0x7,
+  DTSHD_TCFR_RESERVED
+} DtshdTCFrameRate;
+
+static inline const char * DtshdTCFrameRateStr(
+  DtshdTCFrameRate TC_Frame_Rate
+)
+{
+  static const char * strings[] = {
+    "Not Indicated",
+    "23.976",
+    "24",
+    "25",
+    "29.970 Drop",
+    "29.970",
+    "30 Drop",
+    "30"
+  };
+
+  if (TC_Frame_Rate < ARRAY_SIZE(strings))
+    return strings[TC_Frame_Rate];
+  return "Reserved";
+}
+
+typedef enum {
   DTSHD_BSM__IS_VBR          = 0x0001,
   DTSHD_BSM__PBRS_PERFORMED  = 0x0002,
   DTSHD_BSM__NAVI_EMBEDDED   = 0x0004,
@@ -39,9 +103,9 @@ typedef struct {
   uint64_t Hdr_Byte_Size;
   uint32_t Hdr_Version;
 
-  uint8_t RefClockCode;
+  DcaExtRefClockCode RefClockCode;
   uint32_t TimeStamp;
-  uint8_t TC_Frame_Rate;
+  DtshdTCFrameRate TC_Frame_Rate;
   uint16_t Bitw_Stream_Metadata;
   uint8_t Num_Audio_Presentations;
   uint8_t Number_Of_Ext_Sub_Streams;
@@ -159,7 +223,7 @@ typedef struct {
 } DtshdBlackout;
 
 typedef struct {
-  bool missingRequiredPbrFile;
+  bool missing_required_dtspbr_file;
 } DtshdFileHandlerWarningFlags;
 
 typedef struct {
@@ -210,7 +274,7 @@ typedef struct {
  * substream.
  * \return false PBRS process is not required or cannot be performed.
  */
-static inline bool canBePerformedPBRSDtshdFileHandler(
+static inline bool shallPBRSPerformedDtshdFileHandler(
   const DtshdFileHandler * hdlr
 )
 {
@@ -220,7 +284,7 @@ static inline bool canBePerformedPBRSDtshdFileHandler(
     return false;
 
   return
-    !hdlr->warningFlags.missingRequiredPbrFile
+    !hdlr->warningFlags.missing_required_dtspbr_file
     && hdlr->AUPR_HDR.Bitw_Aupres_Metadata & DTSHD_BAM__LOSSLESS_PRESENT
     && !(hdlr->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__PBRS_PERFORMED)
   ;
@@ -696,7 +760,7 @@ static inline bool isSavedReservedFieldDcaExtSS(
 )
 {
   unsigned size = (Reserved_size << 3) + ZeroPadForFsize_size;
-  return size <= (DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE << 3);
+  return 8 <= size && size <= (DCA_EXT_SS_MAX_SUPP_RES_FIELD_SIZE << 3);
 }
 
 typedef enum {
@@ -1137,38 +1201,6 @@ typedef struct {
   unsigned nNumMixOutCh[DTS_EXT_SS_MAX_OUT_MIX_CONFIGS_NB];
 } DcaExtSSHeaderMixMetadataParameters;
 
-typedef enum {
-  DCA_EXT_SS_REF_CLOCK_PERIOD_32000 = 0x0,
-  DCA_EXT_SS_REF_CLOCK_PERIOD_44100 = 0x1,
-  DCA_EXT_SS_REF_CLOCK_PERIOD_48000 = 0x2,
-  DCA_EXT_SS_REF_CLOCK_PERIOD_RES   = 0x3
-} DcaExtRefClockCode;
-
-static inline unsigned getDcaExtReferenceClockValue(
-  DcaExtRefClockCode code
-)
-{
-  static const unsigned clock_periods[3] = {
-    32000,
-    44100,
-    48000
-  };
-
-  if (code < ARRAY_SIZE(clock_periods))
-    return clock_periods[code];
-  return 0;
-}
-
-static inline float getRefClockPeriodDcaExtRefClockCode(
-  DcaExtRefClockCode code
-)
-{
-  unsigned RefClock = getDcaExtReferenceClockValue(code);
-  if (!RefClock)
-    return -1.f;
-  return 1.f / RefClock;
-}
-
 typedef struct {
   uint8_t nuRefClockCode; // DcaExtRefClockCode
 
@@ -1224,7 +1256,7 @@ typedef struct {
   bool bHeaderSizeType;
 
   int64_t nuExtSSHeaderSize;
-  int64_t nuExtSSFsize;
+  uint32_t nuExtSSFsize;
 
   bool bStaticFieldsPresent; /* Mandatory in most cases */
   DcaExtSSHeaderSFParameters static_fields;

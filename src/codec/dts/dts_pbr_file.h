@@ -13,20 +13,15 @@
 #include "../../util.h"
 
 #include "dts_error.h"
+#include "dts_data.h"
 
 #define DTS_PBR_FILE_FR_STR_SIZE 10
-
-/** \~english
- * \brief Expected max size of a timecode line.
- *
- * Expected format: XX:XX:XX:XX,XXXXXXXXX
- */
-#define DTS_PBR_FILE_LINE_STR_SIZE 21
 
 #define DTS_PBR_FILE_DEFAULT_NB_ENTRIES 512
 
 int initPbrFileHandler(
-  const lbc * pbrFilename
+  const lbc * dtspbr_filename,
+  const DtshdFileHandler * dtshd
 );
 
 void releasePbrFileHandler(
@@ -37,13 +32,9 @@ bool isInitPbrFileHandler(
   void
 );
 
-int parsePbrFileHandler(
-  void
-);
-
 int getMaxSizePbrFileHandler(
   unsigned timestamp,
-  size_t * maxSize
+  unsigned * frame_size
 );
 
 int getAvgSizePbrFileHandler(

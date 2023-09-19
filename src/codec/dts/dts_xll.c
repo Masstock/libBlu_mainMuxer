@@ -293,9 +293,6 @@ int parseDtsXllFrame(
     return -1;
   unsigned decoded_data_size = offsetLibbluBitReader(&ctx->bit_reader) >> 3;
 
-  if (saveFrameSizeDtsPbrSmoothing(&ctx->pbrSmoothing, frame->size) < 0)
-    return -1;
-
   if (frame->size <= decoded_data_size) {
     assert(frame->size == decoded_data_size);
 

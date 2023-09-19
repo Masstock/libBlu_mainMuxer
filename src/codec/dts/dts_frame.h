@@ -99,6 +99,10 @@ DtsAUCellPtr initDtsAUCell(
   DtsAUInnerType type
 );
 
+uint32_t getSizeDtsAUFrame(
+  const DtsAUFramePtr frm
+);
+
 static inline DtsAUCellPtr recoverCurDtsAUCell(
   DtsAUFramePtr frm
 )

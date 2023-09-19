@@ -104,6 +104,12 @@ int initDtsContext(
 
   /* Save in context */
   *ctx = (DtsContext) {
+#if defined(DTS_XLL_FORCE_REBUILD_SEIING) && DTS_XLL_FORCE_REBUILD_SEIING
+    .mode = DTS_PARSMOD_TWO_PASS_FIRST,
+#else
+    .mode = DTS_PARSMOD_SINGLE_PASS, // Single pass by default
+#endif
+
     .src_file_idx = src_file_idx,
     .bs = es_bs,
     .script_bs = script_bs,
@@ -114,18 +120,6 @@ int initDtsContext(
     .is_secondary = options.secondaryStream,
     .skip_ext = options.extractCore
   };
-
-  if (isInitPbrFileHandler()) {
-    LIBBLU_DTS_INFO("Perfoming two passes Peak Bit-Rate smoothing.\n");
-    ctx->mode = DTS_PARSMOD_TWO_PASS_FIRST;
-  }
-  else {
-#if DTS_XLL_FORCE_REBUILD_SEIING
-    ctx->mode = DTS_PARSMOD_TWO_PASS_FIRST;
-#else
-    ctx->mode = DTS_PARSMOD_SINGLE_PASS;
-#endif
-  }
 
   return 0;
 
@@ -312,6 +306,7 @@ int initParsingDtsContext(
   ctx->core_pres = false;
   memset(&ctx->ext_ss, 0, sizeof(DtsDcaExtSSContext));
   ctx->ext_ss_pres = false;
+  ctx->nb_audio_frames = 0;
 
   return seekPos(ctx->bs, 0, SEEK_SET);
 }
@@ -426,7 +421,8 @@ int addToEsmsDtsFrame(
 #endif
 
 static uint64_t _getAndUpdatePTSCore(
-  DtsDcaCoreSSContext * core
+  DtsDcaCoreSSContext * core,
+  unsigned * nb_audio_frames
 )
 {
   const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
@@ -438,6 +434,8 @@ static uint64_t _getAndUpdatePTSCore(
 
   uint64_t pts = core->pts;
   core->pts += increment;
+  if (0 < core->nb_frames)
+    (*nb_audio_frames)++; // Subsequent core ss starts a new audio frame.
   return pts;
 }
 
@@ -460,11 +458,13 @@ static uint64_t _getAndUpdatePTS(
   DtsContext * ctx
 )
 {
-  switch (identifyContentTypeDtsAUFrame(&ctx->cur_au)) {
+  DtsAUContentType content_type = identifyContentTypeDtsAUFrame(&ctx->cur_au);
+
+  switch (content_type) {
     case DTS_AU_EMPTY:
       break;
     case DTS_AU_CORE_SS:
-      return _getAndUpdatePTSCore(&ctx->core);
+      return _getAndUpdatePTSCore(&ctx->core, &ctx->nb_audio_frames);
     case DTS_AU_EXT_SS:
       return _getAndUpdatePTSExtSS(&ctx->ext_ss);
   }
@@ -476,22 +476,30 @@ int completeDtsFrame(
   DtsContext * ctx
 )
 {
-  int ret = 0;
-  if (doGenerateScriptDtsContext(ctx)) {
-    uint64_t pts = _getAndUpdatePTS(ctx);
+  uint64_t pts = _getAndUpdatePTS(ctx);
 
-    ret = processCompleteFrameDtsAUFrame(
+  if (doGenerateScriptDtsContext(ctx)) {
+    int ret = processCompleteFrameDtsAUFrame(
       ctx->script_bs,
       ctx->script,
       &ctx->cur_au,
       ctx->src_file_idx,
       pts
     );
+    if (ret < 0)
+      return -1;
   }
   else {
-    /* TODO: Add data to PBR smoothing process stats */
+    if (DTS_PARSMOD_TWO_PASS_FIRST == ctx->mode) {
+      /* Peak Bit-Rate Smoothing first pass, save audio frame size. */
+      DtsPbrSmoothingStats * pbrs = &ctx->xll.pbrSmoothing;
+      uint32_t au_size = getSizeDtsAUFrame(&ctx->cur_au);
+      if (saveFrameSizeDtsPbrSmoothing(pbrs, ctx->nb_audio_frames, au_size) < 0)
+        return -1;
+    }
+
     discardWholeCurDtsAUFrame(&ctx->cur_au);
   }
 
-  return ret;
+  return 0;
 }
