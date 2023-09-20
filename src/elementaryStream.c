@@ -187,7 +187,7 @@ static int _parseScriptLibbluES(
   uint64_t PTS_reference, PTS_final;
   if (parseESPropertiesHeaderEsms(esms_bs, &es->prop, &PTS_reference, &PTS_final) < 0)
     goto free_return;
-  es->refPts = PTS_reference;
+  es->PTS_reference = PTS_reference;
   es->endPts = PTS_final;
 
   /* ES Properties source files : */
@@ -543,7 +543,7 @@ static int _buildNextPesPacket(
 
   /* Build from it next PES packet. */
   LibbluESPesPacketProperties pesp_prop;
-  if (prepareLibbluESPesPacketProperties(&pesp_prop, esms_pes_packet, refPcr, es->refPts) < 0)
+  if (prepareLibbluESPesPacketProperties(&pesp_prop, esms_pes_packet, refPcr, es->PTS_reference) < 0)
     return -1;
   uint32_t payload_size = pesp_prop.payloadSize;
 

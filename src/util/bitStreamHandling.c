@@ -156,14 +156,12 @@ static int _flushBitstreamWriter(
   BitstreamWriterPtr bs
 )
 {
-  size_t readedSize;
-
   if (bs->byteArrayOff == 0)
     return 0; /* Empty writing buffer */
 
-  readedSize = fwrite(bs->byteArray, 1, bs->byteArrayOff, bs->file);
+  size_t written = fwrite(bs->byteArray, 1, bs->byteArrayOff, bs->file);
 
-  if (bs->byteArrayOff != readedSize)
+  if (bs->byteArrayOff != written)
     LIBBLU_ERROR_RETURN(
       "Error happen during output file writing, %s (errno: %d).\n",
       strerror(errno),

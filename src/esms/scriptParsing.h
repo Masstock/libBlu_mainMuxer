@@ -32,7 +32,7 @@ static inline int seekESPropertiesEsms(
 int parseESPropertiesHeaderEsms(
   BitstreamReaderPtr script,
   LibbluESProperties * dst,
-  uint64_t * refPts,
+  uint64_t * PTS_reference,
   uint64_t * endPts
 );
 

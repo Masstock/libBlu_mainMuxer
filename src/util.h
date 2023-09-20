@@ -270,9 +270,9 @@ typedef struct {
   uint32_t packetNb;  /**< Current number of supplied TS packets (used for
     continuity_counter).                                                     */
 
-  uint64_t refPts;     /**< Zero timestamp reference of stream.               */
+  uint64_t PTS_reference;     /**< Zero timestamp reference of stream.               */
   uint64_t startPts;  /**< Stream starting timestamp (time value is obtain
-    by doing startPts - refPts).                                              */
+    by doing startPts - PTS_reference).                                              */
   uint64_t endPts;    /**< Stream final timestamp (only used to display
     progression).                                                            */
 

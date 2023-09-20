@@ -542,9 +542,19 @@ static void setEsmsPtsRef(
   const H264CurrentProgressParam * curProgParam
 )
 {
-  script->PTS_reference = (uint64_t) (
+  uint64_t reference = (uint64_t) (
     curProgParam->initDecPicNbCntShift
     * curProgParam->frameDuration
+  );
+
+  script->PTS_reference = reference;
+
+  LIBBLU_H264_DEBUG_AU_PROCESSING(
+    "Set PTS_reference: %" PRIu64 " ticks "
+    "(initDecPicNbCntShift=%" PRIu64 ", frame duration=%" PRIu64 ").\n",
+    reference,
+    curProgParam->initDecPicNbCntShift,
+    curProgParam->frameDuration
   );
 }
 
@@ -799,18 +809,18 @@ static int _processPESFrame(
     curProgParam->nbConsecutiveBPics = 0;
 
   if (!curProgParam->initializedParam) {
-    /* Setting H.264 Output parameters : */
-    if (_initProperties(handle->esms, &handle->curProgParam, sps, handle->constraints) < 0)
-      return -1;
-
+    /* Set pictures counting mode (apply correction if 2nd pass) */
     if (!options.secondPass) {
       curProgParam->halfPicOrderCnt = true;
-        /* By default, expect to divide by two the PicOrderCnt. */
+        // By default, expect to divide by two the PicOrderCnt.
     }
     else {
       curProgParam->halfPicOrderCnt = options.halfPicOrderCnt;
       curProgParam->initDecPicNbCntShift = options.initDecPicNbCntShift;
     }
+
+    if (_initProperties(handle->esms, &handle->curProgParam, sps, handle->constraints) < 0)
+      return -1;
 
     curProgParam->initializedParam = true;
   }
@@ -838,7 +848,7 @@ static int _processPESFrame(
     curProgParam->restartRequired = true;
 
     LIBBLU_H264_DEBUG_AU_PROCESSING(
-      "ADJUST %" PRId64 "\n",
+      "ADJUST initDecPicNbCntShift=%" PRId64 "\n",
       curProgParam->initDecPicNbCntShift
     );
   }

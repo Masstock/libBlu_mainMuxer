@@ -45,7 +45,7 @@ typedef enum {
   STREAM_CODING_TYPE_DTSE_SEC  =  0xA2   /**< DTS-Express secondary audio.   */
 } LibbluStreamCodingType;
 
-const lbc * LibbluStreamCodingTypeStr(
+const char * LibbluStreamCodingTypeStr(
   LibbluStreamCodingType sct
 );
 

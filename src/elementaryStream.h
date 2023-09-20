@@ -160,7 +160,7 @@ typedef struct {
     ES format specific properties.                                           */
 
   /* Timing information */
-  uint64_t refPts;
+  uint64_t PTS_reference;
   uint64_t startPts;
   uint64_t endPts;
 

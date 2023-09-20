@@ -11,8 +11,8 @@
 int prepareLibbluESPesPacketProperties(
   LibbluESPesPacketProperties * dst,
   EsmsPesPacket * esms_pes,
-  uint64_t referentialStc,
-  uint64_t referentialTs
+  uint64_t initial_STC,
+  uint64_t PTS_reference
 )
 {
   assert(NULL != dst);
@@ -25,15 +25,15 @@ int prepareLibbluESPesPacketProperties(
   dst->dtsPresent = esms_pes->prop.dts_present;
   dst->extDataPresent = esms_pes->prop.ext_data_present;
 
-  dst->pts = esms_pes->pts + referentialStc;
-  if (dst->pts < referentialTs)
+  dst->pts = esms_pes->pts + initial_STC;
+  if (dst->pts < PTS_reference)
     LIBBLU_ERROR_RETURN("Negative Presentation Time Stamp on a PES header.\n");
-  dst->pts -= referentialTs;
+  dst->pts -= PTS_reference;
 
-  dst->dts = esms_pes->dts + referentialStc;
-  if (dst->dts < referentialTs)
+  dst->dts = esms_pes->dts + initial_STC;
+  if (dst->dts < PTS_reference)
     LIBBLU_ERROR_RETURN("Negative Decoding Time Stamp on a PES header.\n");
-  dst->dts -= referentialTs;
+  dst->dts -= PTS_reference;
 
   dst->extData = esms_pes->ext_data;
   dst->payloadSize = esms_pes->size;
@@ -324,7 +324,7 @@ void destroyLibbluESPesPacketPropertiesNode(
 LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
   EsmsPesPacketNodePtr scriptNode,
   uint64_t refPcr,
-  uint64_t refPts,
+  uint64_t PTS_reference,
   LibbluPesPacketHeaderPrep_fun preparePesHeader,
   LibbluStreamCodingType codingType
 )

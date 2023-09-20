@@ -21,9 +21,9 @@
 #define WRITE(br, v, s, e)                                                    \
   do {                                                                        \
     uint64_t _v = (v);                                                        \
-    unsigned _s = (s);                                                        \
+    uint64_t _s = (s);                                                        \
     for (unsigned _i = 0; _i < _s; _i++) {                                    \
-      if (writeByte((br), _v >> ((_s - _i - 1) << 3ull)) < 0)                 \
+      if (writeByte((br), _v >> ((_s - _i - 1ull) << 3)) < 0)                 \
         e;                                                                    \
     }                                                                         \
   } while (0)
@@ -1195,7 +1195,7 @@ static uint16_t _getPesPacketPropWord(
    * -> b1: ext_data_present
    * -> v3: reserved
    */
-  uint16_t frame_prop_flags = (
+  uint8_t frame_prop_flags = (
     (pes_packet_prop->pts_long_field     << 7)
     | (pes_packet_prop->dts_present      << 6)
     | (pes_packet_prop->dts_long_field   << 5)
@@ -1240,10 +1240,19 @@ int writePesPacketEsmsHandler(
     return -1;
   EsmsPesPacketProp * pes_packet_prop = &pes_packet->prop;
 
-  LIBBLU_SCRIPTW_DEBUG("  Script frame:\n");
+  LIBBLU_SCRIPTW_DEBUG(
+    "  Script frame (0x%016" PRIX64 "):\n",
+    tellWritingPos(esms_bs)
+  );
 
   /* [v16 prop_word] */
-  WRITE(esms_bs, _getPesPacketPropWord(pes_packet), 2, return -1);
+  uint16_t prop_word = _getPesPacketPropWord(pes_packet);
+  WRITE(esms_bs, prop_word, 2, return -1);
+
+  LIBBLU_SCRIPTW_DEBUG(
+    "   => Properties word: 0x%04" PRIX16 ".\n",
+    prop_word
+  );
 
   /* [u<32 << pts_long_field> pts] */
   WRITE(esms_bs, pes_packet->pts, 4 << pes_packet_prop->pts_long_field, return -1);

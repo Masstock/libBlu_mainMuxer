@@ -335,6 +335,19 @@ static const struct {
     "H.264 video Access Units detection and stitching",
     "h264_access_units_processing"
   ),
+  DECLARE_RANGE(
+    "H.264 video parsing and operations",
+    "h264",
+    LIBBLU_DEBUG_H264_PARSING_NAL,
+    LIBBLU_DEBUG_H264_PARSING_AUD,
+    LIBBLU_DEBUG_H264_PARSING_SPS,
+    LIBBLU_DEBUG_H264_PARSING_VUI,
+    LIBBLU_DEBUG_H264_PARSING_PPS,
+    LIBBLU_DEBUG_H264_PARSING_SEI,
+    LIBBLU_DEBUG_H264_PARSING_SLICE,
+    LIBBLU_DEBUG_H264_OPERATIONS,
+    LIBBLU_DEBUG_H264_AU_PROCESSING
+  ),
 
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_HRD,

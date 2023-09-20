@@ -241,7 +241,7 @@ static void _printStreamInfos(
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %ubits.\n",
+    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %ubits.\n",
     LibbluStreamCodingTypeStr(ctx->script->prop.coding_type),
     AudioFormatCodeStr(ctx->script->prop.audio_format),
     _getNbChannels(ctx),

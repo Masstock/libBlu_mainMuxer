@@ -846,7 +846,7 @@ int analyzeLpcm(
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: %" PRI_LBCS ", %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
+    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
     LibbluStreamCodingTypeStr(esms->prop.coding_type),
     AudioFormatCodeStr(esms->prop.audio_format),
     fmt->common_fields.wChannels,

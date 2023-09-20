@@ -684,7 +684,9 @@ static int _parseEsmsPesPacketExtData(
   READ_VALUE(esms_bs, 2, &ext_data_size, return -1);
 
   LIBBLU_SCRIPTR_DEBUG(
-    "    Extension data size (ext_data_size): %" PRIu16 " (0x%04" PRIX16 ").\n"
+    "    Extension data size (ext_data_size): %" PRIu16 " (0x%04" PRIX16 ").\n",
+    ext_data_size,
+    ext_data_size
   );
 
   switch (coding_type) {
@@ -722,6 +724,11 @@ static int _parseEsmsPesPacketProperties(
    */
   uint16_t frame_prop_word;
   READ_VALUE(esms_bs, 2, &frame_prop_word, return -1);
+
+  LIBBLU_SCRIPTR_DEBUG(
+    "   Properties word (frame_prop_word): 0x%04" PRIX16 ".\n",
+    frame_prop_word
+  );
 
   if (ES_VIDEO == type) {
     assert(isVideoStreamCodingType(coding_type));

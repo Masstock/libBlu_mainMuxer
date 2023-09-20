@@ -77,10 +77,10 @@ typedef struct {
   uint64_t tpStcDuration_floor;  /**< floor(tpStcDuration) */
   uint64_t tpStcDuration_ceil;  /**< floor(tpStcDuration) */
 
-  uint64_t referentialStc; /* Referential initial STC value in #MAIN_CLOCK_27MHZ ticks. */
+  uint64_t initial_STC; /* Referential initial STC value in #MAIN_CLOCK_27MHZ ticks. */
   uint64_t stdBufDelay;  /**< STD buffering delay, virtual time between
     muxer and demuxer STCs. Initial STC value can be retrived with formula
-    'referentialStc' - 'stdBufDelay' */
+    'initial_STC' - 'stdBufDelay' */
 
   /* Progression */
   unsigned nbTsPacketsMuxed;  /**< Number of transport packets muxed.        */

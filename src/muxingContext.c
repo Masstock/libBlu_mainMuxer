@@ -14,12 +14,12 @@ static uint64_t _getMinInitialDelay(
   unsigned nbEsStreams
 )
 {
+  uint64_t initial_delay = 0;
 
-  uint64_t initialDelay = 0;
   for (unsigned i = 0; i < nbEsStreams; i++)
-    initialDelay = MAX(initialDelay, esStreams[i]->es.refPts);
+    initial_delay = MAX(initial_delay, esStreams[i]->es.PTS_reference);
 
-  return initialDelay;
+  return initial_delay;
 }
 
 static int _addSystemStreamToContext(
@@ -312,11 +312,11 @@ static void _computeInitialTimings(
   LibbluMuxingContextPtr ctx
 )
 {
-  uint64_t startPcr = ctx->settings.initialPresentationTime;
+  uint64_t initial_PT = ctx->settings.initialPresentationTime;
 
   LIBBLU_DEBUG_COM(
-    "User requested startPcr: %" PRIu64 " (27MHz clock).\n",
-    startPcr
+    "User requested initial Presentation Time: %" PRIu64 " (27MHz clock).\n",
+    initial_PT
   );
 
   /* Define transport stream timestamps. */
@@ -326,37 +326,37 @@ static void _computeInitialTimings(
   ctx->tpStcDuration_ceil  = (uint64_t) ceil(ctx->tpStcDuration);
 
   /* Compute minimal decoding delay due to ESs first DTS/PTS difference */
-  uint64_t initialDecodingDelay = _getMinInitialDelay(
+  uint64_t initial_decoding_delay = _getMinInitialDelay(
     ctx->elementaryStreams,
     nbESLibbluMuxingContext(ctx)
   );
 
   /* Initial timing model delay between muxer and demuxer STCs */
-  uint64_t stdBufferDelay = (uint64_t) ceil(
+  uint64_t STD_buffering_delay = (uint64_t) ceil(
     ctx->settings.initialTStdBufDuration * MAIN_CLOCK_27MHZ
   );
 
-  if (startPcr < initialDecodingDelay + stdBufferDelay) {
+  if (initial_PT < initial_decoding_delay + STD_buffering_delay) {
     LIBBLU_WARNING(
       "Alignment of start PCR to minimal initial stream buffering delay "
       "to avoid negative PCR values.\n"
     );
-    startPcr = initialDecodingDelay + stdBufferDelay;
+    initial_PT = initial_decoding_delay + STD_buffering_delay;
   }
 
   /* Compute initial muxing STC value as user choosen value minus delays. */
   _updateCurrentStcLibbluMuxingContext(
     ctx,
-    ROUND_90KHZ_CLOCK(startPcr - initialDecodingDelay) - stdBufferDelay
+    ROUND_90KHZ_CLOCK(initial_PT - initial_decoding_delay) - STD_buffering_delay
   );
 
   LIBBLU_DEBUG_COM(
     "Start PCR: %" PRIu64 ", "
     "initialDecodingDelay: %" PRIu64 ", "
     "stdBufferDelay: %" PRIu64 ".\n",
-    startPcr,
-    initialDecodingDelay,
-    stdBufferDelay
+    initial_PT,
+    initial_decoding_delay,
+    STD_buffering_delay
   );
   LIBBLU_DEBUG_COM(
     "Initial PCR: %f, Initial PT: %" PRIu64 ".\n",
@@ -365,8 +365,8 @@ static void _computeInitialTimings(
   );
 
   /* Define System Time Clock, added value to default ES timestamps values. */
-  ctx->referentialStc = startPcr;
-  ctx->stdBufDelay = stdBufferDelay;
+  ctx->initial_STC = initial_PT;
+  ctx->stdBufDelay = STD_buffering_delay;
 }
 
 static int _initiateElementaryStreamsTStdModel(
@@ -714,7 +714,7 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
     ret = buildNextPesPacketLibbluES(
       &stream->es,
       stream->pid,
-      ctx->referentialStc,
+      ctx->initial_STC,
       utilities.preparePesHeader
     );
     switch (ret) {
@@ -1212,7 +1212,7 @@ static int _muxNextESPacket(
     ret = buildNextPesPacketLibbluES(
       &stream->es,
       stream->pid,
-      ctx->referentialStc,
+      ctx->initial_STC,
       utilities.preparePesHeader
     );
     switch (ret) {
@@ -1263,8 +1263,8 @@ static int _muxNextESPacket(
     ctx->progress =
       (double) (
         stream->es.current_pes_packet.pts
-        - ctx->referentialStc
-        + stream->es.refPts
+        - ctx->initial_STC
+        + stream->es.PTS_reference
       ) / stream->es.endPts
     ;
   }
