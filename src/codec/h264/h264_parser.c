@@ -4124,13 +4124,6 @@ int analyzeH264(
   LibbluESParsingSettings * settings
 )
 {
-  H264ParametersHandlerPtr handle;
-
-  H264HrdVerifierContextPtr hrdVerCtx = NULL;
-
-  unsigned long duration;
-  bool seiSection; /* Used to know when inserting SEI custom NALU. */
-
   assert(NULL != settings);
 
 #if 0
@@ -4170,10 +4163,12 @@ int analyzeH264(
     goto free_return;
 #endif
 
+  H264ParametersHandlerPtr handle;
   if (NULL == (handle = initH264ParametersHandler(settings)))
     goto free_return;
 
-  seiSection = false;
+  H264HrdVerifierContextPtr hrd_verif_ctx = NULL;
+  bool sei_section = false; // Used to know when inserting SEI custom NALU.
 
   while (!noMoreNal(handle) && !settings->askForRestart) {
     /* Main NAL units parsing loop. */
@@ -4192,7 +4187,7 @@ int analyzeH264(
       LIBBLU_H264_DEBUG_AU_PROCESSING(
         "Detect the start of a new Access Unit.\n"
       );
-      if (_processAccessUnit(handle, &hrdVerCtx, settings) < 0)
+      if (_processAccessUnit(handle, &hrd_verif_ctx, settings) < 0)
         goto free_return;
     }
 
@@ -4304,7 +4299,7 @@ int analyzeH264(
         if (decodeH264PicParametersSet(handle) < 0)
           goto free_return;
 
-        seiSection = true; /* Made SEI insertion available. */
+        sei_section = true; /* Made SEI insertion available. */
         break;
 
       case NAL_UNIT_TYPE_ACCESS_UNIT_DELIMITER: /* 9 - AUD */
@@ -4358,7 +4353,7 @@ int analyzeH264(
      * TODO: Move into patch function ?
      * TODO: Find rebuilding algorithm.
      */
-    if (seiSection) {
+    if (sei_section) {
       if (settings->options.forceRebuildSei) {
 #if 0
         if (insertH264SeiBufferingPeriodPlaceHolder(handle) < 0)
@@ -4372,7 +4367,7 @@ int analyzeH264(
 #endif
       }
 
-      seiSection = false;
+      sei_section = false;
     }
   }
 
@@ -4388,7 +4383,7 @@ int analyzeH264(
 
     /* Quick exit. */
     destroyH264ParametersHandler(handle);
-    destroyH264HrdVerifierContext(hrdVerCtx);
+    destroyH264HrdVerifierContext(hrd_verif_ctx);
     return 0;
   }
 
@@ -4416,8 +4411,6 @@ int analyzeH264(
   lbc_printf(" === Parsing finished with success. ===              \n");
 
   /* Display infos : */
-  duration = (handle->esms->PTS_final - handle->esms->PTS_reference) / MAIN_CLOCK_27MHZ;
-
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: Video/H.264-AVC, %ux%u%c, ",
     handle->sequenceParametersSet.data.FrameWidth,
@@ -4425,21 +4418,19 @@ int analyzeH264(
     (handle->sequenceParametersSet.data.frame_mbs_only_flag ? 'p' : 'i')
   );
   lbc_printf("%.3f Im/s.\n", handle->curProgParam.frameRate);
-  lbc_printf("Stream Duration: %02lu:%02lu:%02lu\n",
-    (duration / 60) / 60, (duration / 60) % 60, duration % 60
-  );
+  printStreamDurationEsmsHandler(handle->esms);
   lbc_printf("=======================================================================================\n");
 
   if (completeH264ParametersHandler(handle, settings) < 0)
     goto free_return;
   destroyH264ParametersHandler(handle);
-  destroyH264HrdVerifierContext(hrdVerCtx);
+  destroyH264HrdVerifierContext(hrd_verif_ctx);
 
   return 0;
 
 free_return:
   destroyH264ParametersHandler(handle);
-  destroyH264HrdVerifierContext(hrdVerCtx);
+  destroyH264HrdVerifierContext(hrd_verif_ctx);
 
   return -1;
 }

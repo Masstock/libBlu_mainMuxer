@@ -211,14 +211,15 @@ static void _printHeaderDcaCoreSS(
   DtsContext * ctx
 )
 {
-  uint64_t nb_frames = 0, frame_dts = 0;
+  uint64_t nb_frames = 0, frame_pts = 0;
+
   if (ctx->core_pres) {
     nb_frames = ctx->core.nb_frames;
-    frame_dts = ctx->core.pts;
+    frame_pts = getPTSDtsDcaCoreSSContext(&ctx->core);
   }
 
   lbc frame_time[STRT_H_M_S_MS_LEN];
-  str_time(frame_time, STRT_H_M_S_MS_LEN, STRT_H_M_S_MS, frame_dts);
+  str_time(frame_time, STRT_H_M_S_MS_LEN, STRT_H_M_S_MS, frame_pts);
 
   int64_t startOff = tellPos(ctx->bs);
   LIBBLU_DTS_DEBUG(
@@ -1362,11 +1363,12 @@ static int _decodeDcaExtSS(
   assert(NULL != ctx);
 
   int64_t frame_offset = tellPos(ctx->bs);
+
   lbc frame_time[STRT_H_M_S_MS_LEN];
   str_time(
     frame_time,
     STRT_H_M_S_MS_LEN, STRT_H_M_S_MS,
-    (ctx->ext_ss_pres) ? ctx->ext_ss.pts : 0
+    (ctx->ext_ss_pres) ? getPTSDtsDcaExtSSContext(&ctx->ext_ss) : 0
   );
 
   LIBBLU_DTS_DEBUG(

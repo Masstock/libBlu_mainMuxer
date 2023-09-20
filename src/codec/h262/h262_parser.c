@@ -2194,7 +2194,6 @@ int analyzeH262(
   size_t frameOff, ignoredBytes;
   uint64_t gopPts = 0, startPts = 0, h262Pts = 0, h262Dts = 0;
   float frameDuration = 0;
-  unsigned long duration;
 
   unsigned maxPictPerGop;
   unsigned pictNo, gopNo;
@@ -2494,7 +2493,7 @@ int analyzeH262(
   closeBitstreamReader(m2vInput);
 
   /* Display infos : */
-  duration = ((gopPts + pictureHeader.temporal_reference * frameDuration) - h262Infos->PTS_reference) / MAIN_CLOCK_27MHZ;
+  h262Infos->PTS_final = gopPts + pictureHeader.temporal_reference * frameDuration;
 
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
@@ -2504,15 +2503,8 @@ int analyzeH262(
     (sequenceExtension.progressive_sequence ? 'p' : 'i'),
     sequenceValues.frame_rate
   );
-  lbc_printf(
-    "Stream Duration: %02lu:%02lu:%02lu\n",
-    (duration / 60) / 60,
-    (duration / 60) % 60,
-    duration % 60
-  );
+  printStreamDurationEsmsHandler(h262Infos);
   lbc_printf("=======================================================================================\n");
-
-  h262Infos->PTS_final = gopPts + pictureHeader.temporal_reference * frameDuration;
 
   if (completePesCuttingScriptEsmsHandler(essOutput, h262Infos) < 0)
     return -1;

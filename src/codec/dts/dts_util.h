@@ -38,8 +38,20 @@ typedef struct {
   unsigned nb_frames;
   DtsDcaCoreSSWarningFlags warn_flags;
 
-  uint64_t pts;
+  uint64_t nb_parsed_samples;
 } DtsDcaCoreSSContext;
+
+static inline uint64_t getPTSDtsDcaCoreSSContext(
+  const DtsDcaCoreSSContext * core
+)
+{
+  const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
+
+  return
+    (MAIN_CLOCK_27MHZ * core->nb_parsed_samples)
+    / getDcaCoreAudioSampFreqCode(bsh->SFREQ)
+  ;
+}
 
 typedef struct {
   bool presenceOfUserDefinedBits;
@@ -72,7 +84,7 @@ typedef struct {
   unsigned nbFrames;
   DtsDcaExtSSWarningFlags warningFlags;
 
-  uint64_t pts;
+  uint64_t nb_parsed_samples;
 } DtsDcaExtSSContext;
 
 static inline void cleanDtsDcaExtSSContext(
@@ -83,15 +95,18 @@ static inline void cleanDtsDcaExtSSContext(
     free(ctx.curFrames[i]);
 }
 
-#if 0
-typedef struct {
-  bool initialized;
+static inline uint64_t getPTSDtsDcaExtSSContext(
+  const DtsDcaExtSSContext * ext_ss
+)
+{
+  const DcaExtSSFrameParameters * frame = ext_ss->curFrames[ext_ss->currentExtSSIdx];
+  const DcaExtSSHeaderSFParameters * sf = &frame->header.static_fields;
 
-  int64_t syncFrameStartOffset;
-  bool isExtSubstream; /**< false: Core substream, true: Extension substream. */
-  bool skipped;
-} DtsCurrentPeriod;
-#endif
+  return
+    (MAIN_CLOCK_27MHZ * ext_ss->nb_parsed_samples)
+    / getDcaExtReferenceClockValue(sf->nuRefClockCode)
+  ;
+}
 
 /** \~english
  * \brief Parsing mode of input DTS stream.

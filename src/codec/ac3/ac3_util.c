@@ -507,12 +507,7 @@ static void _printStreamInfos(
     lbc_printf("MLP max output bit-depth: %u bits.\n", mi->observed_bit_depth);
   }
 
-  lbc_printf(
-    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
-    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 / 60,
-    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 % 60,
-    (ctx->core.pts / MAIN_CLOCK_27MHZ) % 60
-  );
+  printStreamDurationEsmsHandler(ctx->script);
   lbc_printf("=======================================================================================\n");
 }
 

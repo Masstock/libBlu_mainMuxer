@@ -1202,7 +1202,7 @@ typedef struct {
 } DcaExtSSHeaderMixMetadataParameters;
 
 typedef struct {
-  uint8_t nuRefClockCode; // DcaExtRefClockCode
+  DcaExtRefClockCode nuRefClockCode;
 
   uint8_t nuExSSFrameDurationCode_code;
   uint32_t nuExSSFrameDurationCode;

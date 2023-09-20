@@ -16,13 +16,18 @@
 #include "dts_pbr_file.h"
 #include "dts_data.h"
 
+typedef struct {
+  uint64_t timestamp;
+  uint32_t target_frame_size;
+} DtsPbrSmoothingStatsFrame;
+
 /** \~english
  * \brief PBR smoothing process statistics.
  *
  * Used during PBR smoothing process.
  */
 typedef struct {
-  uint32_t * target_frame_size; /* TODO: Add frames offsets #DcaXllFrameSFPosition */
+  DtsPbrSmoothingStatsFrame * frames;
   unsigned nb_alloc_frames;
   unsigned last_frame_idx;
 
@@ -35,6 +40,7 @@ typedef struct {
 int saveFrameSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
   unsigned audio_frame_idx,
+  uint64_t timestamp,
   uint32_t size
 );
 
@@ -131,7 +137,7 @@ static inline void cleanDtsXllFrameContext(
   free(ctx.pbrs_buf);
   cleanCircularBuffer(ctx.pendingFrames);
   cleanCircularBuffer(ctx.decodedFramesOff);
-  free(ctx.pbrSmoothing.target_frame_size);
+  free(ctx.pbrSmoothing.frames);
 }
 
 int initDtsXllFrameContext(

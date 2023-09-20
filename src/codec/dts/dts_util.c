@@ -154,7 +154,7 @@ int _setScriptProperties(
 
   if (ctx->core_pres) {
     const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
-    script->PTS_final = ctx->core.pts;
+    script->PTS_final = getPTSDtsDcaCoreSSContext(&ctx->core);
 
     switch (bsh->AMODE) {
       case DCA_AMODE_A:
@@ -199,7 +199,7 @@ int _setScriptProperties(
         "unable to define audio properties.\n"
       );
 
-    script->PTS_final = ctx->ext_ss.pts;
+    script->PTS_final = getPTSDtsDcaExtSSContext(&ctx->ext_ss);
 
     if (ctx->ext_ss.content.nbChannels <= 1)
       script->prop.audio_format = 0x01; /* Mono */
@@ -248,12 +248,7 @@ static void _printStreamInfos(
     valueSampleRateCode(ctx->script->prop.sample_rate),
     valueBitDepthCode(ctx->script->prop.bit_depth)
   );
-  lbc_printf(
-    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
-    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 / 60,
-    (ctx->core.pts / MAIN_CLOCK_27MHZ) / 60 % 60,
-    (ctx->core.pts / MAIN_CLOCK_27MHZ) % 60
-  );
+  printStreamDurationEsmsHandler(ctx->script);
   lbc_printf("=======================================================================================\n");
 }
 
@@ -315,31 +310,29 @@ DtsFrameInitializationRet initNextDtsFrame(
   DtsContext * ctx
 )
 {
-  DtsFrameInitializationRet ret;
-  uint32_t syncWord;
-
-  DtsAUCellPtr cell;
+  uint32_t sync_word;
   DtsAUInnerType type;
-
-  switch ((syncWord = nextUint32(ctx->bs))) {
+  DtsFrameInitializationRet ret;
+  switch ((sync_word = nextUint32(ctx->bs))) {
     case DCA_SYNCWORD_CORE:
       /* DTS Coherent Acoustics Core */
-      ret = DTS_FRAME_INIT_CORE_SUBSTREAM;
       type = DTS_FRM_INNER_CORE_SS;
+      ret = DTS_FRAME_INIT_CORE_SUBSTREAM;
       break;
 
     case DCA_SYNCEXTSSH:
-      ret = DTS_FRAME_INIT_EXT_SUBSTREAM;
       type = DTS_FRM_INNER_EXT_SS_HDR;
+      ret = DTS_FRAME_INIT_EXT_SUBSTREAM;
       break;
 
     default:
       LIBBLU_DTS_ERROR_RETURN(
         "Unknown sync word 0x%08" PRIX32 ".\n",
-        syncWord
+        sync_word
       );
   }
 
+  DtsAUCellPtr cell;
   if (NULL == (cell = initDtsAUCell(&ctx->cur_au, type)))
     return -1;
   cell->offset = tellPos(ctx->bs);
@@ -347,78 +340,6 @@ DtsFrameInitializationRet initNextDtsFrame(
   return ret;
 }
 
-#if 0
-int addToEsmsDtsFrame(
-  DtsContext * ctx,
-  EsmsHandlerPtr dtsInfos,
-  DtsCurrentPeriod * curPeriod
-)
-{
-
-  if (!curPeriod->isExtSubstream) {
-    /* Core sync frame */
-    DtsDcaCoreSSContext * core = &ctx->core;
-
-    assert(ctx->core_pres);
-
-    if (initAudioPesPacketEsmsHandler(dtsInfos, false, false, core->pts, 0) < 0)
-      return -1;
-
-    if (
-      appendAddPesPayloadCommandEsmsHandler(
-        dtsInfos, ctx->src_file_idx, 0x0, curPeriod->syncFrameStartOffset,
-        core->cur_frame.header.FSIZE
-      ) < 0
-    )
-      return -1;
-
-    core->pts +=
-      (
-        (
-          (uint64_t) core->cur_frame.header.NBLKS
-          * core->cur_frame.header.SHORT
-        ) * MAIN_CLOCK_27MHZ
-      )
-      / core->cur_frame.header.audioFreq
-    ;
-  }
-  else {
-    /* Extension substream sync frame */
-    DtsDcaExtSSContext * ext = &ctx->ext_ss;
-
-    assert(ctx->ext_ss_pres);
-
-    if (initAudioPesPacketEsmsHandler(dtsInfos, true, false, ext->pts, 0) < 0)
-      return -1;
-
-    if (
-      appendAddPesPayloadCommandEsmsHandler(
-        dtsInfos, ctx->src_file_idx,
-        0x0, curPeriod->syncFrameStartOffset,
-        ext->curFrames[
-          ext->currentExtSSIdx
-        ]->header.extensionSubstreamFrameLength
-      ) < 0
-    )
-      return -1;
-
-    ext->pts +=
-      (
-        (
-          (uint64_t) ext->curFrames[
-            ext->currentExtSSIdx
-          ]->header.static_fields.frameDurationCodeValue
-        ) * MAIN_CLOCK_27MHZ
-      )
-      / ext->curFrames[ext->currentExtSSIdx]->header.static_fields.referenceClockFreq
-    ;
-  }
-
-  return writePesPacketEsmsHandler(
-    ctx->esmsScriptOutputFile, dtsInfos
-  );
-}
-#endif
 
 static uint64_t _getAndUpdatePTSCore(
   DtsDcaCoreSSContext * core,
@@ -426,31 +347,26 @@ static uint64_t _getAndUpdatePTSCore(
 )
 {
   const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
+  uint64_t pts = getPTSDtsDcaCoreSSContext(core);
 
-  uint64_t increment =
-    (MAIN_CLOCK_27MHZ * (bsh->NBLKS + 1) * (bsh->SHORT + 1))
-    / getDcaCoreAudioSampFreqCode(bsh->SFREQ)
-  ;
-
-  uint64_t pts = core->pts;
-  core->pts += increment;
+  core->nb_parsed_samples += (bsh->NBLKS + 1) * (bsh->SHORT + 1);
   if (0 < core->nb_frames)
     (*nb_audio_frames)++; // Subsequent core ss starts a new audio frame.
+
   return pts;
 }
 
 static uint64_t _getAndUpdatePTSExtSS(
-  DtsDcaExtSSContext * extss
+  DtsDcaExtSSContext * ext_ss
 )
 {
-  const DcaExtSSFrameParameters * frame = extss->curFrames[extss->currentExtSSIdx];
+  const DcaExtSSFrameParameters * frame = ext_ss->curFrames[ext_ss->currentExtSSIdx];
   assert(NULL != frame);
   const DcaExtSSHeaderSFParameters * sf = &frame->header.static_fields;
+  uint64_t pts = getPTSDtsDcaExtSSContext(ext_ss);
 
-  uint64_t increment = MAIN_CLOCK_27MHZ * getExSSFrameDurationDcaExtRefClockCode(sf);
+  ext_ss->nb_parsed_samples += sf->nuExSSFrameDurationCode;
 
-  uint64_t pts = extss->pts;
-  extss->pts += increment;
   return pts;
 }
 
@@ -494,7 +410,7 @@ int completeDtsFrame(
       /* Peak Bit-Rate Smoothing first pass, save audio frame size. */
       DtsPbrSmoothingStats * pbrs = &ctx->xll.pbrSmoothing;
       uint32_t au_size = getSizeDtsAUFrame(&ctx->cur_au);
-      if (saveFrameSizeDtsPbrSmoothing(pbrs, ctx->nb_audio_frames, au_size) < 0)
+      if (saveFrameSizeDtsPbrSmoothing(pbrs, ctx->nb_audio_frames, pts, au_size) < 0)
         return -1;
     }
 

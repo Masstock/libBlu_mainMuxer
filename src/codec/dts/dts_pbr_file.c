@@ -17,6 +17,7 @@ typedef struct {
 static struct {
   FILE * file;
   DtshdTCFrameRate TC_Frame_Rate;
+  bool dropped_frame_rate;
 
   PbrFileHandlerEntry * entries;
   unsigned nb_alloc_entries;
@@ -105,6 +106,7 @@ static uint64_t _TCtoTimestamp(
   uint64_t rem_frames
 )
 {
+
   static const unsigned frame_rates[][2] = {
     {24000, 1001},
     {24, 1},
@@ -116,19 +118,32 @@ static uint64_t _TCtoTimestamp(
   };
 
   unsigned frame_rate_idx = dtspbr_handle.TC_Frame_Rate - 1;
-  uint64_t nb_frames = rem_frames + DIV_ROUND_UP(
-    seconds * frame_rates[frame_rate_idx][0],
-    frame_rates[frame_rate_idx][1]
+
+  if (likely(!dtspbr_handle.dropped_frame_rate)) {
+    return (
+      MAIN_CLOCK_27MHZ * seconds
+      + DIV_ROUND_UP(
+        MAIN_CLOCK_27MHZ * rem_frames * frame_rates[frame_rate_idx][1],
+        frame_rates[frame_rate_idx][0]
+      )
+    );
+  }
+
+  /* Case of 'Drop' frame-rates */
+  // TODO: Simplify this piece
+  uint64_t nb_frames = rem_frames + (
+    seconds * frame_rates[frame_rate_idx][0]
+    / frame_rates[frame_rate_idx][1]
   );
 
   if (DTSHD_TCFR_29_970_DROP == dtspbr_handle.TC_Frame_Rate)
     nb_frames = _applyFrameDropCompensation(nb_frames, 30000.f / 1001.f);
-  if (DTSHD_TCFR_30_DROP == dtspbr_handle.TC_Frame_Rate)
+  else // DTSHD_TCFR_30_DROP == dtspbr_handle.TC_Frame_Rate
     nb_frames = _applyFrameDropCompensation(nb_frames, 30.f);
 
-  return ceilf(
-    (MAIN_CLOCK_27MHZ * nb_frames)
-    / (1.f * frame_rates[frame_rate_idx][0] / frame_rates[frame_rate_idx][1])
+  return DIV_ROUND_UP(
+    MAIN_CLOCK_27MHZ * nb_frames * frame_rates[frame_rate_idx][1],
+    frame_rates[frame_rate_idx][0]
   );
 }
 
@@ -195,9 +210,9 @@ static int _parsePbrFile(
       dtspbr_handle.nb_alloc_entries = new_size;
     }
 
-    uint64_t timestamp  = _TCtoTimestamp(h * 3600 + m * 60 + s, frames);
+    uint64_t timestamp  = _TCtoTimestamp(h * 3600u + m * 60u + s, frames);
     unsigned frame_size = DIV_ROUND_UP(
-      br_kbps * samples_per_frame * 125,
+      br_kbps * samples_per_frame * 125u,
       sample_rate
     );
 
@@ -302,8 +317,8 @@ int getMaxSizePbrFileHandler(
 
   unsigned i = dtspbr_handle.last_accessed_entry;
   for (; i < dtspbr_handle.nb_used_entries; i++) {
-    if (timestamp < dtspbr_handle.entries[i].timestamp) {
-      *frame_size = dtspbr_handle.entries[i-1].frame_size;
+    if (timestamp <= dtspbr_handle.entries[i].timestamp) {
+      *frame_size = dtspbr_handle.entries[i].frame_size;
       return 0;
     }
   }

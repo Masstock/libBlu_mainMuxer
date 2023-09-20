@@ -11,6 +11,7 @@
 int saveFrameSizeDtsPbrSmoothing(
   DtsPbrSmoothingStats * stats,
   unsigned audio_frame_idx,
+  uint64_t timestamp,
   uint32_t size
 )
 {
@@ -19,14 +20,14 @@ int saveFrameSizeDtsPbrSmoothing(
   if (stats->nb_alloc_frames <= audio_frame_idx) {
     unsigned new_len = GROW_ALLOCATION(stats->nb_alloc_frames, 4096);
 
-    if (lb_mul_overflow(new_len, sizeof(uint32_t)))
+    if (lb_mul_overflow(new_len, sizeof(DtsPbrSmoothingStatsFrame)))
       LIBBLU_DTS_ERROR_RETURN(
         "Too many DTS XLL frames for PBR smoothing process.\n"
       );
 
-    uint32_t * new_array = realloc(
-      stats->target_frame_size,
-      new_len * sizeof(uint32_t)
+    DtsPbrSmoothingStatsFrame * new_array = realloc(
+      stats->frames,
+      new_len * sizeof(DtsPbrSmoothingStatsFrame)
     );
     if (NULL == new_array)
       LIBBLU_DTS_ERROR_RETURN(
@@ -36,14 +37,24 @@ int saveFrameSizeDtsPbrSmoothing(
     memset(
       &new_array[stats->nb_alloc_frames],
       0,
-      (new_len - stats->nb_alloc_frames) * sizeof(uint32_t)
+      (new_len - stats->nb_alloc_frames) * sizeof(DtsPbrSmoothingStatsFrame)
     );
 
-    stats->target_frame_size = new_array;
+    stats->frames = new_array;
     stats->nb_alloc_frames = new_len;
   }
 
-  stats->target_frame_size[audio_frame_idx] += size;
+  DtsPbrSmoothingStatsFrame * frame = &stats->frames[audio_frame_idx];
+  if (0 < frame->target_frame_size && frame->timestamp != timestamp)
+    LIBBLU_DTS_PBR_ERROR_RETURN(
+      "Mismatch of timestamps in audio frame %u (%" PRIu64 " / %" PRIu64 ")\n",
+      audio_frame_idx,
+      frame->timestamp,
+      timestamp
+    );
+
+  frame->timestamp = timestamp;
+  frame->target_frame_size += size;
   stats->last_frame_idx = MAX(stats->last_frame_idx, audio_frame_idx);
 
   return 0;
@@ -66,7 +77,7 @@ int _getFrameTargetSizeDtsPbrSmoothing(
       stats->last_frame_idx + 1
     );
 
-  *size = stats->target_frame_size[audio_frame_idx];
+  *size = stats->frames[audio_frame_idx].target_frame_size;
 
   return 0;
 }
@@ -118,22 +129,18 @@ static int _performComputationDtsPbrSmoothing(
 
   for (unsigned idx = stats->last_frame_idx + 1; 0 < idx; idx--) {
     /* Compute amount of bytes accumulated at current frame decoding */
-    uint32_t cur_accltd_size = stats->target_frame_size[idx-1] + accltd_size;
+    DtsPbrSmoothingStatsFrame * frame = &stats->frames[idx-1];
+    uint32_t cur_accltd_size = frame->target_frame_size + accltd_size;
 
     /* Compute frame maximum size */
     uint32_t max_frame_size;
     if (fake_pbr) {
+      // TODO: Implement PBRS without DTS-HD/stats files.
       max_frame_size = 3200;
     }
     else {
-      /* TODO: PBR smoothing using dtspbr file values need more research. */
-#if 0
-      if (getMaxSizePbrFileHandler((unsigned) (timestamp * 1000), &maxSize) < 0)
+      if (getMaxSizePbrFileHandler(frame->timestamp, &max_frame_size) < 0)
         return -1;
-#else
-      // max_frame_size = stats->avg_frame_size;
-      max_frame_size = 2736;
-#endif
     }
 
     /* Compute resulting targetted frame size. */
@@ -158,17 +165,18 @@ static int _performComputationDtsPbrSmoothing(
 
     if (0 < accltd_size) {
       LIBBLU_DTS_DEBUG_PBR(
-        " Frame %u: %" PRIu32 " bytes -> %" PRIu32 " bytes "
+        " Frame %u (%" PRIu64 "): %" PRIu32 " bytes -> %" PRIu32 " bytes "
         "(%" PRIu32 " bytes buffered)%s.\n",
         idx-1,
-        stats->target_frame_size[idx-1],
+        frame->timestamp,
+        frame->target_frame_size,
         res_frm_size,
         accltd_size,
         cur_adj_required ? " # Overflow avoiding" : ""
       );
     }
 
-    stats->target_frame_size[idx-1] = res_frm_size; // Save resulting frame size.
+    frame->target_frame_size = res_frm_size; // Save resulting frame size.
     max_accltd_size = MAX(max_accltd_size, accltd_size);
   }
 

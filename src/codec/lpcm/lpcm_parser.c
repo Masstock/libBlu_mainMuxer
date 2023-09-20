@@ -768,9 +768,6 @@ int analyzeLpcm(
   uint64_t pts = 0;
 
   uint8_t sample_size = DIV_ROUND_UP(fmt->fmt_spec.pcm.wBitsPerSample, 8);
-  unsigned stream_duration = (
-    chunks.data.ckSize / fmt->common_fields.wBlockAlign
-  ) / fmt->common_fields.nSamplesPerSec;
   unsigned pes_size = (
     (fmt->common_fields.wBlockAlign * fmt->common_fields.nSamplesPerSec)
     / LPCM_PES_FRAMES_PER_SECOND
@@ -844,6 +841,8 @@ int analyzeLpcm(
 #endif
   );
 
+  esms->PTS_final = pts;
+
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
@@ -854,15 +853,8 @@ int analyzeLpcm(
     valueSampleRateCode(esms->prop.sample_rate),
     valueBitDepthCode(esms->prop.bit_depth)
   );
-  lbc_printf(
-    "Stream Duration: %02u:%02u:%02u\n",
-    stream_duration / 60 / 60,
-    stream_duration / 60 % 60,
-    stream_duration % 60
-  );
+  printStreamDurationEsmsHandler(esms);
   lbc_printf("=======================================================================================\n");
-
-  esms->PTS_final = pts;
 
   if (completePesCuttingScriptEsmsHandler(essOutput, esms) < 0)
     return -1;

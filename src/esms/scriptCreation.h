@@ -87,6 +87,20 @@ typedef struct {
     data blocks indexer.                                                     */
 } EsmsHandler, *EsmsHandlerPtr;
 
+static inline void printStreamDurationEsmsHandler(
+  const EsmsHandlerPtr esms_hdl
+)
+{
+  uint64_t pts = esms_hdl->PTS_final - esms_hdl->PTS_reference;
+
+  lbc_printf(
+    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
+    (pts / MAIN_CLOCK_27MHZ) / 60 / 60,
+    (pts / MAIN_CLOCK_27MHZ) / 60 % 60,
+    (pts / MAIN_CLOCK_27MHZ) % 60
+  );
+}
+
 /* ### ESMS Handler creation/destruction : ################################# */
 
 /** \~english
