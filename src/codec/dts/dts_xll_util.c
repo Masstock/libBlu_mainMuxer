@@ -643,7 +643,7 @@ int substractPbrFrameSliceDtsXllFrameContext(
       return -1;
 
     if (0 == dec_frame->position.nbSourceOffsets) {
-      if (popCircularBuffer(&ctx->decodedFramesOff, NULL) < 0)
+      if (NULL == popCircularBuffer(&ctx->decodedFramesOff))
         LIBBLU_DTS_XLL_ERROR_RETURN("Broken decoded frames offsets FIFO.\n");
     }
     else {

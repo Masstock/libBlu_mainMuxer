@@ -96,6 +96,13 @@ static inline size_t nbEntriesCircularBuffer(
   return buf->used_size;
 }
 
+static inline bool isEmptyCircularBuffer(
+  const CircularBuffer * buf
+)
+{
+  return 0 == buf->used_size;
+}
+
 static inline void * getCircularBuffer(
   const CircularBuffer * buf,
   size_t index
@@ -116,32 +123,30 @@ static inline void * getCircularBuffer(
 /** \~english
  * \brief Pop first entry from supplied circular buffer.
  *
- * \param buf Target circulat buffer.
- * \param entry Suppressed entry returning pointer.
- * \return int On success, a zero value is returned. Otherwise, a negative
- * value is returned.
+ * \param buf Target circular buffer.
+ * \return int If non empty, pointer to the olded inserted entry is returned.
+ * Otherwise, a NULL pointer is returned.
  *
- * Returned entry is the oldest inserted value (First In First Out).
- * If buffer is empty, an error is returned.
+ * \warning Returned pointer addresses memory managed by the CircularBuffer.
+ * Calls to #newEntryCircularBuffer() might invalidate previously returned
+ * pointers.
  */
-static inline int popCircularBuffer(
-  CircularBuffer * buf,
-  void ** entry
+static inline void * popCircularBuffer(
+  CircularBuffer * buf
 )
 {
   assert(NULL != buf);
 
   if (!buf->used_size)
-    return -1; // Empty circular buffer.
+    return NULL; // Empty circular buffer.
 
-  if (NULL != entry)
-    *entry = (void *) &buf->array[buf->top * buf->slot_size];
+  void * entry = &buf->array[buf->top * buf->slot_size];
 
   size_t mask = ((CB_DEF_SIZE << buf->alloc_shft_size) - 1);
   buf->top = (buf->top + 1) & mask;
   buf->used_size--;
 
-  return 0;
+  return entry;
 }
 
 #endif

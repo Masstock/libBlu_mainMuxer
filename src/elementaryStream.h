@@ -215,7 +215,14 @@ static inline void cleanLibbluES(
   cleanEsmsESSourceFiles(es.sourceFiles);
   cleanEsmsDataBlocks(es.scriptDataSections);
   cleanEsmsCommandParsingData(es.commands_data_parsing);
-  cleanCircularBuffer(es.pesPacketsScriptsQueue_),
+
+  // Flush circular buffer:
+  EsmsPesPacket * esms_pes_packet;
+  while (NULL != (esms_pes_packet = popCircularBuffer(&es.pesPacketsScriptsQueue_))) {
+    cleanEsmsPesPacketPtr(esms_pes_packet);
+  }
+  cleanCircularBuffer(es.pesPacketsScriptsQueue_);
+
   cleanLibbluESPesPacketData(es.current_pes_packet.data);
 }
 

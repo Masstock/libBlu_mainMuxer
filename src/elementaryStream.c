@@ -533,13 +533,12 @@ static int _buildNextPesPacket(
       es->endOfScriptReached = true;
   }
 
-  if (0 == nbEntriesCircularBuffer(&es->pesPacketsScriptsQueue_))
+  /* Try to extract next buffered script PES packet. */
+  EsmsPesPacket * esms_pes_packet = popCircularBuffer(
+    &es->pesPacketsScriptsQueue_
+  );
+  if (NULL == esms_pes_packet)
     return 0; // No more PES packets.
-
-  /* Extract next buffered script PES packet. */
-  EsmsPesPacket * esms_pes_packet;
-  if (popCircularBuffer(&es->pesPacketsScriptsQueue_, (void **) &esms_pes_packet) < 0)
-    LIBBLU_ERROR_RETURN("Unexpected empty script PES packets queue.\n");
 
   /* Build from it next PES packet. */
   LibbluESPesPacketProperties pesp_prop;

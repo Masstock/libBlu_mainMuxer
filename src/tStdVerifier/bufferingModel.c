@@ -758,7 +758,7 @@ static int _updateBufModelBuffer(
 
     if (!frame->headerSize && !frame->dataSize) {
       /* Frame header and payload has already been fully transfered */
-      if (popCircularBuffer(buf->header.storedFrames, NULL) < 0)
+      if (NULL == popCircularBuffer(buf->header.storedFrames))
         LIBBLU_ERROR_RETURN("Unable to pop, broken circular buffer.\n");
     }
     else

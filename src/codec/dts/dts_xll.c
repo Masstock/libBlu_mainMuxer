@@ -296,7 +296,7 @@ int parseDtsXllFrame(
   if (frame->size <= decoded_data_size) {
     assert(frame->size == decoded_data_size);
 
-    if (popCircularBuffer(&ctx->pendingFrames, NULL) < 0)
+    if (NULL == popCircularBuffer(&ctx->pendingFrames))
       LIBBLU_DTS_ERROR_RETURN("Broken DTS-HDMA pending frames FIFO.\n");
   }
   else {
