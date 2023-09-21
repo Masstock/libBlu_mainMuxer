@@ -649,9 +649,9 @@ static inline const char * Eac3StrmtypStr(
 )
 {
   static const char * strings[] = {
-    "Independent substream",
-    "Dependent substream",
-    "Independent substream (Previously coded in AC-3)"
+    "Type 1, independent substream",
+    "Type 2, dependent substream",
+    "Type 3, independent substream (AC-3 encoded)"
   };
 
   if (strmtyp < ARRAY_SIZE(strings))
