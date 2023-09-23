@@ -42,17 +42,28 @@ static void _prepareESTransportPacketMainHeader(
   size_t remDataSize = remainingPesDataLibbluES(&stream->es);
 
   assert(0 < remDataSize);
+  assert(TYPE_ES == stream->type);
+
+  const LibbluESProperties * es_prop = &stream->es.prop;
+  bool transportPriority = (
+    (
+      es_prop->coding_type == STREAM_CODING_TYPE_AC3
+      || es_prop->coding_type == STREAM_CODING_TYPE_DTS
+      || es_prop->coding_type == STREAM_CODING_TYPE_TRUEHD
+      || es_prop->coding_type == STREAM_CODING_TYPE_EAC3
+      || es_prop->coding_type == STREAM_CODING_TYPE_HDHR
+      || es_prop->coding_type == STREAM_CODING_TYPE_HDMA
+    ) && !stream->es.current_pes_packet.extension_frame
+  );
 
   bool payloadPresence = true; // (0 < remDataSize)
   bool payloadStart = (payloadPresence && isPayloadUnitStartLibbluES(stream->es));
   bool adaptFieldPres = (remDataSize < TP_PAYLOAD_SIZE || pcrInjectReq);
 
   *dst = (TPHeaderParameters) {
-    .transportErrorIndicator = false,
     .payloadUnitStartIndicator = payloadStart,
-    .transportPriority = false,
+    .transportPriority = transportPriority,
     .pid = stream->pid,
-    .transportScramblingControl = 0x00,
     .adaptationFieldControl = (adaptFieldPres << 1) | payloadPresence,
     .continuityCounter = stream->packetNb & 0xF
   };
@@ -85,11 +96,8 @@ static void _prepareSysTransportPacketMainHeader(
   bool useContCounter = stream->sys.useContinuityCounter;
 
   *dst = (TPHeaderParameters) {
-    .transportErrorIndicator = false,
     .payloadUnitStartIndicator = payloadStart,
-    .transportPriority = false,
     .pid = stream->pid,
-    .transportScramblingControl = 0x00,
     .adaptationFieldControl = (adaptFieldPres << 1) | payloadPresence,
     .continuityCounter = (useContCounter) ? stream->packetNb & 0xF : 0
   };
