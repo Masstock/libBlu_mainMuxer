@@ -56,7 +56,7 @@ static int _parseAc3CoreSyncFrame(
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
-  ctx->core.pts += ((uint64_t) MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME) / 48000;
+  ctx->core.pts += SUB_CLOCK_90KHZ * AC3_SAMPLES_PER_FRAME / 48000;
   ctx->core.nb_frames++;
   return 0;
 }
@@ -103,7 +103,7 @@ static int _parseEac3SyncFrame(
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
-  ctx->eac3.pts += ((uint64_t) MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME) / 48000;
+  ctx->eac3.pts += MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME / 48000;
   ctx->eac3.nb_frames++;
   return 0;
 }
@@ -224,7 +224,7 @@ static int _parseMlpSyncFrame(
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
-  mlp->pts += ((uint64_t) MAIN_CLOCK_27MHZ) / TRUE_HD_UNITS_PER_SEC;
+  mlp->pts += SUB_CLOCK_90KHZ / TRUE_HD_UNITS_PER_SEC;
   mlp->nb_frames++;
   return 0;
 }

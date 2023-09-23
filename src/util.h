@@ -27,10 +27,10 @@
 
 #define MAX_NB_STREAMS                                                       32
 
-#define PAT_DELAY  (50 * 27000)
-#define PMT_DELAY  (50 * 27000)
-#define SIT_DELAY  (500 * 27000)
-#define PCR_DELAY  (50  * 27000)
+#define PAT_DELAY  (50 * 27000ull)
+#define PMT_DELAY  (50 * 27000ull)
+#define SIT_DELAY  (500 * 27000ull)
+#define PCR_DELAY  (50  * 27000ull)
 
 /* UI Parameters :                                                           */
 #define PROGRESSION_BAR_LATENCY 200
@@ -40,7 +40,7 @@
  *
  * Number of clock ticks per second.
  */
-#define MAIN_CLOCK_27MHZ  ((uint64_t) 27000000)
+#define MAIN_CLOCK_27MHZ  27000000ull
 
 /** \~english
  * \brief #MAIN_CLOCK_27MHZ clock to hours number.
@@ -83,7 +83,7 @@
  * \brief Rounds supplied 27MHz clock value to the highest 90kHz sub-clock
  * common tick.
  */
-#define ROUND_90KHZ_CLOCK(x)                                  ((x) / 300 * 300)
+#define ROUND_90KHZ_CLOCK(x)  ((x) / 300 * 300)
 
 /** \~english
  * \brief MPEG-TS packet header synchronization byte.
@@ -108,14 +108,14 @@
 #define TP_EXTRA_HEADER_SIZE  4
 
 /* in b/s : */
-#define BDAV_VIDEO_MAX_BITRATE                                         40000000
-#define BDAV_VIDEO_MAX_BITRATE_SEC_V                                    7600000
-#define BDAV_VIDEO_MAX_BITRATE_DVD_OUT                                 15000000
-#define BDAV_UHD_VIDEO_MAX_BITRATE                                    100000000
+#define BDAV_VIDEO_MAX_BITRATE  40000000
+#define BDAV_VIDEO_MAX_BITRATE_SEC_V  7600000
+#define BDAV_VIDEO_MAX_BITRATE_DVD_OUT  15000000
+#define BDAV_UHD_VIDEO_MAX_BITRATE  100000000
 
 /* In bytes : */
-#define BDAV_VIDEO_MAX_BUFFER_SIZE                                    240000000
-#define BDAV_VIDEO_MAX_BUFFER_SIZE_DVD_OUT                            120000000
+#define BDAV_VIDEO_MAX_BUFFER_SIZE  240000000
+#define BDAV_VIDEO_MAX_BUFFER_SIZE_DVD_OUT  120000000
 
 typedef enum {
   TYPE_ES,
@@ -140,223 +140,9 @@ static inline int isEsStreamType(
   return typ == TYPE_ES;
 }
 
-#if 0
-
-typedef struct {
-  uint8_t fscod;
-  uint8_t bsid;
-  bool bitrateMode;
-  uint8_t bitrateCode;
-  uint8_t surroundCode;
-  uint8_t bsmod;
-  uint8_t numChannels;
-  bool fullSVC;
-} Ac3Param;
-
-typedef struct {
-  uint32_t cpbSize;  /**< CpbSize[cpb_cnt_minus1] */
-  uint32_t bitrate;  /**< BitRate[0] */
-} H264Param;
-
-typedef union {
-  void * shared_ptr;
-  Ac3Param * ac3Param;
-  H264Param * h264Param;
-} CodecSpecInfos;
-
-typedef enum {
-  FMT_SPEC_INFOS_NONE,
-  FMT_SPEC_INFOS_AC3,
-  FMT_SPEC_INFOS_H264
-} CodecSpecInfosType;
-
-#endif
-
-#if 0
-typedef struct {
-  unsigned int rx; /* leaking Rate from transport buffer (TB -> B/MB) */
-
-  /* if Video type: */
-  unsigned int mbs; /* Multiplexing Buffer Size (in bytes) */
-  unsigned int rbx; /* leaking Rate from multiplexing Buffer (MB -> EB) */
-  unsigned int ebs; /* Elementary stream Buffer Size (in bytes) */
-
-  /* other stream types: */
-  unsigned int bs; /* decoder Buffer Size (in bytes) */
-
-  void * tStdVerifier;
-} BufferingParameters;
-#endif
-
-#if 0
-
-typedef struct {
-  LibbluStreamCodingType streamCodingType;  /**< Stream coding type (codec).       */
-  bool secStream;                     /**< Stream is a secondary stream.     */
-
-  union {
-    struct {
-      uint8_t videoFormat;            /**< Video stream format value.        */
-      HdmvFrameRateCode frameRate;        /**< Video stream frame-rate value.    */
-      bool stillPicture;              /**< Video stream is a still picture.  */
-      bool hdrExtStream;              /**< Video stream is a dependant HDR
-        extension stream of an independant video stream.                     */
-
-      uint8_t profileIDC;             /**< Video stream profile indice.      */
-      uint8_t levelIDC;               /**< Video stream level indice.        */
-    };  /**< If type == VIDEO.                                               */
-
-    struct {
-      uint8_t audioFormat;            /**< Audio stream format value.        */
-      SampleRateCode sampleRate;      /**< Audio stream sample-rate value.   */
-      uint8_t bitDepth;               /**< Audio stream bit-depth value.     */
-    };  /**< If type == AUDIO.                                               */
-  };
-
-  double bitrate;                     /**< Stream nominal max bitrate in bits
-    per second.                                                              */
-  double nb_pes_per_sec;                       /**< Constant number of PES frames per
-    second.  */
-  double nb_ped_sec_per_sec;                    /**< Constant number of secondary PES
-    frames per second used when secStream == true.                           */
-  bool br_based_on_duration;  /**< If true, nb_pes_per_sec and nb_ped_sec_per_sec
-    fields are used to know how many PES frames are used per second.
-    Otherwise, this value is defined according to current PES frame size
-    compared to bitrate.                                                     */
-
-  CodecSpecInfos codecSpecInfos;      /**< Codec specific parameters.        */
-} StreamInfos;
-
-#endif
-
-#if 0
-/** \~english
- * \brief Generated PES frame structure.
- *
- */
-typedef struct {
-  bool extensionFrame;     /**< Is an extension frame (used to set current
-    PES frame as a nasted extension sub-stream and use correct timing
-    parameters).                                                             */
-  bool dtsPresent;         /**< DTS (Decoding TimeStamp) field presence
-    triggering.                                                              */
-  bool extensionDataPresent;
-
-  uint64_t pts;            /**< PES packet PTS (Presentation Time Stamp) in
-    27MHz clock.                                                             */
-  uint64_t dts;            /**< PES packet DTS (Decoding Time Stamp) in
-    27MHz clock (only use if dtsPresent == true).                            */
-
-  EsmsPesPacketExtData extensionData;
-
-  uint8_t * data;          /**< PES packet data bytes array.                 */
-  size_t length;           /**< Length of PES packet in bytes.               */
-  size_t dataOffset;       /**< PES packet current reading offset. This
-    value is incremented each time PES frame is splitted in a TS packet.     */
-  size_t allocatedLength;  /**< PES packet data field allocated length in
-    bytes.                                                                   */
-} PesPacket;
-
-/** \~english
- * \brief Multiplexed ES stream structure.
- *
- * Elementary Stream multiplexing structure.
- * Also called PES stream in Rec. ITU-T H.222.
- */
-typedef struct {
-  StreamType type;    /**< Type of the stream.                               */
-  uint16_t pid;       /**< Stream PID.                                       */
-
-  uint32_t packetNb;  /**< Current number of supplied TS packets (used for
-    continuity_counter).                                                     */
-
-  uint64_t PTS_reference;     /**< Zero timestamp reference of stream.               */
-  uint64_t startPts;  /**< Stream starting timestamp (time value is obtain
-    by doing startPts - PTS_reference).                                              */
-  uint64_t endPts;    /**< Stream final timestamp (only used to display
-    progression).                                                            */
-
-  StreamInfos streamParam;  /**< Stream content parameters.                  */
-
-  /* Stream generation script related parameters (ESMS): */
-  BitstreamReaderPtr streamScriptFile;  /**< Input stream generation
-    script file.                                                             */
-  EsmsDataBlocks dataSections;     /**< Script file sections.           */
-
-  char * sourceFileNames[ESMS_MAX_ALLOWED_DIR];  /**< Stream generation input
-    filenames.                                                               */
-  BitstreamReaderPtr streamFile[ESMS_MAX_ALLOWED_DIR];  /**< Stream generation
-    script attached input files handlers.                                    */
-  unsigned nbStreamFiles;  /**< Stream generation script attached input
-    files number. */
-
-  bool endOfScript;                        /**< Set to true when end of
-    script has been reached, meaning no more PES frames remain in input
-    script.                                                                  */
-  EsmsPesPacketNodePtr pesFrameScriptQueue;  /**< Script generated PES frames
-    building commands FIFO.                                                  */
-  EsmsPesPacketNodePtr lastAddedNode;        /**< pesFrameScriptQueue FIFO
-    top node.                                                                */
-
-  bool remainingData;          /**< Set to true when no more data to mux
-    remain for this stream. This condition is true for script-generated
-    stream when endOfScript is set to true and pesFrameScriptQueue
-    FIFO is empty.                                                           */
-  PesPacket currentPesPacket;  /**< Current generated PES frame.             */
-} Stream, *StreamPtr;
-
-/** \~english
- * \brief Returns stream current PES frame remaining bytes.
- *
- * \param StreamPtr StreamPtr Input stream.
- * \return size_t Remaining bytes.
- */
-#define REMAINING_PES_DATA(StreamPtr)                                         \
-  (                                                                           \
-    (StreamPtr)->currentPesPacket.length -                                    \
-    (StreamPtr)->currentPesPacket.dataOffset                                  \
-  )
-
-typedef struct {
-  StreamType type;
-  uint16_t pid;
-
-  uint32_t packetNb;
-
-#if 0
-  uint64_t ptTs;
-  uint64_t ptTsDelay;
-  uint32_t tsDuration;
-#endif
-  bool firstFullTableSupplied;
-
-  size_t length;
-  size_t dataOffset;
-  uint8_t * data;
-} SystemStream, *SystemStreamPtr;
-
-/** \~english
- * \brief Returns system stream current data remaining bytes.
- *
- * \param StreamPtr StreamPtr Input stream.
- * \return size_t Remaining bytes.
- */
-#define REMAINING_SYS_DATA(SystemStreamPtr)                                   \
-  (                                                                           \
-    (SystemStreamPtr)->length -                                               \
-    (SystemStreamPtr)->dataOffset                                             \
-  )
-#endif
-
-/* int choosePID(StreamPtr stream); */
-
-/* uint8_t getHdmvVideoFormat(
-  int screenHorizontalDefinition,
-  int screenVerticalDefinition,
-  bool isInterlaced
-); */
-
-void printFileParsingProgressionBar(BitstreamReaderPtr bitStream);
+void printFileParsingProgressionBar(
+  BitstreamReaderPtr bitStream
+);
 
 /** \~english
  * \brief str_time() clock representation formatting mode.

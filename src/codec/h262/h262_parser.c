@@ -2331,7 +2331,7 @@ int analyzeH262(
       frameDuration = MAIN_CLOCK_27MHZ / frameRateCodeToFloat(h262Infos->prop.frame_rate);
       startPts = (uint64_t) ceil(frameDuration);
 
-      h262Infos->PTS_reference = startPts;
+      h262Infos->PTS_reference = startPts / 300;
       h262Infos->bitrate = sequenceValues.bit_rate * 400;
     }
     else {
@@ -2449,7 +2449,8 @@ int analyzeH262(
           pictureHeader.picture_coding_type,
           H262_PIC_CODING_TYPE_I == pictureHeader.picture_coding_type
           || H262_PIC_CODING_TYPE_P == pictureHeader.picture_coding_type,
-          h262Pts, h262Dts
+          h262Pts / 300,
+          h262Dts / 300
         ) < 0
 
         || appendAddPesPayloadCommandEsmsHandler(
@@ -2493,7 +2494,7 @@ int analyzeH262(
   closeBitstreamReader(m2vInput);
 
   /* Display infos : */
-  h262Infos->PTS_final = gopPts + pictureHeader.temporal_reference * frameDuration;
+  h262Infos->PTS_final = (gopPts + pictureHeader.temporal_reference * frameDuration) / 300;
 
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(

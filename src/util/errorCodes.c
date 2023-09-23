@@ -333,7 +333,12 @@ static const struct {
   DECLARE_OPTION(
     LIBBLU_DEBUG_H264_AU_PROCESSING,
     "H.264 video Access Units detection and stitching",
-    "h264_access_units_processing"
+    "h264_au_processing"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_H264_AU_TIMINGS,
+    "H.264 video Access Units timings",
+    "h264_au_timings"
   ),
   DECLARE_RANGE(
     "H.264 video parsing and operations",
@@ -346,7 +351,8 @@ static const struct {
     LIBBLU_DEBUG_H264_PARSING_SEI,
     LIBBLU_DEBUG_H264_PARSING_SLICE,
     LIBBLU_DEBUG_H264_OPERATIONS,
-    LIBBLU_DEBUG_H264_AU_PROCESSING
+    LIBBLU_DEBUG_H264_AU_PROCESSING,
+    LIBBLU_DEBUG_H264_AU_TIMINGS
   ),
 
   DECLARE_OPTION(
@@ -419,7 +425,7 @@ static const struct {
 
   /* HDMV IGS Parser : */
   DECLARE_OPTION(
-    LIBBLU_DEBUG_IGS_PARSER,
+    LIBBLU_DEBUG_PGS_PARSER,
     "HDMV PGS (subtitles) content",
     "pgs_parser"
   ),
@@ -429,6 +435,23 @@ static const struct {
     LIBBLU_DEBUG_IGS_PARSER,
     "HDMV IGS (menus) content",
     "igs_parser"
+  ),
+
+  DECLARE_RANGE(
+    "HDMV PG/IG parsing and processing",
+    "hdmv",
+    LIBBLU_DEBUG_HDMV_COMMON,
+    LIBBLU_DEBUG_HDMV_PARSER,
+    LIBBLU_DEBUG_HDMV_CHECKS,
+    LIBBLU_DEBUG_HDMV_TS_COMPUTE,
+    LIBBLU_DEBUG_HDMV_SEG_BUILDER,
+    LIBBLU_DEBUG_HDMV_QUANTIZER,
+    LIBBLU_DEBUG_HDMV_PAL,
+    LIBBLU_DEBUG_HDMV_PICTURES,
+    LIBBLU_DEBUG_HDMV_LIBPNG,
+    LIBBLU_DEBUG_HDMV_TC,
+    LIBBLU_DEBUG_PGS_PARSER,
+    LIBBLU_DEBUG_IGS_PARSER
   ),
 
   /* HDMV IGS Compiler : */

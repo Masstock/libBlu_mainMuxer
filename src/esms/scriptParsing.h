@@ -30,14 +30,14 @@ static inline int seekESPropertiesEsms(
 }
 
 int parseESPropertiesHeaderEsms(
-  BitstreamReaderPtr script,
+  BitstreamReaderPtr esms_bs,
   LibbluESProperties * dst,
-  uint64_t * PTS_reference,
-  uint64_t * endPts
+  uint64_t * PTS_reference_ret,
+  uint64_t * PTS_final_ret
 );
 
 int parseESPropertiesSourceFilesEsms(
-  BitstreamReaderPtr script,
+  BitstreamReaderPtr esms_bs,
   EsmsESSourceFiles * dst
 );
 
@@ -63,7 +63,7 @@ static inline int seekESFmtPropertiesEsms(
 }
 
 int parseESFmtPropertiesEsms(
-  BitstreamReaderPtr script,
+  BitstreamReaderPtr esms_bs,
   LibbluESProperties * dst,
   LibbluESFmtProp * fmtSpecDst
 );
@@ -93,7 +93,7 @@ static inline int seekESDataBlocksDefinitionEsms(
 }
 
 int parseESDataBlocksDefinitionEsms(
-  BitstreamReaderPtr script,
+  BitstreamReaderPtr esms_bs,
   EsmsDataBlocks * dst
 );
 
@@ -134,11 +134,11 @@ int seekESPesCuttingEsms(
 );
 
 static inline bool isEndReachedESPesCuttingEsms(
-  BitstreamReaderPtr script
+  BitstreamReaderPtr esms_bs
 )
 {
   /* [v8 end_marker] */
-  return (ESMS_SCRIPT_END_MARKER == nextUint8(script));
+  return (ESMS_SCRIPT_END_MARKER == nextUint8(esms_bs));
 }
 
 int parseFrameNodeESPesCuttingEsms(

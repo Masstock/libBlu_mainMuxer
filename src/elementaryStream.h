@@ -160,9 +160,9 @@ typedef struct {
     ES format specific properties.                                           */
 
   /* Timing information */
-  uint64_t PTS_reference;
+  uint64_t PTS_reference;  /**< Referential 'zero' timestamp in 90kHz clock ticks. */
+  uint64_t PTS_final;      /**< Last PTS in 90kHz clock ticks. */
   uint64_t startPts;
-  uint64_t endPts;
 
   BufModelBuffersListPtr lnkdBufList;         /**< ES linked buffering model
     buffers list.                                                            */

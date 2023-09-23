@@ -108,6 +108,12 @@
     format, ##__VA_ARGS__                                                     \
   )
 
+#define LIBBLU_H264_DEBUG_AU_TIMINGS(format, ...)                             \
+  LIBBLU_DEBUG(                                                               \
+    LIBBLU_DEBUG_H264_AU_TIMINGS, "H.264/AU timings",                         \
+    format, ##__VA_ARGS__                                                     \
+  )
+
 #define LIBBLU_H264_DEBUG_AUD(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_H264_PARSING_AUD, "H.264/AUD", format, ##__VA_ARGS__         \

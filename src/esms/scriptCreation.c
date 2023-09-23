@@ -55,11 +55,11 @@ int writeEsmsHeader(
     " ESMS File header magic: " STR(ESMS_FILE_HEADER_MAGIC) ".\n"
   );
 
-  /* [u8 ESMS_version] */
-  WRITE(esms_bs, CURRENT_ESMS_FORMAT_VER, 1, return -1);
+  /* [u16 ESMS_version] */
+  WRITE(esms_bs, ESMS_FORMAT_VER, 2, return -1);
 
   LIBBLU_SCRIPTW_DEBUG(
-    " Format version: " STR(CURRENT_ESMS_FORMAT_VER) ".\n"
+    " Format version: " STR(ESMS_FORMAT_VER) ".\n"
   );
 
   /** Reserved paddding
@@ -1132,8 +1132,8 @@ static int _setPesPacketProperties(
 
   /* Update properties : */
   pes->prop.type            = esms_hdl->type;
-  pes->prop.pts_long_field  = (pes->pts  >> 32);
-  pes->prop.dts_long_field  = (pes->dts  >> 32);
+  pes->prop.pts_33bit       = (pes->pts  >> 32) & 0x1;
+  pes->prop.dts_33bit       = (pes->dts  >> 32) & 0x1;
   pes->prop.size_long_field = (pes->size >> 16);
 
   return 0;
@@ -1188,17 +1188,17 @@ static uint16_t _getPesPacketPropWord(
   assert(0x0 == (prefix & 0x1)); // Ensure presence of '0' marker_bit.
 
   /** [v8 frame_prop_flags]
-   * -> b1: pts_long_field
+   * -> b1: pts_33bit
    * -> b1: dts_present
-   * -> b1: dts_long_field
+   * -> b1: dts_33bit
    * -> b1: size_long_field
    * -> b1: ext_data_present
    * -> v3: reserved
    */
   uint8_t frame_prop_flags = (
-    (pes_packet_prop->pts_long_field     << 7)
+    (pes_packet_prop->pts_33bit          << 7)
     | (pes_packet_prop->dts_present      << 6)
-    | (pes_packet_prop->dts_long_field   << 5)
+    | (pes_packet_prop->dts_33bit        << 5)
     | (pes_packet_prop->size_long_field  << 4)
     | (pes_packet_prop->ext_data_present << 3)
   );
@@ -1208,9 +1208,9 @@ static uint16_t _getPesPacketPropWord(
     frame_prop_flags
   );
 #define _P(s, v)  LIBBLU_SCRIPTW_DEBUG("    " s ": %s;\n", BOOL_STR(v))
-  _P("Long PTS field", pes_packet_prop->pts_long_field);
+  _P("PTS 33rd bit value", pes_packet_prop->pts_33bit);
   _P("DTS field presence", pes_packet_prop->dts_present);
-  _P("Long DTS field", pes_packet_prop->dts_long_field);
+  _P("DTS 33rd bit value", pes_packet_prop->dts_33bit);
   _P("Long size field", pes_packet_prop->size_long_field);
   _P("Extension data presence", pes_packet_prop->ext_data_present);
 #undef _P
@@ -1254,25 +1254,23 @@ int writePesPacketEsmsHandler(
     prop_word
   );
 
-  /* [u<32 << pts_long_field> pts] */
-  WRITE(esms_bs, pes_packet->pts, 4 << pes_packet_prop->pts_long_field, return -1);
+  /* [u32 pts] */
+  WRITE(esms_bs, pes_packet->pts, 4, return -1);
 
   LIBBLU_SCRIPTW_DEBUG(
-    "   PTS (pts): %" PRIu64 " (0x%0*" PRIX64 ").\n",
-    pes_packet->pts,
-    8 << pes_packet_prop->pts_long_field,
-    pes_packet->pts
+    "   PTS lowest 32-bits (pts): %" PRIu64 " (0x%08" PRIX64 ").\n",
+    pes_packet->pts & 0xFFFFFFFF,
+    pes_packet->pts & 0xFFFFFFFF
   );
 
   if (pes_packet_prop->dts_present) {
-    /* [u<32 << dts_long_field> dts] */
-    WRITE(esms_bs, pes_packet->dts, 4 << pes_packet_prop->dts_long_field, return -1);
+    /* [u32 dts] */
+    WRITE(esms_bs, pes_packet->dts, 4, return -1);
 
     LIBBLU_SCRIPTW_DEBUG(
-      "   DTS (dts): %" PRIu64 " (0x%0*" PRIX64 ").\n",
-      pes_packet->dts,
-      8 << pes_packet_prop->dts_long_field,
-      pes_packet->dts
+      "   DTS lowest 32-bits (dts): %" PRIu64 " (0x%08" PRIX64 ").\n",
+      pes_packet->dts & 0xFFFFFFFF,
+      pes_packet->dts & 0xFFFFFFFF
     );
   }
 
@@ -1399,14 +1397,31 @@ static int _writeEsmsEsPropertiesSection(
     esms_hdl->prop.coding_type
   );
 
-  /* [u64 PTS_reference] */
-  WRITE(esms_bs, esms_hdl->PTS_reference, 8, return -1);
+  /* [b1 PTS_reference_33bit] [b1 PTS_final_33bit] [v6 reserved] */
+  uint8_t byte = (
+    (((esms_hdl->PTS_reference >> 32) & 0x1) << 7)
+    | (((esms_hdl->PTS_final   >> 32) & 0x1) << 6)
+  );
+  WRITE(esms_bs, byte, 1, return -1);
+
+  /* [u32 PTS_reference] */
+  WRITE(esms_bs, esms_hdl->PTS_reference, 4, return -1);
 
   LIBBLU_SCRIPTW_DEBUG(
-    " Presentation Time Stamp reference (PTS_reference): "
-    "%" PRIu64 " (0x%016" PRIX64 ").\n",
-    esms_hdl->PTS_reference,
-    esms_hdl->PTS_reference
+    " Presentation Time Stamp reference lowest 32-bits (PTS_reference): "
+    "%" PRIu64 " (0x%08" PRIX64 ").\n",
+    esms_hdl->PTS_reference & 0xFFFFFFFF,
+    esms_hdl->PTS_reference & 0xFFFFFFFF
+  );
+
+  /* [u32 PTS_final] */
+  WRITE(esms_bs, esms_hdl->PTS_final, 4, return -1);
+
+  LIBBLU_SCRIPTW_DEBUG(
+    " Last Presentation Time Stamp lowest 32-bits (PTS_final): "
+    "%" PRIu64 " (0x%08" PRIX64 ").\n",
+    esms_hdl->PTS_final & 0xFFFFFFFF,
+    esms_hdl->PTS_final & 0xFFFFFFFF
   );
 
   /* [u32 bitrate] */
@@ -1416,16 +1431,6 @@ static int _writeEsmsEsPropertiesSection(
     " Nominal Bit-Rate (bitrate): %" PRIu32 " (0x%08" PRIX32 ").\n",
     esms_hdl->bitrate,
     esms_hdl->bitrate
-  );
-
-  /* [u64 PTS_final] */
-  WRITE(esms_bs, esms_hdl->PTS_final, 8, return -1);
-
-  LIBBLU_SCRIPTW_DEBUG(
-    " Last Presentation Time Stamp (PTS_final): "
-    "%" PRIu64 " (0x%016" PRIX64 ").\n",
-    esms_hdl->PTS_final,
-    esms_hdl->PTS_final
   );
 
   /* [u64 scripting_flags] */
@@ -1937,8 +1942,8 @@ int updateEsmsFile(
   );
 
   /* [v32 ESMS_magic] */
-  /* [u8 ESMS_version] */
-  if (fseek(esms_fd, 0x5, SEEK_SET) < 0) {
+  /* [u16 ESMS_version] */
+  if (fseek(esms_fd, 0x6, SEEK_SET) < 0) {
     LIBBLU_ERROR_RETURN(
       "Unable to update ESMS Header: File seeking error, %s (errno: %d).\n",
       strerror(errno),

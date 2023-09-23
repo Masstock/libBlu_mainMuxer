@@ -121,9 +121,9 @@ static uint64_t _TCtoTimestamp(
 
   if (likely(!dtspbr_handle.dropped_frame_rate)) {
     return (
-      MAIN_CLOCK_27MHZ * seconds
+      SUB_CLOCK_90KHZ * seconds
       + DIV_ROUND_UP(
-        MAIN_CLOCK_27MHZ * rem_frames * frame_rates[frame_rate_idx][1],
+        SUB_CLOCK_90KHZ * rem_frames * frame_rates[frame_rate_idx][1],
         frame_rates[frame_rate_idx][0]
       )
     );
@@ -142,7 +142,7 @@ static uint64_t _TCtoTimestamp(
     nb_frames = _applyFrameDropCompensation(nb_frames, 30.f);
 
   return DIV_ROUND_UP(
-    MAIN_CLOCK_27MHZ * nb_frames * frame_rates[frame_rate_idx][1],
+    SUB_CLOCK_90KHZ * nb_frames * frame_rates[frame_rate_idx][1],
     frame_rates[frame_rate_idx][0]
   );
 }

@@ -48,7 +48,7 @@ static inline uint64_t getPTSDtsDcaCoreSSContext(
   const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
 
   return
-    (MAIN_CLOCK_27MHZ * core->nb_parsed_samples)
+    (SUB_CLOCK_90KHZ * core->nb_parsed_samples)
     / getDcaCoreAudioSampFreqCode(bsh->SFREQ)
   ;
 }
@@ -103,7 +103,7 @@ static inline uint64_t getPTSDtsDcaExtSSContext(
   const DcaExtSSHeaderSFParameters * sf = &frame->header.static_fields;
 
   return
-    (MAIN_CLOCK_27MHZ * ext_ss->nb_parsed_samples)
+    (SUB_CLOCK_90KHZ * ext_ss->nb_parsed_samples)
     / getDcaExtReferenceClockValue(sf->nuRefClockCode)
   ;
 }

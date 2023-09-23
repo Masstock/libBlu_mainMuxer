@@ -10,16 +10,16 @@
 #include "muxingContext.h"
 
 static uint64_t _getMinInitialDelay(
-  const LibbluStreamPtr * esStreams,
-  unsigned nbEsStreams
+  const LibbluStreamPtr * es_streams_arr,
+  unsigned nb_es_streams
 )
 {
   uint64_t initial_delay = 0;
 
-  for (unsigned i = 0; i < nbEsStreams; i++)
-    initial_delay = MAX(initial_delay, esStreams[i]->es.PTS_reference);
+  for (unsigned i = 0; i < nb_es_streams; i++)
+    initial_delay = MAX(initial_delay, es_streams_arr[i]->es.PTS_reference);
 
-  return initial_delay;
+  return 300ull * initial_delay; // Convert to 27MHz
 }
 
 static int _addSystemStreamToContext(
@@ -305,7 +305,7 @@ static void _updateCurrentStcLibbluMuxingContext(
 )
 {
   ctx->currentStc = value;
-  ctx->currentStcTs = (uint64_t) MAX(0, value);
+  ctx->currentStcTs = (uint64_t) MAX(0ull, value);
 }
 
 static void _computeInitialTimings(
@@ -1264,8 +1264,8 @@ static int _muxNextESPacket(
       (double) (
         stream->es.current_pes_packet.pts
         - ctx->initial_STC
-        + stream->es.PTS_reference
-      ) / stream->es.endPts
+        + (300ull * stream->es.PTS_reference)
+      ) / (300ull * stream->es.PTS_final)
     ;
   }
 

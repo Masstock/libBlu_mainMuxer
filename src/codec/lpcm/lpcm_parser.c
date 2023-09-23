@@ -764,7 +764,7 @@ int analyzeLpcm(
   if (_setPesHeader(esms, &chunks, &pes_hdr_blk_idx) < 0)
     return -1;
 
-  uint64_t pes_duration = MAIN_CLOCK_27MHZ / LPCM_PES_FRAMES_PER_SECOND;
+  uint64_t pes_duration = SUB_CLOCK_90KHZ / LPCM_PES_FRAMES_PER_SECOND;
   uint64_t pts = 0;
 
   uint8_t sample_size = DIV_ROUND_UP(fmt->fmt_spec.pcm.wBitsPerSample, 8);

@@ -25,7 +25,7 @@
  *
  * Parser syntax version.
  */
-#define CURRENT_ESMS_FORMAT_VER  5
+#define ESMS_FORMAT_VER  0x0001
 
 /** \~english
  * \brief ESMS source file max allowed filename length in characters including
@@ -648,9 +648,9 @@ typedef struct {
     EsmsPesPacketPropAudio audio;
   } prefix;
 
-  bool pts_long_field;
+  bool pts_33bit;
   bool dts_present;
-  bool dts_long_field;
+  bool dts_33bit;
   bool size_long_field;
   bool ext_data_present;
 } EsmsPesPacketProp;
@@ -666,8 +666,8 @@ typedef struct {
 typedef struct {
   EsmsPesPacketProp prop;  /**< Packet contained frame properties.           */
 
-  uint64_t pts;   /**< Presentation Time Stamp in 27MHz clock ticks.         */
-  uint64_t dts;   /**< Decoding Time Stamp in 27MHz clock ticks.             */
+  uint64_t pts;   /**< Presentation Time Stamp in 90kHz clock ticks.         */
+  uint64_t dts;   /**< Decoding Time Stamp in 90kHz clock ticks.             */
   uint32_t size;  /**< Packet size in bytes.                                 */
 
   EsmsPesPacketExtData ext_data;  /**< Extension data, present if
@@ -774,13 +774,14 @@ void printESMSValidatorError(
  *
  * \param essFileName Tested ESMS script filepath.
  * \param flags Muxing parameters flags.
- * \param version On success, script version returning pointer (can be NULL).
+ * \param ESMS_version_ret On success, script version returning pointer
+ * (can be NULL).
  * \return ESMSFileValidatorRet Returned code.
  */
 ESMSFileValidatorRet isAValidESMSFile(
   const lbc * esms_fp,
   uint64_t expected_flags,
-  unsigned * version
+  uint16_t * ESMS_version_ret
 );
 
 #endif

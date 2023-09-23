@@ -443,9 +443,9 @@ ESMSDirectoryFetcherErrorCodes getDirectoryOffset(
     return ESMS_DF_READ_ERROR; // Opening error
 
   /* [u32 ESMS_magic] */
-  /* [u8 ESMS_version] */
+  /* [u16 ESMS_version] */
   /* [u8 flags_byte] */
-  if (fseek(esms_fd, 0x6, SEEK_CUR) < 0)
+  if (fseek(esms_fd, 0x7, SEEK_CUR) < 0)
     goto read_error;
 
   /* [u8 nb_directory] */
@@ -656,7 +656,7 @@ free_return:
 ESMSFileValidatorRet isAValidESMSFile(
   const lbc * esms_fp,
   uint64_t expected_flags,
-  unsigned * version
+  uint16_t * ESMS_version_ret
 )
 {
   ESMSFileValidatorRet ret = ESMS_FV_OK;
@@ -681,17 +681,17 @@ ESMSFileValidatorRet isAValidESMSFile(
     goto free_return;
   }
 
-  /* [u8 ESMS_version] */
-  uint8_t ESMS_version;
-  FREAD(esms_fd, &ESMS_version, 1, goto read_error);
+  /* [u16 ESMS_version] */
+  uint16_t ESMS_version;
+  FREAD(esms_fd, &ESMS_version, 2, goto read_error);
 
-  if (CURRENT_ESMS_FORMAT_VER != ESMS_version) {
+  if (ESMS_FORMAT_VER != ESMS_version) {
     ret = ESMS_FV_VERSION_ERROR;
     goto free_return;
   }
 
-  if (NULL != version)
-    *version = ESMS_version;
+  if (NULL != ESMS_version_ret)
+    *ESMS_version_ret = ESMS_version;
 
   /* [v8 flags_byte] */
   uint8_t flags_byte;

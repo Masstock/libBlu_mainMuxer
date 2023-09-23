@@ -70,21 +70,21 @@ typedef struct {
   LibbluESProperties prop;   /**< ES properties.                             */
   LibbluESFmtProp fmt_prop;  /**< ES format specific properties.             */
 
-  uint64_t PTS_reference;   /**< Referential 'zero' time PTS value offset.   */
-  uint32_t bitrate;         /**< ES nominal bitrate.                         */
+  uint64_t PTS_reference;   /**< Referential 'zero' time PTS value offset,
+    in 90kHz clock ticks.                                                    */
   uint64_t PTS_final;       /**< Last PTS value, only used to feedback
-    progression.                                                             */
+    progression, in 90kHz clock ticks.                                       */
+  uint32_t bitrate;         /**< ES nominal bitrate.                         */
 
-  uint64_t flags;           /**< Script generation flags field.              */
+  uint64_t flags;  /**< Script generation flags field.                       */
 
-  EsmsFileDirectories directories;                  /**< ESMS script
-    directories indexer.                                                     */
-  EsmsESSourceFiles source_files;      /**< ESMS script linked
-    ES source files indexer.                                                 */
+  EsmsFileDirectories directories;  /**< ESMS script directories indexer.    */
+  EsmsESSourceFiles source_files;   /**< ESMS script linked ES source files
+    indexer.                                                                 */
   EsmsCommandsPipeline commands_pipeline;  /**< ESMS script PES
     frames generation commands pipeline.                                     */
-  EsmsDataBlocks data_blocks;                /**< ESMS pre-defined
-    data blocks indexer.                                                     */
+  EsmsDataBlocks data_blocks;       /**< ESMS pre-defined data blocks
+    indexer.                                                                 */
 } EsmsHandler, *EsmsHandlerPtr;
 
 static inline void printStreamDurationEsmsHandler(
@@ -94,10 +94,11 @@ static inline void printStreamDurationEsmsHandler(
   uint64_t pts = esms_hdl->PTS_final - esms_hdl->PTS_reference;
 
   lbc_printf(
-    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 "\n",
-    (pts / MAIN_CLOCK_27MHZ) / 60 / 60,
-    (pts / MAIN_CLOCK_27MHZ) / 60 % 60,
-    (pts / MAIN_CLOCK_27MHZ) % 60
+    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ":%03" PRIu64 "\n",
+    pts / 324000000,
+    pts / 5400000 % 60,
+    pts / 90000 % 60,
+    pts / 90 % 1000
   );
 }
 
@@ -262,8 +263,8 @@ int updateDataBlockEsmsHandler(
  * \param esms_hdl Used ESMS script handle.
  * \param picture_type Type of the picture (if stream is of video type).
  * \param dts_present Is the DTS field is used.
- * \param pts Presentation Time Stamp (in 27MHz clock ticks).
- * \param dts Decoding Time Stamp (in 27MHz clock ticks), only used if
+ * \param pts Presentation Time Stamp (in 90kHz clock ticks).
+ * \param dts Decoding Time Stamp (in 90kHz clock ticks), only used if
  * dts_present value is true.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
@@ -282,8 +283,8 @@ int initVideoPesPacketEsmsHandler(
  * \param esms_hdl Used ESMS script handle.
  * \param extension_frame Is the frame a extension audio frame.
  * \param dts_present Is the DTS field is used.
- * \param pts Presentation Time Stamp (in 27MHz clock ticks).
- * \param dts Decoding Time Stamp (in 27MHz clock ticks), only used if
+ * \param pts Presentation Time Stamp (in 90kHz clock ticks).
+ * \param dts Decoding Time Stamp (in 90kHz clock ticks), only used if
  * dts_present value is true.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
@@ -301,8 +302,8 @@ int initAudioPesPacketEsmsHandler(
  *
  * \param esms_hdl Used ESMS script handle.
  * \param dts_present Is the DTS field is used.
- * \param pts Presentation Time Stamp (in 27MHz clock ticks).
- * \param dts Decoding Time Stamp (in 27MHz clock ticks), only used if
+ * \param pts Presentation Time Stamp (in 90kHz clock ticks).
+ * \param dts Decoding Time Stamp (in 90kHz clock ticks), only used if
  * dts_present value is true.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.

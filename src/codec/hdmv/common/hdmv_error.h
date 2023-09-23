@@ -146,7 +146,7 @@
 
 #define LIBBLU_HDMV_PGS_DEBUG(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
-    LIBBLU_DEBUG_PGS_PARSER,                                             \
+    LIBBLU_DEBUG_PGS_PARSER,                                                  \
     LIBBLU_HDMV_PGS_NAME,                                                     \
     format,                                                                   \
     ##__VA_ARGS__                                                             \

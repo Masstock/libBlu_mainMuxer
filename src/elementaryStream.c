@@ -188,7 +188,7 @@ static int _parseScriptLibbluES(
   if (parseESPropertiesHeaderEsms(esms_bs, &es->prop, &PTS_reference, &PTS_final) < 0)
     goto free_return;
   es->PTS_reference = PTS_reference;
-  es->endPts = PTS_final;
+  es->PTS_final = PTS_final;
 
   /* ES Properties source files : */
   LIBBLU_SCRIPTRO_DEBUG(" Reading ES Properties Source Files section.\n");

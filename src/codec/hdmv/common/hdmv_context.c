@@ -283,9 +283,9 @@ void _setEsmsHeader(
   EsmsHandlerPtr script
 )
 {
-  script->PTS_reference  = param.referenceTimecode * 300;
-  script->bitrate = HDMV_RX_BITRATE;
-  script->PTS_final  = (param.referenceTimecode + param.last_ds_pres_time) * 300;
+  script->PTS_reference    = param.referenceTimecode;
+  script->bitrate          = HDMV_RX_BITRATE;
+  script->PTS_final        = (param.referenceTimecode + param.last_ds_pres_time);
   script->prop.coding_type = codingTypeHdmvStreamType(type);
 }
 
@@ -1711,8 +1711,8 @@ static int _registeringSegmentsDisplaySet(
     for (; NULL != seq; seq = seq->nextSequenceDS) {
       HdmvSegmentPtr seg;
 
-      uint64_t pts = (uint64_t) seq->pts * 300;
-      uint64_t dts = (uint64_t) seq->dts * 300;
+      uint64_t pts = (uint64_t) seq->pts;
+      uint64_t dts = (uint64_t) seq->dts;
 
       assert(segmentTypeIndexHdmvContext(seq->type) == idx);
 

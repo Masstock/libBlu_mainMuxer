@@ -18,6 +18,8 @@ int prepareLibbluESPesPacketProperties(
   assert(NULL != dst);
   assert(NULL != esms_pes);
 
+  uint64_t zero = 300ull * PTS_reference;
+
   dst->extensionFrame = false;
   if (ES_AUDIO == esms_pes->prop.type)
     dst->extensionFrame = esms_pes->prop.prefix.audio.extension_frame;
@@ -25,15 +27,15 @@ int prepareLibbluESPesPacketProperties(
   dst->dtsPresent = esms_pes->prop.dts_present;
   dst->extDataPresent = esms_pes->prop.ext_data_present;
 
-  dst->pts = esms_pes->pts + initial_STC;
-  if (dst->pts < PTS_reference)
+  dst->pts = (300ull * esms_pes->pts) + initial_STC;
+  if (dst->pts < zero)
     LIBBLU_ERROR_RETURN("Negative Presentation Time Stamp on a PES header.\n");
-  dst->pts -= PTS_reference;
+  dst->pts -= zero;
 
-  dst->dts = esms_pes->dts + initial_STC;
-  if (dst->dts < PTS_reference)
+  dst->dts = (300ull * esms_pes->dts) + initial_STC;
+  if (dst->dts < zero)
     LIBBLU_ERROR_RETURN("Negative Decoding Time Stamp on a PES header.\n");
-  dst->dts -= PTS_reference;
+  dst->dts -= zero;
 
   dst->extData = esms_pes->ext_data;
   dst->payloadSize = esms_pes->size;
