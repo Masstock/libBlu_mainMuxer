@@ -960,73 +960,66 @@ static int _muxNextSystemStreamPacket(
   BitstreamWriterPtr output
 )
 {
-  int ret;
-
-  StreamHeapTimingInfos tpTimeData;
-  LibbluStreamPtr tpStream;
-  bool injectedPacket;
-
   /* Check if smallest timestamp is less than or equal to currentStcTs */
   if (!streamIsReadyStreamHeap(ctx->systemStreamsHeap, ctx->currentStcTs))
     return 0; /* Timestamp not reached, no tp to mux. */
-  extractStreamHeap(ctx->systemStreamsHeap, &tpTimeData, &tpStream);
 
-  if (tpStream->type == TYPE_PCR && _checkPcrInjection(ctx)) {
+  StreamHeapTimingInfos tp_timing;
+  LibbluStreamPtr stream;
+  extractStreamHeap(ctx->systemStreamsHeap, &tp_timing, &stream);
+
+  bool is_injected_tp = false;
+
+  if (stream->type == TYPE_PCR && _checkPcrInjection(ctx)) {
     /* PCR system stream timestamp reached, but PCR fields are carried by
     ES transport packet and so no specific packet shall be emited. Skip
     transport packet generation. */
-    injectedPacket = false;
-    incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
+    incrementTPTimestampStreamHeapTimingInfos(&tp_timing);
   }
   else {
     /* Normal transport packet injection. */
-    bool isTStdManagedStream = false;
+    bool is_tstd_supported = false;
 
-    injectedPacket = true; /* By default, inject the packet */
+    is_injected_tp = true; // By default, inject the packet
     if (_isEnabledTStdModelLibbluMuxingContext(ctx)) {
       /* Check if the stream buffering is monitored */
-      isTStdManagedStream = isManagedSystemBdavStd(
-        tpStream->pid,
+      is_tstd_supported = isManagedSystemBdavStd(
+        stream->pid,
         ctx->patParam
       );
 
-      if (isTStdManagedStream) {
+      if (is_tstd_supported) {
         /* Inject the packet only if it does not overflow. */
-        injectedPacket = (0 == _checkBufferingModelAvailability(
-          ctx, tpStream, TP_SIZE
+        is_injected_tp = (0 == _checkBufferingModelAvailability(
+          ctx, stream, TP_SIZE
         ));
       }
     }
 
-    if (injectedPacket) {
+    if (is_injected_tp) {
       /* Only inject the packet if it does not cause overflow, or if its
       associated stream is not managed. */
-      bool pcrPresence;
-      uint64_t pcrValue;
 
-      TPHeaderParameters header;
-      size_t headerSize, payloadSize;
-
-      pcrPresence = (
-        (tpStream->type == TYPE_PCR)
-        || _pcrInjectionRequired(ctx, tpStream->pid)
+      bool pcr_pres = (
+        (stream->type == TYPE_PCR)
+        || _pcrInjectionRequired(ctx, stream->pid)
       );
-      pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
+      uint64_t pcr_val = computePcrFieldValue(
+        ctx->currentStc, ctx->byteStcDuration
+      );
 
       /* Prepare the tansport packet header */
-      prepareTPHeader(&header, tpStream, pcrPresence, pcrValue);
+      TPHeaderParameters tp_header = prepareTPHeader(
+        stream, pcr_pres, pcr_val
+      );
 
       /* Write if required by muxing options the tp_extra_header() */
       if (_writeTpExtraHeaderIfRequired(ctx, output) < 0)
         return -1;
 
       /* Write the current transport packet */
-      ret = writeTransportPacket(
-        output, tpStream, header,
-        &headerSize,
-        &payloadSize
-      );
-      if (ret < 0)
+      uint8_t hdr_size, pl_size;
+      if (writeTransportPacket(output, stream, &tp_header, &hdr_size, &pl_size) < 0)
         return -1;
 
       LIBBLU_DEBUG(
@@ -1034,43 +1027,38 @@ static int _muxNextSystemStreamPacket(
         "0x%" PRIX64 " - %" PRIu64 ", Sys packet muxed (0x%04" PRIX16 ").\n",
         ctx->currentStcTs,
         ctx->currentStcTs,
-        tpStream->pid
+        stream->pid
       );
 
       ctx->nbTsPacketsMuxed++;
       ctx->nbBytesWritten += TP_SIZE;
 
-      if (isTStdManagedStream) {
+      if (is_tstd_supported) {
         /* If the stream is buffer managed, inject the written bytes
         in the model. */
-        size_t packetSize = headerSize + payloadSize;
+        uint8_t tp_size = hdr_size + pl_size;
 
         /* Register the packet */
-        ret = addSystemFramesToBdavStd(
-          ctx->tStdSystemBuffersList,
-          headerSize,
-          payloadSize
-        );
-        if (ret < 0)
+        if (addSystemFramesToBdavStd(ctx->tStdSystemBuffersList, hdr_size, pl_size) < 0)
           return -1;
 
         /* Put the packet data */
-        if (_putDataToBufferingModel(ctx, tpStream, packetSize) < 0)
+        if (_putDataToBufferingModel(ctx, stream, tp_size) < 0)
           return -1;
       }
 
-      if (tpStream->sys.firstFullTableSupplied) {
+      if (stream->sys.firstFullTableSupplied) {
         /* Increment the timestamp only after the table has been fully
         emitted once. */
-        incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
+        incrementTPTimestampStreamHeapTimingInfos(&tp_timing);
       }
     }
   }
 
-  if (addStreamHeap(ctx->systemStreamsHeap, tpTimeData, tpStream) < 0)
+  if (addStreamHeap(ctx->systemStreamsHeap, tp_timing, stream) < 0)
     return -1;
 
-  return injectedPacket; /* 0: No packet written, 1: One packet written */
+  return is_injected_tp; /* 0: No packet written, 1: One packet written */
 }
 
 static int _retriveAssociatedESUtilities(
@@ -1096,27 +1084,24 @@ static int _muxNextESPacket(
   BitstreamWriterPtr output
 )
 {
-  int ret;
+  StreamHeapTimingInfos tp_timings;
+  TPHeaderParameters tp_header;
+  bool is_tstd_supported;
 
-  StreamHeapTimingInfos tpTimeData;
-  LibbluStreamPtr stream;
-  TPHeaderParameters tpHeader;
-  bool isTStdManagedStream;
-
-  stream = NULL;
+  LibbluStreamPtr stream = NULL;
   while (
     NULL == stream
     && streamIsReadyStreamHeap(ctx->elementaryStreamsHeap, ctx->currentStcTs)
   ) {
-    extractStreamHeap(ctx->elementaryStreamsHeap, &tpTimeData, &stream);
+    extractStreamHeap(ctx->elementaryStreamsHeap, &tp_timings, &stream);
 
-    isTStdManagedStream = (NULL != stream->es.lnkdBufList);
+    is_tstd_supported = (NULL != stream->es.lnkdBufList);
 
-    if (isTStdManagedStream) {
-      bool pcrInjection = _pcrInjectionRequired(ctx, stream->pid);
-      uint64_t pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
+    if (is_tstd_supported) {
+      bool pcr_inject_req = _pcrInjectionRequired(ctx, stream->pid);
+      uint64_t pcr_val = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
 
-      prepareTPHeader(&tpHeader, stream, pcrInjection, pcrValue);
+      tp_header = prepareTPHeader(stream, pcr_inject_req, pcr_val);
 
       uint64_t delay = _checkBufferingModelAvailability(ctx, stream, TP_SIZE);
       if (0 < delay) {
@@ -1132,10 +1117,10 @@ static int _muxNextESPacket(
 #if 0
         incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
 #else
-        tpTimeData.tsPt += delay;
+        tp_timings.tsPt += delay;
 #endif
 
-        if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, stream) < 0)
+        if (addStreamHeap(ctx->elementaryStreamsHeap, tp_timings, stream) < 0)
           return -1;
         stream = NULL; /* Reset to keep in loop */
       }
@@ -1145,13 +1130,13 @@ static int _muxNextESPacket(
   if (NULL == stream)
     return 0; /* Nothing currently to mux */
 
-  if (!isTStdManagedStream) {
+  if (!is_tstd_supported) {
     /* Prepare tp header (it has already been prepared if T-STD buf model
     is used. */
-    bool pcrInjection = _pcrInjectionRequired(ctx, stream->pid);
-    uint64_t pcrValue = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
+    bool pcr_inject_req = _pcrInjectionRequired(ctx, stream->pid);
+    uint64_t pcr_val = computePcrFieldValue(ctx->currentStc, ctx->byteStcDuration);
 
-    prepareTPHeader(&tpHeader, stream, pcrInjection, pcrValue);
+    tp_header = prepareTPHeader(stream, pcr_inject_req, pcr_val);
   }
 
   /* Write if required by muxing options the tp_extra_header() */
@@ -1159,9 +1144,8 @@ static int _muxNextESPacket(
     return -1;
 
   /* Write the current transport packet */
-  size_t headerSize, payloadSize;
-
-  if (writeTransportPacket(output, stream, tpHeader, &headerSize, &payloadSize) < 0)
+  uint8_t hdr_size, pl_size;
+  if (writeTransportPacket(output, stream, &tp_header, &hdr_size, &pl_size) < 0)
     return -1;
 
   LIBBLU_DEBUG(
@@ -1171,33 +1155,33 @@ static int _muxNextESPacket(
     ctx->currentStcTs,
     ctx->currentStcTs,
     stream->pid,
-    tpTimeData.tsPt
+    tp_timings.tsPt
   );
 
   ctx->nbTsPacketsMuxed++;
   ctx->nbBytesWritten += TP_SIZE;
 
-  if (isTStdManagedStream) {
+  if (is_tstd_supported) {
     /* If T-STD buffer model is used, inject the written bytes in the model. */
-    size_t packetSize = headerSize + payloadSize;
+    size_t tp_size = hdr_size + pl_size;
 
     LIBBLU_T_STD_VERIF_DECL_DEBUG(
       "Registering %zu+%zu=%zu bytes of TP for PID 0x%04" PRIX16 ".\n",
-      headerSize, payloadSize, packetSize,
+      hdr_size, pl_size, tp_size,
       stream->pid
     );
 
     /* Register the packet */
-    ret = addESTsFrameToBdavStd(
+    int ret = addESTsFrameToBdavStd(
       stream->es.lnkdBufList,
-      headerSize,
-      payloadSize
+      hdr_size,
+      pl_size
     );
     if (ret < 0)
       return -1;
 
     /* Put the packet data */
-    if (_putDataToBufferingModel(ctx, stream, packetSize) < 0)
+    if (_putDataToBufferingModel(ctx, stream, tp_size) < 0)
       return -1;
   }
 
@@ -1209,7 +1193,7 @@ static int _muxNextESPacket(
     if (_retriveAssociatedESUtilities(ctx, stream, &utilities) < 0)
       LIBBLU_ERROR_RETURN("Unable to retrive ES associated utilities.\n");
 
-    ret = buildNextPesPacketLibbluES(
+    int ret = buildNextPesPacketLibbluES(
       &stream->es,
       stream->pid,
       ctx->initial_STC,
@@ -1239,20 +1223,20 @@ static int _muxNextESPacket(
     );
 
 #if 1
-    if (_computePesTiming(&tpTimeData, &stream->es, ctx) < 0)
+    if (_computePesTiming(&tp_timings, &stream->es, ctx) < 0)
       return -1;
 #endif
 
     LIBBLU_DEBUG(
       LIBBLU_DEBUG_PES_BUILDING, "PES building",
       " => pesTsNb: %" PRIu64 ", tsPt: %" PRIu64 ".\n",
-      tpTimeData.pesTsNb,
-      tpTimeData.tsPt
+      tp_timings.pesTsNb,
+      tp_timings.tsPt
     );
   }
   else {
 #if 1
-      incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
+      incrementTPTimestampStreamHeapTimingInfos(&tp_timings);
 #else
       tpTimeData.tsPt += ctx->tpStcDuration_floor;
 #endif
@@ -1269,7 +1253,7 @@ static int _muxNextESPacket(
     ;
   }
 
-  if (addStreamHeap(ctx->elementaryStreamsHeap, tpTimeData, stream) < 0)
+  if (addStreamHeap(ctx->elementaryStreamsHeap, tp_timings, stream) < 0)
     return -1;
   return 1;
 }
@@ -1279,17 +1263,15 @@ static int _muxNullPacket(
   BitstreamWriterPtr output
 )
 {
-  TPHeaderParameters header;
-
   /* Prepare the tansport packet header */
   /* NOTE: Null packets cannot carry PCR */
-  prepareTPHeader(&header, ctx->null, false, 0);
+  TPHeaderParameters tp_header = prepareTPHeader(ctx->null, false, 0);
 
   /* Write if required by muxing options the tp_extra_header() */
   if (_writeTpExtraHeaderIfRequired(ctx, output) < 0)
     return -1;
 
-  if (writeTransportPacket(output, ctx->null, header, NULL, NULL) < 0)
+  if (writeTransportPacket(output, ctx->null, &tp_header, NULL, NULL) < 0)
     return -1;
 
   LIBBLU_DEBUG(

@@ -13,27 +13,34 @@
 #include "util.h"
 #include "stream.h"
 
+/** \~english
+ * \brief Writes tp_extra_header structure.
+ *
+ * \param output Output bistream.
+ * \param atc Transport packet Arrival Time Clock timestamp.
+ * \return int
+ */
 int writeTpExtraHeader(
   BitstreamWriterPtr output,
-  uint64_t pcr
+  uint64_t atc
 );
 
 typedef struct {
-  bool ltwFlag;
-  bool piecewiseRateFlag;
-  bool seamlessSpliceFlag;
-  /* bool afDescriptorNotPresent; */
+  bool ltw_flag;
+  bool piecewise_rate_flag;
+  bool seamless_splice_flag;
+  // bool af_descriptor_not_present_flag;
 
-  /* if (ltwFlag) */
-  bool ltwValidFlag;
-  uint16_t ltwOffset;
+  /* if (ltw_flag) */
+  bool ltw_valid_flag;
+  uint16_t ltw_offset;
 
-  /* if (piecewiseRateFlag) */
-  uint32_t piecewiseRate;
+  /* if (piecewise_rate_flag) */
+  uint32_t piecewise_rate;
 
-  /* if (seamlessSpliceFlag) */
-  uint8_t spliceType;
-  uint64_t dtsNextAU;
+  /* if (seamless_splice_flag) */
+  uint8_t splice_type;
+  uint64_t DTS_next_AU;
 } AdaptationFieldExtensionParameters;
 
 /** \~english
@@ -65,18 +72,16 @@ typedef struct {
  *   else
  *     - vn  : reserved
  */
-static inline size_t computeSizeAdaptationFieldExtensionParameters(
-  AdaptationFieldExtensionParameters param
+static inline uint8_t computeSizeAdaptationFieldExtensionParameters(
+  const AdaptationFieldExtensionParameters * param
 )
 {
-  size_t size;
-
-  size = 2;
-  if (param.ltwFlag)
+  uint8_t size = 2;
+  if (param->ltw_flag)
     size += 2;
-  if (param.piecewiseRateFlag)
+  if (param->piecewise_rate_flag)
     size += 3;
-  if (param.seamlessSpliceFlag)
+  if (param->seamless_splice_flag)
     size += 5;
   return size;
 }
@@ -97,34 +102,34 @@ static inline uint64_t computePcrFieldValue(
 }
 
 typedef struct {
-  bool writeOnlyLength;
+  bool write_only_length;
 
-  bool discontinuityIndicator;
-  bool randomAccessIndicator;
-  bool elementaryStreamPriorityIndicator;
-  bool pcrFlag;
-  bool opcrFlag;
-  bool splicingPointFlag;
-  bool transportPrivateDataFlag;
-  bool adaptationFieldExtensionFlag;
+  bool discontinuity_indicator;
+  bool random_access_indicator;
+  bool elementary_stream_priority_indicator;
+  bool PCR_flag;
+  bool OPCR_flag;
+  bool splicing_point_flag;
+  bool transport_private_data_flag;
+  bool adaptation_field_extension_flag;
 
-  /* if (pcrFlag) */
+  /* if (PCR_flag) */
   uint64_t pcr;
 
-  /* if (opcrFlag) */
+  /* if (OPCR_flag) */
   uint64_t opcr;
 
-  /* if (splicingPointFlag) */
-  uint8_t spliceCountdown;
+  /* if (splicing_point_flag) */
+  uint8_t splice_countdown;
 
-  /* if (transportPrivateDataFlag) */
-  uint8_t transportPrivateDataLength;
-  uint8_t * transportPrivateData;
+  /* if (transport_private_data_flag) */
+  uint8_t transport_private_data_length;
+  uint8_t * private_data;
 
-  /* if (adaptationFieldExtensionFlag) */
-  AdaptationFieldExtensionParameters ext;
+  /* if (adaptation_field_extension_flag) */
+  AdaptationFieldExtensionParameters adaptation_field_extension;
 
-  size_t stuffingBytesLen;
+  uint8_t nb_stuffing_bytes;
 } AdaptationFieldParameters;
 
 /** \~english
@@ -136,7 +141,7 @@ typedef struct {
  *
  * Composed of:
  *  - u8  : adaptation_field_length
- *  if (!param.writeOnlyLength) // 0 < adaptation_field_length
+ *  if (!param->write_only_length) // 0 < adaptation_field_length
  *    - b1  : discontinuity_indicator
  *    - b1  : section_syntax_indicator
  *    - b1  : elementary_stream_priority_indicator
@@ -161,103 +166,102 @@ typedef struct {
  *    if (adaptation_field_extension_flag)
  *      - vn  : adaptation_field_extension()
  *        // computeSizeAdaptationFieldExtensionParameters()
- *    - vn  : stuffing_byte // param.stuffingBytesLen
+ *    - vn  : stuffing_byte // param->nb_stuffing_bytes
  */
-static inline size_t computeSizeAdaptationField(
-  AdaptationFieldParameters param
+static inline uint8_t computeSizeAdaptationField(
+  const AdaptationFieldParameters * param
 )
 {
-  size_t size;
-
-  if (param.writeOnlyLength)
+  if (param->write_only_length)
     return 1;
 
-  size = 2;
-  if (param.pcrFlag)
+  uint8_t size = 2;
+  if (param->PCR_flag)
     size += 6;
-  if (param.opcrFlag)
+  if (param->OPCR_flag)
     size += 6;
-  if (param.splicingPointFlag)
+  if (param->splicing_point_flag)
     size++;
-  if (param.transportPrivateDataFlag)
-    size += 1 + param.transportPrivateDataLength;
-  if (param.adaptationFieldExtensionFlag)
-    size += computeSizeAdaptationFieldExtensionParameters(param.ext);
-  return size + param.stuffingBytesLen;
+  if (param->transport_private_data_flag)
+    size += 1 + param->transport_private_data_length;
+  if (param->adaptation_field_extension_flag)
+    size += computeSizeAdaptationFieldExtensionParameters(
+      &param->adaptation_field_extension
+    );
+  return size + param->nb_stuffing_bytes;
 }
 
-static inline size_t computeRequiredSizeAdaptationField(
-  AdaptationFieldParameters param
+static inline uint8_t computeRequiredSizeAdaptationField(
+  const AdaptationFieldParameters * param
 )
 {
-  bool adaptationFieldUsed;
-
-  adaptationFieldUsed = (
-    param.discontinuityIndicator
-    || param.randomAccessIndicator
-    || param.elementaryStreamPriorityIndicator
-    || param.pcrFlag
-    || param.opcrFlag
-    || param.splicingPointFlag
-    || param.transportPrivateDataFlag
-    || param.adaptationFieldExtensionFlag
+  bool adapt_field_used = (
+    param->discontinuity_indicator
+    || param->random_access_indicator
+    || param->elementary_stream_priority_indicator
+    || param->PCR_flag
+    || param->OPCR_flag
+    || param->splicing_point_flag
+    || param->transport_private_data_flag
+    || param->adaptation_field_extension_flag
   );
 
-  if (adaptationFieldUsed)
+  if (adapt_field_used)
     return computeSizeAdaptationField(param);
   return 0;
 }
 
 typedef struct {
-  bool transportErrorIndicator;
-  bool payloadUnitStartIndicator;
-  bool transportPriority;
+  bool transport_error_indicator;
+  bool payload_unit_start_indicator;
+  bool transport_priority;
 
   uint16_t pid;
 
-  uint8_t transportScramblingControl;
-  uint8_t adaptationFieldControl;
-  uint8_t continuityCounter;
+  uint8_t transport_scrambling_control;
+  uint8_t adaptation_field_control;
+  uint8_t continuity_counter;
 
-  AdaptationFieldParameters adaptationField;
+  AdaptationFieldParameters adaptation_field;
 } TPHeaderParameters;
 
 static inline bool adaptationFieldPresenceTPHeader(
-  TPHeaderParameters header
+  const TPHeaderParameters * header
 )
 {
-  return header.adaptationFieldControl & 0x2;
+  return header->adaptation_field_control & 0x2;
 }
 
 static inline bool payloadPresenceTPHeader(
-  TPHeaderParameters header
+  const TPHeaderParameters * header
 )
 {
-  return header.adaptationFieldControl & 0x1;
+  return header->adaptation_field_control & 0x1;
 }
 
-static inline size_t computeSizeTPHeader(
-  TPHeaderParameters header
+static inline uint8_t computeSizeTPHeader(
+  const TPHeaderParameters * header
 )
 {
-  if (adaptationFieldPresenceTPHeader(header))
-    return TP_HEADER_SIZE + computeSizeAdaptationField(header.adaptationField);
-  return TP_HEADER_SIZE;
+  if (!adaptationFieldPresenceTPHeader(header))
+    return TP_HEADER_SIZE;
+  return TP_HEADER_SIZE + computeSizeAdaptationField(
+    &header->adaptation_field
+  );
 }
 
-void prepareTPHeader(
-  TPHeaderParameters * dst,
-  LibbluStreamPtr stream,
-  bool pcrInjectionRequirement,
-  uint64_t pcrValue
+TPHeaderParameters prepareTPHeader(
+  const LibbluStreamPtr stream,
+  bool pcr_injection_req,
+  uint64_t pcr_value
 );
 
 int writeTransportPacket(
   BitstreamWriterPtr output,
   LibbluStreamPtr stream,
-  TPHeaderParameters header,
-  size_t * headerSize,
-  size_t * payloadSize
+  const TPHeaderParameters * tp_header,
+  uint8_t * tp_header_size_ret,
+  uint8_t * tp_payload_size_ret
 );
 
 #endif

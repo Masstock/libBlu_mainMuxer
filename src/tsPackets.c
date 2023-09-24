@@ -8,44 +8,43 @@
 
 #include "tsPackets.h"
 
+
 int writeTpExtraHeader(
   BitstreamWriterPtr output,
-  uint64_t pcr
+  uint64_t atc
 )
 {
-  uint8_t extraHeader[TP_EXTRA_HEADER_SIZE];
-  size_t offset = 0;
+  uint8_t tp_extra_header[TP_EXTRA_HEADER_SIZE];
+  uint8_t offset = 0;
 
-  static const uint8_t copyPermInd = 0x0;
+  static const uint8_t copy_perm_idc = 0x0;
+  uint32_t ats = atc & 0x3FFFFFFF;
 
-  uint32_t ats = pcr & 0x3FFFFFFF;
-
-  /* [u2 copyPermissionIndicator] [u30 arrivalTimeStamp] */
-  WB_ARRAY(extraHeader, offset, (copyPermInd << 6) | (ats >> 24));
-  WB_ARRAY(extraHeader, offset, ats >> 16);
-  WB_ARRAY(extraHeader, offset, ats >>  8);
-  WB_ARRAY(extraHeader, offset, ats);
+  /* [u2 copy_permission_indicator] [u30 arrival_timestamp] */
+  WB_ARRAY(tp_extra_header, offset, (copy_perm_idc << 6) | (ats >> 24));
+  WB_ARRAY(tp_extra_header, offset, ats >> 16);
+  WB_ARRAY(tp_extra_header, offset, ats >>  8);
+  WB_ARRAY(tp_extra_header, offset, ats);
 
   return writeBytes(
     output,
-    extraHeader,
+    tp_extra_header,
     TP_EXTRA_HEADER_SIZE
   );
 }
 
-static void _prepareESTransportPacketMainHeader(
-  TPHeaderParameters * dst,
+static TPHeaderParameters _prepareESTransportPacketMainHeader(
   const LibbluStreamPtr stream,
-  bool pcrInjectReq
+  bool pcr_inj_req
 )
 {
-  size_t remDataSize = remainingPesDataLibbluES(&stream->es);
+  size_t rem_data = remainingPesDataLibbluES(&stream->es);
 
-  assert(0 < remDataSize);
+  assert(0 < rem_data);
   assert(TYPE_ES == stream->type);
 
   const LibbluESProperties * es_prop = &stream->es.prop;
-  bool transportPriority = (
+  bool transport_priority = (
     (
       es_prop->coding_type == STREAM_CODING_TYPE_AC3
       || es_prop->coding_type == STREAM_CODING_TYPE_DTS
@@ -56,16 +55,16 @@ static void _prepareESTransportPacketMainHeader(
     ) && !stream->es.current_pes_packet.extension_frame
   );
 
-  bool payloadPresence = true; // (0 < remDataSize)
-  bool payloadStart = (payloadPresence && isPayloadUnitStartLibbluES(stream->es));
-  bool adaptFieldPres = (remDataSize < TP_PAYLOAD_SIZE || pcrInjectReq);
+  bool pl_presence = true; // (0 < rem_data)
+  bool is_pl_start = (pl_presence && isPayloadUnitStartLibbluES(stream->es));
+  bool adapt_fd_pres = (rem_data < TP_PAYLOAD_SIZE || pcr_inj_req);
 
-  *dst = (TPHeaderParameters) {
-    .payloadUnitStartIndicator = payloadStart,
-    .transportPriority = transportPriority,
+  return (TPHeaderParameters) {
+    .payload_unit_start_indicator = is_pl_start,
+    .transport_priority = transport_priority,
     .pid = stream->pid,
-    .adaptationFieldControl = (adaptFieldPres << 1) | payloadPresence,
-    .continuityCounter = stream->packetNb & 0xF
+    .adaptation_field_control = (adapt_fd_pres << 1) | pl_presence,
+    .continuity_counter = stream->packetNb & 0xF
   };
 }
 
@@ -82,106 +81,102 @@ static size_t _remainingTableDataLibbluSystemStream(
   return stream->sys.dataLength - stream->sys.dataOffset;
 }
 
-static void _prepareSysTransportPacketMainHeader(
-  TPHeaderParameters * dst,
+static TPHeaderParameters _prepareSysTransportPacketMainHeader(
   const LibbluStreamPtr stream,
-  bool pcrInjectReq
+  bool pcr_inj_req
 )
 {
-  size_t remDataSize = _remainingTableDataLibbluSystemStream(stream);
+  size_t rem_size = _remainingTableDataLibbluSystemStream(stream);
 
-  bool payloadPresence = (0 < remDataSize);
-  bool payloadStart = (payloadPresence && 0x0 == stream->sys.dataOffset);
-  bool adaptFieldPres = (remDataSize < TP_PAYLOAD_SIZE || pcrInjectReq);
-  bool useContCounter = stream->sys.useContinuityCounter;
+  bool pl_pres = (0 < rem_size);
+  bool is_pl_start = (pl_pres && 0x0 == stream->sys.dataOffset);
+  bool adapt_field_pres = (rem_size < TP_PAYLOAD_SIZE || pcr_inj_req);
+  bool use_cont_counter = stream->sys.useContinuityCounter;
 
-  *dst = (TPHeaderParameters) {
-    .payloadUnitStartIndicator = payloadStart,
+  return (TPHeaderParameters) {
+    .payload_unit_start_indicator = is_pl_start,
     .pid = stream->pid,
-    .adaptationFieldControl = (adaptFieldPres << 1) | payloadPresence,
-    .continuityCounter = (useContCounter) ? stream->packetNb & 0xF : 0
+    .adaptation_field_control = (adapt_field_pres << 1) | pl_pres,
+    .continuity_counter = (use_cont_counter) ? stream->packetNb & 0xF : 0
   };
 }
 
-static void _prepareAdaptationField(
-  AdaptationFieldParameters * dst,
+static AdaptationFieldParameters _prepareAdaptationField(
   const LibbluStreamPtr stream,
-  bool pcrInjectionRequirement,
-  uint64_t pcrValue
+  bool pcr_injection_req,
+  uint64_t pcr_value
 )
 {
   AdaptationFieldParameters param = {
-    .pcrFlag = ((stream->type == TYPE_PCR) || pcrInjectionRequirement),
-    .pcr = pcrValue
+    .PCR_flag = ((stream->type == TYPE_PCR) || pcr_injection_req),
+    .pcr = pcr_value
   };
 
-  size_t remainingPayload;
+  size_t rem_payload;
   if (isESLibbluStream(stream))
-    remainingPayload = remainingPesDataLibbluES(&stream->es);
+    rem_payload = remainingPesDataLibbluES(&stream->es);
   else
-    remainingPayload = _remainingTableDataLibbluSystemStream(stream);
-  assert(remainingPayload <= TP_PAYLOAD_SIZE);
+    rem_payload = _remainingTableDataLibbluSystemStream(stream);
+  assert(rem_payload <= TP_PAYLOAD_SIZE);
 
-  size_t adaptationFieldSize = computeRequiredSizeAdaptationField(param);
+  uint8_t adapt_fd_size = computeRequiredSizeAdaptationField(&param);
 
-  if (!adaptationFieldSize) {
+  if (!adapt_fd_size) {
     /* No adaptation field required */
-    switch (remainingPayload) {
+    switch (rem_payload) {
       case TP_PAYLOAD_SIZE: // Payload size match exactly TS packet one.
         break;
 
       case TP_PAYLOAD_SIZE - 1: // Only one stuffing byte required.
-        param.writeOnlyLength = true;
+        param.write_only_length = true;
         break;
 
       default: // Add stuffing bytes to pad
-        param.stuffingBytesLen = TP_PAYLOAD_SIZE - remainingPayload - 2;
+        param.nb_stuffing_bytes = TP_PAYLOAD_SIZE - rem_payload - 2;
     }
   }
   else {
-    param.stuffingBytesLen = TP_PAYLOAD_SIZE - adaptationFieldSize - remainingPayload;
+    param.nb_stuffing_bytes = TP_PAYLOAD_SIZE - adapt_fd_size - rem_payload;
   }
 
-  *dst = param;
+  return param;
 }
 
-void prepareTPHeader(
-  TPHeaderParameters * dst,
+TPHeaderParameters prepareTPHeader(
   const LibbluStreamPtr stream,
-  bool pcrInjectionRequirement,
-  uint64_t pcrValue
+  bool pcr_injection_req,
+  uint64_t pcr_value
 )
 {
-  if (isESLibbluStream(stream))
-    _prepareESTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
-  else
-    _prepareSysTransportPacketMainHeader(dst, stream, pcrInjectionRequirement);
+  TPHeaderParameters tp_header;
 
-  if (dst->adaptationFieldControl & 0x2) {
-    _prepareAdaptationField(
-      &dst->adaptationField,
+  if (isESLibbluStream(stream))
+    tp_header = _prepareESTransportPacketMainHeader(stream, pcr_injection_req);
+  else
+    tp_header = _prepareSysTransportPacketMainHeader(stream, pcr_injection_req);
+
+  if (tp_header.adaptation_field_control & 0x2) {
+    tp_header.adaptation_field = _prepareAdaptationField(
       stream,
-      pcrInjectionRequirement,
-      pcrValue
+      pcr_injection_req,
+      pcr_value
     );
   }
+
+  return tp_header;
 }
 
-static size_t _insertAdaptationField(
+static uint8_t _insertAdaptationField(
   uint8_t * tp,
-  size_t offset,
-  AdaptationFieldParameters param
+  uint8_t offset,
+  const AdaptationFieldParameters * param
 )
 {
-  size_t i, adaptationFieldLengthOff;
-
   /* [u8 adaptation_field_length] */
-  adaptationFieldLengthOff = offset;
+  uint8_t adapt_fd_len_off = offset;
   WB_ARRAY(tp, offset, 0x00);
 
-  if (!param.writeOnlyLength) {
-    uint8_t flagsByte;
-
+  if (!param->write_only_length) {
     /**
      * [b1 discontinuity_indicator]
      * [b1 random_access_indicator]
@@ -192,24 +187,24 @@ static size_t _insertAdaptationField(
      * [b1 transport_private_data_flag]
      * [b1 adaptation_field_extension_flag]
      */
-    flagsByte =
-      ((param.discontinuityIndicator             ) << 7)
-      | ((param.randomAccessIndicator            ) << 6)
-      | ((param.elementaryStreamPriorityIndicator) << 5)
-      | ((param.pcrFlag                          ) << 4)
-      | ((param.opcrFlag                         ) << 3)
-      | ((param.splicingPointFlag                ) << 2)
-      | ((param.transportPrivateDataFlag         ) << 1)
-      | param.adaptationFieldExtensionFlag
+    uint8_t flags_byte =
+      ((param->discontinuity_indicator               ) << 7)
+      | ((param->random_access_indicator             ) << 6)
+      | ((param->elementary_stream_priority_indicator) << 5)
+      | ((param->PCR_flag                            ) << 4)
+      | ((param->OPCR_flag                           ) << 3)
+      | ((param->splicing_point_flag                 ) << 2)
+      | ((param->transport_private_data_flag         ) << 1)
+      | param->adaptation_field_extension_flag
     ;
-    WB_ARRAY(tp, offset, flagsByte);
+    WB_ARRAY(tp, offset, flags_byte);
 
-    if (param.pcrFlag) {
+    if (param->PCR_flag) {
       uint64_t programClockReferenceBase;
       uint16_t programClockReferenceExt;
 
-      programClockReferenceBase = param.pcr / 300;
-      programClockReferenceExt  = param.pcr % 300;
+      programClockReferenceBase = param->pcr / 300;
+      programClockReferenceExt  = param->pcr % 300;
 
       /**
        * [u33 program_clock_reference_base]
@@ -229,12 +224,12 @@ static size_t _insertAdaptationField(
       WB_ARRAY(tp, offset, programClockReferenceExt);
     }
 
-    if (param.opcrFlag) {
+    if (param->OPCR_flag) {
       uint64_t originalProgramClockReferenceBase;
       uint16_t originalProgramClockReferenceExt;
 
-      originalProgramClockReferenceBase = param.opcr / 300;
-      originalProgramClockReferenceExt  = param.opcr % 300;
+      originalProgramClockReferenceBase = param->opcr / 300;
+      originalProgramClockReferenceExt  = param->opcr % 300;
 
       /**
        * [u33 original_program_clock_reference_base]
@@ -254,28 +249,30 @@ static size_t _insertAdaptationField(
       WB_ARRAY(tp, offset, originalProgramClockReferenceExt);
     }
 
-    if (param.splicingPointFlag) {
+    if (param->splicing_point_flag) {
       /* [u8 splice_countdown] */
-      WB_ARRAY(tp, offset, param.spliceCountdown);
+      WB_ARRAY(tp, offset, param->splice_countdown);
     }
 
-    if (param.transportPrivateDataFlag) {
+    if (param->transport_private_data_flag) {
       uint8_t i;
 
       /* [u8 transport_private_data_length] */
-      WB_ARRAY(tp, offset, param.transportPrivateDataLength);
+      WB_ARRAY(tp, offset, param->transport_private_data_length);
 
-      for (i = 0; i < param.transportPrivateDataLength; i++) {
+      for (i = 0; i < param->transport_private_data_length; i++) {
         /* [v8 private_data_byte] */
-        WB_ARRAY(tp, offset, param.transportPrivateData[i]);
+        WB_ARRAY(tp, offset, param->private_data[i]);
       }
     }
 
-    if (param.adaptationFieldExtensionFlag) {
-      size_t adaptationFieldExtensionLengthOff;
+    if (param->adaptation_field_extension_flag) {
+      const AdaptationFieldExtensionParameters * ext =
+        &param->adaptation_field_extension
+      ;
 
       /* [u8 adaptation_field_extension_length] */
-      adaptationFieldExtensionLengthOff = offset;
+      uint8_t adapt_fd_ext_len_off = offset;
       WB_ARRAY(tp, offset, 0x00);
 
       /**
@@ -287,30 +284,30 @@ static size_t _insertAdaptationField(
        */
       WB_ARRAY(
         tp, offset,
-        (param.ext.ltwFlag              << 7)
-        | (param.ext.piecewiseRateFlag  << 6)
-        | (param.ext.seamlessSpliceFlag << 5)
+        (ext->ltw_flag              << 7)
+        | (ext->piecewise_rate_flag  << 6)
+        | (ext->seamless_splice_flag << 5)
         | 0x1F
       );
 
-      if (param.ext.ltwFlag) {
+      if (ext->ltw_flag) {
         /* [b1 ltw_valid_flag] [u15 ltw_offset] */
         WB_ARRAY(
           tp, offset,
-          (param.ext.ltwValidFlag  << 7)
-          | ((param.ext.ltwOffset >> 8) & 0x7F)
+          (ext->ltw_valid_flag  << 7)
+          | ((ext->ltw_offset >> 8) & 0x7F)
         );
-        WB_ARRAY(tp, offset, param.ext.ltwOffset);
+        WB_ARRAY(tp, offset, ext->ltw_offset);
       }
 
-      if (param.ext.piecewiseRateFlag) {
+      if (ext->piecewise_rate_flag) {
         /* [v2 reserved] [u22 piecewise_rate] */
-        WB_ARRAY(tp, offset, (param.ext.piecewiseRate >> 16) | 0xC0);
-        WB_ARRAY(tp, offset,  param.ext.piecewiseRate >>  8);
-        WB_ARRAY(tp, offset,  param.ext.piecewiseRate);
+        WB_ARRAY(tp, offset, (ext->piecewise_rate >> 16) | 0xC0);
+        WB_ARRAY(tp, offset,  ext->piecewise_rate >>  8);
+        WB_ARRAY(tp, offset,  ext->piecewise_rate);
       }
 
-      if (param.ext.seamlessSpliceFlag) {
+      if (ext->seamless_splice_flag) {
         /**
          * [u4 Splice_type]
          * [u3 DTS_next_AU[32-30]]
@@ -322,14 +319,14 @@ static size_t _insertAdaptationField(
          */
         WB_ARRAY(
           tp, offset,
-          (param.ext.spliceType << 4)
-          | ((param.ext.dtsNextAU >> 29) & 0xE0)
+          (ext->splice_type << 4)
+          | ((ext->DTS_next_AU >> 29) & 0xE0)
           | 0x1
         );
-        WB_ARRAY(tp, offset,  param.ext.dtsNextAU >> 22);
-        WB_ARRAY(tp, offset, (param.ext.dtsNextAU >> 14) | 0x1);
-        WB_ARRAY(tp, offset,  param.ext.dtsNextAU >>  7);
-        WB_ARRAY(tp, offset, (param.ext.dtsNextAU <<  1) | 0x1);
+        WB_ARRAY(tp, offset,  ext->DTS_next_AU >> 22);
+        WB_ARRAY(tp, offset, (ext->DTS_next_AU >> 14) | 0x1);
+        WB_ARRAY(tp, offset,  ext->DTS_next_AU >>  7);
+        WB_ARRAY(tp, offset, (ext->DTS_next_AU <<  1) | 0x1);
       }
 
       /* TODO: if (!af_descriptor_not_present_flag) */
@@ -339,12 +336,12 @@ static size_t _insertAdaptationField(
       /* Set adaptation field extension length : */
       SB_ARRAY(
         tp,
-        adaptationFieldExtensionLengthOff,
-        offset - adaptationFieldExtensionLengthOff - 1
+        adapt_fd_ext_len_off,
+        offset - adapt_fd_ext_len_off - 1
       );
     }
 
-    for (i = 0; i < param.stuffingBytesLen; i++) {
+    for (uint8_t i = 0; i < param->nb_stuffing_bytes; i++) {
       /* [v8 stuffing_byte] // 0xFF */
       WB_ARRAY(tp, offset, 0xFF);
     }
@@ -353,83 +350,79 @@ static size_t _insertAdaptationField(
   /* Set adaptation field length : */
   SB_ARRAY(
     tp,
-    adaptationFieldLengthOff,
-    offset - adaptationFieldLengthOff - 1
+    adapt_fd_len_off,
+    offset - adapt_fd_len_off - 1
   );
 
   return offset;
 }
 
-static size_t _insertPacketHeader(
+static uint8_t _insertPacketHeader(
   uint8_t * tp,
-  size_t offset,
-  TPHeaderParameters param
+  uint8_t offset,
+  const TPHeaderParameters * param
 )
 {
-  /* [v8 syncByte] */
+  /* [v8 sync_byte] // 0x47 */
   WB_ARRAY(tp, offset, TP_SYNC_BYTE);
 
   /*
-    [b1 transportErrorIndicator]
-    [b1 payloadUnitStartIndicator]
-    [b1 transportPriority]
-    [u13 pid]
+    [b1 transport_error_indicator]
+    [b1 payload_unit_start_indicator]
+    [b1 transport_priority]
+    [u13 PID]
   */
   WB_ARRAY(
     tp, offset,
-    (param.transportErrorIndicator     << 7)
-    | (param.payloadUnitStartIndicator << 6)
-    | (param.transportPriority         << 5)
-    | ((param.pid >> 8) & 0x1F)
+    (param->transport_error_indicator      << 7)
+    | (param->payload_unit_start_indicator << 6)
+    | (param->transport_priority           << 5)
+    | ((param->pid >> 8) & 0x1F)
   );
   WB_ARRAY(
     tp, offset,
-    param.pid
+    param->pid
   );
 
   /**
-   * [v2 transportScramblingControl]
-   * [v2 adaptationFieldControl]
-   * [u4 continuityCounter]
+   * [v2 transport_scrambling_control]
+   * [v2 adaptation_field_control]
+   * [u4 continuity_counter]
    */
   WB_ARRAY(
     tp, offset,
-    (param.transportScramblingControl  << 6)
-    | (param.adaptationFieldControl    << 4)
-    | param.continuityCounter
+    (param->transport_scrambling_control  << 6)
+    | (param->adaptation_field_control    << 4)
+    | param->continuity_counter
   );
 
   if (adaptationFieldPresenceTPHeader(param))
-    return _insertAdaptationField(tp, offset, param.adaptationField);
+    return _insertAdaptationField(tp, offset, &param->adaptation_field);
   return offset;
 }
 
-static size_t _insertPayload(
+static uint8_t _insertPayload(
   uint8_t * tp,
-  size_t offset,
+  uint8_t offset,
   LibbluStreamPtr stream,
-  size_t payloadSize
+  uint8_t pl_size
 )
 {
   if (isESLibbluStream(stream)) {
-#if 1
-    LibbluESPesPacketData * pesPacket = &stream->es.current_pes_packet.data;
+    LibbluESPesPacketData * pes_packet = &stream->es.current_pes_packet.data;
 
-    assert(payloadSize <= pesPacket->size - pesPacket->offset);
+    assert(pl_size <= pes_packet->size - pes_packet->offset);
 
-    WA_ARRAY(tp, offset, &pesPacket->data[pesPacket->offset], payloadSize);
-    pesPacket->offset += payloadSize;
-#else
-  LIBBLU_ERROR_EXIT("Missing code " __FILE__ ", line %d\n", __LINE__);
-#endif
+    WA_ARRAY(tp, offset, &pes_packet->data[pes_packet->offset], pl_size);
+    pes_packet->offset += pl_size;
   }
   else {
     LibbluSystemStream * sys = &stream->sys;
 
-    assert(payloadSize <= sys->dataLength - sys->dataOffset);
+    assert(pl_size <= sys->dataLength - sys->dataOffset);
 
-    WA_ARRAY(tp, offset, &sys->data[sys->dataOffset], payloadSize);
-    sys->dataOffset += payloadSize;
+    WA_ARRAY(tp, offset, &sys->data[sys->dataOffset], pl_size);
+    sys->dataOffset += pl_size;
 
     /* Reset the table writing offset if its end is reached
     (and mark as fully supplied at least one time) */
@@ -445,38 +438,38 @@ static size_t _insertPayload(
 int writeTransportPacket(
   BitstreamWriterPtr output,
   LibbluStreamPtr stream,
-  TPHeaderParameters header,
-  size_t * headerSize,
-  size_t * payloadSize
+  const TPHeaderParameters * tp_header,
+  uint8_t * tp_header_size_ret,
+  uint8_t * tp_payload_size_ret
 )
 {
-  uint8_t tp[TP_SIZE];
+  uint8_t tp_data[TP_SIZE];
 
-  if (header.adaptationFieldControl == 0x00)
+  if (tp_header->adaptation_field_control == 0x00)
     LIBBLU_ERROR_RETURN(
       "Unable to write transport packet, "
       "reserved value 'adaptation_field_control' == 0x00.\n"
     );
 
   /* transport_packet header */
-  size_t hdrSize = _insertPacketHeader(tp, 0, header);
+  uint8_t header_size = _insertPacketHeader(tp_data, 0, tp_header);
 
-  assert(hdrSize <= TP_SIZE);
-  assert(hdrSize == computeSizeTPHeader(header));
+  assert(header_size <= TP_SIZE);
+  assert(header_size == computeSizeTPHeader(tp_header));
 
   /* transport_packet data_byte payload */
-  size_t pldSize = TP_SIZE - hdrSize;
+  uint8_t payload_size = TP_SIZE - header_size;
 
-  assert(payloadPresenceTPHeader(header) ^ !pldSize);
+  assert(payloadPresenceTPHeader(tp_header) ^ !payload_size);
 
-  if (0 < pldSize) {
-    if (!payloadPresenceTPHeader(header))
+  if (0 < payload_size) {
+    if (!payloadPresenceTPHeader(tp_header))
       LIBBLU_ERROR_RETURN(
         "Unexpected presence of payload in transport packet (%zu bytes).\n",
-        pldSize
+        payload_size
       );
 
-    _insertPayload(tp, hdrSize, stream, pldSize);
+    _insertPayload(tp_data, header_size, stream, payload_size);
   } else {
     if (!isESLibbluStream(stream)) {
       stream->sys.firstFullTableSupplied = true;
@@ -484,13 +477,13 @@ int writeTransportPacket(
   }
 
   /* Write generated transport packet */
-  if (writeBytes(output, tp, TP_SIZE) < 0)
+  if (writeBytes(output, tp_data, TP_SIZE) < 0)
     return -1;
 
-  if (NULL != headerSize)
-    *headerSize = hdrSize;
-  if (NULL != payloadSize)
-    *payloadSize = pldSize;
+  if (NULL != tp_header_size_ret)
+    *tp_header_size_ret = header_size;
+  if (NULL != tp_payload_size_ret)
+    *tp_payload_size_ret = payload_size;
 
   stream->packetNb++;
   return 0;
