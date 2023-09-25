@@ -573,32 +573,26 @@ const char * ESMSValidatorErrorStr(
 {
   switch (code) {
     case ESMS_FV_OK:
-      return "Using already builded script.";
+      return "OK";
     case ESMS_FV_NO_SCRIPT:
-      return "No script found, generating script file...";
+      return "Unable to found script";
     case ESMS_FV_READ_ERROR:
-      return "Reading error in script, re-generating script file...";
+      return "Reading error in script";
     case ESMS_FV_HEADER_ERROR:
-      return "Error in script header, re-generating script file...";
+      return "Error in script header";
     case ESMS_FV_VERSION_ERROR:
-      return "Incompatible script version, re-generating compatible "
-        "script file...";
+      return "Incompatible script version";
     case ESMS_FV_INCOMPLETE_FILE:
-      return "Unfinished script, generating script file...";
+      return "Unfinished script.";
     case ESMS_FV_INCOMPATIBLE_FLAGS:
-      return "Incompatible script, generating script file...";
+      return "Incompatible flags in script";
     case ESMS_FV_INVALID_SOURCE_FILE:
-      return "Incompatible source file checksum, generating script file...";
+      return "Incompatible source file checksum";
     case ESMS_FV_MEMORY_ERROR:
-      return "Memory allocation error.";
+      return "Memory allocation error";
   }
 
-  return "Unknown error code.";
-}
-
-void printESMSValidatorError(ESMSFileValidatorRet code)
-{
-  lbc_printf("%s\n", ESMSValidatorErrorStr(code));
+  return "Unknown error code";
 }
 
 static ESMSFileValidatorRet isValidESMSFileSourceFile(
@@ -646,12 +640,12 @@ free_return:
 }
 
 /** \~english
- * \brief ESMS "ES properties" flags fiels relative offset in bytes.
+ * \brief ESMS "ES properties" scripting_flags field relative offset in bytes.
  *
- * Relative offset of the "scriptingFlags" field first byte from the "ES
- * properties" section's field "esPropertiesHeader" first byte.
+ * Relative offset of the "scripting_flags" field first byte from the "ES
+ * properties" section's field "ESPR_magic" first byte.
  */
-#define ES_SCRIPTING_FLAGS_FIELD_POS  0x1A
+#define ES_SCRIPTING_FLAGS_FIELD_POS  0x13
 
 ESMSFileValidatorRet isAValidESMSFile(
   const lbc * esms_fp,
@@ -779,6 +773,11 @@ ESMSFileValidatorRet isAValidESMSFile(
   return ESMS_FV_OK;
 
 read_error:
+  LIBBLU_SCRIPT_DEBUG(
+    " Reading error, %s (errno: %d).\n",
+    strerror(errno),
+    errno
+  );
   ret = ESMS_FV_READ_ERROR;
 free_return:
   fclose(esms_fd);

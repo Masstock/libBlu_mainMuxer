@@ -1,6 +1,6 @@
-MUXOPT --disable-tstd --start-time=777510000
+MUXOPT --start-time=777510000
 V_H264, "00019.track_4113.264"
-A_DTS, "00019.track_4352.dtshd" --force-esms --pbr="00019.track_4352.dtspbr"
+A_DTS, "00019.track_4352.dtshd" # --force-esms --pbr="00019.track_4352.dtspbr"
 # A_DTS, "00019.track_4352_mainMuxer_PBRS.dts" --force-esms
 # A_DTS, "00019.track_4352_Scenarist_PBRS.dtshd" --force-esms
-# A_LPCM, "00019.track_4353.wav"
+A_LPCM, "00019.track_4353.wav"

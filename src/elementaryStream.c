@@ -110,15 +110,22 @@ static int _checkScriptFile(
   assert(NULL != es_sets);
 
   /* Checking ESMS script file : */
-  LIBBLU_SCRIPT_DEBUG("Check predefined script filepath.\n");
+  LIBBLU_SCRIPT_DEBUG(
+    "Check predefined script filepath '%" PRI_LBCS "'.\n",
+    es_sets->scriptFilepath
+  );
   uint64_t exp_flags = computeFlagsLibbluESSettingsOptions(es_sets->options);
 
-  if (force_rebuild || (isAValidESMSFile(es_sets->scriptFilepath, exp_flags, NULL) < 0)) {
+  ESMSFileValidatorRet ret;
+  if (force_rebuild || ((ret = isAValidESMSFile(es_sets->scriptFilepath, exp_flags, NULL)) < 0)) {
     /* Not valid/missing/forced rebuilding */
     if (force_rebuild)
       LIBBLU_SCRIPT_DEBUG("Forced rebuilding enabled, building script.\n");
     else
-      LIBBLU_SCRIPT_DEBUG("Invalid script, building a new one.\n");
+      LIBBLU_SCRIPT_DEBUG(
+        "Invalid script, building a new one (%s).\n",
+        ESMSValidatorErrorStr(ret)
+      );
 
     if (NULL == es_sets->filepath)
       LIBBLU_ERROR_RETURN(

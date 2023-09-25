@@ -78,7 +78,7 @@ static size_t _remainingTableDataLibbluSystemStream(
   const LibbluStreamPtr stream
 )
 {
-  return stream->sys.dataLength - stream->sys.dataOffset;
+  return stream->sys.table_data_length - stream->sys.table_data_offset;
 }
 
 static TPHeaderParameters _prepareSysTransportPacketMainHeader(
@@ -89,15 +89,14 @@ static TPHeaderParameters _prepareSysTransportPacketMainHeader(
   size_t rem_size = _remainingTableDataLibbluSystemStream(stream);
 
   bool pl_pres = (0 < rem_size);
-  bool is_pl_start = (pl_pres && 0x0 == stream->sys.dataOffset);
+  bool is_pl_start = (pl_pres && 0x0 == stream->sys.table_data_offset);
   bool adapt_field_pres = (rem_size < TP_PAYLOAD_SIZE || pcr_inj_req);
-  bool use_cont_counter = stream->sys.useContinuityCounter;
 
   return (TPHeaderParameters) {
     .payload_unit_start_indicator = is_pl_start,
     .pid = stream->pid,
     .adaptation_field_control = (adapt_field_pres << 1) | pl_pres,
-    .continuity_counter = (use_cont_counter) ? stream->packetNb & 0xF : 0
+    .continuity_counter = (pl_pres) ? stream->packetNb & 0xF : 0
   };
 }
 
@@ -419,16 +418,16 @@ static uint8_t _insertPayload(
   else {
     LibbluSystemStream * sys = &stream->sys;
 
-    assert(pl_size <= sys->dataLength - sys->dataOffset);
+    assert(pl_size <= sys->table_data_length - sys->table_data_offset);
 
-    WA_ARRAY(tp, offset, &sys->data[sys->dataOffset], pl_size);
-    sys->dataOffset += pl_size;
+    WA_ARRAY(tp, offset, &sys->table_data[sys->table_data_offset], pl_size);
+    sys->table_data_offset += pl_size;
 
     /* Reset the table writing offset if its end is reached
     (and mark as fully supplied at least one time) */
     if (!_remainingTableDataLibbluSystemStream(stream)) {
-      stream->sys.dataOffset = 0;
-      stream->sys.firstFullTableSupplied = true;
+      stream->sys.table_data_offset = 0;
+      stream->sys.first_full_table_supplied = true;
     }
   }
 
@@ -472,7 +471,7 @@ int writeTransportPacket(
     _insertPayload(tp_data, header_size, stream, payload_size);
   } else {
     if (!isESLibbluStream(stream)) {
-      stream->sys.firstFullTableSupplied = true;
+      stream->sys.first_full_table_supplied = true;
     }
   }
 

@@ -675,20 +675,16 @@ int lb_wasprintf(
 
 static inline uint32_t lb_compute_crc32(
   uint8_t * data,
-  size_t startOffset,
+  size_t offset,
   size_t length
 )
 {
-  bool msb;
-  size_t pos, bitIdx;
   uint32_t crc = 0xFFFFFFFF;
 
-  for (pos = startOffset; pos < startOffset + length; pos++) {
-    crc ^= (uint32_t) data[pos] << 24;
-
-    for (bitIdx = 0; bitIdx < 8; bitIdx++) {
-      msb = (crc >> 31);
-      crc = (crc << 1) ^ ((0 - msb) & 0x04C11DB7);
+  for (size_t pos = offset; pos < offset + length; pos++) {
+    crc ^= ((uint32_t) data[pos]) << 24;
+    for (unsigned i = 0; i < 8; i++) {
+      crc = (crc << 1) ^ ((0 - (crc >> 31)) & 0x04C11DB7);
     }
   }
 

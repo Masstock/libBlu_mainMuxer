@@ -58,7 +58,7 @@ typedef struct {
   StreamHeapPtr elementaryStreamsHeap;  /**< ES timing heap.                */
 
   /* System packets: */
-  PatParameters patParam;
+  PatParameters pat_param;
   PmtParameters pmtParam;
   SitParameters sitParam;
 

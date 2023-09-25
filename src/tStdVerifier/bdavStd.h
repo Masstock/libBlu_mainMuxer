@@ -32,10 +32,23 @@ int createBdavStd(
   BufModelNode * rootNode
 );
 
-bool isManagedSystemBdavStd(
-  uint16_t systemStreamPid,
+static inline bool isManagedSystemBdavStd(
+  uint16_t sys_stream_pid,
   PatParameters pat
-);
+)
+{
+  if (sys_stream_pid <= 0x000F)
+    return true;
+
+  for (uint8_t i = 0; i < pat.nb_programs; i++) {
+    if (pat.programs[i].program_number == 0x0)
+      continue; /* network_pid */
+    if (pat.programs[i].network_program_map_PID == sys_stream_pid)
+      return true;
+  }
+
+  return false;
+}
 
 int addSystemToBdavStd(
   BufModelBuffersListPtr bufList,

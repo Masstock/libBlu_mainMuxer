@@ -1322,13 +1322,13 @@ static int _addNodeToBufModelFilter(
       getBufModelFilterLblTypeString(filter->labelsType)
     );
 
-  if (filter->nbUsedNodes <= filter->nbAllocatedNodes) {
+  if (filter->nbAllocatedNodes <= filter->nbUsedNodes) {
     /* Need realloc */
     newLength = GROW_BUF_MODEL_FILTER_LENGTH(
       filter->nbAllocatedNodes
     );
 
-    if (lb_mul_overflow(newLength, sizeof(BufModelNode)))
+    if (lb_mul_overflow(newLength, sizeof(BufModelFilterLbl)))
       LIBBLU_ERROR_RETURN(
         "Buffering model filter output nodes overflow. "
         "Too many defined output.\n"

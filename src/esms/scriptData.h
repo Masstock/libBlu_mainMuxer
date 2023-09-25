@@ -12,6 +12,7 @@
 
 #include "../util.h"
 #include "../elementaryStreamProperties.h"
+#include "scriptDebug.h"
 
 #define ESMS_FILE_HEADER  "ESMS"
 
@@ -756,16 +757,6 @@ typedef enum {
 
 const char * ESMSValidatorErrorStr(
   const ESMSFileValidatorRet code
-);
-
-/** \~english
- * \brief Print on stdout a human-readable description of
- * #ESMSFileValidatorRet values.
- *
- * \param code Return code to print.
- */
-void printESMSValidatorError(
-  ESMSFileValidatorRet code
 );
 
 /** \~english

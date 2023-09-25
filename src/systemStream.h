@@ -30,72 +30,40 @@
  *
  */
 typedef struct {
-  uint8_t * data;     /**< System packet table data array.                   */
-  size_t dataLength;  /**< Table data array size in bytes.                   */
-  size_t dataOffset;  /**< Current table data writing offset.                */
+  uint8_t * table_data;      /**< System packet table data array.            */
+  size_t table_data_length;  /**< Table data array size in bytes.            */
+  size_t table_data_offset;  /**< Current table data writing offset.         */
 
-  bool firstFullTableSupplied;  /**< Indicate if at least one complete
+  bool first_full_table_supplied;  /**< Indicate if at least one complete
     system table as already been fully transmitted.                          */
-  bool useContinuityCounter;
 } LibbluSystemStream;
-
-static inline void initLibbluSystemStream(
-  LibbluSystemStream * stream
-)
-{
-  *stream = (LibbluSystemStream) {
-    .useContinuityCounter = true
-  };
-}
 
 static inline void cleanLibbluSystemStream(
   LibbluSystemStream stream
 )
 {
-  free(stream.data);
+  free(stream.table_data);
 }
 
 /* ### Program Association Table (PAT) : ################################### */
 
 typedef struct programElement {
-  uint16_t programNumber;
-  union {
-    uint16_t programMapPid;
-    uint16_t networkPid;
-  };
+  uint16_t program_number;
+  uint16_t network_program_map_PID;  /**< 'network_PID' or 'program_map_PID'. */
 } ProgramPatIndex;
 
 #define MAX_NB_PAT_PROG  2
 
 typedef struct {
-  uint16_t transportStreamId;
-  uint8_t version:5;
-  uint8_t curNextIndicator:1;
+  uint16_t transport_stream_id;
+  uint8_t version_number;
+  bool current_next_indicator;
 
   ProgramPatIndex programs[MAX_NB_PAT_PROG];
-  unsigned usedPrograms;
+  uint8_t nb_programs;
 } PatParameters;
 
-static inline void setDefaultPatParameters(
-  PatParameters * dst,
-  uint16_t transportStreamId,
-  uint8_t version
-)
-{
-  *dst = (PatParameters) {
-    .transportStreamId = transportStreamId,
-    .version = version,
-    .curNextIndicator = 1
-  };
-}
-
-static inline void cleanPatParameters(
-  PatParameters param
-)
-{
-  (void) param; // No extra allocation currently.
-}
-
+#if 0
 /** \~english
  * \brief Return in bytes the length of the Program Association Table data
  * (including 'pointer_field') according to supplied parameters.
@@ -130,50 +98,15 @@ static inline size_t calcPAT(
 {
   return 13 + 4 * param.usedPrograms;
 }
+#endif
 
 int preparePATParam(
   PatParameters * dst,
-  uint16_t transportStreamId,
-  unsigned nbPrograms,
-  const uint16_t * progNumbers,
-  const uint16_t * pmtPids
+  uint16_t transport_stream_id,
+  uint8_t nb_programs,
+  const uint16_t * program_numbers,
+  const uint16_t * network_program_map_PIDs
 );
-
-/** \~english
- * \brief
- *
- * \param param
- * \return uint16_t
- *
- * Composed of:
- *  - u16 : DVB_reserved_future_use
- *  - v2  : ISO_reserved
- *  - u5  : version_number
- *  - b1  : current_next_indicator
- *  - u8  : section_number
- *  - u8  : last_section_number
- *  for _ in N: // Number of programs
- *    - u16 : program_number
- *    - v3  : reserved
- *    - u13 : network_PID / program_map_PID
- *  - u32 : CRC_32
- *
- * => 9 + N * 4 bytes.
- */
-static inline uint16_t sectionLengthPatParameters(
-  PatParameters param
-)
-{
-  unsigned length = 9 + param.usedPrograms * 4;
-
-  if (1021 < length)
-    LIBBLU_ERROR_ZRETURN(
-      "PMT 'section_length' exceed 1021 bytes (%u bytes).\n",
-      length
-    );
-
-  return (uint16_t) length;
-}
 
 /** \~english
  * \brief
@@ -217,29 +150,10 @@ union DescriptorParameters;
  * [1] 2.6 Program and program element descriptors.
  */
 typedef struct {
-  DescriptorTagValue tag;  /**< Descriptor tag.                              */
-
-  uint8_t * data;         /**< Descriptor byte array.                        */
-  uint8_t usedSize;       /**< Descriptor byte array used size.              */
-  uint8_t allocatedSize;  /**< Descriptor byte array allocated size.         */
+  DescriptorTagValue descriptor_tag;  /**< Descriptor tag.                   */
+  uint8_t descriptor_length;          /**< Descriptor data length.           */
+  uint8_t data[UINT8_MAX];            /**< Descriptor byte array.            */
 } Descriptor;
-
-static inline void initDescriptor(
-  Descriptor * dst,
-  DescriptorTagValue tag
-)
-{
-  *dst = (Descriptor) {
-    .tag = tag
-  };
-}
-
-static inline void cleanDescriptor(
-  Descriptor desc
-)
-{
-  free(desc.data);
-}
 
 /* ######### Registration Descriptor (0x05) : ############################## */
 
@@ -272,22 +186,15 @@ typedef enum {
  * [1] 2.6.8 Registration descriptor.
  */
 typedef struct {
-  RegistationDescriptorFormatIdentifierValue formatIdentifier;  /**<
-    'format_identifier' field.                                               */
-
-  uint8_t additionalIdentificationInfo[
+  RegistationDescriptorFormatIdentifierValue format_identifier;
+  uint8_t additional_identification_info[
     PMT_REG_DESC_MAX_ADD_ID_INFO_LENGTH
   ];                                          /**<
     'additional_identification_info' field.                                  */
-  size_t additionalIdentificationInfoLength;  /**<
+  size_t additional_identification_info_len;  /**<
     'additional_identification_info' field used size. This value is in the
     inclusive range between 0 and #PMT_REG_DESC_MAX_ADD_ID_INFO_LENGTH.      */
 } RegistrationDescriptorParameters;
-
-int setRegistrationDescriptor(
-  Descriptor * dst,
-  union DescriptorParameters descParam
-);
 
 /* ######### Partial Transport Stream Descriptor (0x63) : ################## */
 
@@ -299,39 +206,29 @@ int setRegistrationDescriptor(
  * [5] 7.2.1 Partial Transport Stream (TS) descriptor.
  */
 typedef struct {
-  uint32_t peakRate;
-  uint32_t minimumOverallSmoothingRate;
-  uint32_t maximumOverallSmoothingBuffer;
+  uint32_t peak_rate;
+  uint32_t minimum_overall_smoothing_rate;
+  uint32_t maximum_overall_smoothing_buffer;
 } PartialTSDescriptorParameters;
-
-int setPartialTSDescriptor(
-  Descriptor * dst,
-  union DescriptorParameters descParam
-);
 
 /* ######### AVC Video Descriptor (0x28) : ################################# */
 
 typedef struct {
-  uint8_t profileIdc;       /**< 'profile_idc' field.                        */
+  uint8_t profile_idc;       /**< 'profile_idc' field.                        */
   uint8_t constraint_flags;  /**<
     From bits 0 to 5, 'constraint_set*n*_flag'. Bits 6 and 7 covers
     'AVC_compatible_flags' field.                                            */
-  uint8_t levelIdc;         /**< 'level_idc' field.                          */
+  uint8_t level_idc;         /**< 'level_idc' field.                          */
 
-  bool avcStillPresent;                /**< The AVC video stream may include
-    still pictures.                                                          */
-  bool avc24HourPictureFlag;           /**< The AVC video stream may contain
-    24-hour pictures as defined in [1] 2.1.2.                                */
-  bool framePackingSetNotPresentFlag;  /**< If true, indicates presence of
-    Frame packing arrangement SEI message (described in [2] D.2.26) or
+  bool AVC_still_present;                   /**< The AVC video stream may
+    include still pictures.                                                  */
+  bool AVC_24_hour_picture_flag;            /**< The AVC video stream may
+    contain 24-hour pictures as defined in [1] 2.1.2.                        */
+  bool Frame_Packing_SEI_not_present_flag;  /**< If true, indicates presence
+    of Frame packing arrangement SEI message (described in [2] D.2.26) or
     Stereo video information SEI message (described in [2] D.2.23) in video
     bitstream. Otherwise, the presence of these messages is unspecified.     */
 } AVCVideoDescriptorParameters;
-
-int setAVCVideoDescriptorParameters(
-  Descriptor * dst,
-  union DescriptorParameters descParam
-);
 
 /* ######### AC-3 Audio Descriptor (0x81) : ################################ */
 
@@ -350,11 +247,6 @@ typedef struct {
   uint8_t full_svc;          /**< Full service.                              */
 } AC3AudioDescriptorParameters;
 
-int setAC3AudioDescriptorParameters(
-  Descriptor * dst,
-  union DescriptorParameters descParam
-);
-
 /* ######### DTCP Descriptor (0x88) : ###################################### */
 
 /** \~english
@@ -363,52 +255,27 @@ int setAC3AudioDescriptorParameters(
  * [4] Appendix B DTCP_Descriptor for MPEG Transport Streams.
  */
 typedef struct {
-  uint16_t caSystemId; /* 0x0FFF : BDMV HDCP (Sony Corporation) */
+  uint16_t CA_System_ID; /* 0x0FFF : BDMV HDCP (Sony Corporation) */
 
-  bool retentionMoveMode;
-  uint8_t retentionState;
-  bool epn;
-  uint8_t dtcpCci;
-  bool dot;
-  bool ast;
-  bool imageConstraintToken;
-  uint8_t aps;
+  bool Retention_Move_mode;
+  uint8_t Retention_State;
+  bool EPN;
+  uint8_t DTCP_CCI;
+  bool DOT;
+  bool AST;
+  bool Image_Constraint_Token;
+  uint8_t APS;
 } DTCPDescriptorParameters;
-
-int setDTCPDescriptor(
-  Descriptor * dst,
-  union DescriptorParameters descParam
-);
 
 /* ######################################################################### */
 
 typedef union DescriptorParameters {
-  RegistrationDescriptorParameters registrationDescriptor;
-  PartialTSDescriptorParameters partialTSDescriptor;
-  AVCVideoDescriptorParameters avcVideoDescriptor;
-  AC3AudioDescriptorParameters ac3AudioDescriptor;
-  DTCPDescriptorParameters dtcpDescriptor;
+  RegistrationDescriptorParameters registration_descriptor;  /**< 0x05 */
+  AVCVideoDescriptorParameters AVC_video_descriptor;  /**< 0x28 */
+  PartialTSDescriptorParameters partial_transport_stream_descriptor;  /**< 0x63 */
+  AC3AudioDescriptorParameters ac3_audio_stream_descriptor;  /**< 0x81 */
+  DTCPDescriptorParameters DTCP_descriptor;  /**< 0x88 */
 } DescriptorParameters;
-
-typedef int (*DescriptorSetFun) (Descriptor *, DescriptorParameters);
-
-/** \~english
- * \brief
- *
- * \param dst
- * \param tag
- * \param param
- * \param setFun
- * \return int
- *
- * Initialized object must be passed to #cleanDescriptor() after use.
- */
-int prepareDescriptor(
-  Descriptor * dst,
-  DescriptorTagValue tag,
-  DescriptorParameters param,
-  DescriptorSetFun setFun
-);
 
 /* ######################################################################### */
 
@@ -419,93 +286,63 @@ int prepareDescriptor(
 #define PMT_MAX_NB_ALLOWED_PROGRAM_ELEMENT_DESCRIPTORS  8
 
 typedef struct {
-  LibbluStreamCodingType streamCodingType;
-  uint16_t elementaryPID;
+  LibbluStreamCodingType stream_type;
+  uint16_t elementary_PID;
 
   Descriptor descriptors[PMT_MAX_NB_ALLOWED_PROGRAM_ELEMENT_DESCRIPTORS];
-  unsigned usedDescriptors;
+  uint8_t nb_descriptors;
 } PmtProgramElement;
 
-static inline void cleanPmtProgramElement(
-  PmtProgramElement elem
+static inline uint16_t esInfoLengthPmtProgramElement(
+  const PmtProgramElement * elem
 )
 {
-  for (unsigned i = 0; i < elem.usedDescriptors; i++)
-    cleanDescriptor(elem.descriptors[i]);
-}
+  uint32_t ES_info_length = 0;
 
-static inline unsigned esInfoLengthPmtProgramElement(
-  PmtProgramElement elem
-)
-{
-
-  unsigned len = 0;
-  for (unsigned i = 0; i < elem.usedDescriptors; i++) {
-    /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
-    len += 2 + elem.descriptors[i].usedSize;
+  for (uint8_t i = 0; i < elem->nb_descriptors; i++) {
+    /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
+    ES_info_length += 2 + elem->descriptors[i].descriptor_length;
   }
 
-  return len;
+  return ES_info_length;
 }
 
 #define PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS  4
 
 typedef struct {
-  uint16_t programNumber;
-  uint16_t pcrPID;
+  uint16_t program_number;
+  uint16_t PCR_PID;
 
   Descriptor descriptors[PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS];
-  unsigned usedDescriptors;
+  uint8_t nb_descriptors;
 
   PmtProgramElement elements[LIBBLU_MAX_NB_STREAMS];
-  unsigned usedElements;
+  uint8_t nb_elements;
 } PmtParameters;
 
-static inline void setDefaultPmtParameters(
-  PmtParameters * dst,
-  uint16_t programNumber,
-  uint16_t pcrPID
+static inline uint16_t programInfoLengthPmtParameters(
+  const PmtParameters * pmt
 )
 {
-  *dst = (PmtParameters) {
-    .programNumber = programNumber,
-    .pcrPID = pcrPID
-  };
-}
+  uint32_t program_info_length = 0;
 
-static inline void cleanPmtParameters(
-  PmtParameters param
-)
-{
-  for (unsigned i = 0; i < param.usedDescriptors; i++)
-    cleanDescriptor(param.descriptors[i]);
-  for (unsigned i = 0; i < param.usedElements; i++)
-    cleanPmtProgramElement(param.elements[i]);
-}
-
-static inline unsigned programInfoLengthPmtParameters(
-  PmtParameters param
-)
-{
-
-  unsigned len = 0;
-  for (unsigned i = 0; i < param.usedDescriptors; i++) {
-    /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
-    len += 2 + param.descriptors[i].usedSize;
+  for (uint8_t i = 0; i < pmt->nb_descriptors; i++) {
+    /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
+    program_info_length += 2 + pmt->descriptors[i].descriptor_length;
   }
 
-  return len;
+  return program_info_length;
 }
 
 int preparePMTParam(
   PmtParameters * dst,
-  LibbluESProperties * esStreamsProp,
-  LibbluESFmtProp * esStreamsFmtSpecProp,
-  uint16_t * esStreamsPids,
-  unsigned nbEsStreams,
-  LibbluDtcpSettings dtcpSettings,
-  uint16_t programNumber,
-  uint16_t pcrPID
+  const LibbluESProperties * streams_prop,
+  const LibbluESFmtProp * streams_fmt_spec_prop,
+  const uint16_t * streams_PIDs,
+  unsigned nb_streams,
+  LibbluDtcpSettings DTCP_settings,
+  uint16_t program_number,
+  uint16_t PCR_PID
 );
 
 /** \~english
@@ -538,21 +375,36 @@ int preparePMTParam(
  * => 13 + program_info_length + N1 * (5 + ES_info_length) bytes.
  */
 static inline uint16_t sectionLengthPmtParameters(
-  PmtParameters param
+  const PmtParameters * pmt
 )
 {
+  uint32_t section_length = 13u;
 
-  unsigned length = 13 + programInfoLengthPmtParameters(param);
-  for (unsigned i = 0; i < param.usedElements; i++)
-    length += 5 + esInfoLengthPmtProgramElement(param.elements[i]);
+  uint16_t program_info_length;
+  if (1023u < (program_info_length = programInfoLengthPmtParameters(pmt)))
+    LIBBLU_ERROR_ZRETURN(
+      "PMT 'program_info_length' exceed 1023 bytes (%u bytes).\n",
+      program_info_length
+    );
+  section_length += program_info_length;
 
-  if (1021 < length)
+  for (uint8_t i = 0; i < pmt->nb_elements; i++) {
+    uint16_t ES_info_length = esInfoLengthPmtProgramElement(&pmt->elements[i]);
+    if (0x3FF < ES_info_length)
+      LIBBLU_ERROR_ZRETURN(
+        "PMT element %u 'ES_info_length' exceed 1023 bytes (%u bytes).\n",
+        i, ES_info_length
+      );
+    section_length += 5u + ES_info_length;
+  }
+
+  if (1021u < section_length)
     LIBBLU_ERROR_ZRETURN(
       "PMT 'section_length' exceed 1021 bytes (%u bytes).\n",
-      length
+      section_length
     );
 
-  return (uint16_t) length;
+  return section_length;
 }
 
 /** \~english
@@ -564,7 +416,7 @@ static inline uint16_t sectionLengthPmtParameters(
  */
 int preparePMTSystemStream(
   LibbluSystemStream * dst,
-  PmtParameters param
+  const PmtParameters * param
 );
 
 /* ### Program Clock Reference (PCR) : ##################################### */
@@ -578,33 +430,25 @@ int preparePCRSystemStream(
 #define SIT_MAX_NB_ALLOWED_PROGRAM_DESCRIPTORS  1
 
 typedef struct {
-  uint16_t serviceId;         /* 16b */
-  uint8_t runningStatus;      /*  3b */
+  uint16_t service_id;
+  uint8_t running_status;
 
   Descriptor descriptors[SIT_MAX_NB_ALLOWED_PROGRAM_DESCRIPTORS];
-  unsigned usedDescriptors;
+  unsigned nb_descriptors;
 } SitService;
 
-static inline void cleanSitService(
-  SitService serv
+static inline uint16_t serviceLoopLengthSitParameters(
+  const SitService * service
 )
 {
-  for (unsigned i = 0; i < serv.usedDescriptors; i++)
-    cleanDescriptor(serv.descriptors[i]);
-}
+  uint16_t service_loop_length = 0u;
 
-static inline unsigned serviceLoopLengthSitParameters(
-  SitService param
-)
-{
-
-  unsigned len = 0;
-  for (unsigned i = 0; i < param.usedDescriptors; i++) {
-    /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
-    len += 2 + param.descriptors[i].usedSize;
+  for (unsigned i = 0; i < service->nb_descriptors; i++) {
+    /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
+    service_loop_length += 2 + service->descriptors[i].descriptor_length;
   }
 
-  return len;
+  return service_loop_length;
 }
 
 #define SIT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS  1
@@ -612,49 +456,30 @@ static inline unsigned serviceLoopLengthSitParameters(
 
 typedef struct {
   Descriptor descriptors[SIT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS];
-  unsigned usedDescriptors;
+  uint8_t nb_descriptors;
 
   SitService services[SIT_MAX_NB_ALLOWED_SERVICES];
-  unsigned usedServices;
+  uint8_t nb_services;
 } SitParameters;
 
-static inline void setDefaultSitParameters(
-  SitParameters * dst
-)
-{
-  *dst = (SitParameters) {
-    0
-  };
-}
-
-static inline void cleanSitParameters(
-  SitParameters param
-)
-{
-  for (unsigned i = 0; i < param.usedDescriptors; i++)
-    cleanDescriptor(param.descriptors[i]);
-  for (unsigned i = 0; i < param.usedServices; i++)
-    cleanSitService(param.services[i]);
-}
-
 static inline unsigned transmissionInfoLoopLengthSitParameters(
-  SitParameters param
+  const SitParameters * sit
 )
 {
+  uint32_t trans_info_loop_length = 0u;
 
-  unsigned len = 0;
-  for (unsigned i = 0; i < param.usedDescriptors; i++) {
-    /* [u8 descriptorTag] [u8 descriptorLength] [vn descriptorData] */
-    len += 2 + param.descriptors[i].usedSize;
+  for (unsigned i = 0; i < sit->nb_descriptors; i++) {
+    /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
+    trans_info_loop_length += 2 + sit->descriptors[i].descriptor_length;
   }
 
-  return len;
+  return trans_info_loop_length;
 }
 
 int prepareSITParam(
   SitParameters * dst,
-  uint64_t muxingRate,
-  uint16_t programNumber
+  uint64_t max_TS_rate,
+  uint16_t program_number
 );
 
 /** \~english
@@ -684,26 +509,43 @@ int prepareSITParam(
  * => 11 + transmission_info_loop_length + N * (4 + service_loop_length) bytes.
  */
 static inline uint16_t sectionLengthSitParameters(
-  SitParameters param
+  const SitParameters * param
 )
 {
+  uint32_t section_length = 11u;
 
-  unsigned length = 11 + transmissionInfoLoopLengthSitParameters(param);
-  for (unsigned i = 0; i < param.usedServices; i++)
-    length += 4 + serviceLoopLengthSitParameters(param.services[i]);
+  uint16_t trans_info_loop_length;
+  if (0xFFF < (trans_info_loop_length = transmissionInfoLoopLengthSitParameters(param)))
+    LIBBLU_ERROR_ZRETURN(
+      "SIT 'transmission_info_loop_length' exceeds 4095 bytes (%u bytes).\n",
+      trans_info_loop_length
+    );
+  section_length += trans_info_loop_length;
 
-  if (4093 < length)
+  for (unsigned i = 0; i < param->nb_descriptors; i++) {
+    uint16_t service_loop_length = serviceLoopLengthSitParameters(
+      &param->services[i]
+    );
+    if (0xFFF < service_loop_length)
+      LIBBLU_ERROR_ZRETURN(
+        "SIT service %u 'service_loop_length' exceeds 4095 bytes (%u bytes).\n",
+        i, service_loop_length
+      );
+    section_length += 4u + service_loop_length;
+  }
+
+  if (4093 < section_length)
     LIBBLU_ERROR_ZRETURN(
       "SIT 'section_length' exceed 4093 bytes (%u bytes).\n",
-      length
+      section_length
     );
 
-  return (uint16_t) length;
+  return section_length;
 }
 
 int prepareSITSystemStream(
   LibbluSystemStream * dst,
-  SitParameters param
+  const SitParameters * param
 );
 
 /* ### Null packets (Null) : ############################################### */
