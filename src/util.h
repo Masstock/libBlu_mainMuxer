@@ -25,12 +25,12 @@
 #define PROG_INFOS  "libBlu Muxer Exp. 0.5"
 #define PROG_CONF_FILENAME  lbc_str("settings.ini")
 
-#define MAX_NB_STREAMS                                                       32
+#define MAX_NB_STREAMS  32
 
-#define PAT_DELAY  (50 * 27000ull)
-#define PMT_DELAY  (50 * 27000ull)
-#define SIT_DELAY  (500 * 27000ull)
-#define PCR_DELAY  (50  * 27000ull)
+#define PAT_DELAY  (90 * 27000ull)
+#define PMT_DELAY  (90 * 27000ull)
+#define SIT_DELAY  (900 * 27000ull)
+#define PCR_DELAY  (70  * 27000ull)
 
 /* UI Parameters :                                                           */
 #define PROGRESSION_BAR_LATENCY 200
