@@ -36,10 +36,6 @@ COMPILE_WITH_PGS_ASS_GENERATOR = 1
 COMPILE_WITH_INI_OPTIONS = 1
 
 EXTCFLAGS :=
-ifneq "$(findstring no_debug, $(MAKECMDGOALS))" ""
-EXTCFLAGS += -D NDEBUGMSG
-endif
-
 ifneq "$(findstring build, $(MAKECMDGOALS))" ""
 EXTCFLAGS += -D NDEBUG -O2 -Werror
 else

@@ -452,7 +452,7 @@ int main(
   exit(0);
 #endif
 
-  lbc_printf(PROG_INFOS " (" PROG_ARCH ")\n\n");
+  lbc_printf(LIBBLU_PROJECT_NAME " " LIBBLU_VERSION " (" PROG_ARCH ")\n\n");
 
   /* Command line options parsing */
   const lbc * conf_fp   = NULL; // Configuration INI file

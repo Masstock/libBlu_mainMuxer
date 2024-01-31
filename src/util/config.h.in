@@ -1,0 +1,16 @@
+/** \~english
+ * \file config.h.in
+ *
+ * \author Massimo "Masstock" EYNARD
+ * \version 0.5
+ *
+ * \brief CMake generated configuration header.
+ */
+
+#ifndef __LIBBLU_MUXER__UTIL__CONFIG_H__
+#define __LIBBLU_MUXER__UTIL__CONFIG_H__
+
+#define LIBBLU_PROJECT_NAME  "@CMAKE_PROJECT_NAME@"
+#define LIBBLU_VERSION  "@PROJECT_VERSION@"
+
+#endif

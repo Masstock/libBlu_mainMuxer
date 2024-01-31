@@ -3,13 +3,15 @@
         {
             "name": "Msys2 Mingw64",
             "includePath": [
-                "${workspaceFolder}/**",
+                "${workspaceFolder}/include/**",
                 "C:/msys64/mingw64/include/libxml2/**"
             ],
             "defines": [
                 "_DEBUG",
                 "UNICODE",
-                "_UNICODE"
+                "_UNICODE",
+                "LIBBLU_PROJECT_NAME=libBlu_mainMuxer",
+                "LIBBLU_VERSION=0.0"
             ],
             "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
             "intelliSenseMode": "windows-gcc-x64",
@@ -28,13 +30,15 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**",
+              "${workspaceFolder}/include/**",
                 "/usr/include/libxml2/**"
             ],
             "defines": [
                 "_DEBUG",
                 "UNICODE",
-                "_UNICODE"
+                "_UNICODE",
+                "LIBBLU_PROJECT_NAME=\"libBlu_mainMuxer\"",
+                "LIBBLU_VERSION=\"0.0\""
             ],
             "compilerPath": "/usr/bin/gcc",
             "intelliSenseMode": "linux-gcc-x64",

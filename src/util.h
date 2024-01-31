@@ -23,6 +23,10 @@
 #include "util/macros.h"
 #include "util/textFilesHandling.h"
 
+#if defined(LIBBLU_CMAKE_USED)
+#  include "util/config.h"
+#endif
+
 #define PROG_INFOS  "libBlu Muxer Exp. 0.5"
 #define PROG_CONF_FILENAME  lbc_str("settings.ini")
 
