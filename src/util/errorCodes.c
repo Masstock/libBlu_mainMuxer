@@ -469,6 +469,33 @@ static const struct {
     LIBBLU_DEBUG_IGS_COMPL_OPERATIONS,
     "HDMV IGS (menus) compiler operations",
     "igs_compl_operations"
+  ),
+
+  DECLARE_RANGE(
+    "HDMV IGS (menus) compiler",
+    "igs_compl",
+    LIBBLU_DEBUG_IGS_COMPL_XML_OPERATIONS,
+    LIBBLU_DEBUG_IGS_COMPL_XML_PARSING,
+    LIBBLU_DEBUG_IGS_COMPL_OPERATIONS
+  ),
+
+  /* HDMV PGS ASS Generator : */
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_PGS_ASS_TS_COMPUTE,
+    "HDMV PGS (graphical subtitles) ASS compiler timestamps computation",
+    "pgs_ass_timecode"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_PGS_ASS_OPERATIONS,
+    "HDMV PGS (graphical subtitles) ASS compiler operations",
+    "pgs_ass_operations"
+  ),
+
+  DECLARE_RANGE(
+    "HDMV PGS (graphical subtitles) ASS compiler",
+    "pgs_ass",
+    LIBBLU_DEBUG_PGS_ASS_TS_COMPUTE,
+    LIBBLU_DEBUG_PGS_ASS_OPERATIONS
   )
 #undef DECLARE_OPTION
 #undef DECLARE_RANGE

@@ -30,15 +30,14 @@ void * newEntryCircularBuffer(
     buf->slot_size = slot_size;
   }
   else
-    lb_assert_npd(buf->slot_size == slot_size);
-    // assert(buf->slot_size == slot_size);
+    assert(buf->slot_size == slot_size);
 
   size_t allocated_size = CB_DEF_SIZE << buf->alloc_shft_size;
   if (NULL == buf->array || allocated_size <= buf->used_size) {
     size_t cur_size = CB_DEF_SIZE << (buf->alloc_shft_size);
     size_t new_size = CB_DEF_SIZE << (buf->alloc_shft_size + 1);
 
-    if (!new_size || lb_mul_overflow(new_size, slot_size))
+    if (!new_size || lb_mul_overflow_size_t(new_size, slot_size))
       LIBBLU_ERROR_NRETURN("Circular buffer FIFO overflow.\n");
 
     uint8_t * new_buf;

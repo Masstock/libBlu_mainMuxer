@@ -6,7 +6,7 @@
 #include "../../../util.h"
 
 #include "hdmv_error.h"
-#include "hdmv_pictures_common.h"
+#include "hdmv_bitmap.h"
 
 #include <png.h>
 #if !defined(png_jmpbuf)
@@ -249,7 +249,8 @@ static inline void cleanHdmvLibpngPictureInfos(
 
 /* ### Picture IO : ######################################################## */
 
-HdmvPicturePtr openPngHdmvPicture(
+int openPngHdmvBitmap(
+  HdmvBitmap * dst,
   const HdmvLibpngHandle * libpng,
   const lbc * filepath,
   FILE * file

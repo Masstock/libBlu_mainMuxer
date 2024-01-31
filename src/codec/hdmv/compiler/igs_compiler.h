@@ -24,43 +24,14 @@
 #include "igs_segmentsBuilding.h"
 #include "igs_xmlParser.h"
 
-#include "../common/hdmv_pictures_common.h"
-#include "../common/hdmv_pictures_list.h"
+#include "../common/hdmv_bitmap_list.h"
+#include "../common/hdmv_bitmap.h"
+#include "../common/hdmv_object.h"
+#include "../common/hdmv_paletized_bitmap.h"
 #include "../common/hdmv_palette_gen.h"
 
-IgsCompilerContextPtr createIgsCompilerContext(
-  const lbc * xmlFilename,
-  HdmvTimecodes * timecodes,
-  IniFileContextPtr conf
-);
-
-void resetOriginalDirIgsCompilerContext(
-  IgsCompilerContextPtr ctx
-);
-
-void destroyIgsCompilerContext(
-  IgsCompilerContextPtr ctx
-);
-
-int getFileWorkingDirectory(
-  lbc ** dirPath,
-  lbc ** xmlFilename,
-  const lbc * xmlFilepath
-);
-
-int updateIgsCompilerWorkingDirectory(
-  IgsCompilerContextPtr ctx,
-  const lbc * xmlFilename
-);
-
-int buildIgsCompilerComposition(
-  IgsCompilerCompositionPtr compo,
-  HdmvPictureColorDitheringMethod ditherMeth,
-  HdmvPaletteColorMatrix colorMatrix
-);
-
 int processIgsCompiler(
-  const lbc * xmlPath,
+  const lbc * xml_filepath,
   HdmvTimecodes * timecodes,
   IniFileContextPtr conf
 );

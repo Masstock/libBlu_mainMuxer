@@ -105,23 +105,24 @@ void printFileParsingProgressionBar(BitstreamReaderPtr bitStream)
   }
 }
 
-void str_time(
+int str_time(
   lbc * buf,
-  size_t maxsize,
-  str_time_format formatmode,
-  uint64_t clockvalue
+  size_t buf_size,
+  str_time_format format_mode,
+  uint64_t clock_value
 )
 {
-  switch (formatmode) {
+  switch (format_mode) {
     case STRT_H_M_S_MS:
-      lbc_snprintf(
-        buf, maxsize,
+      return lbc_snprintf(
+        buf, buf_size,
         "%02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ".%03" PRIu64,
-        MAIN_CLOCK_HOURS(clockvalue),
-        MAIN_CLOCK_MINUTES(clockvalue),
-        MAIN_CLOCK_SECONDS(clockvalue),
-        MAIN_CLOCK_MILISECONDS(clockvalue)
+        (uint64_t) MAIN_CLOCK_HOURS      (clock_value),
+        (uint64_t) MAIN_CLOCK_MINUTES    (clock_value),
+        (uint64_t) MAIN_CLOCK_SECONDS    (clock_value),
+        (uint64_t) MAIN_CLOCK_MILISECONDS(clock_value)
       );
-    break;
   }
+
+  return 0;
 }

@@ -7,7 +7,7 @@ CC :=  gcc
 LEX := flex
 YACC := bison
 
-CFLAGS := -std=c99 -Wall -Wextra -Winline
+CFLAGS := -std=c99 -Wall -Wextra -Winline -Werror
 LDLIBS := -lm
 
 EXEC := mainMuxer
@@ -32,7 +32,7 @@ endif
 ###############################################################################
 
 COMPILE_WITH_IGS_COMPILER = 1
-COMPILE_WITH_PGS_COMPILER = 1
+COMPILE_WITH_PGS_ASS_GENERATOR = 1
 COMPILE_WITH_INI_OPTIONS = 1
 
 EXTCFLAGS :=
@@ -43,7 +43,7 @@ endif
 ifneq "$(findstring build, $(MAKECMDGOALS))" ""
 EXTCFLAGS += -D NDEBUG -O2
 else
-EXTCFLAGS += -g -ggdb
+EXTCFLAGS += -g -ggdb -O0
 endif
 
 ifneq "$(findstring leaks, $(MAKECMDGOALS))" ""
@@ -89,14 +89,15 @@ SOURCE_FILES =																\
 	codec/hdmv/common/hdmv_common.o											\
 	codec/hdmv/common/hdmv_context.o										\
 	codec/hdmv/common/hdmv_data.o											\
-	codec/hdmv/common/hdmv_palette_def.o									\
+	codec/hdmv/common/hdmv_object.o											\
+	codec/hdmv/common/hdmv_paletized_bitmap.o								\
+	codec/hdmv/common/hdmv_palette.o										\
 	codec/hdmv/common/hdmv_palette_gen.o									\
 	codec/hdmv/common/hdmv_parser.o											\
-	codec/hdmv/common/hdmv_pictures_common.o								\
-	codec/hdmv/common/hdmv_pictures_indexer.o								\
-	codec/hdmv/common/hdmv_pictures_list.o									\
-	codec/hdmv/common/hdmv_pictures_pool.o									\
-	codec/hdmv/common/hdmv_pictures_quantizer.o								\
+	codec/hdmv/common/hdmv_bitmap_indexer.o									\
+	codec/hdmv/common/hdmv_bitmap_list.o									\
+	codec/hdmv/common/hdmv_bitmap.o											\
+	codec/hdmv/common/hdmv_quantizer.o										\
 	codec/hdmv/common/hdmv_timecodes.o										\
 	codec/hdmv/igs_parser.o													\
 	codec/hdmv/pgs_parser.o													\
@@ -166,19 +167,26 @@ SOURCE_FILES +=																\
 	codec/hdmv/compiler/igs_segmentsBuilding.o								\
 	codec/hdmv/compiler/igs_xmlParser.o										\
 	codec/hdmv/common/hdmv_libpng.o											\
-	codec/hdmv/common/hdmv_pictures_io.o
+	codec/hdmv/common/hdmv_bitmap_io.o
 
 else
 EXTCFLAGS += -D DISABLE_IGS_COMPILER
 endif
 
-ifeq ($(COMPILE_WITH_PGS_COMPILER), 1)
+ifeq ($(COMPILE_WITH_PGS_ASS_GENERATOR), 1)
 # Enable PGS Compiler
 
-# TODO
+LDLIBS += -lfftw3 -lass
+
+SOURCE_FILES +=																\
+	codec/hdmv/pgs_ass_generator/pgs_frame.o								\
+	codec/hdmv/pgs_ass_generator/pgs_generator_context.o					\
+	codec/hdmv/pgs_ass_generator/pgs_generator.o							\
+	codec/hdmv/pgs_ass_generator/pgs_merging_tree.o							\
+	codec/hdmv/pgs_ass_generator/pgs_phase_correlation.o
 
 else
-EXTCFLAGS += -D DISABLE_PGS_COMPILER
+EXTCFLAGS += -D DISABLE_PGS_ASS_GENERATOR
 endif
 
 ifeq ($(COMPILE_WITH_INI_OPTIONS), 1)

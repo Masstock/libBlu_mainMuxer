@@ -7,14 +7,26 @@
 
 #include "hdmv_data.h"
 
+static bool _interpretVersionNumber(
+  uint8_t prev_version_number,
+  uint8_t new_version_number,
+  bool * is_same_ret
+)
+{
+  assert(NULL != is_same_ret);
+
+  *is_same_ret   = ( prev_version_number      == new_version_number);
+  bool is_update = ((prev_version_number + 1) == new_version_number);
+
+  return *is_same_ret || is_update;
+}
+
 /* ### HDMV Segments : ##################################################### */
 
 bool isValidHdmvSegmentType(
   uint8_t type
 )
 {
-  unsigned i;
-
   static const uint8_t types[] = {
     HDMV_SEGMENT_TYPE_PDS,
     HDMV_SEGMENT_TYPE_ODS,
@@ -24,11 +36,10 @@ bool isValidHdmvSegmentType(
     HDMV_SEGMENT_TYPE_END
   };
 
-  for (i = 0; i < ARRAY_SIZE(types); i++) {
+  for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
     if (types[i] == type)
       return true;
   }
-
   return false;
 }
 
@@ -38,8 +49,6 @@ int checkHdmvSegmentType(
   HdmvSegmentType * segment_type
 )
 {
-  unsigned i;
-
   static const struct {
     HdmvSegmentType type;
     uint8_t streamTypesMask;
@@ -54,7 +63,7 @@ int checkHdmvSegmentType(
 #undef D_
   };
 
-  for (i = 0; i < ARRAY_SIZE(values); i++) {
+  for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
     if (values[i].type == segment_type_value) {
       if (HDMV_STREAM_TYPE_MASK(stream_type) & values[i].streamTypesMask) {
         *segment_type = values[i].type;
@@ -81,77 +90,116 @@ int checkHdmvSegmentType(
 /* ######### Windows Definition : ########################################## */
 
 int updateHdmvWDParameters(
-  HdmvWDParameters * dst,
-  const HdmvWDParameters * src
+  HdmvWDParameters * prev,
+  const HdmvWDParameters * cur
 )
 {
-  if (dst->number_of_windows != src->number_of_windows) {
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid Epoch continuous WDS, the number of windows is different.\n"
-    );
-    return 0;
-  }
-
-  bool valid = true;
-  for (unsigned i = 0; i < src->number_of_windows; i++) {
-    const HdmvWindowInfoParameters * dw = dst->windows[i];
-    const HdmvWindowInfoParameters * sw = src->windows[i];
-
-    if (dw->window_id != sw->window_id) {
-      LIBBLU_HDMV_FAIL_RETURN(
-        "Different 'window_id' (from 0x%02X to 0x%02X on window #%u.\n",
-        dw->window_id,
-        sw->window_id
-      );
-      valid = false;
-    }
-
-    if (dw->window_horizontal_position != sw->window_horizontal_position) {
-      LIBBLU_HDMV_FAIL_RETURN(
-        "Different 'window_horizontal_position' "
-        "(from 0x%04X to 0x%04X on window #%u.\n",
-        dw->window_horizontal_position,
-        sw->window_horizontal_position
-      );
-      valid = false;
-    }
-
-    if (dw->window_vertical_position != sw->window_vertical_position) {
-      LIBBLU_HDMV_FAIL_RETURN(
-        "Different 'window_vertical_position' "
-        "(from 0x%04X to 0x%04X on window #%u.\n",
-        dw->window_vertical_position,
-        sw->window_vertical_position
-      );
-      valid = false;
-    }
-
-    if (dw->window_width != sw->window_width) {
-      LIBBLU_HDMV_FAIL_RETURN(
-        "Different 'window_width' "
-        "(from 0x%04X to 0x%04X on window #%u.\n",
-        dw->window_width,
-        sw->window_width
-      );
-      valid = false;
-    }
-
-    if (dw->window_height != sw->window_height) {
-      LIBBLU_HDMV_FAIL_RETURN(
-        "Different 'window_height' "
-        "(from 0x%04X to 0x%04X on window #%u.\n",
-        dw->window_height,
-        sw->window_height
-      );
-      valid = false;
-    }
-  }
-
-  if (!valid)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid Epoch continuous WDS, parameters are different (see above).\n"
+  if (prev->number_of_windows != cur->number_of_windows)
+    LIBBLU_HDMV_PARSER_ERROR(
+      "Invalid updated WDS value with mismatch on 'number_of_windows', "
+      "values shall remain constant over the entire Epoch.\n"
     );
 
+  bool invalid = false;
+
+  for (unsigned i = 0; i < cur->number_of_windows; i++) {
+    const HdmvWindowInfoParameters * prevw = prev->windows[i];
+    const HdmvWindowInfoParameters * curw  = cur->windows[i];
+
+#define CHECK_PARAM(name)                                                     \
+  do {                                                                        \
+    if (prevw->name != curw->name) {                                          \
+      LIBBLU_HDMV_PARSER_ERROR(                                               \
+        "Invalid updated WDS value, "                                         \
+        "'" #name "' shall remain the same accross the Epoch.\n"              \
+      );                                                                      \
+      invalid = true;                                                         \
+    }                                                                         \
+  } while (0)
+
+    CHECK_PARAM(window_id);
+    CHECK_PARAM(window_horizontal_position);
+    CHECK_PARAM(window_vertical_position);
+    CHECK_PARAM(window_width);
+    CHECK_PARAM(window_height);
+  }
+
+#undef CHECK_PARAM
+
+  if (invalid)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Values in Window Definition Segment must "
+      "remain constant over the entire Epoch.\n"
+    );
+
+  return 0;
+}
+
+/* ###### HDMV Presentation Composition Segment : ########################## */
+
+static int _checkUpdateHdmvPCParameters(
+  const HdmvPCParameters * prev,
+  const HdmvPCParameters * cur
+)
+{
+  if (!cur->palette_update_flag)
+    return 0; // No specific update check for non palette update
+
+  bool invalid = false;
+
+  if (prev->number_of_composition_objects != cur->number_of_composition_objects)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid updated PCS value, 'number_of_composition_objects' "
+      "shall remain the same for palette update.\n"
+    );
+
+  for (unsigned i = 0; i < cur->number_of_composition_objects; i++) {
+    const HdmvCOParameters * prev_co = prev->composition_objects[i];
+    const HdmvCOParameters * cur_co  = cur->composition_objects[i];
+
+#define CHECK_PARAM(name)                                                     \
+  do {                                                                        \
+    if (prev_co->name != cur_co->name) {                                      \
+      LIBBLU_HDMV_PARSER_ERROR(                                               \
+        "Invalid updated PCS value, '" #name "' of composition object #%u "   \
+        "shall remain the same for palette update.\n", i                      \
+      );                                                                      \
+      invalid = true;                                                         \
+    }                                                                         \
+  } while (0)
+
+    CHECK_PARAM(object_id_ref);
+    CHECK_PARAM(window_id_ref);
+    CHECK_PARAM(object_cropped_flag);
+    CHECK_PARAM(forced_on_flag);
+    CHECK_PARAM(composition_object_horizontal_position);
+    CHECK_PARAM(composition_object_vertical_position);
+    CHECK_PARAM(object_cropping.horizontal_position);
+    CHECK_PARAM(object_cropping.vertical_position);
+    CHECK_PARAM(object_cropping.width);
+    CHECK_PARAM(object_cropping.height);
+  }
+
+#undef CHECK_PARAM
+
+  if (invalid)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid values present in Presentation Composition Segment marked "
+      "as palette update only.\n"
+    );
+
+  return 0;
+}
+
+int updateHdmvPCParameters(
+  HdmvPCParameters * dst,
+  const HdmvPCParameters * src
+)
+{
+  if (_checkUpdateHdmvPCParameters(dst, src) < 0)
+    return -1;
+
+  memcpy(dst, src, sizeof(HdmvPCParameters));
   return 0;
 }
 
@@ -159,22 +207,35 @@ int updateHdmvWDParameters(
 /* ######### Interactive Composition : ##################################### */
 
 static int _checkUpdateHdmvICParameters(
-  const HdmvICParameters * previous,
-  const HdmvICParameters * current
+  const HdmvICParameters * prev,
+  const HdmvICParameters * cur
 )
 {
-  if (previous->stream_model != current->stream_model)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated ICS, "
-      "compositions 'stream_model' shall remain the same accross "
-      "the bitstream.\n"
-    );
+  bool invalid = false;
 
-  if (previous->user_interface_model != current->user_interface_model)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated ICS, "
-      "compositions 'user_interface_model' shall remain the same accross "
-      "the bitstream.\n"
+#define CHECK_PARAM(name)                                                     \
+  do {                                                                        \
+    if (prev->name != cur->name) {                                            \
+      LIBBLU_HDMV_PARSER_ERROR(                                               \
+        "Invalid updated ICS value, "                                         \
+        "'" #name "' shall remain the same accross the Epoch.\n"              \
+      );                                                                      \
+      invalid = true;                                                         \
+    }                                                                         \
+  } while (0)
+
+  CHECK_PARAM(stream_model);
+  CHECK_PARAM(user_interface_model);
+  CHECK_PARAM(composition_time_out_pts);
+  CHECK_PARAM(selection_time_out_pts);
+  CHECK_PARAM(user_time_out_duration);
+  CHECK_PARAM(number_of_pages);
+
+#undef CHECK_PARAM
+
+  if (invalid)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid values present in Interactive Composition Segment.\n"
     );
 
   return 0;
@@ -185,69 +246,46 @@ int updateHdmvICParameters(
   const HdmvICParameters * src
 )
 {
-  unsigned i, j;
-
   if (_checkUpdateHdmvICParameters(dst, src) < 0)
     return -1;
 
-  if (src->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
-    dst->oomRelatedParam.composition_time_out_pts =
-      src->oomRelatedParam.composition_time_out_pts;
-    dst->oomRelatedParam.selection_time_out_pts =
-      src->oomRelatedParam.selection_time_out_pts;
+  for (unsigned page_id = 0; page_id < src->number_of_pages; page_id++) {
+    HdmvPageParameters * prev_page = dst->pages[page_id];
+    HdmvPageParameters * new_page  = src->pages[page_id];
+    assert(page_id == new_page->page_id);
+    assert(prev_page->page_id == new_page->page_id);
+
+    bool is_same_ver;
+    bool ver_is_valid = _interpretVersionNumber(
+      prev_page->page_version_number,
+      new_page->page_version_number,
+      &is_same_ver
+    );
+
+    if (!ver_is_valid)
+      LIBBLU_HDMV_PARSER_ERROR_RETURN(
+        "Invalid ICS, "
+        "unexpected 'page_version_number' not equal or incremented correctly "
+        "(old: 0x%02X / new: 0x%02X).\n",
+        prev_page->page_version_number,
+        new_page->page_version_number
+      );
+
+    if (is_same_ver) {
+      if (!lb_data_equal(prev_page, new_page, sizeof(HdmvPageParameters)))
+        LIBBLU_HDMV_PARSER_ERROR_RETURN(
+          "Invalid duplicated ICS, "
+          "unexpected mismatch between pages ('page_id' = 0x%02X) "
+          "sharing same version number.\n",
+          page_id
+        );
+      continue;
+    }
+
+    memcpy(prev_page, new_page, sizeof(HdmvPageParameters));
   }
-  dst->user_time_out_duration = src->user_time_out_duration;
 
-  for (i = 0; i < src->number_of_pages; i++) {
-    HdmvPageParameters * new_page = src->pages[i];
-    bool idFound = false;
-
-    for (j = 0; j < dst->number_of_pages; j++) {
-      if (dst->pages[j]->page_id == new_page->page_id) {
-        idFound = true;
-        break;
-      }
-    }
-
-    if (idFound) {
-      HdmvPageParameters * prev_page = dst->pages[j];
-      unsigned expected_vn = (prev_page->page_version_number + 1) & 0xFF;
-
-      // Check page_version_number:
-      if (new_page->page_version_number != expected_vn) {
-        LIBBLU_HDMV_FAIL_RETURN(
-          "Invalid updated ICS, "
-          "'page_version_number' is not equal or incremented correctly "
-          "(old: 0x%02X / new: 0x%02X).\n",
-          prev_page->page_version_number,
-          new_page->page_version_number
-        );
-      }
-
-      dst->pages[j] = new_page;
-    }
-    else {
-
-      // Check number of pages:
-      if (HDMV_MAX_NB_ICS_PAGES <= dst->number_of_pages)
-        LIBBLU_HDMV_COM_ERROR_RETURN(
-          "Invalid updated ICS, "
-          "too many pages present in Display Set.\n"
-        );
-
-      // Check page_version_number:
-      if (new_page->page_version_number != 0x0)
-        LIBBLU_HDMV_FAIL_RETURN(
-          "Invalid updated ICS, "
-          "update introduced pages shall have 'page_version_number' fixed "
-          "to 0x0 ('page_id': %u, value: %u).\n",
-          new_page->page_id,
-          new_page->page_version_number
-        );
-
-      dst->pages[dst->number_of_pages++] = new_page;
-    }
-  }
+  dst->interactive_composition_length = src->interactive_composition_length;
 
   return 0;
 }
@@ -256,110 +294,136 @@ int updateHdmvICParameters(
 /* ######### Palette Descriptor : ########################################## */
 
 static int _checkUpdateHdmvPDParameters(
-  HdmvPDParameters old,
-  HdmvPDParameters nw,
-  bool * identical
+  const HdmvPDParameters * prev,
+  const HdmvPDParameters * cur,
+  bool * shall_be_identical_ret
 )
 {
-  bool shallBeIdentical, isUpdate;
+  assert(NULL != shall_be_identical_ret);
+  assert(prev->palette_id == cur->palette_id);
 
-  if (old.palette_id != nw.palette_id)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated PDS, 'palette_id' mismatch (0x%02X / 0x%02X).\n",
-      old.palette_id,
-      nw.palette_id
-    );
-
-  shallBeIdentical = (old.palette_version_number == nw.palette_version_number);
-  isUpdate = ((old.palette_version_number + 1) == nw.palette_version_number);
-
-  if (!shallBeIdentical && !isUpdate) {
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated PDS, "
-      "'palette_version_number' is not equal or incremented correctly "
+  bool is_same_ver;
+  bool ver_is_valid = _interpretVersionNumber(
+    prev->palette_version_number,
+    cur->palette_version_number,
+    &is_same_ver
+  );
+  if (!ver_is_valid)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid PDS, "
+      "unexpected 'palette_version_number' not equal or incremented correctly "
       "(old: 0x%02X / new: 0x%02X).\n",
-      old.palette_version_number,
-      nw.palette_version_number
+      prev->palette_version_number,
+      cur->palette_version_number
     );
-  }
 
-  if (NULL != identical)
-    *identical = shallBeIdentical;
-
+  *shall_be_identical_ret = is_same_ver;
   return 0;
 }
 
 /* ######################################################################### */
 
-int updateHdmvPdsSegmentParameters(
-  HdmvPdsSegmentParameters * dst,
-  const HdmvPdsSegmentParameters * src
+int updateHdmvPDSegmentParameters(
+  HdmvPDSegmentParameters * dst,
+  const HdmvPDSegmentParameters * src
 )
 {
-  unsigned i;
-
-  bool shallBeIdentical;
-
-  if (_checkUpdateHdmvPDParameters(dst->palette_descriptor, src->palette_descriptor, &shallBeIdentical) < 0)
+  bool shall_be_ident;
+  if (_checkUpdateHdmvPDParameters(&dst->palette_descriptor, &src->palette_descriptor, &shall_be_ident) < 0)
     return -1;
 
-  if (shallBeIdentical) {
-    if (dst->number_of_palette_entries != src->number_of_palette_entries)
-      LIBBLU_HDMV_FAIL_RETURN(
+  if (shall_be_ident) {
+    if (!lb_data_equal(dst, src, sizeof(HdmvPDSegmentParameters)))
+      LIBBLU_HDMV_PARSER_ERROR_RETURN(
         "Invalid updated PDS, "
         "palettes sharing same 'palette_id' and 'palette_version_number' "
-        "shall have the same amount of entries.\n"
+        "shall be identical.\n"
       );
-
-    for (i = 0; i < src->number_of_palette_entries; i++) {
-      if (!constantHdmvPaletteEntryParameters(dst->palette_entries[i], src->palette_entries[i])) {
-        LIBBLU_HDMV_FAIL_RETURN(
-          "Invalid updated PDS, "
-          "palettes sharing same 'palette_id' and 'palette_version_number' "
-          "entries shall be identical.\n"
-        );
-        break;
-      }
-    }
-
     return 0;
   }
 
-  for (i = 0; i < src->number_of_palette_entries; i++) {
+  dst->palette_descriptor = src->palette_descriptor;
+  uint16_t nb_entries = 0;
+  for (unsigned i = 0; i < src->number_of_palette_entries; i++) {
     if (src->palette_entries[i].updated)
       dst->palette_entries[i] = src->palette_entries[i];
-    dst->palette_entries[i].updated = false;
+    nb_entries += dst->palette_entries[i].updated; // Count if defined
   }
-  dst->palette_descriptor = src->palette_descriptor;
+  dst->number_of_palette_entries = nb_entries; // Total number of defined entries
 
   return 0;
 }
 
 /* ###### HDMV Object Definition Segment : ################################# */
+
+int32_t computeObjectDataDecodeDuration(
+  HdmvStreamType stream_type,
+  uint16_t object_width,
+  uint16_t object_height
+)
+{
+  /** Compute OD_DECODE_DURATION of Object Definition (OD).
+   *
+   * \code{.unparsed}
+   * Equation performed is (for Interactive Graphics):
+   *
+   *   OD_DECODE_DURATION(OD) =
+   *     ceil(90000 * 8 * (OD.object_width * OD.object_height) / 64000000)
+   * <=> ceil(9 * (OD.object_width * OD.object_height) / 800) // Compacted version
+   *
+   * or (for Presentation Graphics):
+   *
+   *   OD_DECODE_DURATION(OD) =
+   *     ceil(90000 * 8 * (OD.object_width * OD.object_height) / 128000000)
+   * <=> ceil(9 * (OD.object_width * OD.object_height) / 1600) // Compacted version
+   *
+   * where:
+   *  OD            : Object Definition.
+   *  90000         : PTS/DTS clock frequency (90kHz);
+   *  64000000 or
+   *  128000000     : Pixel Decoding Rate
+   *                  (Rd = 64 Mb/s for IG, Rd = 128 Mb/s for PG).
+   *  object_width  : object_width parameter parsed from n-ODS's Object_data().
+   *  object_height : object_height parameter parsed from n-ODS's Object_data().
+   * \endcode
+   */
+  static const int32_t pixel_decoding_rate_divider[] = {
+    800,  // IG (64Mbps)
+    1600  // PG (128Mbps)
+  };
+
+  return DIV_ROUND_UP(
+    9 * (object_width * object_height),
+    pixel_decoding_rate_divider[stream_type]
+  );
+}
+
 /* ######### Object Descriptor : ########################################### */
 
 static int _checkUpdateHdmvODescParameters(
-  HdmvODescParameters old,
-  HdmvODescParameters nw
+  const HdmvODescParameters * prev,
+  const HdmvODescParameters * cur,
+  bool * shall_be_identical_ret
 )
 {
-  if (old.object_id != nw.object_id)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated ODS, 'object_id' mismatch (0x%02X / 0x%02X).\n",
-      old.object_id,
-      nw.object_id
+  assert(prev->object_id == cur->object_id);
+
+  bool is_same_ver;
+  bool ver_is_valid = _interpretVersionNumber(
+    prev->object_version_number,
+    cur->object_version_number,
+    &is_same_ver
+  );
+  if (!ver_is_valid)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid ODS, "
+      "unexpected 'object_version_number' not equal or incremented correctly "
+      "(old: 0x%02X / new: 0x%02X).\n",
+      prev->object_version_number,
+      cur->object_version_number
     );
 
-  if (old.object_version_number == nw.object_version_number)
-    return 1; /* The new object shall be identical to the previous one. */
-  else if (((old.object_version_number + 1) & 0xFF) != nw.object_version_number)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated ODS, "
-      "'object_version_number' is not incremented correctly "
-      "(old: 0x%02X / new: 0x%02X).\n",
-      old.object_version_number,
-      nw.object_version_number
-    );
+  *shall_be_identical_ret = is_same_ver;
 
   return 0;
 }
@@ -371,29 +435,24 @@ int updateHdmvObjectDataParameters(
   const HdmvODParameters * src
 )
 {
-  int ret;
-
-  ret = _checkUpdateHdmvODescParameters(
-    dst->object_descriptor,
-    src->object_descriptor
-  );
-  if (ret < 0)
+  bool shall_be_ident;
+  if (_checkUpdateHdmvODescParameters(&dst->object_descriptor, &src->object_descriptor, &shall_be_ident) < 0)
     return -1;
 
-  if (0 < ret) {
-    /* The object coded data size shall be identical */
-    if (dst->object_data_length != src->object_data_length)
-      LIBBLU_HDMV_FAIL_RETURN(
-        "Invalid updated ODS, object_data_length of ODS sharing same "
-        "version shall remain identical (old: %zu / new :%zu).\n",
-        dst->object_data_length,
-        src->object_data_length
+  if (shall_be_ident) {
+    if (!lb_data_equal(dst, src, sizeof(HdmvODParameters)))
+      LIBBLU_HDMV_PARSER_ERROR_RETURN(
+        "Invalid updated ODS, "
+        "objects sharing same 'object_id' and 'object_version_number' "
+        "shall be identical.\n"
       );
+    return 0;
   }
 
   if (dst->object_width != src->object_width || dst->object_height != src->object_height)
-    LIBBLU_HDMV_FAIL_RETURN(
-      "Invalid updated ODS, picture dimensions mismatch (%ux%u / %ux%u).\n",
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid updated ODS, "
+      "object dimensions shall remain the same (%ux%u / %ux%u).\n",
       dst->object_width,
       dst->object_height,
       src->object_width,

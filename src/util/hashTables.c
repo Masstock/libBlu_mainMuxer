@@ -7,206 +7,151 @@
 
 #include "hashTables.h"
 
-Hashtable * createHashTable(
-  void
-)
-{
-  Hashtable * table;
-
-  if (NULL == (table = (Hashtable *) malloc(sizeof(Hashtable))))
-    return NULL;
-  table->array = NULL;
-  table->usedLen = 0;
-  table->allocatedLen = 0;
-
-  setFunHashTable(table, NULL, NULL, NULL);
-  return table;
-}
-
-void destroyHashTable(Hashtable * table)
-{
-  size_t i;
-
-  if (NULL == table)
-    return;
-
-  for (i = 0; i < table->allocatedLen; i++) {
-    if (NULL != table->array[i].key) {
-      free(table->array[i].key);
-      table->datFreeFun(table->array[i].data);
-    }
-  }
-
-  free(table->array);
-  free(table);
-}
-
 void setFunHashTable(
   Hashtable * table,
-  HashTable_keyHashFun keyHashFun,
-  HashTable_keyCompFun keyCompFun,
-  HashTable_dataFreeFun datFreeFun
+  HashTable_keyHashFun key_hash_fun,
+  HashTable_keyCompFun key_comp_fun,
+  HashTable_datFreeFun dat_free_fun
 )
 {
-  if (NULL == keyHashFun)
-    keyHashFun = (HashTable_keyHashFun) fnv1aStrHash;
-  if (NULL == keyCompFun)
-    keyCompFun = (HashTable_keyCompFun) strcmp;
-  if (NULL == datFreeFun)
-    datFreeFun = free;
+  assert(NULL != table);
 
-  table->keyHashFun = keyHashFun;
-  table->datFreeFun = datFreeFun;
+  if (NULL == key_hash_fun)
+    key_hash_fun = (HashTable_keyHashFun) fnv1aStrHash;
+  if (NULL == key_comp_fun)
+    key_comp_fun = (HashTable_keyCompFun) strcmp;
+  if (NULL == dat_free_fun)
+    dat_free_fun = free;
+
+  table->key_hash_fun = key_hash_fun;
+  table->dat_free_fun = dat_free_fun;
+  table->initialized  = true;
 }
 
-Hashtable * createAndSetFunHashTable(
-  HashTable_keyHashFun keyHashFun,
-  HashTable_keyCompFun keyCompFun,
-  HashTable_dataFreeFun datFreeFun
-)
-{
-  Hashtable * table;
-
-  if (NULL == (table = createHashTable()))
-    return NULL;
-
-  setFunHashTable(table, keyHashFun, keyCompFun, datFreeFun);
-  return table;
-}
-
-int setEntryHashTable(
+static int _setEntryHashTable(
   Hashentry * array,
-  const size_t arraySize,
-  void * key,
-  void * data,
-  HashTable_keyHashFun keyHashFun,
-  HashTable_keyCompFun keyCompFun,
-  HashTable_dataFreeFun datFreeFun
+  const size_t array_size,
+  void * entry_key,
+  void * entry_data,
+  HashTable_keyHashFun key_hash_fun,
+  HashTable_keyCompFun key_comp_fun,
+  HashTable_datFreeFun dat_free_fun
 )
 {
-  Hashentry * entry;
-  size_t entryIndex, tableMask;
-  uint32_t entryHash;
+  uint32_t entry_hash = key_hash_fun(entry_key);
+  size_t table_mask   = array_size - 1;
+  size_t entry_idx    = ((size_t) entry_hash) & table_mask;
 
-  entryHash = keyHashFun(key);
-
-  tableMask = arraySize - 1;
-  entryIndex = ((size_t) entryHash) & tableMask;
-
-  for (; NULL != array[entryIndex].key; entryIndex = (entryIndex + 1) & tableMask) {
-    entry = &array[entryIndex];
-
-    if (keyCompFun(key, entry->key) == 0) {
+  for (; NULL != array[entry_idx].key; entry_idx = (entry_idx + 1) & table_mask) {
+    Hashentry * entry = &array[entry_idx];
+    if (key_comp_fun(entry_key, entry->key) == 0) {
       /* Key match, update value */
-      free(key);
-      datFreeFun(entry->data);
-      entry->data = data;
+      free(entry_key);
+      dat_free_fun(entry->data);
+      entry->data = entry_data;
       return 0;
     }
   }
 
-  array[entryIndex].key = key;
-  array[entryIndex].data = data;
+  array[entry_idx].key  = entry_key;
+  array[entry_idx].data = entry_data;
   return 1;
 }
 
-int growHashTable(Hashtable * table)
+#define HASH_TABLE_INITIAL_SIZE  32
+
+static int _growHashTable(
+  Hashtable * table
+)
 {
-  Hashentry * newArray, entry;
-  size_t newSize, i;
-  int ret;
-
-  assert(NULL != table);
-
-  newSize = GROW_HASH_TABLE_SIZE(table->allocatedLen);
-  if (lb_mul_overflow(newSize, sizeof(Hashentry)))
+  size_t new_size = GROW_ALLOCATION(
+    table->array_allocated_len,
+    HASH_TABLE_INITIAL_SIZE
+  );
+  if (lb_mul_overflow_size_t(new_size, sizeof(Hashentry)))
     return -1; /* Overflow */
 
-  if (NULL == (newArray = (Hashentry *) calloc(sizeof(Hashentry), newSize)))
+  Hashentry * new_array = (Hashentry *) calloc(new_size, sizeof(Hashentry));
+  if (NULL == new_array)
     return -1;
 
-  table->usedLen = 0;
-  for (i = 0; i < table->allocatedLen; i++) {
-    entry = table->array[i];
-
-    if (NULL != entry.key) {
+  size_t array_used_len = 0;
+  for (size_t i = 0; i < table->array_allocated_len; i++) {
+    const Hashentry * entry = &table->array[i];
+    if (NULL != entry->key) {
       /* Add entry to new array */
-      ret = setEntryHashTable(
-        newArray,
-        newSize,
-        entry.key,
-        entry.data,
-        table->keyHashFun,
-        table->keyCompFun,
-        table->datFreeFun
+      int ret = _setEntryHashTable(
+        new_array,
+        new_size,
+        entry->key,
+        entry->data,
+        table->key_hash_fun,
+        table->key_comp_fun,
+        table->dat_free_fun
       );
 
       if (ret < 0)
         return -1;
       if (ret)
-        table->usedLen++;
+        array_used_len++;
     }
   }
 
   free(table->array);
-  table->array = newArray;
-  table->allocatedLen = newSize;
+  table->array               = new_array;
+  table->array_used_len      = array_used_len;
+  table->array_allocated_len = new_size;
   return 0;
 }
 
-void * getHashTable(Hashtable * table, const void * key)
+void * getHashTable(
+  Hashtable * table,
+  const void * entry_key
+)
 {
-  Hashentry * entry;
-  size_t entryIndex, tableMask;
-  uint32_t entryHash;
-
-  if (!table->usedLen)
+  if (!table->array_used_len)
     return NULL; /* Empty table */
 
-  entryHash = table->keyHashFun(key);
+  uint32_t entry_hash = table->key_hash_fun(entry_key);
+  size_t table_mask   = table->array_allocated_len - 1;
+  size_t entry_idx    = ((size_t) entry_hash) & table_mask;
 
-  tableMask = table->allocatedLen - 1;
-  entryIndex = ((size_t) entryHash) & tableMask;
-
-  for (; table->array[entryIndex].key != NULL; entryIndex = (entryIndex + 1) & tableMask) {
-    entry = &table->array[entryIndex];
-
-    if (table->keyCompFun(key, entry->key) == 0) {
-      /* Key match, found entry */
-      return entry->data;
-    }
+  for (; table->array[entry_idx].key != NULL; entry_idx = (entry_idx + 1) & table_mask) {
+    Hashentry * entry = &table->array[entry_idx];
+    if (table->key_comp_fun(entry_key, entry->key) == 0)
+      return entry->data; // Key match
   }
 
-  return NULL; /* Not found */
+  return NULL; // Not found
 }
 
-int putHashTable(Hashtable * table, void * key, void * data)
+int putHashTable(
+  Hashtable * table,
+  void * entry_key,
+  void * entry_data
+)
 {
-  int ret;
-
   assert(NULL != table);
 
-  if (table->allocatedLen <= table->usedLen * 2) {
+  if (!table->initialized)
+    setFunHashTable(table, NULL, NULL, NULL);
+  if (table->array_allocated_len <= table->array_used_len * 2) {
     /* Need expension */
-    if (growHashTable(table) < 0)
+    if (_growHashTable(table) < 0)
       return -1;
   }
 
-  ret = setEntryHashTable(
+  int ret = _setEntryHashTable(
     table->array,
-    table->allocatedLen,
-    key,
-    data,
-    table->keyHashFun,
-    table->keyCompFun,
-    table->datFreeFun
+    table->array_allocated_len,
+    entry_key,
+    entry_data,
+    table->key_hash_fun,
+    table->key_comp_fun,
+    table->dat_free_fun
   );
 
   if (0 < ret)
-    table->usedLen++;
-
+    table->array_used_len++;
   return ret;
 }
-
-#undef main
-

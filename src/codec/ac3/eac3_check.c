@@ -69,7 +69,7 @@ int checkEac3BitStreamInfoCompliance(
 
   if (bsi->strmtyp != EAC3_STRMTYP_TYPE_1)
     LIBBLU_EAC3_ERROR_RETURN(
-      "E-AC3 Bit Stream type shall be of type 1, dependant substream "
+      "E-AC-3 Bit Stream type shall be of type 1, dependant substream "
       "(strmtyp == 0x%x, %s).\n",
       bsi->strmtyp,
       Eac3StrmtypStr(bsi->strmtyp)

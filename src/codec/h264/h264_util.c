@@ -455,7 +455,7 @@ H264AUNalUnitPtr createNewNalCell(
     /* Need reallocation to add new cell(s) to current Access Unit NALs list */
     size_t newSize = GROW_ALLOCATION(nbAllocatedNalus, H264_AU_DEFAULT_NB_NALUS);
 
-    if (lb_mul_overflow(newSize, sizeof(H264AUNalUnit)))
+    if (lb_mul_overflow_size_t(newSize, sizeof(H264AUNalUnit)))
       LIBBLU_H264_ERROR_NRETURN("Nb AU allocated NALUs overflow.\n");
 
     H264AUNalUnit * newList = (H264AUNalUnit *) realloc(

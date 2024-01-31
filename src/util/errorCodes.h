@@ -57,11 +57,11 @@
 #define LIBBLU_DEBUG_COM_NO_HEADER(format, ...)                               \
   LIBBLU_ECHO(LIBBLU_DEBUG_GLB, format, ##__VA_ARGS__)
 
-#define LIBBLU_TODO()                                                         \
+#define LIBBLU_TODO(format, ...)                                              \
   do {                                                                        \
     LIBBLU_ECHO(                                                              \
-      LIBBLU_FATAL_ERROR, "[TODO] %s(), line %d, %s.\n",                      \
-      __func__, __LINE__, __FILE__                                            \
+      LIBBLU_FATAL_ERROR, "[TODO] %s(), line %d, %s: " format,                \
+      __func__, __LINE__, __FILE__, ##__VA_ARGS__                             \
     );                                                                        \
     exit(EXIT_FAILURE);                                                       \
   } while(0)
@@ -110,6 +110,9 @@ int isDisabledExplodeLevel(
     else if (warn_expr)                                                       \
       LIBBLU_WARNING(format, ##__VA_ARGS__);                                  \
   } while (0)
+
+#define LIBBLU_FAIL(level, format, ...)                                       \
+  __LIBBLU_FAIL_INSTR_((void) 0, level, 1, format, ##__VA_ARGS__)
 
 #define LIBBLU_FAIL_WCOND(level, warn_expr, format, ...)                      \
   __LIBBLU_FAIL_INSTR_((void) 0, level, warn_expr, format, ##__VA_ARGS__)
@@ -217,6 +220,10 @@ typedef enum {
   LIBBLU_DEBUG_IGS_COMPL_XML_OPERATIONS,
   LIBBLU_DEBUG_IGS_COMPL_XML_PARSING,
   LIBBLU_DEBUG_IGS_COMPL_OPERATIONS,
+
+  /* HDMV PGS ASS Generator : */
+  LIBBLU_DEBUG_PGS_ASS_TS_COMPUTE,
+  LIBBLU_DEBUG_PGS_ASS_OPERATIONS,
 
   LIBBLU_NB_STATUS
 } LibbluStatus;

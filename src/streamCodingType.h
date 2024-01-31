@@ -177,7 +177,7 @@ static inline int determineLibbluESType(
     case STREAM_CODING_TYPE_HDHR:     /* DTS-HDHR                            */
     case STREAM_CODING_TYPE_HDMA:     /* DTS-HDMA                            */
     /* Secondary Audio :                                                     */
-    case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC3 (DD Plus)                     */
+    case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (DD Plus)                     */
     case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express                         */
       *type_ret = ES_AUDIO;
       return 0;

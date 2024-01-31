@@ -7,6 +7,18 @@
  * \brief HDMV IG/PG bitstreams data structures.
  */
 
+/** \~english
+ * \dir hdmv
+ *
+ * \brief HDMV menus and subtitles (IG, PG) bitstreams handling modules.
+ *
+ * \xrefitem references "References" "References list"
+ *  [1] Patent US 8,849,102 B2\n // IG semantics
+ *  [2] Patent US 8,638,861 B2\n // PG semantics
+ *  [3] Patent US 7,634,739 B2\n // IG timings
+ *  [4] Patent US 7,680,394 B2\n // PG timings
+ */
+
 #ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__DATA_H__
 #define __LIBBLU_MUXER__CODECS__HDMV__COMMON__DATA_H__
 
@@ -14,22 +26,14 @@
 #include "../../common/constantCheckFunctionsMacros.h"
 #include "../../../elementaryStreamProperties.h"
 
-#define IGS_MNU_WORD             0x4947 /* "IG" */
-#define IGS_SUP_WORD             0x5047 /* "PG" */
-
-/** \~english
- * \brief Transport Buffer removing data rate (in bits/sec).
- *
- * R_x transfer rate value from Transport Buffer (TB) to Coded Data Buffer
- * (CDB).
- */
-#define HDMV_RX_BITRATE          16000000
-
 /* ### HDMV Stream type : ################################################## */
 
+#define IGS_MNU_WORD  0x4947 /* "IG" */
+#define IGS_SUP_WORD  0x5047 /* "PG" */
+
 typedef enum {
-  HDMV_STREAM_TYPE_IGS  = 0,
-  HDMV_STREAM_TYPE_PGS  = 1
+  HDMV_STREAM_TYPE_IGS  = 0x0,
+  HDMV_STREAM_TYPE_PGS  = 0x1
 } HdmvStreamType;
 
 static inline const char * HdmvStreamTypeStr(
@@ -54,7 +58,6 @@ static inline uint16_t expectedFormatIdentifierHdmvStreamType(
     IGS_MNU_WORD,
     IGS_SUP_WORD
   };
-
   return magic[type];
 }
 
@@ -74,7 +77,6 @@ static inline LibbluStreamCodingType codingTypeHdmvStreamType(
     STREAM_CODING_TYPE_IG,
     STREAM_CODING_TYPE_PG
   };
-
   return codingType[type];
 }
 
@@ -88,6 +90,78 @@ static inline LibbluStreamCodingType codingTypeHdmvStreamType(
 
 #define HDMV_STREAM_TYPE_MASK_COMMON                                          \
   (HDMV_STREAM_TYPE_MASK_IGS | HDMV_STREAM_TYPE_MASK_PGS)
+
+/* ### HDMV Streams Buffer sizes / Transfer rates : ######################## */
+
+/** \~english
+ * \brief Transport Buffer removing data rate (in bits/sec).
+ *
+ * R_x transfer rate value from Transport Buffer (TB) to Coded Data Buffer
+ * (CDB).
+ */
+#define HDMV_RX_BITRATE  16000000
+
+#define HDMV_IG_DB_SIZE  (16u << 20)
+#define HDMV_PG_DB_SIZE  ( 4u << 20)
+
+/** \~english
+ * \brief HDMV Decoded Object Buffer (DB) size.
+ *
+ * \param type HDMV stream type.
+ * \return uint32_t Associated DB size.
+ */
+static inline uint32_t getHDMVDecodedObjectBufferSize(
+  HdmvStreamType type
+)
+{
+  static const uint32_t sizes[] = {
+    HDMV_IG_DB_SIZE, /**< Interactive Graphics  - 16MiB  */
+    HDMV_PG_DB_SIZE, /**< Presentation Graphics -  4MiB  */
+  };
+  return sizes[type];
+}
+
+static inline int64_t getHDMVPlaneClearTime(
+  HdmvStreamType stream_type,
+  uint16_t video_width,
+  uint16_t video_height
+)
+{
+  /** Compute PLANE_CLEAR_TIME of Interactive Composition or Presentation
+   * Composition, the duration required to clear the whole graphical plane.
+   *
+   * If stream type is Interactive Graphics:
+   *
+   *   PLANE_CLEAR_TIME =
+   *     ceil(90000 * 8 * (video_width * video_height) / 128000000)
+   * <=> ceil(9 * (video_width * video_height) / 1600)
+   *
+   * Otherwhise, if stream type is Presentation Graphics:
+   *
+   *   PLANE_CLEAR_TIME =
+   *     ceil(90000 * 8 * (video_width * video_height) / 256000000)
+   * <=> ceil(9 * (video_width * video_height) / 3200)
+   *
+   * where:
+   *  90000        : PTS/DTS clock frequency (90kHz);
+   *  128000000 or
+   *  256000000    : Pixel Transfer Rate (Rc = 128 Mb/s for IG,
+   *                 256 Mb/s for PG).
+   *  video_width  : video_width parameter parsed from ICS/PCS's
+   *                 Video_descriptor();
+   *  video_height : video_height parameter parsed from ICS/PCS's
+   *                 Video_descriptor().
+   */
+  static const int64_t clearing_rate_divider[] = {
+    1600LL,  /*< IG (128Mbps)  */
+    3200LL   /*< PG (256Mbps) */
+  };
+
+  return DIV_ROUND_UP(
+    9LL * (video_width * video_height),
+    clearing_rate_divider[stream_type]
+  );
+}
 
 /* ### HDMV Segments : ##################################################### */
 
@@ -135,6 +209,43 @@ int checkHdmvSegmentType(
 );
 
 /* ###### HDMV Common structures : ######################################### */
+
+/* ######### Segment Descriptor : ########################################## */
+
+/** \~english
+ * \brief Size required by segment header in bytes.
+ *
+ * Composed of:
+ *  - u8  : segment_type;
+ *  - u16 : segment_length.
+ *
+ * => 3 bytes.
+ */
+#define HDMV_SIZE_SEGMENT_HEADER  3
+
+/** \~english
+ * \brief Maximum payload size of a segment in bytes.
+ *
+ * Payload is considered as all segment data content except
+ * header.
+ * Size is defined as the segment_length max possible value.
+ */
+#define HDMV_MAX_SIZE_SEGMENT_PAYLOAD  0xFFEF
+
+/** \~english
+ * \brief Maximum segment size in bytes.
+ *
+ * Size is defined as the segment_length max possible value
+ * plus segment header length.
+ */
+#define HDMV_MAX_SIZE_SEGMENT                                                 \
+  (HDMV_MAX_SIZE_SEGMENT_PAYLOAD + HDMV_SIZE_SEGMENT_HEADER)
+
+typedef struct {
+  uint8_t segment_type;
+  uint16_t segment_length;
+} HdmvSegmentDescriptor;
+
 /* ######### Video Descriptor : ############################################ */
 
 typedef struct HdmvVideoDescriptorParameters {
@@ -364,13 +475,13 @@ typedef struct {
     uint16_t width;
     uint16_t height;
   } object_cropping;
-} HdmvCompositionObjectParameters;
+} HdmvCOParameters;
 
 static inline void initHdmvCompositionObjectParameters(
-  HdmvCompositionObjectParameters * dst
+  HdmvCOParameters * dst
 )
 {
-  *dst = (HdmvCompositionObjectParameters) {
+  *dst = (HdmvCOParameters) {
     0
   };
 }
@@ -397,7 +508,7 @@ static inline void initHdmvCompositionObjectParameters(
  * => 8 + (object_cropped_flag ? 8 : 0) bytes.
  */
 static inline size_t computeSizeHdmvCompositionObject(
-  const HdmvCompositionObjectParameters * param
+  const HdmvCOParameters * param
 )
 {
   assert(NULL != param);
@@ -407,17 +518,22 @@ static inline size_t computeSizeHdmvCompositionObject(
 
 /* ######### Presentation Composition : #################################### */
 
-#define HDMV_MAX_NB_PCS_COMPOS  255
+#define HDMV_MAX_NB_PCS_COMPOS  2
 
 typedef struct HdmvPresentationCompositionParameters {
   bool palette_update_flag;
   uint8_t palette_id_ref;
 
-  unsigned number_of_composition_objects;
-  HdmvCompositionObjectParameters * composition_objects[
+  uint8_t number_of_composition_objects;
+  HdmvCOParameters * composition_objects[
     HDMV_MAX_NB_PCS_COMPOS
   ];
 } HdmvPCParameters;
+
+int updateHdmvPCParameters(
+  HdmvPCParameters * dst,
+  const HdmvPCParameters * src
+);
 
 /* ######################################################################### */
 
@@ -430,11 +546,10 @@ typedef struct {
 /* ###### HDMV Windows Definition Segment : ################################ */
 /* ######### Windows Definition : ########################################## */
 
-#define HDMV_MAX_NB_WDS_WINDOWS  255
+#define HDMV_MAX_NB_WDS_WINDOWS  2
 
 typedef struct HdmvWindowDefinitionParameters {
   uint8_t number_of_windows;
-
   HdmvWindowInfoParameters * windows[
     HDMV_MAX_NB_WDS_WINDOWS
   ];
@@ -454,14 +569,14 @@ typedef struct {
 /* ###### HDMV Interactive Composition Segment : ########################### */
 /* ######### Effect Info : ################################################# */
 
-#define HDMV_MAX_NB_ICS_COMP_OBJ  255
+#define HDMV_MAX_NB_ICS_COMP_OBJ  2
 
 typedef struct {
-  uint32_t effect_duration:24;
+  uint32_t effect_duration;
   uint8_t palette_id_ref;
 
-  unsigned number_of_composition_objects;
-  HdmvCompositionObjectParameters * composition_objects[
+  uint8_t number_of_composition_objects;
+  HdmvCOParameters * composition_objects[
     HDMV_MAX_NB_ICS_COMP_OBJ
   ];
 } HdmvEffectInfoParameters;
@@ -494,13 +609,10 @@ static inline size_t computeSizeHdmvEffectInfo(
   const HdmvEffectInfoParameters * param
 )
 {
-  size_t size;
-  unsigned i;
-
   assert(NULL != param);
 
-  size = 5;
-  for (i = 0; i < param->number_of_composition_objects; i++)
+  size_t size = 5ull;
+  for (uint8_t i = 0; i < param->number_of_composition_objects; i++)
     size += computeSizeHdmvCompositionObject(param->composition_objects[i]);
 
   return size;
@@ -508,19 +620,14 @@ static inline size_t computeSizeHdmvEffectInfo(
 
 /* ######### Effect Sequence : ############################################# */
 
-#define HDMV_MAX_NB_ICS_WINDOWS  255
+#define HDMV_MAX_NB_ICS_WINDOWS  2
 
-#define HDMV_MAX_ALLOWED_NB_ICS_WINDOWS  2
-
-#define HDMV_MAX_NB_ICS_EFFECTS  255
-
-#define HDMV_MAX_ALLOWED_NB_ICS_EFFECTS  128
+#define HDMV_MAX_NB_ICS_EFFECTS  128
 
 typedef struct {
-  unsigned number_of_windows;
+  uint8_t number_of_windows;
   HdmvWindowInfoParameters * windows[HDMV_MAX_NB_ICS_WINDOWS];
-
-  unsigned number_of_effects;
+  uint8_t number_of_effects;
   HdmvEffectInfoParameters * effects[HDMV_MAX_NB_ICS_EFFECTS];
 } HdmvEffectSequenceParameters;
 
@@ -547,13 +654,9 @@ static inline size_t computeSizeHdmvEffectSequence(
   const HdmvEffectSequenceParameters param
 )
 {
-  size_t size;
-  unsigned i;
-
-  size = 2 + param.number_of_windows * IGS_COMPILER_WINDOW_INFO_LENGTH;
-  for (i = 0; i < param.number_of_effects; i++)
+  size_t size = 2ull + param.number_of_windows * IGS_COMPILER_WINDOW_INFO_LENGTH;
+  for (uint8_t i = 0; i < param.number_of_effects; i++)
     size += computeSizeHdmvEffectInfo(param.effects[i]);
-
   return size;
 }
 
@@ -573,14 +676,6 @@ static inline void initHdmvNavigationCommand(
   *dst = (HdmvNavigationCommand) {
     0
   };
-}
-
-static inline void setNextHdmvNavigationCommand(
-  HdmvNavigationCommand * dst,
-  HdmvNavigationCommand * next
-)
-{
-  dst->next = next;
 }
 
 /* ######### Button Neighbor Info : ######################################## */
@@ -681,7 +776,7 @@ typedef struct {
   HdmvButtonSelectedStateInfoParam selected_state_info;
   HdmvButtonActivatedStateInfoParam activated_state_info;
 
-  unsigned number_of_navigation_commands;
+  uint16_t number_of_navigation_commands;
   HdmvNavigationCommand * navigation_commands;
 
   uint16_t max_initial_width;  /**< Button normal and selected states objects
@@ -758,7 +853,7 @@ static inline size_t computeSizeHdmvButton(
 typedef struct {
   uint16_t default_valid_button_id_ref;
 
-  unsigned number_of_buttons;
+  uint8_t number_of_buttons;
   HdmvButtonParam * buttons[HDMV_MAX_NB_ICS_BUTTONS];
 } HdmvButtonOverlapGroupParameters;
 
@@ -789,15 +884,11 @@ static inline size_t computeSizeHdmvButtonOverlapGroup(
   const HdmvButtonOverlapGroupParameters * param
 )
 {
-  size_t size;
-  unsigned i;
-
   assert(NULL != param);
 
-  size = 3;
-  for (i = 0; i < param->number_of_buttons; i++)
+  size_t size = 3ull;
+  for (uint8_t i = 0; i < param->number_of_buttons; i++)
     size += computeSizeHdmvButton(param->buttons[i]);
-
   return size;
 }
 
@@ -859,19 +950,13 @@ static inline size_t computeSizeHdmvPage(
   const HdmvPageParameters * param
 )
 {
-  size_t size;
-  unsigned i;
-
   assert(NULL != param);
 
-  size =
-    17
-    + computeSizeHdmvEffectSequence(param->in_effects)
-    + computeSizeHdmvEffectSequence(param->out_effects)
-  ;
-  for (i = 0; i < param->number_of_BOGs; i++)
+  size_t size = 17ull;
+  size += computeSizeHdmvEffectSequence(param->in_effects);
+  size += computeSizeHdmvEffectSequence(param->out_effects);
+  for (uint8_t i = 0; i < param->number_of_BOGs; i++)
     size += computeSizeHdmvButtonOverlapGroup(param->bogs[i]);
-
   return size;
 }
 
@@ -915,22 +1000,20 @@ static inline const char * HdmvUserInterfaceModelStr(
   return "Unknown";
 }
 
-#define HDMV_MAX_NB_ICS_PAGES  255
+#define HDMV_MAX_NB_IC_PAGES  255
 
 typedef struct HdmvInteractiveCompositionParameters {
-  uint32_t interactive_composition_length:24;
+  uint32_t interactive_composition_length;
 
   HdmvStreamModel stream_model;
   HdmvUserInterfaceModel user_interface_model;
 
-  struct {
-    uint64_t composition_time_out_pts:33;
-    uint64_t selection_time_out_pts:33;
-  } oomRelatedParam;
-  uint32_t user_time_out_duration:24;
+  uint64_t composition_time_out_pts;
+  uint64_t selection_time_out_pts;  /**< Muxed stream_model related parameters. */
+  uint32_t user_time_out_duration;
 
-  unsigned number_of_pages;
-  HdmvPageParameters * pages[HDMV_MAX_NB_ICS_PAGES];
+  uint8_t number_of_pages;
+  HdmvPageParameters * pages[HDMV_MAX_NB_IC_PAGES];
 } HdmvICParameters;
 
 int updateHdmvICParameters(
@@ -969,17 +1052,13 @@ static inline size_t computeSizeHdmvInteractiveComposition(
   const HdmvICParameters * param
 )
 {
-  size_t size;
-  unsigned i;
-
   assert(NULL != param);
 
-  size = 8;
+  size_t size = 8ull;
   if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED)
-    size += 10;
-  for (i = 0; i < param->number_of_pages; i++)
+    size += 10ull;
+  for (uint8_t i = 0; i < param->number_of_pages; i++)
     size += computeSizeHdmvPage(param->pages[i]);
-
   return size;
 }
 
@@ -989,7 +1068,7 @@ typedef struct {
   HdmvVDParameters video_descriptor;
   HdmvCDParameters composition_descriptor;
   HdmvSDParameters sequence_descriptor;
-} HdmvIcsSegmentParameters;
+} HdmvICSegmentParameters;
 
 /** \~english
  * \brief Size of Interactive Composition Segment header in bytes.
@@ -999,7 +1078,7 @@ typedef struct {
  *  - composition_descriptor() #HDMV_SIZE_VIDEO_DESCRIPTOR;
  *  - sequence_descriptor() #HDMV_SIZE_SEQUENCE_DESCRIPTOR.
  */
-#define HDMV_SIZE_INTERACTIVE_COMPOSITION_SEGMENT_HEADER                      \
+#define HDMV_SIZE_IC_SEGMENT_HEADER                                           \
   (                                                                           \
     HDMV_SIZE_VIDEO_DESCRIPTOR                                                \
     + HDMV_SIZE_COMPOSITION_DESCRIPTOR                                        \
@@ -1013,6 +1092,8 @@ typedef struct HdmvPaletteDescriptorParameters {
   uint8_t palette_id;
   uint8_t palette_version_number;
 } HdmvPDParameters;
+
+#define HDMV_MAX_PALETTE_ID  255
 
 static inline bool constantHdmvPDParameters(
   HdmvPDParameters first,
@@ -1071,16 +1152,13 @@ static inline bool constantHdmvPaletteEntryParameters(
 static inline bool constantEntriesHdmvPaletteEntryParameters(
   HdmvPaletteEntryParameters * first,
   HdmvPaletteEntryParameters * second,
-  unsigned nb
+  uint16_t nb_pal_entries
 )
 {
-  unsigned i;
-
-  for (i = 0; i < nb; i++) {
+  for (uint16_t i = 0; i < nb_pal_entries; i++) {
     if (!constantHdmvPaletteEntryParameters(first[i], second[i]))
       return false;
   }
-
   return true;
 }
 
@@ -1096,22 +1174,28 @@ static inline bool constantEntriesHdmvPaletteEntryParameters(
  *
  * => 5 bytes.
  */
-#define HDMV_SIZE_PALETTE_DEFINITION_ENTRY  5
+#define HDMV_SIZE_PALETTE_DEFINITION_ENTRY  5u
 
 /* ######################################################################### */
 
 #define HDMV_MAX_NB_PDS_ENTRIES  255
 
+/** \~english
+ * \brief Transparent color 0xFF id.
+ *
+ */
+#define HDMV_PAL_FF  HDMV_MAX_NB_PDS_ENTRIES
+
 typedef struct {
   HdmvPDParameters palette_descriptor;
 
-  unsigned number_of_palette_entries;
+  uint16_t number_of_palette_entries;
   HdmvPaletteEntryParameters palette_entries[HDMV_MAX_NB_PDS_ENTRIES];
-} HdmvPdsSegmentParameters;
+} HdmvPDSegmentParameters;
 
-static inline bool constantHdmvPdsSegmentParameters(
-  HdmvPdsSegmentParameters first,
-  HdmvPdsSegmentParameters second
+static inline bool constantHdmvPDSegmentParameters(
+  HdmvPDSegmentParameters first,
+  HdmvPDSegmentParameters second
 )
 {
   return CHECK(
@@ -1125,13 +1209,24 @@ static inline bool constantHdmvPdsSegmentParameters(
   );
 }
 
-int updateHdmvPdsSegmentParameters(
-  HdmvPdsSegmentParameters * dst,
-  const HdmvPdsSegmentParameters * src
+int updateHdmvPDSegmentParameters(
+  HdmvPDSegmentParameters * dst,
+  const HdmvPDSegmentParameters * src
 );
 
 /* ###### HDMV Object Definition Segment : ################################# */
+
+int32_t computeObjectDataDecodeDuration(
+  HdmvStreamType stream_type,
+  uint16_t object_width,
+  uint16_t object_height
+);
+
 /* ######### Object Descriptor : ########################################### */
+
+#define HDMV_OD_PG_MAX_NB_OBJ  64
+
+#define HDMV_OD_IG_MAX_NB_OBJ  4096
 
 typedef struct HdmvObjectDescriptorParameters {
   uint16_t object_id;
@@ -1151,27 +1246,19 @@ typedef struct HdmvObjectDescriptorParameters {
 
 /* ######### Object Data : ################################################# */
 
+#define HDMV_OD_MIN_SIZE  8
+
+#define HDMV_OD_PG_MAX_SIZE  4096
+
+#define HDMV_OD_MAX_DATA_LENGTH  0xFFFFFF
+
 typedef struct HdmvObjectDataParameters {
   HdmvODescParameters object_descriptor;
 
-  uint32_t object_data_length:24;
+  uint32_t object_data_length;
   uint16_t object_width;
   uint16_t object_height;
 } HdmvODParameters;
-
-static inline void setHdmvObjectDataParameters(
-  HdmvODParameters * dst,
-  uint32_t object_data_length,
-  uint16_t width,
-  uint16_t height
-)
-{
-  *dst = (HdmvODParameters) {
-    .object_data_length = object_data_length,
-    .object_width = width,
-    .object_height = height
-  };
-}
 
 int updateHdmvObjectDataParameters(
   HdmvODParameters * dst,
@@ -1192,11 +1279,11 @@ int updateHdmvObjectDataParameters(
  *
  * => 7 + object_data_length bytes.
  */
-static inline size_t computeSizeHdmvObjectData(
+static inline uint32_t computeSizeHdmvObjectData(
   const HdmvODParameters param
 )
 {
-  return 3 + param.object_data_length;
+  return 3ull + param.object_data_length;
 }
 
 /* ######################################################################### */
@@ -1204,7 +1291,7 @@ static inline size_t computeSizeHdmvObjectData(
 typedef struct {
   HdmvODescParameters object_descriptor;
   HdmvSDParameters sequence_descriptor;
-} HdmvOdsSegmentParameters;
+} HdmvODSegmentParameters;
 
 /** \~english
  * \brief Size required by Object Definition Segment header.
@@ -1213,21 +1300,19 @@ typedef struct {
  *  - object_descritor() #HDMV_SIZE_OBJECT_DESCRIPTOR;
  *  - sequence_descriptor() #HDMV_SIZE_SEQUENCE_DESCRIPTOR.
  */
-#define HDMV_SIZE_OBJECT_DEFINITION_SEGMENT_HEADER                            \
+#define HDMV_SIZE_OD_SEGMENT_HEADER                                           \
   (HDMV_SIZE_OBJECT_DESCRIPTOR + HDMV_SIZE_SEQUENCE_DESCRIPTOR)
 
 /* ######################################################################### */
 
 typedef struct {
+  HdmvSegmentDescriptor desc;
   struct {
     int32_t pts;
     int32_t dts;
-  } header;  /**< Only present if !rawStreamInputMode. */
+  } timestamps_header;  /**< Only present if !raw_stream_input_mode. */
 
-  uint64_t inputFileOffset;
-
-  uint8_t type;
-  size_t length;
+  uint64_t orig_file_offset;
 } HdmvSegmentParameters;
 
 /* ######################################################################### */

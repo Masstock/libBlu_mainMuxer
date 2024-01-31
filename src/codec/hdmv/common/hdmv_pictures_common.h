@@ -1,11 +1,26 @@
 
 
-#ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__COMMON_H__
-#define __LIBBLU_MUXER__CODECS__HDMV__COMMON__COMMON_H__
+#ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__PICTURES_COMMON_H__
+#define __LIBBLU_MUXER__CODECS__HDMV__COMMON__PICTURES_COMMON_H__
 
 #include "hdmv_error.h"
-#include "hdmv_palette_def.h"
-#include "hdmv_color.h"
+#include "hdmv_bitmap.h"
+
+// typedef struct {
+//   union {
+//     HdmvBitmap bitmap;
+//     HdmvBitmap * bitmap_ptr;
+//   };
+//   bool bitmap_self_managed;
+
+
+
+
+
+
+// } HdmvPicture, *HdmvPicturePtr;
+
+#if 0
 
 /* ### HDMV Picture infos : ################################################ */
 
@@ -13,21 +28,19 @@ typedef enum {
   HDMV_PIC_CDM_DISABLED,
 
   HDMV_PIC_CDM_FLOYD_STEINBERG
-} HdmvPictureColorDitheringMethod;
+} HdmvColorDitheringMethod;
 
-typedef struct {
-  uint8_t version;
+// typedef struct {
+//   uint16_t width;
+//   uint16_t height;
 
-  unsigned width;
-  unsigned height;
+//   HdmvPalette * linkedPal;
+//   HdmvColorDitheringMethod ditherMeth;
 
-  HdmvPaletteDefinitionPtr linkedPal;
-  HdmvPictureColorDitheringMethod ditherMeth;
-
-  size_t imgAllocatedSize;
-  size_t rleAllocatedSize;
-  size_t rleUsedSize;
-} HdmvPictureInfos;
+//   size_t imgAllocatedSize;
+//   size_t rleAllocatedSize;
+//   size_t rleUsedSize;
+// } HdmvPictureInfos;
 
 /* ### HDMV Picture : ###################################################### */
 
@@ -35,19 +48,19 @@ typedef struct {
   HdmvPictureInfos infos;
 
   uint32_t * rgba;
-  bool updatedRgba;
+  // bool updatedRgba;
 
-  uint8_t * pal;
-  bool updatedPal;
+  // uint8_t * pal;
+  // bool updatedPal;
 
-  uint8_t * rle;
-  bool updatedRle;
+  // uint8_t * rle;
+  // bool updatedRle;
 } HdmvPicture, *HdmvPicturePtr;
 
 #define HDMV_PIC_MIN_WIDTH  8
-#define HDMV_PIC_MAX_WIDTH  2048
+#define HDMV_PIC_MAX_WIDTH  4096
 #define HDMV_PIC_MIN_HEIGHT  8
-#define HDMV_PIC_MAX_HEIGHT  2048
+#define HDMV_PIC_MAX_HEIGHT  4096
 
 /* ###### Creation / Destruction : ######################################### */
 
@@ -66,9 +79,8 @@ typedef struct {
  * set to zero.
  */
 HdmvPicturePtr createHdmvPicture(
-  uint8_t version,
-  unsigned width,
-  unsigned height
+  uint16_t width,
+  uint16_t height
 );
 
 /** \~english
@@ -98,19 +110,31 @@ static inline void destroyHdmvPicture(
 
 /* ###### Accessors : ###################################################### */
 
-static inline void getVersionHdmvPicture(
-  const HdmvPicturePtr pic,
-  uint8_t * version
+static inline uint8_t getVersionHdmvPicture(
+  const HdmvPicturePtr pic
 )
 {
-  if (NULL != version)
-    *version = pic->infos.version;
+  return pic->infos.version;
+}
+
+static inline uint16_t getWidthHdmvPicture(
+  const HdmvPicturePtr pic
+)
+{
+  return pic->infos.width;
+}
+
+static inline uint16_t getHeightHdmvPicture(
+  const HdmvPicturePtr pic
+)
+{
+  return pic->infos.height;
 }
 
 static inline void getDimensionsHdmvPicture(
   const HdmvPicturePtr pic,
-  unsigned * width,
-  unsigned * height
+  uint16_t * width,
+  uint16_t * height
 )
 {
   if (NULL != width)
@@ -125,10 +149,7 @@ static inline size_t getRgbaSizeHdmvPicture(
   const HdmvPicturePtr pic
 )
 {
-  unsigned width, height;
-
-  getDimensionsHdmvPicture(pic, &width, &height);
-  return width * height;
+  return 1ull * pic->infos.width * pic->infos.height;
 }
 
 const uint32_t * getRgbaHdmvPicture(
@@ -194,16 +215,16 @@ uint8_t * getRleHandleHdmvPicture(
  */
 int setPaletteHdmvPicture(
   HdmvPicturePtr pic,
-  HdmvPaletteDefinitionPtr pal,
-  HdmvPictureColorDitheringMethod ditherMeth
+  HdmvPalette * pal,
+  HdmvColorDitheringMethod ditherMeth
 );
 
 int cropHdmvPicture(
   HdmvPicturePtr pic,
-  unsigned left,
-  unsigned top,
-  unsigned width,
-  unsigned height
+  uint16_t left,
+  uint16_t top,
+  uint16_t width,
+  uint16_t height
 );
 
 int setSizeHdmvPicture(
@@ -211,5 +232,6 @@ int setSizeHdmvPicture(
   unsigned width,
   unsigned height
 );
+#endif
 
 #endif

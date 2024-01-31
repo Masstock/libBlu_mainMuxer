@@ -20,7 +20,7 @@ bool isDuplicateHdmvSequence(
 
   switch (first->type) {
     case HDMV_SEGMENT_TYPE_PDS:
-      return constantHdmvPdsSegmentParameters(first->data.pd, second->data.pd);
+      return constantHdmvPDSegmentParameters(first->data.pd, second->data.pd);
 
     case HDMV_SEGMENT_TYPE_ODS:
     case HDMV_SEGMENT_TYPE_PCS:
@@ -38,36 +38,35 @@ bool isDuplicateHdmvSequence(
 int parseFragmentHdmvSequence(
   HdmvSequencePtr dst,
   BitstreamReaderPtr input,
-  size_t size
+  uint16_t fragment_length
 )
 {
 
-  if (lb_add_overflow(dst->fragmentsUsedLen, size))
+  if (lb_u32add_overflow(dst->fragments_used_len, fragment_length))
     LIBBLU_HDMV_COM_ERROR_RETURN(
       "Reconstructed sequence data from segment fragments is too large.\n"
     );
 
-  if (dst->fragmentsAllocatedLen < dst->fragmentsUsedLen + size) {
+  if (dst->fragments_allocated_len < dst->fragments_used_len + fragment_length) {
     /* Need sequence data size increasing */
-    size_t newSize = dst->fragmentsUsedLen + size;
-    uint8_t * newArray;
+    uint32_t new_size = dst->fragments_used_len + fragment_length;
 
-    if (NULL == (newArray = (uint8_t *) realloc(dst->fragments, newSize)))
+    uint8_t * new_array = (uint8_t *) realloc(dst->fragments, new_size);
+    if (NULL == new_array)
       LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
 
-    dst->fragments = newArray;
-    dst->fragmentsAllocatedLen = newSize;
+    dst->fragments = new_array;
+    dst->fragments_allocated_len = new_size;
   }
 
   LIBBLU_HDMV_PARSER_DEBUG(
-    "  size: %zu byte(s).\n",
-    size
+    "  size: %" PRIu16 " byte(s).\n",
+    fragment_length
   );
 
-  if (readBytes(input, dst->fragments + dst->fragmentsUsedLen, size) < 0)
+  if (readBytes(input, &dst->fragments[dst->fragments_used_len], fragment_length) < 0)
     return -1;
-
-  dst->fragmentsUsedLen += size;
+  dst->fragments_used_len += fragment_length;
 
   return 0;
 }
@@ -90,7 +89,7 @@ static int increaseAllocationHdmvSegmentsInventoryPool(
       pool->nbAllocElemSegs,
       HDMV_SEG_INV_POOL_DEFAULT_SEG_NB
     );
-    if (lb_mul_overflow(newSize, sizeof(void *)))
+    if (lb_mul_overflow_size_t(newSize, sizeof(void *)))
       LIBBLU_HDMV_QUANT_ERROR_RETURN("Inventory segments number overflow.\n");
 
     newArray = (void **) realloc(pool->elemSegs, newSize * sizeof(void *));
@@ -106,7 +105,7 @@ static int increaseAllocationHdmvSegmentsInventoryPool(
   newSegmentSize = HDMV_SEG_INV_POOL_DEFAULT_SEG_SIZE << pool->nbUsedElemSegs;
 
   if (NULL == pool->elemSegs[pool->nbUsedElemSegs]) {
-    if (lb_mul_overflow(newSegmentSize, pool->elemSize))
+    if (lb_mul_overflow_size_t(newSegmentSize, pool->elemSize))
       LIBBLU_HDMV_QUANT_ERROR_RETURN("Inventory segment size overflow.\n");
 
     /* Use of calloc to avoid wild pointer-dereferences when cleaning mem. */
@@ -123,32 +122,27 @@ static int increaseAllocationHdmvSegmentsInventoryPool(
 
 /* ### HDMV Segments Inventory : ########################################### */
 
-HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
-  void
+void initHdmvSegmentsInventory(
+  HdmvSegmentsInventory * dst
 )
 {
-  HdmvSegmentsInventoryPtr inv;
-
-  inv = (HdmvSegmentsInventoryPtr) malloc(sizeof(HdmvSegmentsInventory));
-  if (NULL == inv)
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-  *inv = (HdmvSegmentsInventory) {0};
+  HdmvSegmentsInventory inv = {0};
 
 #define INIT_POOL(d, s)  initHdmvSegmentsInventoryPool(d, s)
-  INIT_POOL(&inv->sequences, sizeof(HdmvSequence));
-  INIT_POOL(&inv->segments, sizeof(HdmvSegment));
-  INIT_POOL(&inv->segments, sizeof(HdmvSegment));
-  INIT_POOL(&inv->pages, sizeof(HdmvPageParameters));
-  INIT_POOL(&inv->windows, sizeof(HdmvWindowInfoParameters));
-  INIT_POOL(&inv->effects, sizeof(HdmvEffectInfoParameters));
-  INIT_POOL(&inv->compo_obj, sizeof(HdmvCompositionObjectParameters));
-  INIT_POOL(&inv->bogs, sizeof(HdmvButtonOverlapGroupParameters));
-  INIT_POOL(&inv->buttons, sizeof(HdmvButtonParam));
-  INIT_POOL(&inv->commands, sizeof(HdmvNavigationCommand));
-  INIT_POOL(&inv->pal_entries, sizeof(HdmvPaletteEntryParameters));
+  INIT_POOL(&inv.sequences, sizeof(HdmvSequence));
+  INIT_POOL(&inv.segments, sizeof(HdmvSegment));
+  INIT_POOL(&inv.segments, sizeof(HdmvSegment));
+  INIT_POOL(&inv.pages, sizeof(HdmvPageParameters));
+  INIT_POOL(&inv.windows, sizeof(HdmvWindowInfoParameters));
+  INIT_POOL(&inv.effects, sizeof(HdmvEffectInfoParameters));
+  INIT_POOL(&inv.compo_obj, sizeof(HdmvCOParameters));
+  INIT_POOL(&inv.bogs, sizeof(HdmvButtonOverlapGroupParameters));
+  INIT_POOL(&inv.buttons, sizeof(HdmvButtonParam));
+  INIT_POOL(&inv.commands, sizeof(HdmvNavigationCommand));
+  INIT_POOL(&inv.pal_entries, sizeof(HdmvPaletteEntryParameters));
 #undef INIT_POOL
 
-  return inv;
+  *dst = inv;
 }
 
 /* ###### Inventory content fetching functions : ########################### */
@@ -172,7 +166,7 @@ HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
   } while (0)
 
 HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvSequencePtr seq;
@@ -186,7 +180,7 @@ HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
 }
 
 HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvSegmentPtr seg;
@@ -200,7 +194,7 @@ HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
 }
 
 HdmvPageParameters * getHdmvPageParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvPageParameters * page;
@@ -214,7 +208,7 @@ HdmvPageParameters * getHdmvPageParamHdmvSegmentsInventory(
 }
 
 HdmvWindowInfoParameters * getHdmvWinInfoParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvWindowInfoParameters * win;
@@ -228,7 +222,7 @@ HdmvWindowInfoParameters * getHdmvWinInfoParamHdmvSegmentsInventory(
 }
 
 HdmvEffectInfoParameters * getHdmvEffInfoParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvEffectInfoParameters * eff;
@@ -241,13 +235,13 @@ HdmvEffectInfoParameters * getHdmvEffInfoParamHdmvSegmentsInventory(
   return eff;
 }
 
-HdmvCompositionObjectParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+HdmvCOParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
+  HdmvSegmentsInventory * inv
 )
 {
-  HdmvCompositionObjectParameters * compo;
+  HdmvCOParameters * compo;
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(compo, HdmvCompositionObjectParameters *, &inv->compo_obj);
+  GET_HDMV_SEGMENTS_INVENTORY_POOL(compo, HdmvCOParameters *, &inv->compo_obj);
   if (NULL == compo)
     return NULL;
   initHdmvCompositionObjectParameters(compo);
@@ -256,7 +250,7 @@ HdmvCompositionObjectParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
 }
 
 HdmvButtonOverlapGroupParameters * getHdmvBOGParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvButtonOverlapGroupParameters * bog;
@@ -270,7 +264,7 @@ HdmvButtonOverlapGroupParameters * getHdmvBOGParamHdmvSegmentsInventory(
 }
 
 HdmvButtonParam * getHdmvBtnParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvButtonParam * btn;
@@ -284,7 +278,7 @@ HdmvButtonParam * getHdmvBtnParamHdmvSegmentsInventory(
 }
 
 HdmvNavigationCommand * getHdmvNaviComHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvNavigationCommand * com;
@@ -298,7 +292,7 @@ HdmvNavigationCommand * getHdmvNaviComHdmvSegmentsInventory(
 }
 
 HdmvPaletteEntryParameters * getHdmvPalEntryParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
   HdmvPaletteEntryParameters * entry;

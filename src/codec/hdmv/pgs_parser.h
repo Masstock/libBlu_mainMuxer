@@ -21,9 +21,9 @@
 #include "common/hdmv_context.h"
 #include "common/hdmv_parser.h"
 
-bool nextUint8IsPgsSegmentType(
-  BitstreamReaderPtr pgsInput
-);
+#if !defined(DISABLE_IGS_COMPILER)
+#  include "pgs_ass_generator/pgs_generator.h"
+#endif
 
 int analyzePgs(
   LibbluESParsingSettings * settings

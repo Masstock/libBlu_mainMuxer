@@ -14,14 +14,17 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 
+#include "igs_debug.h"
+
 #include "../../../util.h"
 #include "../../../util/xmlParsing.h"
 #include "../common/hdmv_common.h"
 
+#include "../common/hdmv_bitmap_indexer.h"
 #include "../common/hdmv_error.h"
-#include "../common/hdmv_palette_def.h"
+#include "../common/hdmv_object.h"
+#include "../common/hdmv_palette.h"
 #include "../common/hdmv_pictures_common.h"
-#include "../common/hdmv_pictures_indexer.h"
 
 #define HDMV_IGS_COMPL_OUTPUT_EXT ".ies"
 #define HDMV_IGS_COMPL_OUTPUT_FMT  "%" PRI_LBCS HDMV_IGS_COMPL_OUTPUT_EXT
@@ -42,65 +45,72 @@ typedef struct {
 typedef struct {
   HdmvVDParameters video_descriptor;
   HdmvCDParameters composition_descriptor;
-  HdmvICParameters interactiveComposition;
+  HdmvICParameters interactive_composition;
 
-  /* Hash table (key: picName, data: HdmvPicturePtr) */
-  HdmvPicturesIndexerPtr refPics;
+  /* Hash table (key: lbc * reference picture name, data: HdmvBitmap) */
+  HdmvPicturesIndexer ref_pics_indexer;
+  HdmvBitmap * ref_pics_bitmaps;
+  unsigned nb_allocated_ref_pics_bitmaps;
+  unsigned nb_used_ref_pics_bitmaps;
 
-  HdmvPicturePtr * objPics;
-  unsigned nbAllocatedObjPics;
-  unsigned nbUsedObjPics;
+  HdmvBitmap * object_bitmaps;
+  unsigned nb_allocated_object_bitmaps;
+  unsigned nb_used_object_bitmaps;
 
-  HdmvPaletteDefinitionPtr * pals;
-  unsigned nbAllocatedPals;
-  unsigned nbUsedPals;
-} IgsCompilerComposition, *IgsCompilerCompositionPtr;
+  HdmvPalette * palettes;
+  unsigned nb_allocated_palettes;
+  unsigned nb_used_palettes;
+
+  HdmvObject * objects;
+  unsigned nb_objects;
+} IgsCompilerComposition;
 
 /* ###### Creation / Destruction : ######################################### */
 
-IgsCompilerCompositionPtr createIgsCompilerComposition(
-  void
-);
-
-void destroyIgsCompilerComposition(
-  IgsCompilerCompositionPtr compo
-);
+static inline void cleanIgsCompilerComposition(
+  IgsCompilerComposition compo
+)
+{
+  cleanHdmvPicturesIndexer(compo.ref_pics_indexer);
+  for (unsigned i = 0; i < compo.nb_used_object_bitmaps; i++)
+    cleanHdmvBitmap(compo.object_bitmaps[i]);
+  free(compo.object_bitmaps);
+  free(compo.palettes);
+  for (unsigned i = 0; i < compo.nb_objects; i++)
+    cleanHdmvObject(compo.objects[i]);
+  free(compo.objects);
+}
 
 /* ###### Add Entry : ###################################################### */
 
-static inline int addRefPictureIgsCompilerComposition(
-  IgsCompilerCompositionPtr dst,
-  HdmvPicturePtr pic,
+int addRefPictureIgsCompilerComposition(
+  IgsCompilerComposition * dst,
+  HdmvBitmap bitmap,
   const lbc * name
-)
-{
-  return addHdmvPicturesIndexer(dst->refPics, pic, name);
-}
-
-#define HDMV_COMPL_COMPO_DEFAULT_NB_OBJ  8
-
-int addObjectIgsCompilerComposition(
-  IgsCompilerCompositionPtr dst,
-  HdmvPicturePtr pic,
-  unsigned * id
 );
 
-#define HDMV_COMPL_COMPO_DEFAULT_NB_PAL  8
+int addObjectIgsCompilerComposition(
+  IgsCompilerComposition * dst,
+  HdmvBitmap pic,
+  unsigned * idx_ret
+);
 
 int addPaletteIgsCompilerComposition(
-  IgsCompilerCompositionPtr dst,
-  HdmvPaletteDefinitionPtr pal,
-  unsigned * id
+  IgsCompilerComposition * dst,
+  HdmvPalette * pal,
+  uint8_t * palette_id_ret
 );
 
 /* ###### Get Entry : ###################################################### */
 
-static inline HdmvPicturePtr getRefPictureIgsCompilerComposition(
-  IgsCompilerCompositionPtr compo,
+static inline const HdmvBitmap * getRefPictureIgsCompilerComposition(
+  IgsCompilerComposition * compo,
   const lbc * name
 )
 {
-  return getHdmvPicturesIndexer(compo->refPics, name);
+  return getHdmvPicturesIndexer(
+    &compo->ref_pics_indexer, name
+  );
 }
 
 /* ######################################################################### */
@@ -108,12 +118,11 @@ static inline HdmvPicturePtr getRefPictureIgsCompilerComposition(
 #define HDMV_MAX_NB_ICS_COMPOS  1   /* TODO: Support more compositions */
 
 typedef struct {
-  HdmvVDParameters commonVideoDescriptor;
-  uint64_t commonUopMask;
-  unsigned curCompoNumber;
+  HdmvVDParameters common_video_desc;
+  uint64_t common_uop_mask;
 
-  IgsCompilerCompositionPtr compositions[HDMV_MAX_NB_ICS_COMPOS];
-  unsigned nbCompo;
+  IgsCompilerComposition compositions[HDMV_MAX_NB_ICS_COMPOS];
+  unsigned nb_compositions;
 } IgsCompilerData;
 
 typedef struct IgsCompilerSegment {

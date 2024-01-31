@@ -6,48 +6,40 @@
 
 #include "hdmv_palette_gen.h"
 
-extern int creePDFCode(char *dot, char *pdf, HdmvQuantHexTreeNodePtr tree);
-
 int buildPaletteListHdmvPalette(
-  HdmvPaletteDefinitionPtr dst,
-  const HdmvPicturesListPtr list,
-  size_t targetedNbColors,
-  HdmvQuantHexTreeNodesInventoryPtr inv
+  HdmvPalette * dst,
+  HdmvBitmapList * list,
+  unsigned target_nb_colors,
+  HdmvQuantHexTreeNodesInventory * inv_ref
 )
 {
-  HdmvPicturePtr pic;
-  unsigned i;
-  bool localInv;
+  HdmvQuantHexTreeNodesInventory local_inv = {0};
+  bool use_local_inv = false;
 
-  HdmvQuantHexTreeNodePtr tree;
-
-  assert(NULL != list);
-
-  if (NULL == inv) {
-    if (NULL == (inv = createHdmvQuantHexTreeNodesInventory()))
-      return -1;
-    localInv = true;
+  if (NULL == inv_ref) {
+    inv_ref = &local_inv;
+    use_local_inv = true;
   }
-  else
-    localInv = false;
 
-  assert(NULL != inv);
+  HdmvQuantHexTreeNodePtr tree = NULL;
 
-  tree = NULL, i = 0;
-  while (NULL != (pic = iterateHdmvPicturesList(list, &i))) {
-    if (continueHdmvQuantizationHexatree(&tree, inv, pic, targetedNbColors, NULL) < 0)
+  unsigned i = 0;
+  HdmvBitmap bitmap;
+  unsigned cur_nb_colors = 0u;
+  while (iterateHdmvBitmapList(list, &bitmap, &i)) {
+    if (performHdmvQuantizationHexatree(&tree, inv_ref, bitmap, target_nb_colors, &cur_nb_colors) < 0)
       goto free_return;
   }
 
-  if (parseToPaletteHdmvQuantHexTreeNode(tree, dst) < 0)
+  if (parseToPaletteHdmvQuantHexTreeNode(dst, tree) < 0)
     goto free_return;
 
-  if (localInv)
-    destroyHdmvQuantHexTreeNodesInventory(inv);
+  if (use_local_inv)
+    cleanHdmvQuantHexTreeNodesInventory(local_inv);
   return 0;
 
 free_return:
-  if (localInv)
-    destroyHdmvQuantHexTreeNodesInventory(inv);
+  if (use_local_inv)
+    cleanHdmvQuantHexTreeNodesInventory(local_inv);
   return -1;
 }

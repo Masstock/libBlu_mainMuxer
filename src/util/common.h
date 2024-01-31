@@ -325,17 +325,31 @@ static inline int8_t lb_conv_signed8(
 }
 #endif
 
-static inline unsigned lb_ceil_log2(
-  unsigned value
+static inline uint64_t lb_ceil_pow2_64(
+  uint64_t value
 )
 {
-  unsigned mask, ret;
+  value--;
+  value |= value >> 1;
+  value |= value >> 2;
+  value |= value >> 4;
+  value |= value >> 8;
+  value |= value >> 16;
+  value |= value >> 32;
+  return value + 1;
+}
 
-  ret = 0;
-  for (mask = value - 1; 0 < mask; mask >>= 1)
-    ret++;
-
-  return ret;
+static inline uint32_t lb_ceil_pow2_32(
+  uint32_t value
+)
+{
+  value--;
+  value |= value >> 1;
+  value |= value >> 2;
+  value |= value >> 4;
+  value |= value >> 8;
+  value |= value >> 16;
+  return value + 1;
 }
 
 /** \~english
@@ -373,7 +387,7 @@ static inline unsigned lb_fast_log2_32(
  * \param right
  * \return int Non-zero if overflow occurs, zero otherwise if product is safe.
  */
-static inline int lb_mul_overflow(
+static inline int lb_mul_overflow_size_t(
   size_t left,
   size_t right
 )
@@ -397,6 +411,14 @@ static inline int lb_uadd_overflow(
 )
 {
   return UINT_MAX - left < right;
+}
+
+static inline int lb_u32add_overflow(
+  uint32_t left,
+  uint32_t right
+)
+{
+  return UINT32_MAX - left < right;
 }
 
 static inline bool lb_data_equal(

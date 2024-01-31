@@ -68,18 +68,35 @@
 /* Inspired from ffmpeg/linux kernel */
 #  define GCC_VERSION_AT_LEAST(x,y) (__GNUC__ > (x) || __GNUC__ == (x) && __GNUC_MINOR__ >= (y))
 #  define GCC_VERSION_AT_MOST(x,y)  (__GNUC__ < (x) || __GNUC__ == (x) && __GNUC_MINOR__ <= (y))
+#else
+#  define GCC_VERSION_AT_LEAST(x,y)  0
+#  define GCC_VERSION_AT_MOST(x,y)   0
+#endif
 
-#  if GCC_VERSION_AT_LEAST(2,96)
-#    define likely(x)  __builtin_expect((x) != 0, 1)
-#    define unlikely(x)  __builtin_expect((x) != 0, 0)
-#  else
-#    define likely(x)  (x)
-#    define unlikely(x)  (x)
-#  endif
+#if GCC_VERSION_AT_LEAST(2,96)
+#  define likely(x)  __builtin_expect((x) != 0, 1)
+#  define unlikely(x)  __builtin_expect((x) != 0, 0)
 #else
 #  define likely(x)  (x)
 #  define unlikely(x)  (x)
 #endif
+
+/* https://stackoverflow.com/a/3385694 */
+#if defined(__GNUC__)
+#  define _lb_static_assert___(x, line_str)                                   \
+  __attribute__((unused))                                                     \
+  typedef char static_assertion_##line_str[(!!(x))*2-1]
+#else
+#  define _lb_static_assert___(x, line_str)                                   \
+  typedef char static_assertion_##line_str[(!!(x))*2-1]
+#endif
+
+#define _lb_static_assert__(x, line_str)                                      \
+  _lb_static_assert___(x, at_line_##line_str)
+#define _lb_static_assert_(x, line)                                           \
+  _lb_static_assert__(x, line)
+#define lb_static_assert(x)                                                   \
+  _lb_static_assert_(x, __LINE__)
 
 /* Debugging macros: */
 #define TOC()  fprintf(stderr, "TOC\n");
@@ -324,6 +341,8 @@
 
 #define DIV_ROUND(num, div)  ((((num) + (div)) >> 1) / (div))
 
+#define DIV(num, div)  ((num) / (div))
+
 /** \~english
  * \brief Shift right and round up.
  */
@@ -416,12 +435,8 @@
   fwrite(src, len, 1, fd)
 
 #define GROW_ALLOCATION(old, def)                                             \
-  (                                                                           \
-    ((old) < def) ?                                                           \
-      def                                                                     \
-    :                                                                         \
-      (old) << 1                                                              \
-  )
+  (((old) < (def)) ? (def) : (old) << 1)
+
 
 /** \~english
  * \brief Transform a function return value from a boolean convention to

@@ -21,7 +21,7 @@ static struct {
 
   PbrFileHandlerEntry * entries;
   unsigned nb_alloc_entries;
-  unsigned nb_used_entries;
+  unsigned nb_entries;
   unsigned last_accessed_entry;
 } dtspbr_handle;
 
@@ -191,12 +191,12 @@ static int _parsePbrFile(
         "Expect a line in format: \"XX:XX:XX:XX,XXXX\".\n"
       );
 
-    if (dtspbr_handle.nb_alloc_entries <= dtspbr_handle.nb_used_entries) {
+    if (dtspbr_handle.nb_alloc_entries <= dtspbr_handle.nb_entries) {
       unsigned new_size = GROW_ALLOCATION(
         dtspbr_handle.nb_alloc_entries,
         DTS_PBR_FILE_DEFAULT_NB_ENTRIES
       );
-      if (lb_mul_overflow(new_size, sizeof(PbrFileHandlerEntry)))
+      if (lb_mul_overflow_size_t(new_size, sizeof(PbrFileHandlerEntry)))
         LIBBLU_DTS_PBR_ERROR_RETURN("Too many entries, overflow.\n");
 
       PbrFileHandlerEntry * new_arr = (PbrFileHandlerEntry *) realloc(
@@ -216,18 +216,18 @@ static int _parsePbrFile(
       sample_rate
     );
 
-    dtspbr_handle.entries[dtspbr_handle.nb_used_entries++] = (PbrFileHandlerEntry) {
+    dtspbr_handle.entries[dtspbr_handle.nb_entries++] = (PbrFileHandlerEntry) {
       .timestamp  = timestamp,
       .frame_size = frame_size
     };
 
-    if (1 == dtspbr_handle.nb_used_entries) {
+    if (1 == dtspbr_handle.nb_entries) {
       if (0 != dtspbr_handle.entries[0].timestamp)
         LIBBLU_DTS_PBR_ERROR_FRETURN("PBR first entry timestamp must be zero.\n");
     }
 
-    if (2 <= dtspbr_handle.nb_used_entries) {
-      unsigned last_entry = dtspbr_handle.nb_used_entries - 1;
+    if (2 <= dtspbr_handle.nb_entries) {
+      unsigned last_entry = dtspbr_handle.nb_entries - 1;
 
       if (
         dtspbr_handle.entries[last_entry].timestamp
@@ -250,7 +250,7 @@ static int _parsePbrFile(
 
   LIBBLU_DTS_DEBUG_PBRFILE(
     " (%u entries parsed).\n",
-    dtspbr_handle.nb_used_entries
+    dtspbr_handle.nb_entries
   );
   LIBBLU_DTS_DEBUG_PBRFILE(
     "Done (End of DTS PBR Statistics file parsing).\n"
@@ -316,7 +316,7 @@ int getMaxSizePbrFileHandler(
   assert(NULL != frame_size);
 
   unsigned i = dtspbr_handle.last_accessed_entry;
-  for (; i < dtspbr_handle.nb_used_entries; i++) {
+  for (; i < dtspbr_handle.nb_entries; i++) {
     if (timestamp <= dtspbr_handle.entries[i].timestamp) {
       *frame_size = dtspbr_handle.entries[i].frame_size;
       return 0;
@@ -332,7 +332,7 @@ int getAvgSizePbrFileHandler(
 )
 {
   double avg = 0.;
-  for (unsigned i = 0; i < dtspbr_handle.nb_used_entries; i++) {
+  for (unsigned i = 0; i < dtspbr_handle.nb_entries; i++) {
     avg += (((double) dtspbr_handle.entries[i].frame_size) - avg) / (i + 1.);
   }
 

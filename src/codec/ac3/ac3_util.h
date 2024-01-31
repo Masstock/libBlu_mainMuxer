@@ -7,6 +7,7 @@
 #include "../../esms/scriptCreation.h"
 #include "../common/esParsingSettings.h"
 
+#include "ac3_data.h"
 #include "ac3_error.h"
 #include "eac3_util.h"
 #include "mlp_util.h"

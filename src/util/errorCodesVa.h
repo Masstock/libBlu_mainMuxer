@@ -10,8 +10,8 @@
 #define LIBBLU_ERROR_VA(format, ap)                                           \
   LIBBLU_ECHO_VA(LIBBLU_FATAL_ERROR, format, ap)
 
-#define LIBBLU_DEBUG_VA(status, format, ap)                                   \
-  LIBBLU_ECHO_VA(status, format, ap)
+#define LIBBLU_DEBUG_VA(status, name, format, ap)                             \
+  LIBBLU_ECHO_VA(status, "[DEBUG/" name "] ", format, ap)
 
 void echoMessageFdVa(
   FILE * fd,

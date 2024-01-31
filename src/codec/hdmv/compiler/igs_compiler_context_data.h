@@ -5,32 +5,32 @@
 
 #include "igs_compiler_data.h"
 #include "../common/hdmv_timecodes.h"
-#include "../common/hdmv_pictures_io.h"
+#include "../common/hdmv_bitmap_io.h"
 #include "../../../ini/iniData.h"
 
 #define GET_COMP(ctx, id)                         \
-  ((ctx)->data.compositions[id])
+  (&(ctx)->data.compositions[id])
 
 #define CUR_COMP(ctx)                             \
-  GET_COMP(ctx, (ctx)->data.nbCompo-1)
+  GET_COMP(ctx, (ctx)->data.nb_compositions-1)
 
 typedef struct {
   IniFileContextPtr conf;
-  HdmvPictureLibraries imgLibs;
-  XmlCtxPtr xmlCtx;
-  HdmvSegmentsInventoryPtr inv;
+  HdmvPictureLibraries img_io_libs;
+  XmlCtx xml_ctx;
+  HdmvSegmentsInventory inv;
   HdmvTimecodes * timecodes;
 
-  lbc initialWorkingDir[PATH_BUFSIZE];
-  lbc * workingDir;
-  lbc * xmlFilename;
+  lbc initial_working_dir[PATH_BUFSIZE];
+  lbc * cur_working_dir;
+  lbc * xml_filename;
 
   IgsCompilerData data;
   IgsCompilerSegment * seg;
-} IgsCompilerContext, *IgsCompilerContextPtr;
+} IgsCompilerContext;
 
 static inline int addTimecodeIgsCompilerContext(
-  IgsCompilerContextPtr ctx,
+  IgsCompilerContext * ctx,
   uint64_t value
 )
 {

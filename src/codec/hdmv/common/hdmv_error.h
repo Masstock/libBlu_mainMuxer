@@ -30,6 +30,9 @@
 #define LIBBLU_HDMV_FAIL_RETURN(format, ...)                                  \
   LIBBLU_FAIL_RETURN(LIBBLU_EXPLODE_COMPLIANCE, format, ##__VA_ARGS__)
 
+#define LIBBLU_HDMV_FAIL_RETURN(format, ...)                                  \
+  LIBBLU_FAIL_RETURN(LIBBLU_EXPLODE_COMPLIANCE, format, ##__VA_ARGS__)
+
 #define LIBBLU_HDMV_COM_DEBUG(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_HDMV_COMMON,                                                 \
@@ -152,88 +155,6 @@
     ##__VA_ARGS__                                                             \
   )
 
-/* ### IGS Compiler : ###################################################### */
-
-#define LIBBLU_HDMV_IGS_COMPL_NAME  LIBBLU_HDMV_KEYWORD "/IGS Compiler"
-#define LIBBLU_HDMV_IGS_COMPL_PREFIX LIBBLU_HDMV_IGS_COMPL_NAME ": "
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR(format, ...)                              \
-  LIBBLU_ERROR(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN(format, ...)                       \
-  LIBBLU_ERROR_RETURN(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR_NRETURN(format, ...)                      \
-  LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN(format, ...)                      \
-  LIBBLU_ERROR_FRETURN(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR_GRETURN(lbl, format, ...)                 \
-  LIBBLU_ERROR_GRETURN(lbl, LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR_BRETURN(format, ...)                      \
-  LIBBLU_ERROR_BRETURN(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_INFO(format, ...)                               \
-  LIBBLU_INFO(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_DEBUG(format, ...)                              \
-  LIBBLU_DEBUG(                                                               \
-    LIBBLU_DEBUG_IGS_COMPL_OPERATIONS,                                        \
-    LIBBLU_HDMV_IGS_COMPL_NAME,                                               \
-    format,                                                                   \
-    ##__VA_ARGS__                                                             \
-  )
-
-#define LIBBLU_HDMV_IGS_COMPL_ERROR_VA(format, ap)                            \
-  LIBBLU_ERROR_VA(LIBBLU_HDMV_IGS_COMPL_PREFIX format, ap)
-
-/* ### IGS Compiler XML : ######################### ######################## */
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_NAME  LIBBLU_HDMV_KEYWORD "/IGS Compiler XML"
-#define LIBBLU_HDMV_IGS_COMPL_XML_PREFIX LIBBLU_HDMV_IGS_COMPL_XML_NAME ": "
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_ERROR(format, ...)                          \
-  LIBBLU_ERROR(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(format, ...)                   \
-  LIBBLU_ERROR_RETURN(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_ERROR_NRETURN(format, ...)                  \
-  LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(format, ...)                  \
-  LIBBLU_ERROR_FRETURN(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_ERROR_GRETURN(lbl, format, ...)             \
-  LIBBLU_ERROR_GRETURN(lbl, LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_ERROR_BRETURN(format, ...)                  \
-  LIBBLU_ERROR_BRETURN(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_WARNING(format, ...)                        \
-  LIBBLU_WARNING(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_INFO(format, ...)                           \
-  LIBBLU_INFO(LIBBLU_HDMV_IGS_COMPL_XML_PREFIX format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_DEBUG(format, ...)                          \
-  LIBBLU_DEBUG(                                                               \
-    LIBBLU_DEBUG_IGS_COMPL_XML_OPERATIONS,                                    \
-    LIBBLU_HDMV_IGS_COMPL_XML_NAME,                                           \
-    format,                                                                   \
-    ##__VA_ARGS__                                                             \
-  )
-
-#define LIBBLU_HDMV_IGS_COMPL_XML_PARSING_DEBUG(format, ...)                  \
-  LIBBLU_DEBUG(                                                               \
-    LIBBLU_DEBUG_IGS_COMPL_XML_PARSING,                                       \
-    LIBBLU_HDMV_IGS_COMPL_XML_NAME,                                           \
-    format,                                                                   \
-    ##__VA_ARGS__                                                             \
-  )
-
 /* ### HDMV Segments Building : ############################################ */
 
 #define LIBBLU_HDMV_SEGBUILD_NAME  LIBBLU_HDMV_KEYWORD "/Builder"
@@ -312,6 +233,9 @@
 
 #define LIBBLU_HDMV_PAL_ERROR_NRETURN(format, ...)                            \
   LIBBLU_ERROR_NRETURN(LIBBLU_HDMV_PAL_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_PAL_ERROR_EXIT(format, ...)                               \
+  LIBBLU_ERROR_EXIT(LIBBLU_HDMV_PAL_PREFIX format, ##__VA_ARGS__)
 
 #define LIBBLU_HDMV_PAL_DEBUG(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \

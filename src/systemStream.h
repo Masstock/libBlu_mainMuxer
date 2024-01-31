@@ -9,7 +9,7 @@
  * \xrefitem references "References" "References list"
  *  [1] Rec. ITU-T H.222 (03/2017);\n
  *  [2] Rec. ITU-T H.264 (08/2021);\n
- *  [3] AC-3/E-AC3 - ATSC Standard A52-2018;\n
+ *  [3] AC-3/E-AC-3 - ATSC Standard A52-2018;\n
  *  [4] DTLA, Digital Transmission Content Protection Specitification,
  *      Volume 1 (Informational Version), Revision 1.71;\n
  *  [5] ETSI TS 300 468 v1.16.1 (08/2019).\n

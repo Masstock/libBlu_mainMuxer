@@ -818,7 +818,7 @@ static int _addBufferBufModelBuffersList(
       list->nbAllocatedBuffers
     );
 
-    if (lb_mul_overflow(newLength, sizeof(BufModelBufferPtr)))
+    if (lb_mul_overflow_size_t(newLength, sizeof(BufModelBufferPtr)))
       LIBBLU_ERROR_RETURN(
         "Buffers list array length value overflow, array is too big.\n"
       );
@@ -1328,7 +1328,7 @@ static int _addNodeToBufModelFilter(
       filter->nbAllocatedNodes
     );
 
-    if (lb_mul_overflow(newLength, sizeof(BufModelFilterLbl)))
+    if (lb_mul_overflow_size_t(newLength, sizeof(BufModelFilterLbl)))
       LIBBLU_ERROR_RETURN(
         "Buffering model filter output nodes overflow. "
         "Too many defined output.\n"

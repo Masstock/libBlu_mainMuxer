@@ -1,12 +1,21 @@
+/** \~english
+ * \file hdmv_quantizer.h
+ *
+ * \author Massimo "Masstock" EYNARD
+ * \version 0.5
+ *
+ * \brief TODO
+ *
+ * \todo Fix algorithm
+ */
 
-
-#ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__QUANTIZER_H__
-#define __LIBBLU_MUXER__CODECS__HDMV__COMMON__QUANTIZER_H__
+#ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__BITMAP_QUANTIZER_H__
+#define __LIBBLU_MUXER__CODECS__HDMV__COMMON__BITMAP_QUANTIZER_H__
 
 #include "../../../util.h"
 
 #include "hdmv_error.h"
-#include "hdmv_palette_def.h"
+#include "hdmv_palette.h"
 #include "hdmv_pictures_common.h"
 #include "hdmv_color.h"
 
@@ -20,6 +29,7 @@
  */
 
 typedef struct {
+  // TODO: Switch to Lab color space
   uint64_t r;     /**< Red color channel.                                    */
   uint64_t g;     /**< Green color channel.                                  */
   uint64_t b;     /**< Blue color channel.                                   */
@@ -82,14 +92,13 @@ static inline uint32_t genValueHdmvRGBAData(
   HdmvRGBAData data
 )
 {
-  uint32_t rgba;
-
   assert(0 < data.rep);
 
-  rgba  = CHANNEL_VALUE(data.r / data.rep, C_R);
-  rgba |= CHANNEL_VALUE(data.g / data.rep, C_G);
-  rgba |= CHANNEL_VALUE(data.b / data.rep, C_B);
-  rgba |= CHANNEL_VALUE(data.a / data.rep, C_A);
+  uint32_t rgba = 0x00;
+  rgba |= CHANNEL_VALUE(DIV(data.r, data.rep), C_R);
+  rgba |= CHANNEL_VALUE(DIV(data.g, data.rep), C_G);
+  rgba |= CHANNEL_VALUE(DIV(data.b, data.rep), C_B);
+  rgba |= CHANNEL_VALUE(DIV(data.a, data.rep), C_A);
 
   return rgba;
 }
@@ -97,13 +106,13 @@ static inline uint32_t genValueHdmvRGBAData(
 /* ### HDMV Quantizer Hexatree node : ###################################### */
 
 typedef union HdmvQuantHexTreeNode {
-  union HdmvQuantHexTreeNode * nextUnusedNode; /* Only used in inventory. */
+  union HdmvQuantHexTreeNode * next_unused_node; /* Only used in inventory. */
 
   struct {
-    int leafDist; /* If == 0, leaf, else node */
+    int leaf_dist; /* If == 0, leaf, else node */
 
     HdmvRGBAData data;
-    union HdmvQuantHexTreeNode * childNodes[16];
+    union HdmvQuantHexTreeNode * child_nodes[16];
   };
 } HdmvQuantHexTreeNode, *HdmvQuantHexTreeNodePtr;
 
@@ -115,28 +124,28 @@ static inline void initHdmvQuantHexTreeNode(
 )
 {
   *dst = (HdmvQuantHexTreeNode) {
-    .leafDist = (!isLeaf) /* If leaf, 0 otherwise 1. */
+    .leaf_dist = (!isLeaf) /* If leaf, 0 otherwise 1. */
   };
   setHdmvRGBAData(&dst->data, rgba, rep);
 }
 
 static inline void getHdmvQuantHexTreeNode(
   HdmvQuantHexTreeNodePtr node,
-  int * leafDist,
+  int * leaf_dist,
   unsigned * rep
 )
 {
   assert(NULL != node);
-  assert(NULL != leafDist);
+  assert(NULL != leaf_dist);
   assert(NULL != rep);
 
-  *leafDist = node->leafDist;
+  *leaf_dist = node->leaf_dist;
   *rep = node->data.rep;
 }
 
 int parseToPaletteHdmvQuantHexTreeNode(
-  HdmvQuantHexTreeNodePtr tree,
-  HdmvPaletteDefinitionPtr dst
+  HdmvPalette * dst,
+  HdmvQuantHexTreeNodePtr tree
 );
 
 /* ### HDMV Quantizer Hexatree nodes Inventory : ########################### */
@@ -145,73 +154,45 @@ int parseToPaletteHdmvQuantHexTreeNode(
 #define HDMV_QUANT_HEXTREE_DEFAULT_NODES_SEG_SIZE  8
 
 typedef struct {
-  HdmvQuantHexTreeNode ** nodesSegments;
-  size_t allocatedNodesSegments;
-  size_t usedNodesSegments;
-  size_t remainingNodes;
+  HdmvQuantHexTreeNode ** node_segments;
+  size_t nb_alloc_node_seg;
+  size_t nb_used_node_seg;
+  size_t nb_rem_nodes;
 
-  HdmvQuantHexTreeNodePtr unusedNodesList;
-} HdmvQuantHexTreeNodesInventory, *HdmvQuantHexTreeNodesInventoryPtr;
+  HdmvQuantHexTreeNodePtr unused_nodes_list;
+} HdmvQuantHexTreeNodesInventory;
 
-HdmvQuantHexTreeNodesInventoryPtr createHdmvQuantHexTreeNodesInventory(
-  void
-);
-
-static inline void destroyHdmvQuantHexTreeNodesInventory(
-  HdmvQuantHexTreeNodesInventoryPtr inv
+static inline void cleanHdmvQuantHexTreeNodesInventory(
+  HdmvQuantHexTreeNodesInventory inv
 )
 {
-  size_t i;
-
-  if (NULL == inv)
-    return;
-
-  for (i = 0; i < inv->usedNodesSegments; i++)
-    free(inv->nodesSegments[i]);
-  free(inv->nodesSegments);
-  /* DO NOT free inv->unusedNodesList */
-  free(inv);
-}
-
-HdmvQuantHexTreeNodePtr getNodeHdmvQuantHexTreeNodesInventory(
-  HdmvQuantHexTreeNodesInventoryPtr inv
-);
-
-static inline void putBackNodeHdmvQuantHexTreeNodesInventory(
-  HdmvQuantHexTreeNodesInventoryPtr inv,
-  HdmvQuantHexTreeNodePtr node
-)
-{
-  assert(NULL != inv);
-
-  if (NULL == node)
-    return;
-
-  node->nextUnusedNode = inv->unusedNodesList;
-  inv->unusedNodesList = node;
+  for (size_t i = 0; i < inv.nb_used_node_seg; i++)
+    free(inv.node_segments[i]);
+  free(inv.node_segments);
+  // DO NOT free inv.unused_nodes_list
 }
 
 /* ######################################################################### */
 
-int continueHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodePtr * tree,
-  HdmvQuantHexTreeNodesInventoryPtr inv,
-  HdmvPicturePtr pic,
-  size_t targetedNbColors,
-  size_t * outputNbColors
+int performHdmvQuantizationHexatree(
+  HdmvQuantHexTreeNodePtr * tree_ref,
+  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvBitmap bitmap,
+  unsigned target_nb_colors,
+  unsigned * out_nb_colors_ref
 );
 
 static inline int generateHdmvQuantizationHexatree(
   HdmvQuantHexTreeNodePtr * tree,
-  HdmvQuantHexTreeNodesInventoryPtr inv,
-  HdmvPicturePtr pic,
-  size_t targetedNbColors,
-  size_t * outputNbColors
+  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvBitmap bitmap,
+  unsigned target_nb_colors,
+  unsigned * out_nb_colors_ret
 )
 {
   *tree = NULL;
-  return continueHdmvQuantizationHexatree(
-    tree, inv, pic, targetedNbColors, outputNbColors
+  return performHdmvQuantizationHexatree(
+    tree, inv, bitmap, target_nb_colors, out_nb_colors_ret
   );
 }
 

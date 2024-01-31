@@ -93,7 +93,7 @@ static TPHeaderParameters _prepareSysTransportPacketMainHeader(
   bool adapt_field_pres = (rem_size < TP_PAYLOAD_SIZE || pcr_inj_req);
 
   return (TPHeaderParameters) {
-    .payload_unit_start_indicator = is_pl_start,
+    .payload_unit_start_indicator = is_pl_start && (TYPE_NULL != stream->type),
     .pid = stream->pid,
     .adaptation_field_control = (adapt_field_pres << 1) | pl_pres,
     .continuity_counter = (pl_pres) ? stream->packetNb & 0xF : 0

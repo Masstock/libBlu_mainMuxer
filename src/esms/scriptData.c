@@ -123,7 +123,7 @@ int appendEsmsDataBlocks(
       ESMS_DEFAULT_NB_DATA_BLOCKS_ENTRIES
     );
 
-    if (lb_mul_overflow(new_size, sizeof(EsmsDataBlockEntry)))
+    if (lb_mul_overflow_size_t(new_size, sizeof(EsmsDataBlockEntry)))
       LIBBLU_ERROR_RETURN("Data Blocks definitions number overflow.\n");
     size_t alloc_size = new_size * sizeof(EsmsDataBlockEntry);
 

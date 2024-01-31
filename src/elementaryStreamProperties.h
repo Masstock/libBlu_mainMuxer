@@ -173,9 +173,25 @@ HdmvFrameRateCode getHdmvFrameRateCode(
  * \return float If valid, double precision floating point frame-rate value
  * is returned. Otherwise, a negative value is returned.
  */
-double frameRateCodeToDouble(
+static inline double frameRateCodeToDouble(
   HdmvFrameRateCode code
-);
+)
+{
+  static const double frame_rate_values[] = {
+    -1.0, /* < Reserved */
+    24000.0 / 1001.0,
+    24.0,
+    25.0,
+    30000.0 / 1001.0,
+    -1.0, /* < Reserved */
+    50.0,
+    50000.0 / 1001.0
+  };
+
+  if (code < ARRAY_SIZE(frame_rate_values))
+    return frame_rate_values[code];
+  return -1.0;
+}
 
 /** \~english
  * \brief Return the frame-rate value represented by given HDMV code.
@@ -189,6 +205,26 @@ static inline float frameRateCodeToFloat(
 )
 {
   return (float) frameRateCodeToDouble(code);
+}
+
+static inline int64_t frameDur27MHzHdmvFrameRateCode(
+  HdmvFrameRateCode code
+)
+{
+  static const double frame_duration_values[] = {
+    0,                                     // reserved
+    1001ull * MAIN_CLOCK_27MHZ / 24000ull, // 23.976
+    1000ull * MAIN_CLOCK_27MHZ / 24000ull, // 24
+    1000ull * MAIN_CLOCK_27MHZ / 25000ull, // 25
+    1001ull * MAIN_CLOCK_27MHZ / 30000ull, // 29.970
+    0,                                     // reserved
+    1000ull * MAIN_CLOCK_27MHZ / 50000ull, // 50
+    1001ull * MAIN_CLOCK_27MHZ / 60000ull  // 59.940
+  };
+
+  if (code < ARRAY_SIZE(frame_duration_values))
+    return frame_duration_values[code];
+  return 0;
 }
 
 typedef enum {

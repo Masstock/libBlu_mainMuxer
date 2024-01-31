@@ -4,20 +4,7 @@
  * \author Massimo "Masstock" EYNARD
  * \version 0.5
  *
- * \brief Dolby audio (AC3, E-AC3, TrueHD...) bitstreams handling module.
- *
- * \todo Split module in sub-modules to increase readability.
- * \todo E-AC3 Parameters checking and secondary track support.
- * \todo Audio block parsing for extended checking (and Dolby Atmos audio
- * block verifications).
- * \todo Issues with CRC checks.
- *
- * \xrefitem references "References" "References list"
- *  [1] AC-3/E-AC3 - ETSI TS 102 366 V1.4.1;\n
- *  [2] AC-3/E-AC3 - ATSC Standard A52-2018;\n
- *  [3] TrueHD - Dolby TrueHD (MLP) - High-level bitstream description;\n
- *  [4] Object Audio E-AC3 - ETSI TS 103 420 V1.2.1;\n
- *  [5] ffmpeg source code.
+ * \brief Dolby audio (AC-3, E-AC-3, TrueHD...) bitstreams handling module.
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__AC3__PARSER_H__

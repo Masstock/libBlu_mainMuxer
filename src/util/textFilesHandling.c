@@ -227,7 +227,7 @@ static int consumeToken(
     lbc * newToken;
 
     newSize = tokenSize + 1;
-    if (lb_mul_overflow(newSize, sizeof(lbc)))
+    if (lb_mul_overflow_size_t(newSize, sizeof(lbc)))
       LIBBLU_ERROR_RETURN("String token size overflow.\n");
 
     newToken = (lbc *) realloc(handler->token, newSize * sizeof(lbc));

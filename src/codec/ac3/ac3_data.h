@@ -4,7 +4,26 @@
  * \author Massimo "Masstock" EYNARD
  * \version 0.5
  *
- * \brief Dolby audio (AC3, E-AC3, TrueHD...) bitstreams data definitions.
+ * \brief Dolby audio (AC-3, E-AC-3, TrueHD...) bitstreams data definitions.
+ */
+
+/** \~english
+ * \dir ac3
+ *
+ * \brief Dolby audio (AC-3, E-AC-3, TrueHD...) bitstreams handling modules.
+ *
+ * \todo Split AC-3 parsing module in sub-modules to increase readability.
+ * \todo E-AC-3 Parameters checking and secondary track support.
+ * \todo Audio block parsing for extended checking (and Dolby Atmos audio
+ * block verifications).
+ * \todo Issues with some CRC checks.
+ *
+ * \xrefitem references "References" "References list"
+ *  [1] AC-3/E-AC-3 - ETSI TS 102 366 V1.4.1;\n
+ *  [2] AC-3/E-AC-3 - ATSC Standard A52-2018;\n
+ *  [3] TrueHD - Dolby TrueHD (MLP) - High-level bitstream description;\n
+ *  [4] Object Audio E-AC-3 - ETSI TS 103 420 V1.2.1;\n
+ *  [5] ffmpeg source code.
  */
 
 #ifndef __LIBBLU_MUXER__CODECS__AC3__DATA_H__
@@ -630,7 +649,7 @@ typedef struct {
 
 #define AC3_SAMPLES_PER_FRAME  1536
 
-/* ### E-AC3 : ############################################################# */
+/* ### E-AC-3 : ############################################################# */
 
 typedef struct {
   bool atmos;

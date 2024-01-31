@@ -315,14 +315,14 @@ static int setPesPacketsDurationLibbluES(
       prop->nb_ped_sec_per_sec = sample_rate / 512;
       break;
 
-    case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD (+AC3 Core) */
+    case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD (+AC-3 Core) */
       /* Frame duration: 1536 samples & 1/200s */
       assert(0 < sample_rate);
       prop->nb_pes_per_sec = sample_rate / 1536;
       prop->nb_ped_sec_per_sec = 200;
       break;
 
-    case STREAM_CODING_TYPE_EAC3:  /* EAC-3 (+AC3 Core) */
+    case STREAM_CODING_TYPE_EAC3:  /* EAC-3 (+AC-3 Core) */
       /* Frame duration: 1536 samples (2 consecutive frames) */
       assert(0 < sample_rate);
       prop->nb_pes_per_sec = sample_rate / 1536;

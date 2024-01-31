@@ -10,39 +10,13 @@
 
 #include "hdmv_pictures_common.h"
 
+#if 0
+
 /* ### HDMV Picture infos : ################################################ */
-
-static int _checkPictureDimensions(
-  unsigned width,
-  unsigned height
-)
-{
-  bool valid = true;
-
-  if (width < HDMV_PIC_MIN_WIDTH) {
-    LIBBLU_HDMV_PIC_ERROR("Picture width is below 8 px minimum.");
-    valid = false;
-  }
-  if (HDMV_PIC_MAX_WIDTH < width) {
-    LIBBLU_HDMV_PIC_ERROR("Picture width exceed 2048 px limit.");
-    valid = false;
-  }
-
-  if (height < HDMV_PIC_MIN_HEIGHT) {
-    LIBBLU_HDMV_PIC_ERROR("Picture height is below 8 px minimum.");
-    valid = false;
-  }
-  if (HDMV_PIC_MAX_HEIGHT < height) {
-    LIBBLU_HDMV_PIC_ERROR("Picture height exceed 2048 px limit.");
-    valid = false;
-  }
-
-  return (valid) ? 0 : -1;
-}
 
 /* ### HDMV Picture : ###################################################### */
 
-static int allocateRgba(
+static int _allocateRgba(
   uint32_t ** dst,
   size_t size
 )
@@ -52,7 +26,7 @@ static int allocateRgba(
   return 0;
 }
 
-static int allocatePal(
+static int _allocatePal(
   uint8_t ** dst,
   size_t size
 )
@@ -62,15 +36,15 @@ static int allocatePal(
   return 0;
 }
 
-static size_t maxRleSize(
-  unsigned width,
-  unsigned height
+static size_t _maxRleSize(
+  uint16_t width,
+  uint16_t height
 )
 {
-  return (width + 1) * 2 * height;
+  return ((width + 1ull) << 1) * height;
 }
 
-static int allocateRle(
+static int _allocateRle(
   uint8_t ** dst,
   size_t size
 )
@@ -84,19 +58,16 @@ static int allocateRle(
 
 HdmvPicturePtr createHdmvPicture(
   uint8_t version,
-  unsigned width,
-  unsigned height
+  uint16_t width,
+  uint16_t height
 )
 {
-  HdmvPicturePtr pic;
-  size_t picSize, rleSize;
-
   if (_checkPictureDimensions(width, height) < 0)
     return NULL;
-  rleSize = maxRleSize(width, height);
-  picSize = width * height;
+  size_t rle_size = _maxRleSize(width, height);
+  size_t pic_size = width * height;
 
-  pic = (HdmvPicturePtr) malloc(sizeof(HdmvPicture));
+  HdmvPicturePtr pic = (HdmvPicturePtr) malloc(sizeof(HdmvPicture));
   if (NULL == pic)
     LIBBLU_HDMV_PIC_ERROR_NRETURN("Memory allocation error.\n");
 
@@ -105,16 +76,16 @@ HdmvPicturePtr createHdmvPicture(
       .version = version,
       .width = width,
       .height = height,
-      .imgAllocatedSize = picSize,
-      .rleAllocatedSize = rleSize
+      .imgAllocatedSize = pic_size,
+      .rleAllocatedSize = rle_size
     }
   };
 
-  if (allocateRgba(&pic->rgba, picSize) < 0)
+  if (_allocateRgba(&pic->rgba, pic_size) < 0)
     goto free_return;
-  if (allocatePal(&pic->pal, picSize) < 0)
+  if (_allocatePal(&pic->pal, pic_size) < 0)
     goto free_return;
-  if (allocateRle(&pic->rle, rleSize) < 0)
+  if (_allocateRle(&pic->rle, rle_size) < 0)
     goto free_return;
 
   return pic;
@@ -124,43 +95,52 @@ free_return:
   return NULL;
 }
 
+#if 0
+
 HdmvPicturePtr dupHdmvPicture(
   const HdmvPicturePtr pic
 )
 {
-  HdmvPicturePtr dst;
-  uint8_t version;
-  unsigned width, height;
-
-  size_t size;
-  const uint32_t * rgba;
-  const uint8_t * palRle;
-
   /* Create a new picture */
-  getVersionHdmvPicture(pic, &version);
-  getDimensionsHdmvPicture(pic, &width, &height);
-  if (NULL == (dst = createHdmvPicture(version, width, height)))
+  uint8_t version = getVersionHdmvPicture(pic);
+  uint16_t width  = getWidthHdmvPicture(pic);
+  uint16_t height = getHeightHdmvPicture(pic);
+
+  HdmvPicturePtr dst = createHdmvPicture(version, width, height);
+  if (NULL == dst)
     return NULL;
 
   /* Duplicate RGBA data */
-  if (NULL == (rgba = getRgbaHdmvPicture(pic)))
+  const uint32_t * rgba = getRgbaHdmvPicture(pic);
+  if (NULL == rgba)
     goto free_return;
-  if (0 < (size = getRgbaSizeHdmvPicture(pic)))
+
+  size_t size = getRgbaSizeHdmvPicture(pic);
+  if (0 < size)
     memcpy(pic->rgba, rgba, size * sizeof(uint32_t));
+
   dst->updatedRgba = true;
 
   /* Duplicate palette data */
-  if (NULL == (palRle = getPalHdmvPicture(pic)))
+  const uint8_t * pal = getPalHdmvPicture(pic);
+  if (NULL == pal)
     goto free_return;
-  if (0 < (size = getPalSizeHdmvPicture(pic)))
-    memcpy(pic->pal, palRle, size);
+
+  size = getPalSizeHdmvPicture(pic);
+  if (0 < size)
+    memcpy(pic->pal, pal, size);
+
   dst->updatedPal = true;
 
   /* Duplicate RLE data */
-  if (NULL == (palRle = getRleHdmvPicture(pic)))
+  const uint8_t * rle = getRleHdmvPicture(pic);
+  if (NULL == rle)
     goto free_return;
-  if (0 < (size = getRleSizeHdmvPicture(pic)))
-    memcpy(pic->rle, palRle, size);
+
+  size = getRleSizeHdmvPicture(pic);
+  if (0 < size)
+    memcpy(pic->rle, rle, size);
+
   dst->updatedRle = true;
 
   return dst;
@@ -170,24 +150,26 @@ free_return:
   return NULL;
 }
 
+#endif
+
 /* ###### Accessors : ###################################################### */
 
 /* Static definition : */
-static int updatePalHdmvPicture(
+static int _updatePalHdmvPicture(
   HdmvPicturePtr pic,
-  bool fromRgba
+  bool from_rgba
 );
 
 /* ######### RGBA data : ################################################### */
 
-static int updateRgbaHdmvPicture(
+static int _updateRgbaHdmvPicture(
   HdmvPicturePtr pic
 )
 {
   if (pic->updatedRgba)
     return 0;
 
-  if (updatePalHdmvPicture(pic, false) < 0)
+  if (_updatePalHdmvPicture(pic, false) < 0)
     return -1;
 
   /* Render RGBA from palette */
@@ -198,7 +180,7 @@ const uint32_t * getRgbaHdmvPicture(
   HdmvPicturePtr pic
 )
 {
-  if (updateRgbaHdmvPicture(pic) < 0)
+  if (_updateRgbaHdmvPicture(pic) < 0)
     return NULL;
   return pic->rgba;
 }
@@ -217,16 +199,16 @@ uint32_t * getRgbaHandleHdmvPicture(
 /* ######### Palette data : ################################################ */
 
 /* Static definitions : */
-static int updatePalFromRleHdmvPicture(
+static int _updatePalFromRleHdmvPicture(
   HdmvPicturePtr pic
 );
-static int updatePalFromRgbaHdmvPicture(
+static int _updatePalFromRgbaHdmvPicture(
   HdmvPicturePtr pic
 );
 
-static int updatePalHdmvPicture(
+static int _updatePalHdmvPicture(
   HdmvPicturePtr pic,
-  bool fromRgba
+  bool from_rgba
 )
 {
   if (pic->updatedPal)
@@ -234,19 +216,19 @@ static int updatePalHdmvPicture(
 
   LIBBLU_HDMV_PIC_DEBUG("Updating Palette data.\n");
 
-  if (!fromRgba) {
+  if (!from_rgba) {
     /* Update the palette by decompressing the RLE data */
     LIBBLU_HDMV_PIC_DEBUG(" Performing RLE data decompression.\n");
     if (!pic->updatedRle)
       LIBBLU_HDMV_PIC_ERROR_RETURN("Unable to render picture, missing RLE.\n");
-    return updatePalFromRleHdmvPicture(pic);
+    return _updatePalFromRleHdmvPicture(pic);
   }
 
   /* Update the palette by sampling the RGBA data */
   LIBBLU_HDMV_PIC_DEBUG(" Performing color sampling from RGBA data.\n");
   if (!pic->updatedRgba)
     LIBBLU_HDMV_PIC_ERROR_RETURN("Unable to render picture, missing RGBA.\n");
-  return updatePalFromRgbaHdmvPicture(pic);
+  return _updatePalFromRgbaHdmvPicture(pic);
 }
 
 const uint8_t * getPalHdmvPicture(
@@ -255,12 +237,12 @@ const uint8_t * getPalHdmvPicture(
 {
   if (pic->updatedRgba) {
     /* Update from RGBA data */
-    if (updatePalHdmvPicture(pic, true) < 0)
+    if (_updatePalHdmvPicture(pic, true) < 0)
       return NULL;
   }
   else {
     /* Update from RLE data */
-    if (updatePalHdmvPicture(pic, false) < 0)
+    if (_updatePalHdmvPicture(pic, false) < 0)
       return NULL;
   }
 
@@ -280,7 +262,7 @@ uint8_t * getPalHandleHdmvPicture(
 
 /* ############ RLE decompression : ######################################## */
 
-static int updatePalFromRleHdmvPicture(
+static int _updatePalFromRleHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -293,8 +275,8 @@ static int updatePalFromRleHdmvPicture(
 
 #define GET_MAX_DIST  false
 
-static unsigned findNearestColorHdmvPaletteDefinition(
-  const HdmvPaletteDefinitionPtr pal,
+static unsigned findNearestColorHdmvPalette(
+  const HdmvPalette * pal,
   uint32_t rgba,
   IntRgba * quantError
 )
@@ -440,7 +422,7 @@ static void updatePalFromRgbaNoDitheringHdmvPicture(
   for (j = 0; j < pic->infos.height; j++) {
     for (i = 0; i < pic->infos.width; i++) {
       pic->pal[j * pic->infos.width + i] =
-        findNearestColorHdmvPaletteDefinition(
+        findNearestColorHdmvPalette(
           pic->infos.linkedPal,
           pic->rgba[j * pic->infos.width + i],
           NULL
@@ -463,7 +445,7 @@ static void updatePalFromRgbaFloydSteinbergHdmvPicture(
       IntRgba quantError;
 
       pic->pal[j * pic->infos.width + i] =
-        findNearestColorHdmvPaletteDefinition(
+        findNearestColorHdmvPalette(
           pic->infos.linkedPal,
           pic->rgba[j * pic->infos.width + i],
           &quantError
@@ -480,14 +462,14 @@ static void updatePalFromRgbaFloydSteinbergHdmvPicture(
 
   for (j = 0; j < pic->infos.height; j++) {
     pic->pal[j * pic->infos.width] =
-      findNearestColorHdmvPaletteDefinition(
+      findNearestColorHdmvPalette(
         pic->infos.linkedPal,
         pic->rgba[j * pic->infos.width],
         NULL
       )
     ;
     pic->pal[(j + 1) * pic->infos.width - 1] =
-      findNearestColorHdmvPaletteDefinition(
+      findNearestColorHdmvPalette(
         pic->infos.linkedPal,
         pic->rgba[(j + 1) * pic->infos.width - 1],
         NULL
@@ -497,7 +479,7 @@ static void updatePalFromRgbaFloydSteinbergHdmvPicture(
 
   for (i = 0; i < pic->infos.width; i++) {
     pic->pal[pic->infos.width * (pic->infos.height-1) + i] =
-      findNearestColorHdmvPaletteDefinition(
+      findNearestColorHdmvPalette(
         pic->infos.linkedPal,
         pic->rgba[pic->infos.width * (pic->infos.height-1) + i],
         NULL
@@ -506,7 +488,7 @@ static void updatePalFromRgbaFloydSteinbergHdmvPicture(
   }
 }
 
-static int updatePalFromRgbaHdmvPicture(
+static int _updatePalFromRgbaHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -551,7 +533,7 @@ static int updateRleHdmvPicture(
   LIBBLU_HDMV_PIC_DEBUG("Updating RLE data.\n");
 
   /* Update if required palette */
-  if (updatePalHdmvPicture(pic, true) < 0)
+  if (_updatePalHdmvPicture(pic, true) < 0)
     return -1;
 
   /* Perform RLE compression */
@@ -683,8 +665,8 @@ static int performRleCompressionHdmvPicture(
 
 int setPaletteHdmvPicture(
   HdmvPicturePtr pic,
-  HdmvPaletteDefinitionPtr pal,
-  HdmvPictureColorDitheringMethod ditherMeth
+  HdmvPalette * pal,
+  HdmvColorDitheringMethod ditherMeth
 )
 {
   if (pic->infos.linkedPal != pal || pic->infos.ditherMeth != ditherMeth)
@@ -697,37 +679,34 @@ int setPaletteHdmvPicture(
 
 int cropHdmvPicture(
   HdmvPicturePtr pic,
-  unsigned left,
-  unsigned top,
-  unsigned width,
-  unsigned height
+  uint16_t left,
+  uint16_t top,
+  uint16_t width,
+  uint16_t height
 )
 {
-  unsigned picWidth, picHeight;
-  unsigned dstWidth, dstHeight;
-  unsigned i, j;
-
   assert(NULL != pic);
 
   /* Update picture content prior to cropping */
-  if (updateRgbaHdmvPicture(pic) < 0)
+  if (_updateRgbaHdmvPicture(pic) < 0)
     return -1;
 
   /* Compute destination picture dimensions */
-  getDimensionsHdmvPicture(pic, &picWidth, &picHeight);
-  dstWidth  = (0 <  width) ? width  : picWidth - left;
-  dstHeight = (0 < height) ? height : picHeight - top;
+  uint16_t src_width, src_height;
+  getDimensionsHdmvPicture(pic, &src_width, &src_height);
+  uint16_t dst_width  = (0 <  width) ? width  : src_width - left;
+  uint16_t dst_height = (0 < height) ? height : src_height - top;
 
-  if (!left && !top && dstWidth == picWidth && dstHeight == picHeight)
+  if (!left && !top && dst_width == src_width && dst_height == src_height)
     return 0; /* Nothing to do */
 
   if (
-    picWidth < left + dstWidth
-    || picHeight < top + dstHeight
+    src_width < left + dst_width
+    || src_height < top + dst_height
   ) {
     LIBBLU_HDMV_PIC_ERROR_RETURN(
       "Image cropping values are out of dimensions (%ux%u)\n",
-      picWidth, picHeight
+      src_width, src_height
     );
   }
 
@@ -736,16 +715,16 @@ int cropHdmvPicture(
   LIBBLU_HDMV_PIC_DEBUG("Applying windowing to picture:\n");
 
   /* Copy each pixel to destination */
-  for (j = 0; j < dstHeight; j++) {
-    for (i = 0; i < dstWidth; i++) {
-      pic->rgba[j * dstWidth + i] =
-        pic->rgba[(j + top) * picWidth + (i + left)]
+  for (uint16_t j = 0; j < dst_height; j++) {
+    for (uint16_t i = 0; i < dst_width; i++) {
+      pic->rgba[j * dst_width + i] =
+        pic->rgba[(j + top) * src_width + (i + left)]
       ;
     }
   }
 
-  LIBBLU_HDMV_PIC_DEBUG(" Width      = %u px.\n", dstWidth);
-  LIBBLU_HDMV_PIC_DEBUG(" Height     = %u px.\n", dstHeight);
+  LIBBLU_HDMV_PIC_DEBUG(" Width      = %u px.\n", dst_width);
+  LIBBLU_HDMV_PIC_DEBUG(" Height     = %u px.\n", dst_height);
 
   return 0;
 }
@@ -760,22 +739,24 @@ int setSizeHdmvPicture(
 
   if (_checkPictureDimensions(width, height) < 0)
     return -1;
-  rleSize = maxRleSize(width, height);
+  rleSize = _maxRleSize(width, height);
   picSize = width * height;
 
   if (pic->infos.imgAllocatedSize < picSize) {
-    if (allocateRgba(&pic->rgba, picSize) < 0)
+    if (_allocateRgba(&pic->rgba, picSize) < 0)
       return -1;
-    if (allocatePal(&pic->pal, picSize) < 0)
+    if (_allocatePal(&pic->pal, picSize) < 0)
       return -1;
     pic->infos.imgAllocatedSize = picSize;
   }
 
   if (pic->infos.rleAllocatedSize < rleSize) {
-    if (allocateRle(&pic->rle, rleSize) < 0)
+    if (_allocateRle(&pic->rle, rleSize) < 0)
       return -1;
     pic->infos.rleAllocatedSize = rleSize;
   }
 
   return 0;
 }
+
+#endif

@@ -63,10 +63,13 @@ static const LibbluMetaOption options[] = {
   D_(    LBMETA_OPT__HRD_DPB_STATS,     "hrd-dpb-stats", LBMETA_OPTARG_STRING,
     (STREAM_CODING_TYPE_AVC)),
 
-  D_(     LBMETA_OPT__HDMV_INITIAL_TIMESTAMP,        "hdmv-initial-timestamp",
+  D_(  LBMETA_OPT__HDMV_INITIAL_TS, "hdmv-initial-timestamp",
     LBMETA_OPTARG_UINT64, (STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)),
-  D_(LBMETA_OPT__HDMV_FORCE_RETIMING,                   "hdmv-force-retiming",
+  D_(LBMETA_OPT__HDMV_FORCE_RETIMING, "hdmv-force-retiming",
     LBMETA_OPTARG_NO_ARG, (STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)),
+
+  D_(LBMETA_OPT__HDMV_ASS_INPUT,            "ass-input",  LBMETA_OPTARG_NO_ARG,
+    (STREAM_CODING_TYPE_PG)),
 
   D_(             LBMETA_OPT__ESMS,              "esms", LBMETA_OPTARG_STRING,
     (ANY))

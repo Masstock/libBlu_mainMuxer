@@ -8,8 +8,8 @@
 
 #include "hdmv_check.h"
 
-static int _checkAndCollectPDSHdmvEpochState(
-  HdmvEpochState * epoch,
+static int _checkAndCollectPDSHdmvDSState(
+  HdmvDSState * epoch,
   HdmvSequencePtr * dsPdsQueue,
   unsigned dsIdx,
   uint8_t palette_id_ref
@@ -19,7 +19,7 @@ static int _checkAndCollectPDSHdmvEpochState(
   if (0xFF == palette_id_ref) // No palette attached
     return 0;
 
-  HdmvSequencePtr pds = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PDS_IDX);
+  HdmvSequencePtr pds = getSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_PDS_IDX);
   for (; NULL != pds; pds = pds->nextSequence) {
     if (pds->data.pd.palette_descriptor.palette_id == palette_id_ref)
       break;
@@ -38,7 +38,7 @@ static int _checkAndCollectPDSHdmvEpochState(
     return 0;
 
   if (NULL == *dsPdsQueue) {
-    setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PDS_IDX, pds);
+    setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_PDS_IDX, pds);
   }
   else {
     if (*dsPdsQueue == pds) // Palette is already referenced (at list queue).
@@ -51,7 +51,7 @@ static int _checkAndCollectPDSHdmvEpochState(
 }
 
 static void _collectODSEpoch(
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   HdmvSequencePtr * listTail,
   const HdmvSequencePtr ods,
   bool orderByValue
@@ -62,7 +62,7 @@ static void _collectODSEpoch(
     return;
 
   if (NULL == *listTail) { // Empty queue
-    setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX, ods);
+    setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX, ods);
     *listTail = ods;
     return;
   }
@@ -81,7 +81,7 @@ static void _collectODSEpoch(
 
     HdmvSequencePtr prev, cur;
     prev = NULL;
-    cur = getDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
+    cur = getDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
     for (; NULL != cur; cur = cur->nextSequenceDS) {
       if (ods->data.od.object_descriptor.object_id < cur->data.od.object_descriptor.object_id) {
         break;
@@ -91,7 +91,7 @@ static void _collectODSEpoch(
 
     if (NULL == prev) {
       // Insert as list head.
-      setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX, ods);
+      setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX, ods);
     }
     else {
       // Insert in middle.
@@ -126,8 +126,8 @@ static void _collectODSEpoch(
  * If objWidthRet (or respectively objHeightRet) is not NULL, supplied pointer
  * is used to return objects width (respectively height).
  */
-static int _checkAndCollectODSHdmvEpochState(
-  HdmvEpochState * epoch,
+static int _checkAndCollectODSHdmvDSState(
+  HdmvDSState * epoch,
   HdmvSequencePtr * dsOdsQueue,
   unsigned dsIdx,
   uint16_t start_object_id_ref,
@@ -162,7 +162,7 @@ static int _checkAndCollectODSHdmvEpochState(
     start = end_object_id_ref, end = start_object_id_ref;
 
   uint16_t width = 0, height = 0;
-  HdmvSequencePtr odsList = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
+  HdmvSequencePtr odsList = getSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
   for (uint16_t id = start; id <= end; id++) {
     HdmvSequencePtr ods;
 
@@ -211,8 +211,8 @@ static int _checkAndCollectODSHdmvEpochState(
   return 0;
 }
 
-static int _checkAndCollectUniqueODSHdmvEpochState(
-  HdmvEpochState * epoch,
+static int _checkAndCollectUniqueODSHdmvDSState(
+  HdmvDSState * epoch,
   HdmvSequencePtr * dsOdsQueue,
   unsigned dsIdx,
   uint16_t object_id_ref,
@@ -221,7 +221,7 @@ static int _checkAndCollectUniqueODSHdmvEpochState(
   bool orderByValue
 )
 {
-  return _checkAndCollectODSHdmvEpochState(
+  return _checkAndCollectODSHdmvDSState(
     epoch,
     dsOdsQueue,
     dsIdx,
@@ -233,38 +233,40 @@ static int _checkAndCollectUniqueODSHdmvEpochState(
   );
 }
 
-static int _getAndCollectPresentationCompositionHdmvEpochState(
-  HdmvEpochState * epoch,
+static int _getAndCollectPCHdmvDSState(
+  HdmvDSState * epoch,
   HdmvPCParameters * presentation_composition
 )
 {
   HdmvSequencePtr sequence;
 
-  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX);
+  sequence = getLastSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing PCS.\n");
+  assert(NULL == sequence->nextSequence);
 
-  setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX, sequence);
+  setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_PCS_IDX, sequence);
 
   *presentation_composition = sequence->data.pc;
   return 0;
 }
 
-static int _getAndCollectWindowDefinitionHdmvEpochState(
-  HdmvEpochState * epoch,
+static int _getAndCollectWDHdmvDSState(
+  HdmvDSState * epoch,
   HdmvWDParameters * window_definition,
   unsigned dsIdx
 )
 {
   HdmvSequencePtr sequence;
 
-  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX);
+  sequence = getLastSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing WDS.\n");
+  assert(NULL == sequence->nextSequence);
 
   if (dsIdx == sequence->displaySetIdx) {
     // WDS is from current DS.
-    setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX, sequence);
+    setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_WDS_IDX, sequence);
   }
 
   *window_definition = sequence->data.wd;
@@ -272,7 +274,7 @@ static int _getAndCollectWindowDefinitionHdmvEpochState(
   return 0;
 }
 
-static int _checkHdmvWindowDefinitionParameters(
+static int _checkHdmvWDParameters(
   HdmvVDParameters video_desc,
   HdmvWDParameters definition
 )
@@ -325,34 +327,35 @@ static int _checkHdmvWindowDefinitionParameters(
   return 0;
 }
 
-static int _getAndCollectInteractiveCompositionHdmvEpochState(
-  HdmvEpochState * epoch,
+static int _getAndCollectInteractiveCompositionHdmvDSState(
+  HdmvDSState * epoch,
   HdmvICParameters * interactive_composition
 )
 {
   HdmvSequencePtr sequence;
 
-  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX);
+  sequence = getLastSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing ICS.\n");
+  assert(NULL == sequence->nextSequence);
 
-  setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX, sequence);
+  setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ICS_IDX, sequence);
 
   *interactive_composition = sequence->data.ic;
   return 0;
 }
 
-static int _checkAndCollectEndSequenceHdmvEpochState(
-  HdmvEpochState * epoch
+static int _checkAndCollectENDHdmvDSState(
+  HdmvDSState * epoch
 )
 {
   HdmvSequencePtr sequence;
 
-  sequence = getLastSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
+  sequence = getLastSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_END_IDX);
   if (NULL == sequence)
     LIBBLU_HDMV_CK_ERROR_RETURN("Unexpected missing END.\n");
 
-  setDSSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_END_IDX, sequence);
+  setDSSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_END_IDX, sequence);
   return 0;
 }
 
@@ -430,7 +433,7 @@ static int _checkWindowIdPresenceHdmvEffectSequenceParameters(
 }
 
 static int _checkHdmvEffectInfoParameters(
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   HdmvSequencePtr * pdsQueue,
   HdmvSequencePtr * odsQueue,
   HdmvEffectSequenceParameters effects_sequence,
@@ -439,19 +442,19 @@ static int _checkHdmvEffectInfoParameters(
   bool orderByValue
 )
 {
-  /* effect_duration */ // Unchecked
+  /* effect_duration */ // TODO: Unchecked?
 
   /* palette_id_ref */
-  if (_checkAndCollectPDSHdmvEpochState(epoch, pdsQueue, dsIdx, effect_info->palette_id_ref) < 0)
+  if (_checkAndCollectPDSHdmvDSState(epoch, pdsQueue, dsIdx, effect_info->palette_id_ref) < 0)
     return -1;
 
   /* composition_objects */
   for (unsigned idx = 0; idx < effect_info->number_of_composition_objects; idx++) {
-    const HdmvCompositionObjectParameters * obj = effect_info->composition_objects[idx];
+    const HdmvCOParameters * obj = effect_info->composition_objects[idx];
 
     /* object_id_ref */
     uint16_t object_width, object_height;
-    int ret = _checkAndCollectUniqueODSHdmvEpochState(
+    int ret = _checkAndCollectUniqueODSHdmvDSState(
       epoch, odsQueue, dsIdx,
       obj->object_id_ref,
       &object_width,
@@ -629,7 +632,7 @@ static int _checkHdmvEffectInfoParameters(
 }
 
 static int _checkAndBuildDisplaySetHdmvEffectsSequence(
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   HdmvSequencePtr * pdsQueue,
   HdmvSequencePtr * odsQueue,
   HdmvEffectSequenceParameters effects_sequence,
@@ -638,7 +641,7 @@ static int _checkAndBuildDisplaySetHdmvEffectsSequence(
 )
 {
 
-  /* number_of_windows */ // Unchecked
+  /* number_of_windows */ // Already checked
 
   /* windows */
   for (unsigned idx = 0; idx < effects_sequence.number_of_windows; idx++) {
@@ -658,13 +661,7 @@ static int _checkAndBuildDisplaySetHdmvEffectsSequence(
       return -1;
   }
 
-  /* number_of_effects */
-  if (HDMV_MAX_ALLOWED_NB_ICS_EFFECTS < effects_sequence.number_of_effects)
-    LIBBLU_HDMV_CK_ERROR_RETURN(
-      "Too many animation steps, 'number_of_effects' == %u exceeds %u.\n",
-      effects_sequence.number_of_effects,
-      HDMV_MAX_ALLOWED_NB_ICS_EFFECTS
-    );
+  /* number_of_effects */ // Already checked
 
   /* effects */
   for (unsigned idx = 0; idx < effects_sequence.number_of_effects; idx++) {
@@ -737,7 +734,7 @@ static int _checkButtonObjectDimensions(
  */
 static int _checkAndBuildDisplaySetHdmvIC(
   HdmvParsingOptions options,
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   HdmvICParameters ic,
   unsigned dsIdx
 )
@@ -811,7 +808,7 @@ static int _checkAndBuildDisplaySetHdmvIC(
       // 0xFFFF == Unspecified (treated as present).
 
     /* palette_id_ref */
-    if (_checkAndCollectPDSHdmvEpochState(epoch, &pdsQueue, dsIdx, page->palette_id_ref) < 0)
+    if (_checkAndCollectPDSHdmvDSState(epoch, &pdsQueue, dsIdx, page->palette_id_ref) < 0)
       LIBBLU_HDMV_CK_ERROR_RETURN(
         "Error on 'page_id' == 0x%02" PRIX8 ".\n",
         page->page_id
@@ -830,9 +827,9 @@ static int _checkAndBuildDisplaySetHdmvIC(
         HdmvButtonParam * btn = bog->buttons[btn_index];
         int ret;
 
-        uint16_t btnObjWidth = 0;  // Button objects size sharing check.
-        uint16_t btnObjHeight = 0;
-        uint16_t objWidth, objHeight;
+        uint16_t btn_obj_w = 0;  // Button objects size sharing check.
+        uint16_t btn_obj_h = 0;
+        uint16_t obj_w, obj_h;
 
         /* button_id */
         // Range check:
@@ -900,12 +897,12 @@ static int _checkAndBuildDisplaySetHdmvIC(
         // values collection.
 
         /* normal_state_info */
-        ret = _checkAndCollectODSHdmvEpochState(
+        ret = _checkAndCollectODSHdmvDSState(
           epoch, &odsQueue, dsIdx,
           btn->normal_state_info.start_object_id_ref,
           btn->normal_state_info.end_object_id_ref,
-          &objWidth,
-          &objHeight,
+          &obj_w,
+          &obj_h,
           orderOdsByValue
         );
         if (ret < 0)
@@ -917,18 +914,18 @@ static int _checkAndBuildDisplaySetHdmvIC(
           );
 
         ret = _checkButtonObjectDimensions(
-          &btnObjWidth, &btnObjHeight,
-          objWidth, objHeight
+          &btn_obj_w, &btn_obj_h,
+          obj_w, obj_h
         );
         assert(0 <= ret); // First value, cannot fail.
 
         /* selected_state_info */
-        ret = _checkAndCollectODSHdmvEpochState(
+        ret = _checkAndCollectODSHdmvDSState(
           epoch, &odsQueue, dsIdx,
           btn->selected_state_info.start_object_id_ref,
           btn->selected_state_info.end_object_id_ref,
-          &objWidth,
-          &objHeight,
+          &obj_w,
+          &obj_h,
           orderOdsByValue
         );
         if (ret < 0)
@@ -940,8 +937,8 @@ static int _checkAndBuildDisplaySetHdmvIC(
           );
 
         ret = _checkButtonObjectDimensions(
-          &btnObjWidth, &btnObjHeight,
-          objWidth, objHeight
+          &btn_obj_w, &btn_obj_h,
+          obj_w, obj_h
         );
         if (ret < 0) {
           LIBBLU_HDMV_CK_ERROR_RETURN(
@@ -951,24 +948,24 @@ static int _checkAndBuildDisplaySetHdmvIC(
             "%" PRIu16 "x%" PRIu16 ").\n",
             btn->button_id,
             page->page_id,
-            btnObjWidth,
-            btnObjHeight,
-            objWidth,
-            objHeight
+            btn_obj_w,
+            btn_obj_h,
+            obj_w,
+            obj_h
           );
         }
 
         // Set button initial presentation maximum graphical object size:
-        btn->max_initial_width = btnObjWidth;
-        btn->max_initial_height = btnObjHeight;
+        btn->max_initial_width = btn_obj_w;
+        btn->max_initial_height = btn_obj_h;
 
         /* activated_state_info */
-        ret = _checkAndCollectODSHdmvEpochState(
+        ret = _checkAndCollectODSHdmvDSState(
           epoch, &odsQueue, dsIdx,
           btn->activated_state_info.start_object_id_ref,
           btn->activated_state_info.end_object_id_ref,
-          &objWidth,
-          &objHeight,
+          &obj_w,
+          &obj_h,
           orderOdsByValue
         );
         if (ret < 0)
@@ -980,8 +977,8 @@ static int _checkAndBuildDisplaySetHdmvIC(
           );
 
         ret = _checkButtonObjectDimensions(
-          &btnObjWidth, &btnObjHeight,
-          objWidth, objHeight
+          &btn_obj_w, &btn_obj_h,
+          obj_w, obj_h
         );
         if (ret < 0) {
           LIBBLU_HDMV_CK_ERROR_RETURN(
@@ -991,10 +988,10 @@ static int _checkAndBuildDisplaySetHdmvIC(
             "%" PRIu16 "x%" PRIu16 ").\n",
             btn->button_id,
             page->page_id,
-            btnObjWidth,
-            btnObjHeight,
-            objWidth,
-            objHeight
+            btn_obj_w,
+            btn_obj_h,
+            obj_w,
+            obj_h
           );
         }
 
@@ -1073,16 +1070,16 @@ static int _checkAndBuildDisplaySetHdmvIC(
   return 0;
 }
 
-static int _checkAndBuildIgsDisplaySetHdmvEpochState(
+static int _checkAndBuildIgsDisplaySetHdmvDSState(
   HdmvParsingOptions options,
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   unsigned dsIdx
 )
 {
   HdmvICParameters ic;
 
   /* ICS */
-  if (_getAndCollectInteractiveCompositionHdmvEpochState(epoch, &ic) < 0)
+  if (_getAndCollectInteractiveCompositionHdmvDSState(epoch, &ic) < 0)
     return -1;
 
   /* PDS/ODS */
@@ -1090,7 +1087,7 @@ static int _checkAndBuildIgsDisplaySetHdmvEpochState(
     return -1;
 
   /* END */
-  if (_checkAndCollectEndSequenceHdmvEpochState(epoch) < 0)
+  if (_checkAndCollectENDHdmvDSState(epoch) < 0)
     return -1;
 
   return 0;
@@ -1118,9 +1115,9 @@ static int _checkIdPresenceHdmvWindowDefinitionParameters(
   );
 }
 
-static int _checkAndBuildDisplaySetHdmvPC(
+static int _checkAndBuildDSHdmvPC(
   HdmvParsingOptions options,
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   HdmvPCParameters pc,
   HdmvWDParameters wd,
   unsigned dsIdx
@@ -1135,16 +1132,16 @@ static int _checkAndBuildDisplaySetHdmvPC(
   // TODO
 
   /* palette_id_ref */
-  if (_checkAndCollectPDSHdmvEpochState(epoch, &pdsQueue, dsIdx, pc.palette_id_ref) < 0)
+  if (_checkAndCollectPDSHdmvDSState(epoch, &pdsQueue, dsIdx, pc.palette_id_ref) < 0)
     return -1;
 
   for (unsigned i = 0; i < pc.number_of_composition_objects; i++) {
-    const HdmvCompositionObjectParameters * obj = pc.composition_objects[i];
+    const HdmvCOParameters * obj = pc.composition_objects[i];
     int ret;
 
     /* object_id_ref */
     uint16_t obj_width, obj_height;
-    ret = _checkAndCollectUniqueODSHdmvEpochState(
+    ret = _checkAndCollectUniqueODSHdmvDSState(
       epoch, &odsQueue, dsIdx,
       obj->object_id_ref,
       &obj_width,
@@ -1296,49 +1293,49 @@ static int _checkAndBuildDisplaySetHdmvPC(
   return 0;
 }
 
-static int _checkAndBuildPgsDisplaySetHdmvEpochState(
+static int _checkAndBuildPgsDisplaySetHdmvDSState(
   HdmvParsingOptions options,
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   unsigned dsIdx
 )
 {
 
   /* PCS */
   HdmvPCParameters pc;
-  if (_getAndCollectPresentationCompositionHdmvEpochState(epoch, &pc) < 0)
+  if (_getAndCollectPCHdmvDSState(epoch, &pc) < 0)
     return -1;
 
   /* WDS */
   HdmvWDParameters wd;
-  if (_getAndCollectWindowDefinitionHdmvEpochState(epoch, &wd, dsIdx) < 0)
+  if (_getAndCollectWDHdmvDSState(epoch, &wd, dsIdx) < 0)
     return -1;
 
-  if (_checkHdmvWindowDefinitionParameters(epoch->video_descriptor, wd) < 0)
+  if (_checkHdmvWDParameters(epoch->video_descriptor, wd) < 0)
     return -1;
 
   /* PDS/ODS */
-  if (_checkAndBuildDisplaySetHdmvPC(options, epoch, pc, wd, dsIdx) < 0)
+  if (_checkAndBuildDSHdmvPC(options, epoch, pc, wd, dsIdx) < 0)
     return -1;
 
   /* END */
-  if (_checkAndCollectEndSequenceHdmvEpochState(epoch) < 0)
+  if (_checkAndCollectENDHdmvDSState(epoch) < 0)
     return -1;
 
   return 0;
 }
 
-int checkAndBuildDisplaySetHdmvEpochState(
+int checkAndBuildDisplaySetHdmvDSState(
   HdmvParsingOptions options,
   HdmvStreamType type,
-  HdmvEpochState * epoch,
+  HdmvDSState * epoch,
   unsigned dsIdx
 )
 {
   switch (type) {
     case HDMV_STREAM_TYPE_IGS:
-      return _checkAndBuildIgsDisplaySetHdmvEpochState(options, epoch, dsIdx);
+      return _checkAndBuildIgsDisplaySetHdmvDSState(options, epoch, dsIdx);
     case HDMV_STREAM_TYPE_PGS:
-      return _checkAndBuildPgsDisplaySetHdmvEpochState(options, epoch, dsIdx);
+      return _checkAndBuildPgsDisplaySetHdmvDSState(options, epoch, dsIdx);
   }
 
   LIBBLU_HDMV_CK_ERROR_RETURN(
@@ -1347,118 +1344,58 @@ int checkAndBuildDisplaySetHdmvEpochState(
   );
 }
 
-/** \~english
- * \brief Coded Object Buffer (EB) size.
- *
- * \return size_t
- *
- * \todo Use rather in T-STD buffer verifier.
- */
-static size_t _getCodedObjectBufferSize(
-  HdmvStreamType type
-)
-{
-  static const size_t sizes[] = {
-    4 << 20, /**< Interactive Graphics  - 4MiB  */
-    1 << 20, /**< Presentation Graphics - 1MiB  */
-  };
-
-  return sizes[type];
-}
-
-/** \~english
- * \brief Decoded Object Buffer (DB) size.
- *
- * \param type
- * \return size_t
- */
-static size_t _getDecodedObjectBufferSize(
-  HdmvStreamType type
-)
-{
-  static const size_t sizes[] = {
-    16 << 20, /**< Interactive Graphics  - 16MiB  */
-    4  << 20, /**< Presentation Graphics -  4MiB  */
-  };
-
-  return sizes[type];
-}
-
-int checkObjectsBufferingHdmvEpochState(
-  HdmvEpochState * epoch,
+int checkObjectsBufferingHdmvDSState(
+  HdmvDSState * epoch,
   HdmvStreamType type
 )
 {
   HdmvSequencePtr seq;
 
-  size_t codedObjBufferUsage = 0;
-  size_t decodedObjBufferUsage = 0;
+  uint32_t decoded_obj_buf_usage = 0u;
 
   LIBBLU_HDMV_CK_DEBUG("  Checking objects buffer usage:\n");
   LIBBLU_HDMV_CK_DEBUG("     Compressed size => Uncompressed size.\n");
 
   /* Check all ODS in memory */
-  seq = getSequenceByIdxHdmvEpochState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
+  seq = getSequenceByIdxHdmvDSState(epoch, HDMV_SEGMENT_TYPE_ODS_IDX);
   for (; NULL != seq; seq = seq->nextSequence) {
-    HdmvODParameters object_data = seq->data.od;
-    size_t objCodedSize = object_data.object_data_length;
-    size_t objDecodedSize = object_data.object_width * object_data.object_height;
+    HdmvODParameters od = seq->data.od;
+    uint32_t obj_coded_size   = od.object_data_length;
+    uint32_t obj_decoded_size = od.object_width * od.object_height;
 
     LIBBLU_HDMV_CK_DEBUG(
-      "   - Object %u: %ux%u, %zu byte(s) => %zu byte(s).\n",
-      object_data.object_descriptor.object_id,
-      object_data.object_width,
-      object_data.object_height,
-      objCodedSize,
-      objDecodedSize
+      "   - Object %u: %ux%u, %" PRIu32 " byte(s) => %" PRIu32 " byte(s).\n",
+      od.object_descriptor.object_id,
+      od.object_width,
+      od.object_height,
+      obj_coded_size,
+      obj_decoded_size
     );
 
-    codedObjBufferUsage += objCodedSize;
-    decodedObjBufferUsage += objDecodedSize;
+    decoded_obj_buf_usage += obj_decoded_size;
   }
 
-#if 0
-  size_t codedObjBufferSize = _getCodedObjectBufferSize(type);
+  uint32_t dec_obj_buf_size = getHDMVDecodedObjectBufferSize(type);
   LIBBLU_HDMV_CK_DEBUG(
-    "    => Coded Object Buffer (EB) usage: %zu bytes / %zu bytes.\n",
-    codedObjBufferUsage,
-    codedObjBufferSize
+    "    => Decoded Object Buffer (DB) usage: "
+    "%" PRIu32 " bytes / %" PRIu32 " bytes.\n",
+    decoded_obj_buf_usage,
+    dec_obj_buf_size
   );
 
-  if (codedObjBufferSize < codedObjBufferUsage)
-    LIBBLU_HDMV_CK_WARNING(
-      "Coded Object Buffer (EB) overflows, "
-      "%zu bytes used out of buffer size of %zu bytes.\n",
-      codedObjBufferUsage,
-      codedObjBufferSize
-    );
-#endif
-
-  LIBBLU_HDMV_CK_DEBUG(
-    "    => Coded objects size: %zu bytes.\n",
-    codedObjBufferUsage
-  );
-
-  size_t decodedObjBufferSize = _getDecodedObjectBufferSize(type);
-  LIBBLU_HDMV_CK_DEBUG(
-    "    => Decoded Object Buffer (DB) usage: %zu bytes / %zu bytes.\n",
-    decodedObjBufferUsage,
-    decodedObjBufferSize
-  );
-
-  if (decodedObjBufferSize < decodedObjBufferUsage)
+  if (dec_obj_buf_size < decoded_obj_buf_usage)
     LIBBLU_HDMV_CK_ERROR_RETURN(
       "Decoded Object Buffer (DB) overflows, "
-      "%zu bytes used out of buffer size of %zu bytes.\n",
-      decodedObjBufferUsage,
-      decodedObjBufferSize
+      "%" PRIu32 " bytes used out of buffer size of %" PRIu32 " bytes.\n",
+      decoded_obj_buf_usage,
+      dec_obj_buf_size
     );
 
   return 0;
 }
 
-int checkDuplicatedDSHdmvEpochState(
-  HdmvEpochState * epoch,
+int checkDuplicatedDSHdmvDSState(
+  HdmvDSState * epoch,
   unsigned lastDSIdx
 )
 {
@@ -1467,7 +1404,7 @@ int checkDuplicatedDSHdmvEpochState(
     HdmvSequencePtr lastDSSeq = NULL;
 
     for (
-      HdmvSequencePtr seq = getSequenceByIdxHdmvEpochState(epoch, idx);
+      HdmvSequencePtr seq = getSequenceByIdxHdmvDSState(epoch, idx);
       NULL != seq;
       seq = seq->nextSequence
     ) {
@@ -1479,7 +1416,7 @@ int checkDuplicatedDSHdmvEpochState(
       }
 
       if (NULL == lastDSSeq)
-        setDSSequenceByIdxHdmvEpochState(epoch, idx, seq);
+        setDSSequenceByIdxHdmvDSState(epoch, idx, seq);
       else
         lastDSSeq->nextSequenceDS = seq;
       lastDSSeq = seq;

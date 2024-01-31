@@ -2125,7 +2125,7 @@ int decodeH264PicParametersSet(
         ppsSG->data.pic_size_in_map_units_minus1 = value;
 
         /* Compute size of field(s) slice_group_id */
-        fieldSize = lb_ceil_log2(numSliceGroups);
+        fieldSize = lb_ceil_pow2_32(numSliceGroups);
 
         for (i = 0; i <= ppsSG->data.pic_size_in_map_units_minus1; i++) {
           /* [u<ceil(log2(pic_size_in_map_units_minus1 + 1))> slice_group_id] */

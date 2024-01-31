@@ -44,7 +44,7 @@ int _incrementAllocationHdmvTimecodes(
     HDMV_TIMECODES_DEFAULT_NB_VALUES
   );
 
-  if (lb_mul_overflow(newSize, sizeof(int64_t)))
+  if (lb_mul_overflow_size_t(newSize, sizeof(int64_t)))
     LIBBLU_HDMV_TC_ERROR_RETURN("Too many timecode values, overflow.\n");
 
   newArray = (int64_t *) realloc(tm->values, newSize * sizeof(int64_t));

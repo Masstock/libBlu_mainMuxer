@@ -14,8 +14,22 @@ int analyzePgs(
   LibbluESParsingSettings * settings
 )
 {
-  HdmvContextPtr ctx;
+  if (settings->options.hdmv.ass_input) {
+#if !defined(DISABLE_PGS_ASS_GENERATOR)
+    char * ass_filepath = lbc_convfrom(settings->esFilepath);
+    if (NULL == ass_filepath)
+      return -1;
 
+    int ret = processPgsGenerator(ass_filepath);
+    free(ass_filepath);
+
+    return ret;
+#else
+    LIBBLU_ERROR_RETURN("PGS from ASS generator is not available in this program build !\n");
+#endif
+  }
+
+  HdmvContextPtr ctx;
   if (NULL == (ctx = createHdmvContext(settings, NULL, HDMV_STREAM_TYPE_PGS, false)))
     return -1;
 
@@ -28,7 +42,7 @@ int analyzePgs(
   }
 
   /* Process remaining segments: */
-  if (completeDisplaySetHdmvContext(ctx) < 0)
+  if (completeDSHdmvContext(ctx) < 0)
     return -1;
 
   lbc_printf(" === Parsing finished with success. ===              \n");
@@ -36,8 +50,8 @@ int analyzePgs(
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: HDMV/PGS Subtitles format.\n");
-  lbc_printf("Number of Display Sets: %u.\n", ctx->nbDisplaySets);
-  lbc_printf("Number of Epochs: %u.\n", ctx->nbEpochs);
+  lbc_printf("Number of Display Sets: %u.\n", ctx->nb_DS);
+  lbc_printf("Number of Epochs: %u.\n", ctx->nb_epochs);
   lbc_printf("Total number of segments per type:\n");
   printContentHdmvContext(ctx);
   lbc_printf("=======================================================================================\n");

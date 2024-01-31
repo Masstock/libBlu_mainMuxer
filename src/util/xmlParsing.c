@@ -15,242 +15,200 @@
 #include "xmlParsing.h"
 #include "errorCodesVa.h"
 
+
+
 /* ========================== */
 
-XmlCtxPtr createXmlContext(
-  void (* errorLogFun) (const lbc * format, ...),
-  void (* debugLogFun) (const lbc * format, ...)
-)
-{
-  XmlCtxPtr ctx;
-
-  if (NULL == errorLogFun || NULL == debugLogFun)
-    LIBBLU_ERROR_NRETURN("Missing suppling of xml parsing log functions.\n");
-
-  if (NULL == (ctx = (XmlCtxPtr) malloc(sizeof(XmlCtx))))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  ctx->libxmlCtx = NULL;
-  ctx->errorLogFun = errorLogFun;
-  ctx->debugLogFun = debugLogFun;
-  ctx->savedNodesStackHeight = 0;
-
-  return ctx;
-}
-
 int loadIgsXmlFile(
-  XmlCtxPtr ctx,
-  const lbc * filePath
+  XmlCtx * ctx,
+  const lbc * filepath
 )
 {
-  char * filepath_converted;
-
   assert(NULL != ctx);
 
-  if (NULL != LIBXML_CONTEXT(ctx)) {
-    XML_ERROR_LOG_FUN(
-      "A libxml context is already in use (and will be freed).\n"
-    );
+  LIBXML_TEST_VERSION
 
-    xmlFreeDoc(LIBXML_CONTEXT(ctx));
-  }
+  if (NULL != ctx->libxml_ctx)
+    xmlFreeDoc(ctx->libxml_ctx);
 
-  if (NULL == (filepath_converted = lbc_convfrom(filePath)))
+  char * filepath_converted = lbc_convfrom(filepath);
+  if (NULL == filepath_converted)
     return -1;
 
-  if (NULL == (LIBXML_CONTEXT(ctx) = xmlParseFile(filepath_converted))) {
-    free(filepath_converted);
-
-    XML_ERROR_LOG_FUN(
-      "Unable to open input '%" PRI_LBCS "' xml file.\n",
-      filePath
-    );
-    LIBBLU_ERROR_RETURN("Parsing error in supplied IGS XML file.\n");
-  }
+  if (NULL == (ctx->libxml_ctx = xmlReadFile(filepath_converted, NULL, 0)))
+    LIBBLU_ERROR_FRETURN("Failed to parse %s.\n", filepath);
 
   free(filepath_converted);
   return 0;
+
+free_return:
+  free(filepath_converted);
+  return -1;
 }
 
 void releaseIgsXmlFile(
-  XmlCtxPtr ctx
+  XmlCtx * ctx
 )
 {
-  if (NULL == ctx)
-    return;
-
-  if (NULL != LIBXML_CONTEXT(ctx)) {
-    xmlFreeDoc(LIBXML_CONTEXT(ctx));
+  if (NULL != ctx && NULL != ctx->libxml_ctx) {
+    xmlFreeDoc(ctx->libxml_ctx);
     xmlCleanupParser();
-    LIBXML_CONTEXT(ctx) = NULL;
+    ctx->libxml_ctx = NULL;
   }
 }
 
 xmlXPathObjectPtr getPathObjectFromPathObjIgsXmlFile(
-  const xmlXPathObjectPtr pathObj,
+  const xmlXPathObjectPtr path_obj,
   const char * path
 )
 {
-  xmlNodePtr node;
-  xmlXPathObjectPtr phObj = NULL;
-  xmlXPathContextPtr phCtx = NULL;
-
-  if (NULL == (node = XML_PATH_NODE(pathObj, 0)))
+  xmlNodePtr node = XML_PATH_NODE(path_obj, 0);
+  if (NULL == node)
     return NULL;
 
-  if (NULL == (phCtx = xmlXPathNewContext(XML_DOC(node))))
+  xmlXPathContextPtr xpath_ctx = NULL;
+  xmlXPathObjectPtr xpath_obj  = NULL;
+  if (NULL == (xpath_ctx = xmlXPathNewContext(node->doc)))
+    goto free_return;
+  if (NULL == (xpath_obj = xmlXPathEvalExpression((xmlChar *) path, xpath_ctx)))
     goto free_return;
 
-  if (NULL == (phObj = xmlXPathEvalExpression((xmlChar *) path, phCtx)))
+  if (xmlXPathNodeSetIsEmpty(xpath_obj->nodesetval))
     goto free_return;
 
-  if (xmlXPathNodeSetIsEmpty(phObj->nodesetval))
-    goto free_return;
-
-  xmlXPathFreeContext(phCtx);
-  return phObj;
+  xmlXPathFreeContext(xpath_ctx);
+  return xpath_obj;
 
 free_return:
-  xmlXPathFreeObject(phObj);
-  xmlXPathFreeContext(phCtx);
-
+  xmlXPathFreeObject(xpath_obj);
+  xmlXPathFreeContext(xpath_ctx);
   return NULL;
 }
 
 xmlXPathObjectPtr getPathObjectIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const char * path
 )
 {
-  xmlXPathObjectPtr phObj = NULL;
-  xmlXPathContextPtr phCtx = NULL;
-  xmlNodePtr node;
-
-  if (NULL == (phCtx = xmlXPathNewContext(LIBXML_CONTEXT(ctx))))
+  xmlXPathContextPtr xpath_ctx = NULL;
+  xmlXPathObjectPtr xpath_obj  = NULL;
+  if (NULL == (xpath_ctx = xmlXPathNewContext(ctx->libxml_ctx)))
     return NULL;
-
-  if (NULL == (phObj = xmlXPathEvalExpression((xmlChar *) path, phCtx)))
+  if (NULL == (xpath_obj = xmlXPathEvalExpression((xmlChar *) path, xpath_ctx)))
     goto free_return;
 
-  /* if (xmlXPathNodeSetIsEmpty(phObj->nodesetval))
-    goto free_return; */
-
-  if (!xmlXPathNodeSetIsEmpty(phObj->nodesetval)) {
-    node = phObj->nodesetval->nodeTab[0];
+  if (!xmlXPathNodeSetIsEmpty(xpath_obj->nodesetval)) {
+    xmlNodePtr node = xpath_obj->nodesetval->nodeTab[0];
 
     if (node->type == XML_ATTRIBUTE_NODE) {
       /* Getting argument parent (XML_ELEMENT_NODE) line */
-      ctx->lastParsedNodeLine = node->parent->line + 1;
+      ctx->last_parsed_node_line = node->parent->line + 1;
     }
     else
-      ctx->lastParsedNodeLine = node->line;
+      ctx->last_parsed_node_line = node->line;
   }
 
-  xmlXPathFreeContext(phCtx);
-  return phObj;
+  xmlXPathFreeContext(xpath_ctx);
+  return xpath_obj;
 
 free_return:
-  xmlXPathFreeObject(phObj);
-  xmlXPathFreeContext(phCtx);
+  xmlXPathFreeObject(xpath_obj);
+  xmlXPathFreeContext(xpath_ctx);
   return NULL;
 }
 
 xmlXPathObjectPtr getPathObjectFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   va_list args
 )
 {
   char * path = NULL;
-  xmlXPathObjectPtr objPtr;
-
-  if (lb_vasprintf(&path, pathFormat, args) < 0)
+  if (lb_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  objPtr = getPathObjectIgsXmlFile(ctx, path);
+  xmlXPathObjectPtr xpath_obj = getPathObjectIgsXmlFile(ctx, path);
   free(path);
 
-  return objPtr;
+  return xpath_obj;
 }
 
 xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   ...
 )
 {
-  xmlXPathObjectPtr objPtr;
   va_list args;
-
-  va_start(args, pathFormat);
-  objPtr = getPathObjectFromExprVaIgsXmlFile(ctx, pathFormat, args);
+  va_start(args, path_format);
+  xmlXPathObjectPtr xpath_obj = getPathObjectFromExprVaIgsXmlFile(ctx, path_format, args);
   va_end(args);
 
-  return objPtr;
+  return xpath_obj;
 }
 
 int setRootPathFromPathObjectIgsXmlFile(
-  XmlCtxPtr ctx,
-  xmlXPathObjectPtr pathObj,
+  XmlCtx * ctx,
+  xmlXPathObjectPtr xpath_obj,
   int idx
 )
 {
   xmlNodePtr node;
 
-  if (XML_MAX_SAVED_PATHS <= ctx->savedNodesStackHeight)
+  if (XML_MAX_SAVED_PATHS <= ctx->saved_nodes_stack_height)
     LIBBLU_ERROR_RETURN(
       "Reached XML path nodes saving limit, "
       "broken input file.\n"
     );
 
-  if (NULL == pathObj)
+  if (NULL == xpath_obj)
     LIBBLU_ERROR_RETURN(
       "Unable to set XML root, "
       "setRootPathFromPathObjectIgsXmlFile() receive "
       "a NULL path object.\n"
     );
 
-  if (NULL == (node = XML_PATH_NODE(pathObj, idx)))
+  if (NULL == (node = XML_PATH_NODE(xpath_obj, idx)))
     LIBBLU_ERROR_RETURN(
       "Unable to set XML root, "
       "given path object does not contain any node.\n"
     );
 
   /* Removing node from nodes tree, it will be freed when restoring tree */
-  pathObj->nodesetval->nodeTab[idx] = NULL;
+  xpath_obj->nodesetval->nodeTab[idx] = NULL;
 
-  ctx->savedNodesStack[ctx->savedNodesStackHeight++] =
-    xmlDocSetRootElement(XML_DOC(node), node)
+  ctx->saved_nodes_stack[ctx->saved_nodes_stack_height++] =
+    xmlDocSetRootElement(node->doc, node)
   ;
 
   return 0;
 }
 
 int restoreLastRootIgsXmlFile(
-  XmlCtxPtr ctx
+  XmlCtx * ctx
 )
 {
   xmlNodePtr restoredNode;
 
-  if (NULL == ctx || NULL == LIBXML_CONTEXT(ctx))
+  if (NULL == ctx || NULL == ctx->libxml_ctx)
     LIBBLU_ERROR_RETURN(
       "Unable to restore last saved XML root, receive closed context.\n"
     );
 
-  if (!ctx->savedNodesStackHeight)
+  if (!ctx->saved_nodes_stack_height)
     LIBBLU_ERROR_RETURN(
       "Unable to restore last saved XML root, "
       "empty history.\n"
     );
 
-  restoredNode = ctx->savedNodesStack[--ctx->savedNodesStackHeight];
+  restoredNode = ctx->saved_nodes_stack[--ctx->saved_nodes_stack_height];
 
-  xmlFreeNode(xmlDocSetRootElement(LIBXML_CONTEXT(ctx), restoredNode));
+  xmlFreeNode(xmlDocSetRootElement(ctx->libxml_ctx, restoredNode));
   return 0;
 }
 
 xmlChar * getStringIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const char * path,
   int idx
 )
@@ -273,26 +231,21 @@ xmlChar * getStringIgsXmlFile(
     );
   }
 
-  string = xmlNodeListGetString(
-    LIBXML_CONTEXT(ctx),
-    XML_CHILDREN_NODE(node),
-    XML_TRUE
-  );
-
+  string = xmlNodeListGetString(ctx->libxml_ctx, node->children, XML_TRUE);
   xmlXPathFreeObject(phObj);
   return string;
 }
 
 xmlChar * getStringFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   va_list args
 )
 {
   char * path = NULL;
   xmlChar * string;
 
-  if (lb_vasprintf(&path, pathFormat, args) < 0)
+  if (lb_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_NRETURN("Memory allocation error using lb_vasprintf().\n");
 
   string = getStringIgsXmlFile(ctx, path, 0);
@@ -302,16 +255,16 @@ xmlChar * getStringFromExprVaIgsXmlFile(
 }
 
 xmlChar * getStringFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   xmlChar * string;
 
-  va_start(args, pathFormat);
-  string = getStringFromExprVaIgsXmlFile(ctx, pathFormat, args);
+  va_start(args, path_format);
+  string = getStringFromExprVaIgsXmlFile(ctx, path_format, args);
   va_end(args);
 
   return string;
@@ -329,7 +282,7 @@ void freeXmlCharPtr(
 }
 
 int getNbObjectsIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const char * path
 )
 {
@@ -345,15 +298,15 @@ int getNbObjectsIgsXmlFile(
 }
 
 int getNbObjectsFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   va_list args
 )
 {
   char * path = NULL;
   int nbNodes;
 
-  if (lb_vasprintf(&path, pathFormat, args) < 0)
+  if (lb_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_RETURN("Memory allocation error using lb_vasprintf().\n");
 
   nbNodes = getNbObjectsIgsXmlFile(ctx, path);
@@ -363,23 +316,23 @@ int getNbObjectsFromExprVaIgsXmlFile(
 }
 
 int getNbObjectsFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int nbNodes;
 
-  va_start(args, pathFormat);
-  nbNodes = getNbObjectsFromExprVaIgsXmlFile(ctx, pathFormat, args);
+  va_start(args, path_format);
+  nbNodes = getNbObjectsFromExprVaIgsXmlFile(ctx, path_format, args);
   va_end(args);
 
   return nbNodes;
 }
 
 int getIfExistsStringIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   xmlChar ** string,
   const xmlChar * def,
   const char * path
@@ -410,17 +363,17 @@ free_return:
 }
 
 int getIfExistsStringFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   xmlChar ** string,
   const xmlChar * def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
   char * path;
   int ret;
 
-  if (lb_vasprintf(&path, pathFormat, args) < 0)
+  if (lb_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_RETURN("Memory allocation error using lb_vasprintf().\n");
 
   ret = getIfExistsStringIgsXmlFile(ctx, string, def, path);
@@ -430,19 +383,19 @@ int getIfExistsStringFromExprVaIgsXmlFile(
 }
 
 int getIfExistsStringFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   xmlChar ** string,
   const xmlChar * def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
+  va_start(args, path_format);
   ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, string, def, pathFormat, args
+    ctx, string, def, path_format, args
   );
   va_end(args);
 
@@ -452,10 +405,10 @@ int getIfExistsStringFromExprIgsXmlFile(
 /* ### Signed integers : ################################################### */
 
 int getIfExistsInt64FromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int64_t * dst,
   int64_t def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
@@ -464,7 +417,7 @@ int getIfExistsInt64FromExprVaIgsXmlFile(
   int ret;
 
   ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, &xmlString, NULL, pathFormat, args
+    ctx, &xmlString, NULL, path_format, args
   );
   if (ret < 0)
     return -1;
@@ -485,7 +438,7 @@ int getIfExistsInt64FromExprVaIgsXmlFile(
         "Expect XML node value '%s' to be a valid integer "
         "(line: %u).\n",
         string,
-        ctx->lastParsedNodeLine
+        ctx->last_parsed_node_line
       );
 
     if (ERANGE == errno)
@@ -493,14 +446,14 @@ int getIfExistsInt64FromExprVaIgsXmlFile(
         "XML node value '%s' is out of range "
         "(line: %u).\n",
         string,
-        ctx->lastParsedNodeLine
+        ctx->last_parsed_node_line
       );
 
     if (0 != errno)
       LIBBLU_ERROR_RETURN(
         "Unexpected error while parsing value '%s' (line: %u, errno: %d).\n",
         string,
-        ctx->lastParsedNodeLine,
+        ctx->last_parsed_node_line,
         errno
       );
 
@@ -513,42 +466,42 @@ int getIfExistsInt64FromExprVaIgsXmlFile(
 }
 
 int getIfExistsInt64FromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int64_t * dst,
   int64_t def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
 int getIfExistsLongFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   long * dst,
   long def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
   int64_t value;
   int ret;
 
-  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, &value, def, pathFormat, args);
+  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, &value, def, path_format, args);
   if (ret < 0)
     return -1;
 
   if (value < LONG_MIN || LONG_MAX < value) {
     LIBBLU_ERROR_RETURN(
       "XML node value %" PRId64 " is out of range (line: %u).\n",
-      value, ctx->lastParsedNodeLine
+      value, ctx->last_parsed_node_line
     );
   }
   else
@@ -558,42 +511,42 @@ int getIfExistsLongFromExprVaIgsXmlFile(
 }
 
 int getIfExistsLongFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   long * dst,
   long def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsLongFromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  ret = getIfExistsLongFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
 int getIfExistsIntegerFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int * dst,
   int def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
   int64_t value;
-  int ret;
-
-  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, &value, def, pathFormat, args);
+  int ret = getIfExistsInt64FromExprVaIgsXmlFile(
+    ctx, &value, def, path_format, args
+  );
   if (ret < 0)
     return -1;
 
   if (value < INT_MIN || INT_MAX < value) {
     LIBBLU_ERROR_RETURN(
       "XML node value %" PRId64 " is out of range (line: %u).\n",
-      value, ctx->lastParsedNodeLine
+      value, ctx->last_parsed_node_line
     );
   }
   else
@@ -603,18 +556,17 @@ int getIfExistsIntegerFromExprVaIgsXmlFile(
 }
 
 int getIfExistsIntegerFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int * dst,
   int def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
-  int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsIntegerFromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  int ret = getIfExistsIntegerFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
@@ -623,10 +575,10 @@ int getIfExistsIntegerFromExprIgsXmlFile(
 /* ### Boolean value : ##################################################### */
 
 int getIfExistsBooleanFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   bool * dst,
   bool def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
@@ -635,7 +587,7 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
   int ret;
 
   ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, &xmlString, NULL, pathFormat, args
+    ctx, &xmlString, NULL, path_format, args
   );
   if (ret < 0)
     return -1;
@@ -654,8 +606,8 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
         "Unable to parse XML node value '%s' from path '%s' as a boolean "
         "value (expect 'true' or 'false', line: %u).\n",
         string,
-        pathFormat,
-        ctx->lastParsedNodeLine
+        path_format,
+        ctx->last_parsed_node_line
       );
     }
   }
@@ -666,18 +618,18 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
 }
 
 int getIfExistsBooleanFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   bool * dst,
   bool def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsBooleanFromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  ret = getIfExistsBooleanFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
@@ -686,10 +638,10 @@ int getIfExistsBooleanFromExprIgsXmlFile(
 /* ### Floating point : #################################################### */
 
 int getIfExistsDoubleFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   double * dst,
   double def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
@@ -698,7 +650,7 @@ int getIfExistsDoubleFromExprVaIgsXmlFile(
   int ret;
 
   ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, &xmlString, NULL, pathFormat, args
+    ctx, &xmlString, NULL, path_format, args
   );
   if (ret < 0)
     return -1;
@@ -719,7 +671,7 @@ int getIfExistsDoubleFromExprVaIgsXmlFile(
         "Expect XML node value '%s' to be a valid floating point number "
         "(line: %u).\n",
         string,
-        ctx->lastParsedNodeLine
+        ctx->last_parsed_node_line
       );
 
     if (ERANGE == errno)
@@ -727,7 +679,7 @@ int getIfExistsDoubleFromExprVaIgsXmlFile(
         "XML node value '%s' is out of range "
         "(line: %u).\n",
         string,
-        ctx->lastParsedNodeLine
+        ctx->last_parsed_node_line
       );
 
     *dst = value;
@@ -739,35 +691,35 @@ int getIfExistsDoubleFromExprVaIgsXmlFile(
 }
 
 int getIfExistsDoubleFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   double * dst,
   double def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsDoubleFromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  ret = getIfExistsDoubleFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
 int getIfExistsFloatFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   float * dst,
   float def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
   double value;
   int ret;
 
-  ret = getIfExistsDoubleFromExprVaIgsXmlFile(ctx, &value, def, pathFormat, args);
+  ret = getIfExistsDoubleFromExprVaIgsXmlFile(ctx, &value, def, path_format, args);
   if (ret < 0)
     return -1;
 
@@ -777,18 +729,18 @@ int getIfExistsFloatFromExprVaIgsXmlFile(
 }
 
 int getIfExistsFloatFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   float * dst,
   float def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsFloatFromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  ret = getIfExistsFloatFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
@@ -797,10 +749,10 @@ int getIfExistsFloatFromExprIgsXmlFile(
 /* ### Unsigned integers : ################################################# */
 
 int getIfExistsUint64FromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
@@ -808,7 +760,7 @@ int getIfExistsUint64FromExprVaIgsXmlFile(
   char * string;
   int ret;
 
-  ret = getIfExistsStringFromExprVaIgsXmlFile(ctx, &xmlString, NULL, pathFormat, args);
+  ret = getIfExistsStringFromExprVaIgsXmlFile(ctx, &xmlString, NULL, path_format, args);
   if (ret < 0)
     return -1;
 
@@ -827,8 +779,8 @@ int getIfExistsUint64FromExprVaIgsXmlFile(
         "Unable to parse XML node value '%s' from path '%s' as an integer "
         "(line: %u).\n",
         string,
-        pathFormat,
-        ctx->lastParsedNodeLine
+        path_format,
+        ctx->last_parsed_node_line
       );
 
     *dst = value;
@@ -840,42 +792,42 @@ int getIfExistsUint64FromExprVaIgsXmlFile(
 }
 
 int getIfExistsUint64FromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
-  ret = getIfExistsUint64FromExprVaIgsXmlFile(ctx, dst, def, pathFormat, args);
+  va_start(args, path_format);
+  ret = getIfExistsUint64FromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
 int getIfExistsUnsignedFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   unsigned * dst,
   unsigned def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 )
 {
   uint64_t value;
   int ret;
 
-  ret = getIfExistsUint64FromExprVaIgsXmlFile(ctx, &value, def, pathFormat, args);
+  ret = getIfExistsUint64FromExprVaIgsXmlFile(ctx, &value, def, path_format, args);
   if (ret < 0)
     return -1;
 
   if (UINT_MAX < value)
     LIBBLU_ERROR_RETURN(
       "Node value %" PRIu64 " from path '%s' is too large.\n",
-      value, pathFormat
+      value, path_format
     );
 
   *dst = value;
@@ -884,19 +836,19 @@ int getIfExistsUnsignedFromExprVaIgsXmlFile(
 }
 
 int getIfExistsUnsignedFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   unsigned * dst,
   unsigned def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 )
 {
   va_list args;
   int ret;
 
-  va_start(args, pathFormat);
+  va_start(args, path_format);
   ret = getIfExistsUnsignedFromExprVaIgsXmlFile(
-    ctx, dst, def, pathFormat, args
+    ctx, dst, def, path_format, args
   );
   va_end(args);
 
@@ -904,29 +856,3 @@ int getIfExistsUnsignedFromExprIgsXmlFile(
 }
 
 /* ######################################################################### */
-
-void printNbObjectsFromExprErrorIgsXmlFile(
-  int ret,
-  const char * pathFormat,
-  ...
-)
-{
-  va_list args;
-  lbc * format;
-
-  if (NULL == (format = lbc_locale_convto(pathFormat)))
-    LIBBLU_ERROR_VRETURN("Memory allocation error.\n");
-
-  if (ret < 0)
-    LIBBLU_DEBUG_COM("Unknown error happen when reading path '");
-  else
-    LIBBLU_DEBUG_COM("Unable to read path '");
-
-  va_start(args, pathFormat);
-  LIBBLU_ECHO_VA(LIBBLU_DEBUG_GLB, format, args);
-  va_end(args);
-
-  LIBBLU_DEBUG_COM_NO_HEADER("'.\n");
-
-  free(format);
-}

@@ -1,130 +1,21 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
+#include <unistd.h>
 
 #include "igs_compiler.h"
 
 #define ECHO_DEBUG  LIBBLU_HDMV_IGS_COMPL_DEBUG
 
-IgsCompilerContextPtr createIgsCompilerContext(
-  const lbc * xmlFilename,
-  HdmvTimecodes * timecodes,
-  IniFileContextPtr conf
-)
-{
-  IgsCompilerContextPtr ctx;
-
-  ECHO_DEBUG("Creating IGS Compiler context.\n");
-
-  ctx = (IgsCompilerContextPtr) malloc(sizeof(IgsCompilerContext));
-  if (NULL == ctx)
-    LIBBLU_HDMV_IGS_COMPL_ERROR_NRETURN("Memory allocation error.\n");
-
-  *ctx = (IgsCompilerContext) {
-    .conf = conf,
-    .timecodes = timecodes
-  };
-
-  ECHO_DEBUG(" Initialization of libraries and ressources.\n");
-
-  /* Init Picture libraries */
-  initHdmvPictureLibraries(&ctx->imgLibs);
-
-  /* Init libxml context */
-  ctx->xmlCtx = createXmlContext(&echoErrorIgsXmlFile, &echoDebugIgsXmlFile);
-  if (NULL == ctx->xmlCtx)
-    goto free_return;
-
-  /* Init HDMV elements allocation inventory */
-  if (NULL == (ctx->inv = createHdmvSegmentsInventory()))
-    goto free_return;
-
-  /* Set working directory to allow file-relative files handling: */
-  ECHO_DEBUG(" Redefinition of working directory.\n");
-  if (updateIgsCompilerWorkingDirectory(ctx, xmlFilename) < 0)
-    goto free_return;
-
-  ECHO_DEBUG("Done.\n");
-  return ctx;
-
-free_return:
-  ECHO_DEBUG("Failed.\n");
-
-  destroyIgsCompilerContext(ctx);
-  return NULL;
-}
-
-void resetOriginalDirIgsCompilerContext(
-  IgsCompilerContextPtr ctx
-)
-{
-  if (NULL == ctx)
-    return;
-
-  if (NULL != ctx->workingDir) {
-    if (lbc_chdir(ctx->initialWorkingDir) < 0)
-      LIBBLU_WARNING("Unable to retrieve original working path.\n");
-    else
-      ECHO_DEBUG(
-        " Original working path restored ('%" PRI_LBCS "').\n",
-        ctx->initialWorkingDir
-      );
-
-    free(ctx->workingDir);
-    ctx->workingDir = NULL;
-  }
-}
-
-void destroyIgsCompilerContext(
-  IgsCompilerContextPtr ctx
-)
-{
-  unsigned i;
-
-  if (NULL == ctx)
-    return;
-
-  ECHO_DEBUG("Free IGS Compiler context memory.\n");
-
-  cleanHdmvPictureLibraries(ctx->imgLibs);
-  destroyXmlContext(ctx->xmlCtx);
-  destroyHdmvSegmentsInventory(ctx->inv);
-
-  for (i = 0; i < ctx->data.nbCompo; i++)
-    destroyIgsCompilerComposition(ctx->data.compositions[i]);
-
-#if 0
-  if (NULL != ctx->workingDir) {
-    if (lbc_chdir(ctx->initialWorkingDir) < 0)
-      LIBBLU_WARNING("Unable to retrieve original working path.\n");
-    else
-      LIBBLU_DEBUG_COM(
-        " Original working path restored ('%" PRI_LBCS "').\n",
-        ctx->initialWorkingDir
-      );
-
-    free(ctx->workingDir);
-    ctx->workingDir = NULL;
-  }
-#else
-  resetOriginalDirIgsCompilerContext(ctx);
-#endif
-
-  free(ctx->xmlFilename);
-  free(ctx);
-
-  ECHO_DEBUG("Done.\n");
-}
-
-int getFileWorkingDirectory(
+static int _getFileWorkingDirectory(
   lbc ** dirPath,
-  lbc ** xmlFilename,
+  lbc ** xml_filename,
   const lbc * xmlFilepath
 )
 {
@@ -155,7 +46,7 @@ int getFileWorkingDirectory(
       "for relative path access.\n"
     );
 
-  if (NULL == (*xmlFilename = lbc_strdup(pathFilenamePart)))
+  if (NULL == (*xml_filename = lbc_strdup(pathFilenamePart)))
     LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN("Memory allocation error.\n");
 
   /* Restore saved path style */
@@ -167,25 +58,25 @@ free_return:
   return -1;
 }
 
-int updateIgsCompilerWorkingDirectory(
-  IgsCompilerContextPtr ctx,
-  const lbc * xmlFilename
+static int _updateIgsCompilerWorkingDirectory(
+  IgsCompilerContext * ctx,
+  const lbc * xml_filename
 )
 {
   /* Save current working directory */
-  if (lbc_getcwd(ctx->initialWorkingDir, PATH_BUFSIZE) < 0)
+  if (lbc_getcwd(ctx->initial_working_dir, PATH_BUFSIZE) < 0)
     return -1;
-  ECHO_DEBUG("  Saved path: '%" PRI_LBCS "'.\n", ctx->initialWorkingDir);
+  ECHO_DEBUG("  Saved path: '%" PRI_LBCS "'.\n", ctx->initial_working_dir);
 
   /* Getting working directory based on input XML filename */
-  if (getFileWorkingDirectory(&ctx->workingDir, &ctx->xmlFilename, xmlFilename) < 0)
+  if (_getFileWorkingDirectory(&ctx->cur_working_dir, &ctx->xml_filename, xml_filename) < 0)
     return -1;
-  ECHO_DEBUG("  New working path: '%" PRI_LBCS "'.\n", ctx->workingDir);
-  ECHO_DEBUG("  XML filename: '%" PRI_LBCS "'.\n", ctx->xmlFilename);
-  /* BUG: ctx->xmlFilename as 'invalid' read errors, make a proper copy */
+  ECHO_DEBUG("  New working path: '%" PRI_LBCS "'.\n", ctx->cur_working_dir);
+  ECHO_DEBUG("  XML filename: '%" PRI_LBCS "'.\n", ctx->xml_filename);
+  /* BUG: ctx->xml_filename as 'invalid' read errors, make a proper copy */
 
   /* Redefinition of working path */
-  if (lbc_chdir(ctx->workingDir) < 0)
+  if (lbc_chdir(ctx->cur_working_dir) < 0)
     LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN(
       "Unable to redefine working directory to opened file location, "
       "%s (errno: %d).\n",
@@ -196,100 +87,201 @@ int updateIgsCompilerWorkingDirectory(
   return 0;
 }
 
-static HdmvPaletteDefinitionPtr createAndBuildPalette(
-  const HdmvPicturesListPtr list,
-  HdmvPictureColorDitheringMethod ditherMeth,
-  HdmvPaletteColorMatrix colorMatrix
+static void _resetOriginalDirIgsCompilerContext(
+  IgsCompilerContext * ctx
 )
 {
-  HdmvPaletteDefinitionPtr pal;
+  if (NULL != ctx->cur_working_dir) {
+    if (lbc_chdir(ctx->initial_working_dir) < 0)
+      LIBBLU_WARNING("Unable to retrieve original working path.\n");
+    else
+      ECHO_DEBUG(
+        " Original working path restored ('%" PRI_LBCS "').\n",
+        ctx->initial_working_dir
+      );
 
-  /* static const HdmvPictureColorDitheringMethod ditherMeth =
-    HDMV_PIC_CDM_FLOYD_STEINBERG
-  ;
-  static const HdmvPaletteColorMatrix palColorMatrix =
-    HDMV_PAL_CM_BT_601
-  ; */
-
-  /* Create a new palette */
-  if (NULL == (pal = createHdmvPaletteDefinition(0x0)))
-    return NULL;
-
-  /* Fill the palette according to pictures */
-  if (buildPaletteListHdmvPalette(pal, list, 255, NULL) < 0)
-    goto free_return;
-
-  /* Sort palette */
-  sortEntriesHdmvPaletteDefinition(pal);
-
-  /* Apply the palette on pictures */
-  if (setPaletteHdmvPicturesList(list, pal, ditherMeth) < 0)
-    goto free_return;
-
-  /* Set palette conversion method */
-  setColorMatrixHdmvPaletteDefinition(pal, colorMatrix);
-
-  return pal;
-
-free_return:
-  destroyHdmvPaletteDefinition(pal);
-  return NULL;
+    free(ctx->cur_working_dir);
+    ctx->cur_working_dir = NULL;
+  }
 }
 
-int buildIgsCompilerComposition(
-  IgsCompilerCompositionPtr compo,
-  HdmvPictureColorDitheringMethod ditherMeth,
-  HdmvPaletteColorMatrix colorMatrix
+static void _cleanIgsCompilerContext(
+  IgsCompilerContext ctx
 )
 {
-  unsigned nbPages, page_id;
-  HdmvPicturesListPtr pictures;
+  ECHO_DEBUG("Free IGS Compiler context memory.\n");
 
+  cleanHdmvPictureLibraries(ctx.img_io_libs);
+  cleanXmlContext(ctx.xml_ctx);
+  cleanHdmvSegmentsInventory(ctx.inv);
+
+  for (unsigned i = 0; i < ctx.data.nb_compositions; i++)
+    cleanIgsCompilerComposition(ctx.data.compositions[i]);
+
+  _resetOriginalDirIgsCompilerContext(&ctx);
+  free(ctx.xml_filename);
+
+  ECHO_DEBUG("Done.\n");
+}
+
+static int _initIgsCompilerContext(
+  IgsCompilerContext * dst,
+  const lbc * xml_filename,
+  HdmvTimecodes * timecodes,
+  IniFileContextPtr conf
+)
+{
+  ECHO_DEBUG("IGS Compiler context initialization.\n");
+  IgsCompilerContext ctx = {
+    .conf = conf,
+    .timecodes = timecodes
+  };
+
+  ECHO_DEBUG(" Initialization of libraries and ressources.\n");
+
+  /* Init Picture libraries */
+  initHdmvPictureLibraries(&ctx.img_io_libs);
+
+  /* Init HDMV elements allocation inventory */
+  initHdmvSegmentsInventory(&ctx.inv);
+
+  /* Set working directory to allow file-relative files handling: */
+  ECHO_DEBUG(" Redefinition of working directory.\n");
+  if (_updateIgsCompilerWorkingDirectory(&ctx, xml_filename) < 0)
+    goto free_return;
+
+  ECHO_DEBUG("Done.\n");
+  *dst = ctx;
+  return 0;
+
+free_return:
+  ECHO_DEBUG("Failed.\n");
+  _cleanIgsCompilerContext(ctx);
+  return -1;
+}
+
+static int _buildPalette(
+  HdmvPalette * dst,
+  HdmvBitmapList * list,
+  HdmvPaletteColorMatrix color_matrix
+)
+{
+  /* Create a new palette */
+  HdmvPalette pal;
+  initHdmvPalette(&pal, 0x0, color_matrix);
+
+  /* Fill the palette according to pictures */
+  if (buildPaletteListHdmvPalette(&pal, list, 255u, NULL) < 0)
+    return -1;
+
+  /* Sort palette */
+  sortEntriesHdmvPalette(&pal);
+
+  *dst = pal;
+  return 0;
+}
+
+static int _buildObjects(
+  IgsCompilerComposition * compo,
+  const HdmvBitmapList * list,
+  const HdmvPalette * palette,
+  HdmvColorDitheringMethod dither_method
+)
+{
+  HdmvObject * objects_arr = malloc(list->nb_bitmaps * sizeof(HdmvObject));
+  if (NULL == objects_arr)
+    LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN("Memory allocation error.\n");
+
+  unsigned nb_objects = 0u;
+  for (unsigned i = 0; i < list->nb_bitmaps; i++) {
+    HdmvBitmap bitmap = list->bitmaps[i];
+
+    HdmvPalletizedBitmap pal_bm;
+    if (getPalletizedHdmvBitmap(&pal_bm, bitmap, palette, dither_method) < 0)
+      goto free_return;
+
+    HdmvObject * obj = &objects_arr[nb_objects++];
+    if (initHdmvObject(obj, pal_bm) < 0) {
+      cleanHdmvPaletizedBitmap(pal_bm);
+      goto free_return;
+    }
+    obj->desc.object_id = i;
+
+    uint16_t line;
+    if (!performRleHdmvObject(obj, &line)) {
+      // TODO: Provide other solutions
+      cleanHdmvPaletizedBitmap(pal_bm);
+      LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN(
+        "Unable to generate RLE for object %u, "
+        "compressed line %u exceed %u + 2 bytes.\n",
+        i, line, obj->pal_bitmap.width
+      );
+    }
+  }
+
+  compo->objects    = objects_arr;
+  compo->nb_objects = nb_objects;
+  return 0;
+
+free_return:
+  while (nb_objects--)
+    cleanHdmvObject(objects_arr[nb_objects]);
+  free(objects_arr);
+  return -1;
+}
+
+#define _COLLECT_STATE(name, comp, op)                                        \
+  do {                                                                        \
+    if (0xFFFF != btn->name.start_object_id_ref) {                            \
+      for (                                                                   \
+        uint16_t id = btn->name.start_object_id_ref;                          \
+        id comp btn->name.end_object_id_ref;                                  \
+        id op                                                                 \
+      ) {                                                                     \
+        assert(id < compo->nb_used_object_bitmaps);                           \
+        if (addHdmvBitmapList(&obj_bitmaps, compo->object_bitmaps[id]) < 0)   \
+          goto free_return;                                                   \
+      }                                                                       \
+    }                                                                         \
+  } while (0)
+
+#define COLLECT_STATE(name)                                                   \
+  do {                                                                        \
+    if (btn->name.start_object_id_ref <= btn->name.end_object_id_ref)         \
+      _COLLECT_STATE(name, <=, ++);                                           \
+    else                                                                      \
+      _COLLECT_STATE(name, >=, --);                                           \
+  } while (0)
+
+int buildIgsCompilerComposition(
+  IgsCompilerComposition * compo,
+  HdmvColorDitheringMethod dither_method,
+  HdmvPaletteColorMatrix color_matrix
+)
+{
   assert(NULL != compo);
 
   LIBBLU_HDMV_IGS_COMPL_INFO("Building interactive compositions...\n");
 
-  if (NULL == (pictures = createHdmvPicturesList()))
-    goto free_return;
+  HdmvBitmapList obj_bitmaps = {0};
 
   LIBBLU_HDMV_IGS_COMPL_DEBUG("Collecting content of each page:\n");
 
   /* Collect all composition pictures */
-  nbPages = compo->interactiveComposition.number_of_pages;
-  for (page_id = 0; page_id < nbPages; page_id++) {
+  uint8_t nb_pages = compo->interactive_composition.number_of_pages;
+  for (uint8_t page_id = 0; page_id < nb_pages; page_id++) {
     /* Create a palette for each page */
-    HdmvPageParameters * page = compo->interactiveComposition.pages[page_id];
-
-    HdmvPaletteDefinitionPtr pal;
-    unsigned nbPics, palId, bogId;
+    HdmvPageParameters * page = compo->interactive_composition.pages[page_id];
 
     LIBBLU_HDMV_IGS_COMPL_DEBUG(" Page %u\n", page_id);
     LIBBLU_HDMV_IGS_COMPL_DEBUG("  Collecting every object from each BOG:\n");
 
-    for (bogId = 0; bogId < page->number_of_BOGs; bogId++) {
-      HdmvButtonOverlapGroupParameters * bog = page->bogs[bogId];
+    for (uint8_t bog_id = 0; bog_id < page->number_of_BOGs; bog_id++) {
+      HdmvButtonOverlapGroupParameters * bog = page->bogs[bog_id];
 
-      unsigned button_id;
-
-      for (button_id = 0; button_id < bog->number_of_buttons; button_id++) {
+      for (uint8_t btn_id = 0; btn_id < bog->number_of_buttons; btn_id++) {
         /* Collect all pictures */
-        HdmvButtonParam * btn = bog->buttons[button_id];
-
-#define COLLECT_STATE(name)                                                   \
-        if (0xFFFF != btn->name.start_object_id_ref) {                        \
-          uint16_t objId;                                                     \
-                                                                              \
-          for (                                                               \
-            objId = btn->name.start_object_id_ref;                            \
-            objId != btn->name.end_object_id_ref + 1;                         \
-            objId++                                                           \
-          ) {                                                                 \
-            assert(objId < compo->nbUsedObjPics);                             \
-                                                                              \
-            if (addHdmvPicturesList(pictures, compo->objPics[objId]) < 0)     \
-              goto free_return;                                               \
-          }                                                                   \
-        }
+        HdmvButtonParam * btn = bog->buttons[btn_id];
 
         /* Normal state */
         COLLECT_STATE(normal_state_info);
@@ -299,132 +291,112 @@ int buildIgsCompilerComposition(
 
         /* Activated state */
         COLLECT_STATE(activated_state_info);
-
-#undef COLLECT_STATE
       }
     }
 
     /* Getting the number of collected objects. */
-    nbPics = nbPicsHdmvPicturesList(pictures);
-
-    if (!nbPics) {
+    unsigned nb_obj = obj_bitmaps.nb_bitmaps;
+    if (0 == nb_obj) {
       LIBBLU_HDMV_IGS_COMPL_DEBUG("  Empty page, skipping to next one.\n");
       continue;
     }
 
-    LIBBLU_HDMV_IGS_COMPL_DEBUG("  Creating palette for %u pictures.\n", nbPics);
-    pal = createAndBuildPalette(pictures, ditherMeth, colorMatrix);
-    if (NULL == pal)
+    LIBBLU_HDMV_IGS_COMPL_DEBUG("  Creating palette for %u objects.\n", nb_obj);
+    HdmvPalette pal;
+    if (_buildPalette(&pal, &obj_bitmaps, color_matrix) < 0)
+      goto free_return;
+
+    LIBBLU_HDMV_IGS_COMPL_DEBUG("  Apply palette to create objects.\n");
+    if (_buildObjects(compo, &obj_bitmaps, &pal, dither_method) < 0)
       goto free_return;
 
     /* Add finished palette to composition and reset list for next page */
     LIBBLU_HDMV_IGS_COMPL_DEBUG("  Saving generated palette.\n");
-    if (addPaletteIgsCompilerComposition(compo, pal, &palId) < 0) {
-      destroyHdmvPaletteDefinition(pal);
+    uint8_t palette_id;
+    if (addPaletteIgsCompilerComposition(compo, &pal, &palette_id) < 0)
       goto free_return;
-    }
-
-    /* Save generated ID */
-    if (UINT8_MAX < palId)
-      LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN("Too many palettes present (id exceed 0xFF).\n");
-    page->palette_id_ref = palId; /* Set page palette id */
+    page->palette_id_ref = palette_id; /* Set page palette id */
 
     LIBBLU_HDMV_IGS_COMPL_DEBUG("  Flushing list.\n");
-    flushHdmvPicturesList(pictures);
+    flushHdmvBitmapList(&obj_bitmaps);
   }
 
   LIBBLU_HDMV_IGS_COMPL_DEBUG(" Completed.\n");
 
-  destroyHdmvPicturesList(pictures);
+  cleanHdmvBitmapList(obj_bitmaps);
   return 0;
 
 free_return:
-  destroyHdmvPicturesList(pictures);
+  cleanHdmvBitmapList(obj_bitmaps);
   return -1;
 }
 
-static HdmvPictureColorDitheringMethod getDitherMethodFromIniIgsCompiler(
-  IgsCompilerContextPtr ctx
+#undef COLLECT_STATE
+
+static HdmvColorDitheringMethod _getDitherMethodFromConf(
+  const IgsCompilerContext * ctx
 )
 {
-  lbc * str;
-
-  if (NULL == (str = lookupIniFile(ctx->conf, "HDMV.DITHERMETHOD")))
-    return HDMV_PIC_CDM_DISABLED;
-
-  if (lbc_equal(str, lbc_str("floydSteinberg")))
+  lbc * str = lookupIniFile(ctx->conf, "HDMV.DITHERMETHOD");
+  if (NULL != str && lbc_equal(str, lbc_str("floydSteinberg")))
     return HDMV_PIC_CDM_FLOYD_STEINBERG;
-
   return HDMV_PIC_CDM_DISABLED;
 }
 
-static HdmvPaletteColorMatrix getColorMatrixFromIniIgsCompiler(
-  IgsCompilerContextPtr ctx
+static HdmvPaletteColorMatrix _getColorMatrixFromConf(
+  const IgsCompilerContext * ctx
 )
 {
-  lbc * str;
-
-  if (NULL == (str = lookupIniFile(ctx->conf, "HDMV.COLORMATRIX")))
-    return HDMV_PAL_CM_BT_601;
-
-  if (lbc_equal(str, lbc_str("BT.709")))
+  lbc * str = lookupIniFile(ctx->conf, "HDMV.COLORMATRIX");
+  if (NULL != str && lbc_equal(str, lbc_str("BT.709")))
     return HDMV_PAL_CM_BT_709;
-  if (lbc_equal(str, lbc_str("BT.2020")))
+  if (NULL != str && lbc_equal(str, lbc_str("BT.2020")))
     return HDMV_PAL_CM_BT_2020;
-
   return HDMV_PAL_CM_BT_601;
 }
 
 int processIgsCompiler(
-  const lbc * xmlPath,
+  const lbc * xml_filepath,
   HdmvTimecodes * timecodes,
   IniFileContextPtr conf
 )
 {
-  int ret;
-
-  IgsCompilerContextPtr ctx;
-  lbc * igsOutputFilename;
-  unsigned compId;
-
-  HdmvPictureColorDitheringMethod ditherMeth;
-  HdmvPaletteColorMatrix colorMatrix;
-
-  LIBBLU_HDMV_IGS_COMPL_INFO("Compiling IGS...\n");
-
-  if (NULL == (ctx = createIgsCompilerContext(xmlPath, timecodes, conf)))
+  IgsCompilerContext ctx = {0};
+  if (_initIgsCompilerContext(&ctx, xml_filepath, timecodes, conf) < 0)
     return -1;
 
-  if (parseIgsXmlFile(ctx) < 0)
+  LIBBLU_HDMV_IGS_COMPL_INFO("Compiling IGS...\n");
+  if (parseIgsXmlFile(&ctx) < 0)
     goto free_return;
 
-  ditherMeth = getDitherMethodFromIniIgsCompiler(ctx);
-  colorMatrix = getColorMatrixFromIniIgsCompiler(ctx);
+  HdmvColorDitheringMethod dm = _getDitherMethodFromConf(&ctx);
+  HdmvPaletteColorMatrix cm = _getColorMatrixFromConf(&ctx);
 
-  for (compId = 0; compId < ctx->data.nbCompo; compId++) {
-    if (buildIgsCompilerComposition(GET_COMP(ctx, compId), ditherMeth, colorMatrix) < 0)
+  for (unsigned i = 0; i < ctx.data.nb_compositions; i++) {
+    if (buildIgsCompilerComposition(&ctx.data.compositions[i], dm, cm) < 0)
       goto free_return;
   }
 
-  resetOriginalDirIgsCompilerContext(ctx);
+  _resetOriginalDirIgsCompilerContext(&ctx);
 
   /* Create XML output filename */
-  ret = lbc_asprintf(&igsOutputFilename, HDMV_IGS_COMPL_OUTPUT_FMT, xmlPath);
+  lbc * igs_out_filename;
+  int ret = lbc_asprintf(&igs_out_filename, HDMV_IGS_COMPL_OUTPUT_FMT, xml_filepath);
   if (ret < 0)
     LIBBLU_HDMV_IGS_COMPL_ERROR_GRETURN(free_return2, "Memory allocation error.\n");
 
-  if (buildIgsCompiler(&ctx->data, igsOutputFilename) < 0)
+  if (buildIgsCompiler(&ctx.data, igs_out_filename) < 0)
     goto free_return2;
 
   LIBBLU_HDMV_IGS_COMPL_INFO("Compilation finished, parsing output file.\n");
 
-  free(igsOutputFilename);
-  destroyIgsCompilerContext(ctx);
+  free(igs_out_filename);
+  _cleanIgsCompilerContext(ctx);
   return 0;
 
 free_return2:
-  free(igsOutputFilename);
+  free(igs_out_filename);
 free_return:
-  destroyIgsCompilerContext(ctx);
+  _cleanIgsCompilerContext(ctx);
   return -1;
 }

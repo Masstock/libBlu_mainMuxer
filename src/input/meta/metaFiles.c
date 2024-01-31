@@ -114,7 +114,7 @@ static int _parseHeaderMetaFile(
         LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, disableHrdVerifier, true);
         break;
 
-      case LBMETA_OPT__HDMV_INITIAL_TIMESTAMP:
+      case LBMETA_OPT__HDMV_INITIAL_TS:
         if (setHdmvInitialTimestampLibbluMuxingSettings(dst, argument.u64) < 0)
           LIBBLU_ERROR_RETURN(
             "Invalid '%" PRI_LBCS "' option value, "
@@ -127,7 +127,7 @@ static int _parseHeaderMetaFile(
         break;
 
       case LBMETA_OPT__HDMV_FORCE_RETIMING:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.forceRetiming, true);
+        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.force_retiming, true);
         break;
 
       default:
@@ -332,7 +332,7 @@ static int parseTrackMetaFile(
         break;
       }
 
-      case LBMETA_OPT__HDMV_INITIAL_TIMESTAMP:
+      case LBMETA_OPT__HDMV_INITIAL_TS:
         if (setHdmvInitialTimestampLibbluESSettings(elemStream, argument.u64) < 0)
           LIBBLU_ERROR_RETURN(
             "Invalid '%" PRI_LBCS "' option value, "
@@ -345,7 +345,11 @@ static int parseTrackMetaFile(
         break;
 
       case LBMETA_OPT__HDMV_FORCE_RETIMING:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.forceRetiming, true);
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.force_retiming, true);
+        break;
+
+      case LBMETA_OPT__HDMV_ASS_INPUT:
+        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.ass_input, true);
         break;
 
       case LBMETA_OPT__ESMS:

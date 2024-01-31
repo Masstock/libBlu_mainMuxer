@@ -32,14 +32,9 @@
  * Otherwise, value is a positive int.
  */
 #define XML_PATH_NODE_NB(xmlXPathObjectPtr)                                   \
-  (                                                                           \
-    (                                                                         \
-      NULL != (xmlXPathObjectPtr)                                             \
-      && NULL != (xmlXPathObjectPtr)->nodesetval                              \
-    ) ?                                                                       \
-    (xmlXPathObjectPtr)->nodesetval->nodeNr                                   \
-    : 0                                                                       \
-  )
+  ((NULL == (xmlXPathObjectPtr)                                               \
+    && NULL == (xmlXPathObjectPtr)->nodesetval                                \
+   ) ? 0 : (xmlXPathObjectPtr)->nodesetval->nodeNr)
 
 /** \~english
  * \brief Set boolean true if given set node int idx exists in
@@ -50,12 +45,7 @@
  * Otherwise, value is true.
  */
 #define XML_PATH_NODE_EXISTS(xmlXPathObjectPtr, idx)                          \
-  (                                                                           \
-    NULL != (xmlXPathObjectPtr)                                               \
-    && NULL != (xmlXPathObjectPtr)->nodesetval                                \
-    && 0 <= (idx)                                                             \
-    && (idx) < XML_PATH_NODE_NB(xmlXPathObjectPtr)                            \
-  )
+  (0 <= (idx) && (idx) < XML_PATH_NODE_NB(xmlXPathObjectPtr))
 
 /** \~english
  * \brief Get set node of given int idx from given xmlPathObject.
@@ -72,70 +62,26 @@
     : NULL                                                                    \
   )
 
-/** \~english
- * \brief Get xmlDocPtr doc field from xmlNodePtr.
- */
-#define XML_DOC(xmlNodePtr)                                                   \
-  (                                                                           \
-    (xmlNodePtr)->doc                                                         \
-  )
-
-/** \~english
- * \brief Get xmlNodePtr children field from xmlNodePtr.
- */
-#define XML_CHILDREN_NODE(xmlNodePtr)                                         \
-  (                                                                           \
-    (xmlNodePtr)->children                                                    \
-  )
-
-/** \~english
- * \brief Accessor to #XmlCtxPtr libXml context.
- *
- * Value is of type xmlDocPtr.
- */
-#define LIBXML_CONTEXT(XmlCtxPtr)                                             \
-  (                                                                           \
-    (XmlCtxPtr)->libxmlCtx                                                    \
-  )
-
-#define XML_MAX_SAVED_PATHS 5
+#define XML_MAX_SAVED_PATHS  16
 
 typedef struct {
-  xmlDocPtr libxmlCtx;
-
-  void (* errorLogFun) (const lbc * format, ...);
-  void (* debugLogFun) (const lbc * format, ...);
+  xmlDocPtr libxml_ctx;
 
   /* Used when call setRootPathFromPathObjectIgsXmlFile(): */
-  xmlNodePtr savedNodesStack[XML_MAX_SAVED_PATHS];
-  unsigned savedNodesStackHeight;
+  xmlNodePtr saved_nodes_stack[XML_MAX_SAVED_PATHS];
+  unsigned saved_nodes_stack_height;
 
-  unsigned lastParsedNodeLine;
-} XmlCtx, *XmlCtxPtr;
+  unsigned last_parsed_node_line;
+} XmlCtx;
 
-#define XML_ERROR_LOG_FUN(format, ...)                                        \
-  ((*(ctx->errorLogFun))(lbc_str(format), ##__VA_ARGS__))
-
-#define XML_DEBUG_LOG_FUN(format, ...)                                        \
-  ((*(ctx->debugLogFun))(lbc_str(format), ##__VA_ARGS__))
-
-XmlCtxPtr createXmlContext(
-  void (* errorLogFun) (const lbc * format, ...),
-  void (* debugLogFun) (const lbc * format, ...)
-);
-
-static inline void destroyXmlContext(
-  XmlCtxPtr ctx
+static inline void cleanXmlContext(
+  XmlCtx ctx
 )
 {
-  if (NULL == ctx)
-    return;
-
-  while (0 < ctx->savedNodesStackHeight--) {
-    xmlNodePtr node = ctx->savedNodesStack[ctx->savedNodesStackHeight];
-    xmlFreeNode(xmlDocSetRootElement(LIBXML_CONTEXT(ctx), node));
+  while (0 < ctx.saved_nodes_stack_height--) {
+    xmlNodePtr node = ctx.saved_nodes_stack[ctx.saved_nodes_stack_height];
+    xmlFreeNode(xmlDocSetRootElement(ctx.libxml_ctx, node));
   }
-  free(ctx);
 }
 
 /** \~english
@@ -146,7 +92,7 @@ static inline void destroyXmlContext(
  * \return int A zero value on success, otherwise a negative value.
  */
 int loadIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const lbc * filePath
 );
 
@@ -156,7 +102,7 @@ int loadIgsXmlFile(
  * \param ctx Context containing a XML file opened by #loadIgsXmlFile().
  */
 void releaseIgsXmlFile(
-  XmlCtxPtr ctx
+  XmlCtx * ctx
 );
 
 /** \~english
@@ -167,7 +113,7 @@ void releaseIgsXmlFile(
  * \return xmlXPathObjectPtr PathObject of request (or NULL pointer).
  */
 xmlXPathObjectPtr getPathObjectIgsXmlFile(
-  const XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const char * path
 );
 
@@ -176,13 +122,13 @@ xmlXPathObjectPtr getPathObjectIgsXmlFile(
  * with arguments pile.
  *
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
  * \return xmlXPathObjectPtr PathObject of request (or NULL pointer).
  */
 xmlXPathObjectPtr getPathObjectFromExprVaIgsXmlFile(
-  const XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   va_list args
 );
 
@@ -191,13 +137,13 @@ xmlXPathObjectPtr getPathObjectFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return xmlXPathObjectPtr PathObject of request (or NULL pointer).
  */
 xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
-  const XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   ...
 );
 
@@ -205,7 +151,7 @@ xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
  * \brief Define an intermediate new root of XML path.
  *
  * \param ctx Context to use.
- * \param pathObj Path object to use as a new root.
+ * \param xpath_obj Path object to use as a new root.
  * \param idx Path node set index to use.
  * \return int A zero value on success, otherwise a negative value.
  *
@@ -215,8 +161,8 @@ xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
  * in a LIFO pile (Last In First Out pile).
  */
 int setRootPathFromPathObjectIgsXmlFile(
-  XmlCtxPtr ctx,
-  xmlXPathObjectPtr pathObj,
+  XmlCtx * ctx,
+  xmlXPathObjectPtr xpath_obj,
   int idx
 );
 
@@ -227,7 +173,7 @@ int setRootPathFromPathObjectIgsXmlFile(
  * \return int A zero value on success, otherwise a negative value.
  */
 int restoreLastRootIgsXmlFile(
-  const XmlCtxPtr ctx
+  XmlCtx * ctx
 );
 
 /** \~english
@@ -241,7 +187,7 @@ int restoreLastRootIgsXmlFile(
  * Returned pointer must be freed after use using #freeXmlCharPtr().
  */
 xmlChar * getStringIgsXmlFile(
-  const XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const char * path,
   int idx
 );
@@ -251,15 +197,15 @@ xmlChar * getStringIgsXmlFile(
  * with arguments pile.
  *
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
  * \return xmlChar* String result of request (or NULL pointer).
  *
  * Returned pointer must be freed after use using #freeXmlCharPtr().
  */
 xmlChar * getStringFromExprVaIgsXmlFile(
-  const XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   va_list args
 );
 
@@ -268,15 +214,15 @@ xmlChar * getStringFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return xmlChar* String result of request (or NULL pointer).
  *
  * Returned pointer must be freed after use using #freeXmlCharPtr().
  */
 xmlChar * getStringFromExprIgsXmlFile(
-  const XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   ...
 );
 
@@ -300,7 +246,7 @@ void freeXmlCharPtr(
  * \return int Positive or zero on success (or a negative value otherwise).
  */
 int getNbObjectsIgsXmlFile(
-  const XmlCtxPtr ctx,
+  XmlCtx * ctx,
   const char * path
 );
 
@@ -309,13 +255,13 @@ int getNbObjectsIgsXmlFile(
  * with arguments pile.
  *
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
  * \return int Positive or zero on success (or a negative value otherwise).
  */
 int getNbObjectsFromExprVaIgsXmlFile(
-  const XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   va_list args
 );
 
@@ -324,13 +270,13 @@ int getNbObjectsFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return int Positive or zero on success (or a negative value otherwise).
  */
 int getNbObjectsFromExprIgsXmlFile(
-  const XmlCtxPtr ctx,
-  const char * pathFormat,
+  XmlCtx * ctx,
+  const char * path_format,
   ...
 );
 
@@ -346,7 +292,7 @@ int getNbObjectsFromExprIgsXmlFile(
  * String pointer must be freed after use using #freeXmlCharPtr().
  */
 int getIfExistsStringIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   xmlChar ** string,
   const xmlChar * def,
   const char * path
@@ -359,17 +305,17 @@ int getIfExistsStringIgsXmlFile(
  * \param string String result of request.
  * \param def Default string pointer used if no object is founded (can be NULL).
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
  * \return int A zero value on success, otherwise a negative value.
  *
  * String pointer must be freed after use using #freeXmlCharPtr().
  */
 int getIfExistsStringFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   xmlChar ** string,
   const xmlChar * def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
@@ -380,35 +326,35 @@ int getIfExistsStringFromExprVaIgsXmlFile(
  * \param string String result of request.
  * \param def Default string pointer used if no object is founded (can be NULL).
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  *
  * String pointer must be freed after use using #freeXmlCharPtr().
  */
 int getIfExistsStringFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   xmlChar ** string,
   const xmlChar * def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
 /* ### Signed integers : ################################################### */
 
 int getIfExistsInt64FromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int64_t * dst,
   int64_t def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
 int getIfExistsInt64FromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int64_t * dst,
   int64_t def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
@@ -422,10 +368,10 @@ int getIfExistsInt64FromExprIgsXmlFile(
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsLongFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   long * dst,
   long def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
@@ -436,15 +382,15 @@ int getIfExistsLongFromExprVaIgsXmlFile(
  * \param dst Long result destination of request.
  * \param def Default value used if no object is founded.
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsLongFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   long * dst,
   long def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
@@ -455,15 +401,15 @@ int getIfExistsLongFromExprIgsXmlFile(
  * \param dst Int result destination of request.
  * \param def Default value used if no object is founded.
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsIntegerFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int * dst,
   int def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
@@ -474,15 +420,15 @@ int getIfExistsIntegerFromExprVaIgsXmlFile(
  * \param dst Int result destination of request.
  * \param def Default value used if no object is founded.
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsIntegerFromExprIgsXmlFile(
-  const XmlCtxPtr ctx,
+  XmlCtx * ctx,
   int * dst,
   int def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
@@ -495,15 +441,15 @@ int getIfExistsIntegerFromExprIgsXmlFile(
  * \param dst Boolean result destination of request.
  * \param def Default value used if no object is founded.
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsBooleanFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   bool * dst,
   bool def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
@@ -514,67 +460,67 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
  * \param dst Boolean result destination of request.
  * \param def Default value used if no object is founded.
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsBooleanFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   bool * dst,
   bool def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
 /* ### Floating point : #################################################### */
 
 int getIfExistsDoubleFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   double * dst,
   double def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
 int getIfExistsDoubleFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   double * dst,
   double def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
 int getIfExistsFloatFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   float * dst,
   float def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
 int getIfExistsFloatFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   float * dst,
   float def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
 /* ### Unsigned integers : ################################################# */
 
 int getIfExistsUint64FromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
 int getIfExistsUint64FromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 
@@ -589,10 +535,10 @@ int getIfExistsUint64FromExprIgsXmlFile(
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsUnsignedFromExprVaIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   unsigned * dst,
   unsigned def,
-  const char * pathFormat,
+  const char * path_format,
   va_list args
 );
 
@@ -603,33 +549,15 @@ int getIfExistsUnsignedFromExprVaIgsXmlFile(
  * \param dst Unsigned int result destination of request.
  * \param def Default value used if no object is founded.
  * \param ctx Context to use.
- * \param pathFormat XPath format formatted request.
+ * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
 int getIfExistsUnsignedFromExprIgsXmlFile(
-  XmlCtxPtr ctx,
+  XmlCtx * ctx,
   unsigned * dst,
   unsigned def,
-  const char * pathFormat,
-  ...
-);
-
-/* ######################################################################### */
-
-/** \~english
- * \brief #getNbObjectsFromExprIgsXmlFile() error printing function.
- *
- * \param ret #getNbObjectsFromExprIgsXmlFile() returned value.
- * \param pathFormat XPath expression.
- * \param ... Additional path formatting arguments.
- *
- * This function can be used if expected number of objects is
- * not satified (zero for exemple).
- */
-void printNbObjectsFromExprErrorIgsXmlFile(
-  int ret,
-  const char * pathFormat,
+  const char * path_format,
   ...
 );
 

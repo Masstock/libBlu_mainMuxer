@@ -16,7 +16,7 @@ static int _parseAc3CoreSyncFrame(
 {
 
   LIBBLU_AC3_DEBUG(
-    "0x%08" PRIX64 " === AC3 Core sync frame ===\n",
+    "0x%08" PRIX64 " === AC-3 Core sync frame ===\n",
     ctx->cur_au.start_offset
   );
 

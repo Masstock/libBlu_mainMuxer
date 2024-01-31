@@ -128,7 +128,7 @@ static inline void cleanLibbluESPesPacketData(
 
 int allocateLibbluESPesPacketData(
   LibbluESPesPacketData * dst,
-  size_t size
+  uint32_t size
 );
 
 #endif

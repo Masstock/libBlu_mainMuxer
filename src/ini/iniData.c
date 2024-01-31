@@ -60,7 +60,7 @@ int loadSourceIniFileContext(
         allocatedLines
       );
 
-      if (lb_mul_overflow(newSize, sizeof(char *)))
+      if (lb_mul_overflow_size_t(newSize, sizeof(char *)))
         LIBBLU_ERROR_FRETURN("Too many lines in input INI file, overflow.\n")
 
       newArray = (char **) realloc(sourceCode, newSize * sizeof(char *));

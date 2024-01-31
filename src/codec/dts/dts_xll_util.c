@@ -20,7 +20,7 @@ int saveFrameSizeDtsPbrSmoothing(
   if (stats->nb_alloc_frames <= audio_frame_idx) {
     unsigned new_len = GROW_ALLOCATION(stats->nb_alloc_frames, 4096);
 
-    if (lb_mul_overflow(new_len, sizeof(DtsPbrSmoothingStatsFrame)))
+    if (lb_mul_overflow_size_t(new_len, sizeof(DtsPbrSmoothingStatsFrame)))
       LIBBLU_DTS_ERROR_RETURN(
         "Too many DTS XLL frames for PBR smoothing process.\n"
       );

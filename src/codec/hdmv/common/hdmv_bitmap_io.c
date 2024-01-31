@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "hdmv_pictures_io.h"
+#include "hdmv_bitmap_io.h"
 
 /* ######################################################################### */
 
@@ -49,23 +49,22 @@ static HdmvPictureFormat _identifyFormatHdmvPictureLibraries(
     errno                                                                     \
   )
 
-HdmvPicturePtr openHdmvPicture(
+int openHdmvBitmap(
+  HdmvBitmap * dst,
   HdmvPictureLibraries * libs,
   const lbc * filepath,
   const IniFileContextPtr conf
 )
 {
-  HdmvPicturePtr pic;
-  FILE * file;
-
   assert(NULL != filepath);
 
-  if (NULL == (file = lbc_fopen(filepath, "rb")))
+  FILE * fd = lbc_fopen(filepath, "rb");
+  if (NULL == fd)
     ERROR_FRETURN("Unable to open picture");
 
   /* Read file signature (first n bytes) */
   uint8_t signature[HDMV_PIC_SIGNATURE_SIZE];
-  if (!RA_FILE(file, signature, HDMV_PIC_SIGNATURE_SIZE))
+  if (!RA_FILE(fd, signature, HDMV_PIC_SIGNATURE_SIZE))
     ERROR_FRETURN("Unable to read picture");
 
   /* Use the signature to identify used format */
@@ -76,19 +75,20 @@ HdmvPicturePtr openHdmvPicture(
         if (loadHdmvLibpngHandle(&libs->libpng, libFilepath) < 0)
           goto free_return;
       }
-      pic = openPngHdmvPicture(&libs->libpng, filepath, file);
+      if (openPngHdmvBitmap(dst, &libs->libpng, filepath, fd) < 0)
+        goto free_return;
       break;
 
     default:
       ERROR_FRETURN("Unhandled picture format");
   }
 
-  fclose(file);
-  return pic;
+  fclose(fd);
+  return 0;
 
 free_return:
-  fclose(file);
-  return NULL;
+  fclose(fd);
+  return -1;
 }
 
 #undef ERROR_FRETURN

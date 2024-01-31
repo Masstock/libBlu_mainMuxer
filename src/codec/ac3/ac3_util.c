@@ -146,8 +146,14 @@ Ac3ContentType initNextFrameAc3Context(
       if (((next_words >> 8) & 0xFFFFFF) == MLP_SYNCWORD_PREFIX) {
         type = AC3_TRUEHD;
       }
-      else
-        LIBBLU_TODO(); // TODO: Add support for Dolby_TrueHD_file syntax described in [3].
+      else {
+        // TODO: Add support for Dolby_TrueHD_file syntax described in [3].
+        LIBBLU_TODO(
+          "Dolby_TrueHD_file defined in "
+          "'TrueHD - Dolby TrueHD (MLP) - High-level bitstream description' "
+          "is not yet supported.\n"
+        );
+      }
     }
     else {
       /* Access Unit may contain minor sync, meaning no magic word */

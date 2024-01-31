@@ -63,7 +63,7 @@ int preparePesHeaderCommon(
     case STREAM_CODING_TYPE_AC3: /* AC-3 */
     case STREAM_CODING_TYPE_DTS: /* DTS Coherent Acoustics */
     case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD */
-    case STREAM_CODING_TYPE_EAC3: /* E-AC3 */
+    case STREAM_CODING_TYPE_EAC3: /* E-AC-3 */
     case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR */
     case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA */
     case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express Secondary */
@@ -121,10 +121,10 @@ int preparePesHeaderCommon(
       case STREAM_CODING_TYPE_AC3: /* AC-3 (Dolby Digital) */
       case STREAM_CODING_TYPE_DTS: /* DTS */
       case STREAM_CODING_TYPE_TRUEHD: /* MLP (Dolby TrueHD) */
-      case STREAM_CODING_TYPE_EAC3: /* E-AC3 (Dolby Digital Plus) */
+      case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
       case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
       case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
-      case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC3 (Dolby Digital Plus) (Secondary Audio) */
+      case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (Dolby Digital Plus) (Secondary Audio) */
       case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-HD Express (Secondary Audio) */
       case STREAM_CODING_TYPE_VC1: /* VC-1 */
         dst->pesExtFlag = 0x1;
@@ -239,7 +239,7 @@ int preparePesHeaderCommon(
               else
                 dst->extParam.streamIdExtension = 0x76;
               break;
-            case STREAM_CODING_TYPE_EAC3: /* E-AC3 (Dolby Digital Plus) */
+            case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
             case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
             case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
               if (prop.extensionFrame)
@@ -247,7 +247,7 @@ int preparePesHeaderCommon(
               else
                 dst->extParam.streamIdExtension = 0x71;
               break;
-            case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC3 (Dolby Digital Plus) (Secondary Audio) */
+            case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (Dolby Digital Plus) (Secondary Audio) */
             case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-HD Express (Secondary Audio) */
               dst->extParam.streamIdExtension = 0x72; break;
             case STREAM_CODING_TYPE_VC1: /* VC-1 */
@@ -399,7 +399,7 @@ size_t averageSizeLibbluESPesPacketPropertiesNode(
 
 int allocateLibbluESPesPacketData(
   LibbluESPesPacketData * dst,
-  size_t size
+  uint32_t size
 )
 {
   bool perfm_alloc = (dst->alloc_size < size);
@@ -409,10 +409,8 @@ int allocateLibbluESPesPacketData(
 #endif
 
   if (perfm_alloc) {
-    /* Found power of 2 */
-    uint32_t new_size = 1024;
-    for (; new_size && new_size < size; new_size <<= 1)
-      ;
+    /* Look-up next power of 2 */
+    uint32_t new_size = lb_ceil_pow2_32(1u + size);
     if (!new_size)
       LIBBLU_ERROR_RETURN("PES packet allocation size overflow.\n");
 

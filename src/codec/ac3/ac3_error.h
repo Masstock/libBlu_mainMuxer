@@ -12,7 +12,7 @@
 
 #include "../../util.h"
 
-#define LIBBLU_AC3_KEYWORD  "AC3"
+#define LIBBLU_AC3_KEYWORD  "AC-3"
 
 /* ### AC-3 Core : ######################################################### */
 
@@ -107,7 +107,7 @@
 
 #define LIBBLU_AC3_DEBUG_UTIL(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
-    LIBBLU_DEBUG_AC3_OPERATIONS, "AC3/Utils",                                 \
+    LIBBLU_DEBUG_AC3_OPERATIONS, "AC-3/Utils",                                 \
     format, ##__VA_ARGS__                                                     \
   )
 

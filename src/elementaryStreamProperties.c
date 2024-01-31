@@ -89,29 +89,6 @@ HdmvFrameRateCode getHdmvFrameRateCode(
   return FRAME_RATE_CODE_UNSPC;
 }
 
-double frameRateCodeToDouble(
-  HdmvFrameRateCode code
-)
-{
-  double val;
-
-  static const double frameRates[] = {
-    -1.0, /* < Reserved */
-    24000.0 / 1001.0,
-    24.0,
-    25.0,
-    30000.0 / 1001.0,
-    -1.0, /* < Reserved */
-    50.0,
-    50000.0 / 1001.0
-  };
-
-  val = -1.0;
-  if (code < ARRAY_SIZE(frameRates))
-    val = frameRates[code];
-  return val;
-}
-
 #define DISPLAY_MODE_PROGRESSIVE  0x01
 #define DISPLAY_MODE_INTERLACED  0x02
 #define DISPLAY_MODE_UNRESTRICTED  0x03

@@ -1,9 +1,9 @@
 
-#ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__IO_H__
-#define __LIBBLU_MUXER__CODECS__HDMV__COMMON__IO_H__
+#ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__BITMAP_IO_H__
+#define __LIBBLU_MUXER__CODECS__HDMV__COMMON__BITMAP_IO_H__
 
 #include "hdmv_error.h"
-#include "hdmv_pictures_common.h"
+#include "hdmv_bitmap.h"
 #include "hdmv_libpng.h"
 #include "../../../ini/iniData.h"
 
@@ -33,7 +33,8 @@ static inline void cleanHdmvPictureLibraries(
 
 /* ######################################################################### */
 
-HdmvPicturePtr openHdmvPicture(
+int openHdmvBitmap(
+  HdmvBitmap * dst,
   HdmvPictureLibraries * libs,
   const lbc * filepath,
   const IniFileContextPtr conf

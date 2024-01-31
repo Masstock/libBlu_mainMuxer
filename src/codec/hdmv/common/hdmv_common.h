@@ -181,7 +181,7 @@ static inline void initHdmvSegment(
 
 typedef struct HdmvSequence {
   struct HdmvSequence * nextSequence;
-  struct HdmvSequence * nextSequenceDS;
+  // struct HdmvSequence * nextSequenceDS;
   unsigned displaySetIdx;  /**< Associated DS number from which this sequence is from. */
 
   HdmvSegmentType type;
@@ -189,24 +189,29 @@ typedef struct HdmvSequence {
   HdmvSegmentPtr lastSegment;
 
   uint8_t * fragments;
-  size_t fragmentsAllocatedLen;
-  size_t fragmentsUsedLen;
-  size_t fragmentsParsedOff;
+  uint32_t fragments_allocated_len;
+  uint32_t fragments_used_len;
+  uint32_t fragments_parsed_off;
 
+#if 1
   union {
-    HdmvPdsSegmentParameters pd;  /**< Palette Definition.                   */
-    HdmvODParameters         od;  /**< Object Definition.                    */
-    HdmvPCParameters         pc;  /**< Presentation Composition.             */
-    HdmvWDParameters         wd;  /**< Window Definition.                    */
-    HdmvICParameters         ic;  /**< Interactive Composition.              */
+    HdmvPDSegmentParameters pd;  /**< Palette Definition.                   */
+    HdmvODParameters        od;  /**< Object Definition.                    */
+    HdmvPCParameters        pc;  /**< Presentation Composition.             */
+    HdmvWDParameters        wd;  /**< Window Definition.                    */
+    HdmvICParameters        ic;  /**< Interactive Composition.              */
   } data;
+#endif
 
-  int64_t pts;  /**< Presentation Time Stamp, in 90kHz clock ticks. */
-  int64_t dts;  /**< Decoding Time Stamp, in 90kHz clock ticks. */
-  int32_t decodeDuration; /**< For Object Definition sequences, the duration
-    required to decode graphical objects data. For Window Definition
-    sequences, the required minimal amount of time to draw graphics.         */
-  int32_t transferDuration;
+  int64_t pts;  /**< Presentation Time Stamp, in 90kHz clock ticks.          */
+  int64_t dts;  /**< Decoding Time Stamp, in 90kHz clock ticks.              */
+  int32_t decode_duration;    /**< For Object Definition Segment sequences,
+    the duration required to decode graphical objects data. For Window
+    Definition sequences, the required minimal amount of time to draw
+    graphics.                                                                */
+  int32_t transfer_duration;  /**< For Object Definition Segment sequences,
+    the extra transfer duration before decoding next sequence, might be used
+    to avoid buffering model underflows.                                     */
 } HdmvSequence, *HdmvSequencePtr;
 
 static inline void resetHdmvSequence(
@@ -215,7 +220,7 @@ static inline void resetHdmvSequence(
 {
   *dst = (HdmvSequence) {
     .fragments = dst->fragments,
-    .fragmentsAllocatedLen = dst->fragmentsAllocatedLen
+    .fragments_allocated_len = dst->fragments_allocated_len
   };
 }
 
@@ -249,28 +254,28 @@ bool isDuplicateHdmvSequence(
 int parseFragmentHdmvSequence(
   HdmvSequencePtr dst,
   BitstreamReaderPtr input,
-  size_t size
+  uint16_t fragment_length
 );
 
-static inline int readValueFromHdmvSequence(
+static inline int _readValueFromHdmvSequence(
   HdmvSequencePtr sequence,
   size_t size,
-  uint32_t * value
+  uint64_t * value
 )
 {
   assert(NULL != sequence);
   assert(NULL != sequence->fragments);
-  assert(size <= 4);
+  assert(size <= 8);
   assert(NULL != value);
 
   *value = 0;
   while (size--) {
-    uint32_t byte;
+    uint64_t byte;
 
-    if (sequence->fragmentsUsedLen <= sequence->fragmentsParsedOff)
+    if (sequence->fragments_used_len <= sequence->fragments_parsed_off)
       LIBBLU_HDMV_COM_ERROR_RETURN("Prematurate end of sequence data.\n");
 
-    byte = sequence->fragments[sequence->fragmentsParsedOff++];
+    byte = sequence->fragments[sequence->fragments_parsed_off++];
     *value |= byte << (8 * size);
   }
 
@@ -286,16 +291,16 @@ typedef enum {
 } HdmvDisplaySetUsageState;
 
 /** \~english
- * \brief Display Set memory content.
+ * \brief Display Set (DS) memory content.
  *
  */
 typedef struct {
   HdmvVDParameters video_descriptor;
 
-  struct {
-    HdmvSequencePtr head;  /**< Sequences linked list. */
-    HdmvSequencePtr last;  /**< Pointer to the last sequence in the linked list.  */
-  } sequences[HDMV_NB_SEGMENT_TYPES];
+  // struct {
+  //   HdmvSequencePtr head;  /**< Segment sequences linked list. */
+  //   HdmvSequencePtr last;  /**< Pointer to the last sequence in the linked list.  */
+  // } sequences[HDMV_NB_SEGMENT_TYPES];
 
   struct {
     HdmvDisplaySetUsageState init_usage;
@@ -303,74 +308,77 @@ typedef struct {
     HdmvCDParameters composition_descriptor;
 
     struct {
-      HdmvSequencePtr pending;    /**< Pending decoded sequence. */
-      HdmvSequencePtr ds;         /**< Sequences present in pending display set. */
+      HdmvSequencePtr pending;    /**< Pending decoded segment sequence.     */
+
+      HdmvSequencePtr ds_head;
+      HdmvSequencePtr ds_last;
     } sequences[HDMV_NB_SEGMENT_TYPES];
   } cur_ds;
 
-  HdmvContextSegmentTypesCounter nbSequences;  /**< Number of sequences in the pending DS. */
-} HdmvEpochState;
+  HdmvContextSegmentTypesCounter nb_seq;  /**< Number of segment sequences
+    in the pending DS.                                                       */
+} HdmvDSState;
 
-static inline void initHdmvEpochState(
-  HdmvEpochState * dst
+static inline void initHdmvDSState(
+  HdmvDSState * dst
 )
 {
-  *dst = (HdmvEpochState) {0};
-  resetHdmvContextSegmentTypesCounter(&dst->nbSequences);
+  *dst = (HdmvDSState) {0};
+  resetHdmvContextSegmentTypesCounter(&dst->nb_seq);
 }
 
-static inline void incNbSequencesHdmvEpochState(
-  HdmvEpochState * epoch,
+static inline void incNbSequencesHdmvDSState(
+  HdmvDSState * epoch,
   hdmv_segtype_idx idx
 )
 {
-  incByIdxHdmvContextSegmentTypesCounter(&epoch->nbSequences, idx);
+  incByIdxHdmvContextSegmentTypesCounter(&epoch->nb_seq, idx);
 }
 
-static inline HdmvSequencePtr getSequenceByIdxHdmvEpochState(
-  const HdmvEpochState * epoch,
+static inline HdmvSequencePtr getSequenceByIdxHdmvDSState(
+  const HdmvDSState * epoch,
   hdmv_segtype_idx idx
 )
 {
   return epoch->sequences[idx].head;
 }
 
-static inline HdmvSequencePtr getLastSequenceByIdxHdmvEpochState(
-  const HdmvEpochState * epoch,
+static inline HdmvSequencePtr getLastSequenceByIdxHdmvDSState(
+  const HdmvDSState * epoch,
   hdmv_segtype_idx idx
 )
 {
   return epoch->sequences[idx].last;
 }
 
-static inline void setDSSequenceByIdxHdmvEpochState(
-  HdmvEpochState * epoch,
+static inline void setDSSequenceByIdxHdmvDSState(
+  HdmvDSState * epoch,
   hdmv_segtype_idx idx,
   HdmvSequencePtr sequence
 )
 {
-  epoch->cur_ds.sequences[idx].ds = sequence;
+  epoch->cur_ds.sequences[idx].ds_head = sequence;
 }
 
-static inline HdmvSequencePtr getDSSequenceByIdxHdmvEpochState(
-  const HdmvEpochState * epoch,
+static inline HdmvSequencePtr getDSSequenceByIdxHdmvDSState(
+  const HdmvDSState * epoch,
   hdmv_segtype_idx idx
 )
 {
-  return epoch->cur_ds.sequences[idx].ds;
+  return epoch->cur_ds.sequences[idx].ds_head;
 }
 
-#define getfirstDOSequenceByIdxHdmvEpochState 0
+#define getfirstDOSequenceByIdxHdmvDSState 0
 
-static inline unsigned getNbSequencesHdmvEpochState(
-  const HdmvEpochState * epoch
+static inline unsigned getNbSequencesHdmvDSState(
+  const HdmvDSState * epoch
 )
 {
-  return getTotalHdmvContextSegmentTypesCounter(epoch->nbSequences);
+  return getTotalHdmvContextSegmentTypesCounter(epoch->nb_seq);
 }
 
-static inline bool isCompoStateHdmvEpochState(
-  const HdmvEpochState * epoch,
+static inline bool isCompoStateHdmvDSState(
+  const HdmvDSState * epoch,
   HdmvCompositionState expected
 )
 {
@@ -460,10 +468,10 @@ typedef struct {
   HdmvSegmentsInventoryPool buttons;
   HdmvSegmentsInventoryPool commands;
   HdmvSegmentsInventoryPool pal_entries;
-} HdmvSegmentsInventory, *HdmvSegmentsInventoryPtr;
+} HdmvSegmentsInventory;
 
-HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
-  void
+void initHdmvSegmentsInventory(
+  HdmvSegmentsInventory * dst
 );
 
 #define CLEAN_POOL_ELEMENTS(p, t, c)                                          \
@@ -480,33 +488,28 @@ HdmvSegmentsInventoryPtr createHdmvSegmentsInventory(
     }                                                                         \
   } while (0)
 
-static inline void destroyHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+static inline void cleanHdmvSegmentsInventory(
+  HdmvSegmentsInventory inv
 )
 {
-  if (NULL == inv)
-    return;
-
-  CLEAN_POOL_ELEMENTS(inv->sequences, HdmvSequence, cleanHdmvSequence);
+  CLEAN_POOL_ELEMENTS(inv.sequences, HdmvSequence, cleanHdmvSequence);
 
 #define CLEAN_POOL(p)  cleanHdmvSegmentsInventoryPool(p)
-  CLEAN_POOL(inv->sequences);
-  CLEAN_POOL(inv->segments);
-  CLEAN_POOL(inv->pages);
-  CLEAN_POOL(inv->windows);
-  CLEAN_POOL(inv->effects);
-  CLEAN_POOL(inv->compo_obj);
-  CLEAN_POOL(inv->bogs);
-  CLEAN_POOL(inv->buttons);
-  CLEAN_POOL(inv->commands);
-  CLEAN_POOL(inv->pal_entries);
+  CLEAN_POOL(inv.sequences);
+  CLEAN_POOL(inv.segments);
+  CLEAN_POOL(inv.pages);
+  CLEAN_POOL(inv.windows);
+  CLEAN_POOL(inv.effects);
+  CLEAN_POOL(inv.compo_obj);
+  CLEAN_POOL(inv.bogs);
+  CLEAN_POOL(inv.buttons);
+  CLEAN_POOL(inv.commands);
+  CLEAN_POOL(inv.pal_entries);
 #undef CLEAN_POOL
-
-  free(inv);
 }
 
 static inline void resetHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 )
 {
 #define RESET_POOL(d)  resetHdmvSegmentsInventoryPool(d)
@@ -526,43 +529,43 @@ static inline void resetHdmvSegmentsInventory(
 /* ###### Inventory content fetching functions : ########################### */
 
 HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvPageParameters * getHdmvPageParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvWindowInfoParameters * getHdmvWinInfoParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvEffectInfoParameters * getHdmvEffInfoParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
-HdmvCompositionObjectParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+HdmvCOParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
+  HdmvSegmentsInventory * inv
 );
 
 HdmvButtonOverlapGroupParameters * getHdmvBOGParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvButtonParam * getHdmvBtnParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvNavigationCommand * getHdmvNaviComHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 HdmvPaletteEntryParameters * getHdmvPalEntryParamHdmvSegmentsInventory(
-  HdmvSegmentsInventoryPtr inv
+  HdmvSegmentsInventory * inv
 );
 
 #endif

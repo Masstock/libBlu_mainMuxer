@@ -153,7 +153,7 @@ int analyzeIgs(
   }
 
   /* Process remaining segments: */
-  if (completeDisplaySetHdmvContext(ctx) < 0)
+  if (completeDSHdmvContext(ctx) < 0)
     return -1;
 
   lbc_printf(" === Parsing finished with success. ===              \n");
@@ -161,8 +161,8 @@ int analyzeIgs(
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: HDMV/IGS Menu format.\n");
-  lbc_printf("Number of Display Sets: %u.\n", ctx->nbDisplaySets);
-  lbc_printf("Number of Epochs: %u.\n", ctx->nbEpochs);
+  lbc_printf("Number of Display Sets: %u.\n", ctx->nb_DS);
+  lbc_printf("Number of Epochs: %u.\n", ctx->nb_epochs);
   lbc_printf("Total number of segments per type:\n");
   printContentHdmvContext(ctx);
   lbc_printf("=======================================================================================\n");

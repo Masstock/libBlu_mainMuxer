@@ -10,7 +10,7 @@
 #include "igs_debug.h"
 
 #if ENABLE_IGS_DEBUG
-void printPalette(HdmvPaletteDefinitionPtr pal)
+void printPalette(HdmvPalette * pal)
 {
   unsigned i;
   assert(NULL != pal);
@@ -31,18 +31,18 @@ void writeHexatreeNode(FILE * f, HdmvQuantHexTreeNodePtr node)
   if (NULL == node)
     return;
 
-  if (0 < node->leafDist) /* Internal node */
-    fprintf(f, "  n%p [label=\"<hexNode> %p, %d, %" PRIu64 "px\"];\n", node, node, node->leafDist, node->data.rep);
+  if (0 < node->leaf_dist) /* Internal node */
+    fprintf(f, "  n%p [label=\"<hexNode> %p, %d, %" PRIu64 "px\"];\n", node, node, node->leaf_dist, node->data.rep);
   else /* Leaf */
     fprintf(
       f, "  n%p [label=\"<hexNode> %p, #%08" PRIX32 ", %" PRIu64 "px\"];\n",
       node, node, genValueHdmvRGBAData(node->data), node->data.rep
     );
 
-  for (i = 0; i < ((0 < node->leafDist) ? 16 : 0); i++) {
-    if (NULL != node->childNodes[i]) {
-      writeHexatreeNode(f, node->childNodes[i]);
-      fprintf(f, "  n%p:hexNode:c -> n%p:hexNode;\n", node, node->childNodes[i]);
+  for (i = 0; i < ((0 < node->leaf_dist) ? 16 : 0); i++) {
+    if (NULL != node->child_nodes[i]) {
+      writeHexatreeNode(f, node->child_nodes[i]);
+      fprintf(f, "  n%p:hexNode:c -> n%p:hexNode;\n", node, node->child_nodes[i]);
     }
   }
 }

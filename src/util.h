@@ -17,6 +17,7 @@
 #include "util/common.h"
 #include "util/crcLookupTables.h"
 #include "util/errorCodes.h"
+#include "util/errorCodesVa.h"
 #include "util/hashTables.h"
 #include "util/libraries.h"
 #include "util/macros.h"
@@ -48,7 +49,7 @@
  * MAIN_CLOCK_HOURS(MAIN_CLOCK_27MHZ * 60 * 60) == 1.
  */
 #define MAIN_CLOCK_HOURS(clk)                                                 \
-  ((clk) / (MAIN_CLOCK_27MHZ * 3600) % 60)
+  ((clk) / (MAIN_CLOCK_27MHZ * 3600ull) % 60ull)
 
 /** \~english
  * \brief #MAIN_CLOCK_27MHZ clock to minutes number.
@@ -161,11 +162,13 @@ typedef enum {
  *
  * \param buf Destination pointer to the destination array where the
  * resulting C string is copied.
- * \param maxsize Maximum number of characters to be copied to buf,
+ * \param buf_size Maximum number of characters to be copied to buf,
  * including the terminating null-character.
- * \param formatmode Result string time representation format mode.
- * \param clockvalue Clock value to be represented, exprimed in
+ * \param format_mode Result string time representation format mode.
+ * \param clock_value Clock value to be represented, exprimed in
  * #MAIN_CLOCK_27MHZ ticks.
+ * \return int Return the number of characters written (excluding the null-
+ * character).
  *
  * The output string format (and maximum size) is defined by given format
  * argument.
@@ -174,11 +177,11 @@ typedef enum {
  * one for the given mode, the output is truncated (and may not countain
  * terminating null-character)
  */
-void str_time(
+int str_time(
   lbc * buf,
-  size_t maxsize,
-  str_time_format formatmode,
-  uint64_t clockvalue
+  size_t buf_size,
+  str_time_format format_mode,
+  uint64_t clock_value
 );
 
 #endif
