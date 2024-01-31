@@ -115,15 +115,15 @@ static inline void initHdmvPalette(
 /* ###### Accessors : ###################################################### */
 
 static inline unsigned getNbEntriesHdmvPalette(
-  const HdmvPalette * pal
+  const HdmvPalette pal
 )
 {
-  if (!pal->non_sequential)
-    return pal->nb_entries;
+  if (!pal.non_sequential)
+    return pal.nb_entries;
 
   unsigned count = 0u;
   for (unsigned i = 0; i < HDMV_PAL_SIZE; i++)
-    if (pal->entries[i].in_use) count++;
+    if (pal.entries[i].in_use) count++;
   return count;
 }
 
@@ -156,15 +156,15 @@ static inline int getYCbCrEntryHdmvPalette(
 }
 
 static inline bool getYCbCrEntryIfInUseHdmvPalette(
-  const HdmvPalette * pal,
+  const HdmvPalette pal,
   uint32_t * ycbcr_ret,
   unsigned id
 )
 {
   assert(id < HDMV_PAL_SIZE);
-  if (!pal->entries[id].in_use)
+  if (!pal.entries[id].in_use)
     return false;
-  *ycbcr_ret = pal->entries[id].ycbcr;
+  *ycbcr_ret = pal.entries[id].ycbcr;
   return true;
 }
 

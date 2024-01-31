@@ -5,6 +5,7 @@
 
 #include "hdmv_error.h"
 #include "hdmv_bitmap.h"
+
 #include "../../../util/hashTables.h"
 
 /* ### Pictures indexer : ################################################## */
@@ -17,7 +18,14 @@ static inline void initHdmvPicturesIndexer(
   HdmvPicturesIndexer * dst
 )
 {
-  initHashTable(dst);
+  *dst = newHashtable();
+  setFunHashTable(
+    dst,
+    (HashTable_keyHashFun) lbc_fnv1aStrHash,
+    (HashTable_keyCompFun) lbc_strcmp,
+    (HashTable_freeFun) free,
+    (HashTable_freeFun) free
+  );
 }
 
 static inline void cleanHdmvPicturesIndexer(

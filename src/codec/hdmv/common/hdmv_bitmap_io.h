@@ -37,7 +37,7 @@ int openHdmvBitmap(
   HdmvBitmap * dst,
   HdmvPictureLibraries * libs,
   const lbc * filepath,
-  const IniFileContextPtr conf
+  const IniFileContext conf_hdl
 );
 
 #endif

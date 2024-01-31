@@ -123,15 +123,15 @@ static AdaptationFieldParameters _prepareAdaptationField(
   if (!adapt_fd_size) {
     /* No adaptation field required */
     switch (rem_payload) {
-      case TP_PAYLOAD_SIZE: // Payload size match exactly TS packet one.
-        break;
+    case TP_PAYLOAD_SIZE: // Payload size match exactly TS packet one.
+      break;
 
-      case TP_PAYLOAD_SIZE - 1: // Only one stuffing byte required.
-        param.write_only_length = true;
-        break;
+    case TP_PAYLOAD_SIZE - 1: // Only one stuffing byte required.
+      param.write_only_length = true;
+      break;
 
-      default: // Add stuffing bytes to pad
-        param.nb_stuffing_bytes = TP_PAYLOAD_SIZE - rem_payload - 2;
+    default: // Add stuffing bytes to pad
+      param.nb_stuffing_bytes = TP_PAYLOAD_SIZE - rem_payload - 2;
     }
   }
   else {

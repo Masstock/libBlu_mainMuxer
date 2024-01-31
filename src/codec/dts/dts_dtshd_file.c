@@ -12,32 +12,32 @@ static const char * _dtshdChunkIdStr(
 )
 {
   switch (id) {
-    case DTS_HD_DTSHDHDR:
-      return "DTS-HD File Header Chunk";
-    case DTS_HD_FILEINFO:
-      return "DTS-HD File Info Data Chunk";
-    case DTS_HD_CORESSMD:
-      return "DTS-HD Core Substream Metadata Chunk";
-    case DTS_HD_EXTSS_MD:
-      return "DTS-HD Extension Substream Metadata Chunk";
-    case DTS_HD_AUPR_HDR:
-      return "DTS-HD Audio Presentation Header Metadata Chunk";
-    case DTS_HD_AUPRINFO:
-      return "DTS-HD Audio Presentation Information Text Chunk";
-    case DTS_HD_NAVI_TBL:
-      return "DTS-HD Navigation Metadata Chunk";
-    case DTS_HD_BITSHVTB:
-      return "DTS-HD Bit Sheving Metadata Chunk";
-    case DTS_HD_STRMDATA:
-      return "DTS-HD Encoded Stream Data Chunk";
-    case DTS_HD_TIMECODE:
-      return "DTS-HD Timecode Data Chunk";
-    case DTS_HD_BUILDVER:
-      return "DTS-HD BuildVer Data Chunk";
-    case DTS_HD_BLACKOUT:
-      return "DTS-HD Encoded Blackout Data Chunk";
-    case DTS_HD_BRANCHPT:
-      return "DTS-HD Branch Point Metadata Chunk";
+  case DTS_HD_DTSHDHDR:
+    return "DTS-HD File Header Chunk";
+  case DTS_HD_FILEINFO:
+    return "DTS-HD File Info Data Chunk";
+  case DTS_HD_CORESSMD:
+    return "DTS-HD Core Substream Metadata Chunk";
+  case DTS_HD_EXTSS_MD:
+    return "DTS-HD Extension Substream Metadata Chunk";
+  case DTS_HD_AUPR_HDR:
+    return "DTS-HD Audio Presentation Header Metadata Chunk";
+  case DTS_HD_AUPRINFO:
+    return "DTS-HD Audio Presentation Information Text Chunk";
+  case DTS_HD_NAVI_TBL:
+    return "DTS-HD Navigation Metadata Chunk";
+  case DTS_HD_BITSHVTB:
+    return "DTS-HD Bit Sheving Metadata Chunk";
+  case DTS_HD_STRMDATA:
+    return "DTS-HD Encoded Stream Data Chunk";
+  case DTS_HD_TIMECODE:
+    return "DTS-HD Timecode Data Chunk";
+  case DTS_HD_BUILDVER:
+    return "DTS-HD BuildVer Data Chunk";
+  case DTS_HD_BLACKOUT:
+    return "DTS-HD Encoded Blackout Data Chunk";
+  case DTS_HD_BRANCHPT:
+    return "DTS-HD Branch Point Metadata Chunk";
   }
 
   return "DTS-HD Unknown Chunk";
@@ -1154,88 +1154,88 @@ int decodeDtshdFileChunk(
   int ret = 0;
 
   switch (magic) {
-    case DTS_HD_DTSHDHDR:
-      presence_counter = &handle->DTSHDHDR_count;
-      ret = _decodeDtshdHeaderChunk(bs, &handle->DTSHDHDR);
-      break;
+  case DTS_HD_DTSHDHDR:
+    presence_counter = &handle->DTSHDHDR_count;
+    ret = _decodeDtshdHeaderChunk(bs, &handle->DTSHDHDR);
+    break;
 
-    case DTS_HD_FILEINFO:
-      presence_counter = &handle->FILEINFO_count;
-      ret = _decodeDtshdFileInfoChunk(bs, &handle->FILEINFO);
-      break;
+  case DTS_HD_FILEINFO:
+    presence_counter = &handle->FILEINFO_count;
+    ret = _decodeDtshdFileInfoChunk(bs, &handle->FILEINFO);
+    break;
 
-    case DTS_HD_CORESSMD:
-      presence_counter = &handle->CORESSMD_count;
-      ret = _decodeDtshdCoreSubStreamMetaChunk(bs, &handle->CORESSMD);
-      break;
+  case DTS_HD_CORESSMD:
+    presence_counter = &handle->CORESSMD_count;
+    ret = _decodeDtshdCoreSubStreamMetaChunk(bs, &handle->CORESSMD);
+    break;
 
-    case DTS_HD_EXTSS_MD:
-      if (!handle->DTSHDHDR_count)
-        LIBBLU_DTS_ERROR_RETURN(
-          "Expect presence of DTS-HD bs header before EXTSS_MD chunk.\n"
-        );
-      presence_counter = &handle->EXTSS_MD_count;
-      ret = _decodeDtshdExtSubStreamMetaChunk(
-        bs,
-        &handle->EXTSS_MD,
-        handle->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__IS_VBR
+  case DTS_HD_EXTSS_MD:
+    if (!handle->DTSHDHDR_count)
+      LIBBLU_DTS_ERROR_RETURN(
+        "Expect presence of DTS-HD bs header before EXTSS_MD chunk.\n"
       );
-      break;
+    presence_counter = &handle->EXTSS_MD_count;
+    ret = _decodeDtshdExtSubStreamMetaChunk(
+      bs,
+      &handle->EXTSS_MD,
+      handle->DTSHDHDR.Bitw_Stream_Metadata & DTSHD_BSM__IS_VBR
+    );
+    break;
 
-    case DTS_HD_AUPR_HDR:
-      presence_counter = &handle->AUPR_HDR_count;
-      ret = _decodeDtshdAudioPresHeaderMetaChunk(
-        bs, &handle->AUPR_HDR
-      );
-      break;
+  case DTS_HD_AUPR_HDR:
+    presence_counter = &handle->AUPR_HDR_count;
+    ret = _decodeDtshdAudioPresHeaderMetaChunk(
+      bs, &handle->AUPR_HDR
+    );
+    break;
 
-    case DTS_HD_AUPRINFO:
-      presence_counter = &handle->AUPRINFO_count;
-      ret = _decodeDtshdAudioPresInfoChunk(bs, &handle->AUPRINFO);
-      break;
+  case DTS_HD_AUPRINFO:
+    presence_counter = &handle->AUPRINFO_count;
+    ret = _decodeDtshdAudioPresInfoChunk(bs, &handle->AUPRINFO);
+    break;
 
-    case DTS_HD_NAVI_TBL:
-      presence_counter = &handle->NAVI_TBL_count;
-      ret = decodeDtshdNavigationMetaChunk(
-        bs, &handle->NAVI_TBL
-      );
-      break;
+  case DTS_HD_NAVI_TBL:
+    presence_counter = &handle->NAVI_TBL_count;
+    ret = decodeDtshdNavigationMetaChunk(
+      bs, &handle->NAVI_TBL
+    );
+    break;
 
-    case DTS_HD_STRMDATA:
-      presence_counter = &handle->STRMDATA_count;
-      ret = _decodeDtshdStreamDataChunk(
-        bs, &handle->STRMDATA, false, 0
-      );
-      handle->off_STRMDATA = 0;
-      handle->in_STRMDATA = true;
-      break;
+  case DTS_HD_STRMDATA:
+    presence_counter = &handle->STRMDATA_count;
+    ret = _decodeDtshdStreamDataChunk(
+      bs, &handle->STRMDATA, false, 0
+    );
+    handle->off_STRMDATA = 0;
+    handle->in_STRMDATA = true;
+    break;
 
-    case DTS_HD_TIMECODE:
-      presence_counter = &handle->TIMECODE_count;
-      ret = decodeDtshdTimecodeChunk(
-        bs, &handle->TIMECODE
-      );
-      break;
+  case DTS_HD_TIMECODE:
+    presence_counter = &handle->TIMECODE_count;
+    ret = decodeDtshdTimecodeChunk(
+      bs, &handle->TIMECODE
+    );
+    break;
 
-    case DTS_HD_BUILDVER:
-      presence_counter = &handle->BUILDVER_count;
-      ret = decodeDtshdBuildVerChunk(
-        bs, &handle->BUILDVER
-      );
-      break;
+  case DTS_HD_BUILDVER:
+    presence_counter = &handle->BUILDVER_count;
+    ret = decodeDtshdBuildVerChunk(
+      bs, &handle->BUILDVER
+    );
+    break;
 
-    case DTS_HD_BLACKOUT:
-      presence_counter = &handle->BLACKOUT_count;
-      ret = decodeDtshdBlackoutChunk(
-        bs, &handle->BLACKOUT
-      );
-      break;
+  case DTS_HD_BLACKOUT:
+    presence_counter = &handle->BLACKOUT_count;
+    ret = decodeDtshdBlackoutChunk(
+      bs, &handle->BLACKOUT
+    );
+    break;
 
-    case DTS_HD_BITSHVTB:
-    case DTS_HD_BRANCHPT:
-    default:
-      ret = _decodeDtshdUnknownChunk(bs);
-      break;
+  case DTS_HD_BITSHVTB:
+  case DTS_HD_BRANCHPT:
+  default:
+    ret = _decodeDtshdUnknownChunk(bs);
+    break;
   }
 
   if (ret < 0)

@@ -37,3 +37,30 @@ int addHdmvBitmapList(
   dst->bitmaps[dst->nb_bitmaps++] = pic;
   return 0;
 }
+
+static int _odsUsagePriorityComp(
+  const void * left_ptr,
+  const void * right_ptr
+)
+{
+  const HdmvBitmap * left  = (HdmvBitmap *) left_ptr;
+  const HdmvBitmap * right = (HdmvBitmap *) right_ptr;
+
+  if (left->usage < right->usage)
+    return 1;
+  if (left->usage > right->usage)
+    return -1;
+  return 0;
+}
+
+void sortByUsageHdmvBitmapList(
+  HdmvBitmapList * list
+)
+{
+  qsort(
+    list->bitmaps,
+    list->nb_bitmaps,
+    sizeof(HdmvBitmap),
+    _odsUsagePriorityComp
+  );
+}

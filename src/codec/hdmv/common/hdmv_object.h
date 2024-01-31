@@ -42,7 +42,7 @@ bool performRleHdmvObject(
   uint16_t * problematic_line_ret
 );
 
-static inline uint8_t * getRleHdmvObject(
+static inline uint8_t * getOrPerformRleHdmvObject(
   HdmvObject * obj
 )
 {
@@ -56,7 +56,7 @@ static inline uint8_t * getRleHdmvObject(
 }
 
 typedef struct {
-  uint8_t mapping[HDMV_MAX_NB_PDS_ENTRIES]; // Entry i maps to mapping[i]
+  uint8_t mapping[HDMV_NB_PAL_ENTRIES]; // Entry i maps to mapping[i]
 } HdmvPaletteUpdate;
 
 bool testUpdateHdmvObject(

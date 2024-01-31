@@ -86,14 +86,10 @@ int mainMux(
 {
   BitstreamWriterPtr output = NULL;
 
-  LibbluMuxingContextPtr ctx;
-
-  unsigned nbSystemPackets, i;
-  bool debugMode;
-
   LIBBLU_DEBUG_COM("Verbose output activated.\n");
-  debugMode = isDebugEnabledLibbbluStatus() /* || true */;
+  bool is_debug_mode = isDebugEnabledLibbbluStatus() /* || true */;
 
+  LibbluMuxingContextPtr ctx;
   if (NULL == (ctx = createLibbluMuxingContext(settings)))
     goto free_return;
 
@@ -105,7 +101,7 @@ int mainMux(
     if (muxNextPacketLibbluMuxingContext(ctx, output) < 0)
       goto free_return;
 
-    if (!debugMode)
+    if (!is_debug_mode)
       printProgressBar(ctx->progress);
   }
 
@@ -122,17 +118,20 @@ int mainMux(
   printBytes(ctx->nbBytesWritten);
   lbc_printf(", %zu bytes).\n", ctx->nbBytesWritten);
 
-  nbSystemPackets = ctx->nbTsPacketsMuxed;
-  for (i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
+  unsigned nb_sys_tp = ctx->nbTsPacketsMuxed;
+  for (unsigned i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
     lbc_printf(
       " - 0x%04x : %d packets (%.1f%%);\n",
       ctx->elementaryStreams[i]->pid,
       ctx->elementaryStreams[i]->packetNb,
-      ((float) ctx->elementaryStreams[i]->packetNb / ctx->nbTsPacketsMuxed) * 100
+      100.f * ctx->elementaryStreams[i]->packetNb / ctx->nbTsPacketsMuxed
     );
-    nbSystemPackets -= ctx->elementaryStreams[i]->packetNb;
+    nb_sys_tp -= ctx->elementaryStreams[i]->packetNb;
   }
-  lbc_printf(" - System packets : %d packets (%.1f%%).\n", nbSystemPackets, ((float) nbSystemPackets / ctx->nbTsPacketsMuxed) * 100);
+  lbc_printf(
+    " - System packets : %d packets (%.1f%%).\n",
+    nb_sys_tp, 100.f * nb_sys_tp / ctx->nbTsPacketsMuxed
+  );
 
   lbc_printf("=======================================================================================\n");
   destroyLibbluMuxingContext(ctx);

@@ -16,27 +16,27 @@
   } while (0)
 
 static void _initReferenceClockFromHdmvHeader(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   int32_t first_seg_dts_value
 )
 {
   int64_t first_DTS = first_seg_dts_value - ctx->param.initial_delay;
 
-  /* Update reference timecode */
-  int64_t reference = ctx->param.ref_timestamp;
+  // Update reference timestamp to avoid negative values
+  int64_t reference_ts = ctx->param.ref_timestamp;
   if (first_DTS < 0)
-    reference += 0 - first_DTS;
+    reference_ts += 0 - first_DTS;
 
   LIBBLU_HDMV_COM_DEBUG(
-    "  Used reference start clock: %" PRId64 ".\n",
-    reference
+    "  Used reference timestamp: %" PRId64 ".\n",
+    reference_ts
   );
 
-  setReferenceTimecodeHdmvContext(ctx, reference);
+  ctx->param.ref_timestamp = reference_ts;
 }
 
 static int _parseHdmvHeader(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters * param
 )
 {
@@ -47,7 +47,7 @@ static int _parseHdmvHeader(
   LIBBLU_HDMV_PARSER_DEBUG(
     "0x%08" PRIX64 ": %s Header.\n",
     hdr_off,
-    HdmvStreamTypeStr(ctx->type)
+    HdmvStreamTypeStr(ctx->epoch.type)
   );
 
   /* [u16 format_identifier] */
@@ -61,12 +61,12 @@ static int _parseHdmvHeader(
     format_identifier
   );
 
-  if (!checkFormatIdentifierHdmvStreamType(format_identifier, ctx->type))
+  if (!checkFormatIdentifierHdmvStreamType(format_identifier, ctx->epoch.type))
     LIBBLU_HDMV_COM_ERROR_RETURN(
       "Unexpected %s magic word, expect 0x%02X, "
       "got 0x%02X at offset 0x%08" PRIX64 ".\n",
-      HdmvStreamTypeStr(ctx->type),
-      expectedFormatIdentifierHdmvStreamType(ctx->type),
+      HdmvStreamTypeStr(ctx->epoch.type),
+      expectedFormatIdentifierHdmvStreamType(ctx->epoch.type),
       format_identifier,
       hdr_off
     );
@@ -108,7 +108,7 @@ static int _parseHdmvHeader(
 }
 
 static int _parseHdmvSegmentDescriptor(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentDescriptor * ret
 )
 {
@@ -148,7 +148,7 @@ static int _parseHdmvSegmentDescriptor(
 /* ### Palette Definition Segments : ####################################### */
 
 static int _parseHdmvPaletteDescriptor(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvPDParameters * param
 )
 {
@@ -176,8 +176,8 @@ static int _parseHdmvPaletteDescriptor(
 }
 
 static int _parseHdmvPaletteEntry(
-  HdmvContextPtr ctx,
-  HdmvPaletteEntryParameters entries[static HDMV_MAX_NB_PDS_ENTRIES],
+  HdmvContext * ctx,
+  HdmvPaletteEntryParameters entries[static HDMV_NB_PAL_ENTRIES],
   unsigned i
 )
 {
@@ -250,7 +250,7 @@ static int _computeNumberOfPaletteEntries(
 }
 
 static int _parseHdmvPDS(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -262,18 +262,19 @@ static int _parseHdmvPDS(
     return -1;
 
   uint16_t segment_length = segment.desc.segment_length;
-  if (_computeNumberOfPaletteEntries(&param.number_of_palette_entries, segment_length) < 0)
+  uint16_t number_of_palette_entries;
+  if (_computeNumberOfPaletteEntries(&number_of_palette_entries, segment_length) < 0)
     goto free_return;
 
-  if (0 < param.number_of_palette_entries) {
+  if (0 < number_of_palette_entries) {
     LIBBLU_HDMV_PAL_DEBUG("  Palette_entries():\n");
 
     LIBBLU_HDMV_PAL_DEBUG(
       "   => %u entrie(s).\n",
-      param.number_of_palette_entries
+      number_of_palette_entries
     );
 
-    for (unsigned i = 0; i < param.number_of_palette_entries; i++) {
+    for (unsigned i = 0; i < number_of_palette_entries; i++) {
       if (_parseHdmvPaletteEntry(ctx, param.palette_entries, i) < 0)
         goto free_return;
     }
@@ -309,7 +310,7 @@ free_return:
 /* ### Object Definition Segments : ######################################## */
 
 static int _parseHdmvObjectDescriptor(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvODescParameters * param
 )
 {
@@ -339,7 +340,7 @@ static int _parseHdmvObjectDescriptor(
 }
 
 static int _parseHdmvSequenceDescriptor(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSDParameters * param
 )
 {
@@ -384,7 +385,7 @@ static int _computeSizeHdmvObjectDataFragment(
 }
 
 static int _parseHdmvObjectDataFragment(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment,
   HdmvSequencePtr sequence
 )
@@ -405,7 +406,7 @@ static int _parseHdmvObjectDataFragment(
 #define READ_VALUE_SEQ(d, seg, s, e)                                          \
   do {                                                                        \
     uint64_t _val;                                                            \
-    if (_readValueFromHdmvSequence(seg, s, &_val) < 0)                        \
+    if (readValueFromHdmvSequence(seg, s, &_val) < 0)                        \
       e;                                                                      \
     *(d) = _val;                                                              \
   } while (0)
@@ -432,6 +433,19 @@ static int _decodeHdmvObjectData(
     od->object_data_length
   );
 
+  uint32_t object_data_readed_length = getRemFragmentsLenHdmvSequence(
+    sequence
+  );
+
+  if (object_data_readed_length != od->object_data_length)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid ODS sequence, "
+      "parsed object data length mismatch with segments data length "
+      "('object_data_length' == %" PRIu32 ", got %" PRIu32 " bytes).\n",
+      od->object_data_length,
+      object_data_readed_length
+    );
+
   /* [u16 object_width] */
   READ_VALUE_SEQ(&od->object_width, sequence, 2, return -1);
 
@@ -454,7 +468,7 @@ static int _decodeHdmvObjectData(
 }
 
 static int _parseHdmvODS(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -514,7 +528,7 @@ free_return:
 /* ### Presentation Composition Segments : ################################# */
 
 static int _parseHdmvVideoDescriptor(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvVDParameters * param
 )
 {
@@ -559,7 +573,7 @@ static int _parseHdmvVideoDescriptor(
 }
 
 static int _parseHdmvCompositionDescriptor(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvCDParameters * param
 )
 {
@@ -597,7 +611,7 @@ static int _parseHdmvCompositionDescriptor(
 }
 
 static int _parseHdmvCompositionObject(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvCOParameters * param
 )
 {
@@ -704,7 +718,7 @@ static int _parseHdmvCompositionObject(
 }
 
 static int _parseHdmvPresentationComposition(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvPCParameters * param
 )
 {
@@ -745,7 +759,7 @@ static int _parseHdmvPresentationComposition(
     param->number_of_composition_objects
   );
 
-  if (HDMV_MAX_NB_PCS_COMPOS < param->number_of_composition_objects)
+  if (HDMV_MAX_NB_PC_COMPO_OBJ < param->number_of_composition_objects)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Number of composition objects in Presentation Composition Segment shall "
       "be between 0 and 2 inclusive (number_of_composition_objects = %" PRIu8 ").\n",
@@ -761,21 +775,16 @@ static int _parseHdmvPresentationComposition(
   for (unsigned i = 0; i < param->number_of_composition_objects; i++) {
     LIBBLU_HDMV_PARSER_DEBUG("   Composition_object[%u]():\n", i);
 
-    HdmvCOParameters * obj;
-    if (NULL == (obj = getHdmvCompoObjParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
-
     /* Composition_objects() */
-    if (_parseHdmvCompositionObject(ctx, obj) < 0)
+    if (_parseHdmvCompositionObject(ctx, &param->composition_objects[i]) < 0)
       return -1;
-    param->composition_objects[i] = obj;
   }
 
   return 0;
 }
 
 static int _parseHdmvPCS(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -789,7 +798,6 @@ static int _parseHdmvPCS(
   if (_parseHdmvCompositionDescriptor(ctx, &param.composition_descriptor) < 0)
     return -1;
 
-  // TODO: Is Epoch Continue shall avoid initialization of a new DS?
   if (initEpochHdmvContext(ctx, param.composition_descriptor, param.video_descriptor) < 0)
     goto free_return;
 
@@ -826,7 +834,7 @@ free_return:
 /* ### Window Definition Segments : ######################################## */
 
 static int _parseHdmvWindowInfo(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvWindowInfoParameters * param
 )
 {
@@ -879,7 +887,7 @@ static int _parseHdmvWindowInfo(
 }
 
 static int _parseHdmvWindowsDefinition(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvWDParameters * param
 )
 {
@@ -912,22 +920,16 @@ static int _parseHdmvWindowsDefinition(
   for (unsigned i = 0; i < param->number_of_windows; i++) {
     LIBBLU_HDMV_PARSER_DEBUG("   Window[%u]():\n", i);
 
-    HdmvWindowInfoParameters * win;
-    if (NULL == (win = getHdmvWinInfoParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
-
     /* Window_info() */
-    if (_parseHdmvWindowInfo(ctx, win) < 0)
+    if (_parseHdmvWindowInfo(ctx, &param->windows[i]) < 0)
       return -1;
-
-    param->windows[i] = win;
   }
 
   return 0;
 }
 
 static int _parseHdmvWDS(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -980,7 +982,7 @@ static int _computeSizeHdmvICDataFragment(
 }
 
 static int _parseHdmvInteractiveCompositionDataFragment(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment,
   HdmvSequencePtr sequence
 )
@@ -1157,7 +1159,6 @@ static int _decodeHdmvCompositionObject(
 }
 
 static int _decodeHdmvEffectInfo(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvEffectInfoParameters * param
 )
@@ -1190,7 +1191,7 @@ static int _decodeHdmvEffectInfo(
     param->number_of_composition_objects
   );
 
-  if (HDMV_MAX_NB_ICS_COMP_OBJ < param->number_of_composition_objects)
+  if (HDMV_MAX_NB_EFFECT_COMPO_OBJ < param->number_of_composition_objects)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Number of composition objects in effect sequence shall "
       "be between 0 and 2 inclusive (number_of_composition_objects = %" PRIu8 ").\n",
@@ -1209,20 +1210,15 @@ static int _decodeHdmvEffectInfo(
   for (unsigned i = 0; i < param->number_of_composition_objects; i++) {
     LIBBLU_HDMV_PARSER_DEBUG("         Composition_object[%u]()\n", i);
 
-    HdmvCOParameters * obj;
-    if (NULL == (obj = getHdmvCompoObjParamHdmvSegmentsInventory(&ctx->seg_inv)))
+    /* Composition_object() */
+    if (_decodeHdmvCompositionObject(sequence, &param->composition_objects[i]) < 0)
       return -1;
-
-    if (_decodeHdmvCompositionObject(sequence, obj) < 0)
-      return -1;
-    param->composition_objects[i] = obj;
   }
 
   return 0;
 }
 
 static int _decodeHdmvEffectSequence(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvEffectSequenceParameters * param
 )
@@ -1240,7 +1236,7 @@ static int _decodeHdmvEffectSequence(
     param->number_of_windows
   );
 
-  if (HDMV_MAX_NB_ICS_WINDOWS < param->number_of_windows)
+  if (HDMV_MAX_NB_ES_WINDOWS < param->number_of_windows)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Number of windows in effect sequence shall "
       "be between 0 and 2 inclusive (number_of_windows = %" PRIu8 ").\n",
@@ -1253,7 +1249,7 @@ static int _decodeHdmvEffectSequence(
   if (!param->number_of_windows)
     LIBBLU_HDMV_PARSER_DEBUG("       *none*\n");
 
-  assert(param->number_of_windows <= HDMV_MAX_NB_ICS_WINDOWS);
+  assert(param->number_of_windows <= HDMV_MAX_NB_ES_WINDOWS);
     /* Shall always be the case. */
 
   for (unsigned i = 0; i < param->number_of_windows; i++) {
@@ -1262,14 +1258,9 @@ static int _decodeHdmvEffectSequence(
       i
     );
 
-    HdmvWindowInfoParameters * win;
-    if (NULL == (win = getHdmvWinInfoParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
-
     /* Window_info() */
-    if (_decodeHdmvWindowInfo(sequence, win) < 0)
+    if (_decodeHdmvWindowInfo(sequence, &param->windows[i]) < 0)
       return -1;
-    param->windows[i] = win;
   }
 
   /* [u8 number_of_effects] */
@@ -1281,7 +1272,7 @@ static int _decodeHdmvEffectSequence(
     param->number_of_effects
   );
 
-  if (HDMV_MAX_NB_ICS_EFFECTS < param->number_of_effects)
+  if (HDMV_MAX_NB_ES_EFFECTS < param->number_of_effects)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Number of effects in effects sequence shall "
       "be between 0 and 128 inclusive (number_of_effects = %" PRIu8 ").\n",
@@ -1292,7 +1283,7 @@ static int _decodeHdmvEffectSequence(
   if (!param->number_of_effects)
     LIBBLU_HDMV_PARSER_DEBUG("       *none*\n");
 
-  assert(param->number_of_effects <= HDMV_MAX_NB_ICS_EFFECTS);
+  assert(param->number_of_effects <= HDMV_MAX_NB_ES_EFFECTS);
     /* Shall always be the case. */
 
   for (unsigned i = 0; i < param->number_of_effects; i++) {
@@ -1301,14 +1292,9 @@ static int _decodeHdmvEffectSequence(
       i
     );
 
-    HdmvEffectInfoParameters * eff;
-    if (NULL == (eff = getHdmvEffInfoParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
-
     /* Effect_info() */
-    if (_decodeHdmvEffectInfo(ctx, sequence, eff) < 0)
+    if (_decodeHdmvEffectInfo(sequence, &param->effects[i]) < 0)
       return -1;
-    param->effects[i] = eff;
   }
 
   return 0;
@@ -1513,19 +1499,12 @@ static int _decodeHdmvButtonActivatedStateInfo(
 }
 
 static int _decodeHdmvButtonCommands(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
   HdmvButtonParam * button
 )
 {
-  assert(NULL == button->navigation_commands);
-    // Destination list shall be clear
-
-  HdmvNavigationCommand * last = NULL;
-  for (unsigned i = 0; i < button->number_of_navigation_commands; i++) {
-    HdmvNavigationCommand * com;
-    if (NULL == (com = getHdmvNaviComHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
+  for (uint16_t i = 0; i < button->number_of_navigation_commands; i++) {
+    HdmvNavigationCommand * com = &button->navigation_commands[i];
 
     /* [u32 opcode] */
     READ_VALUE_SEQ(&com->opcode, sequence, 4, return -1);
@@ -1542,54 +1521,47 @@ static int _decodeHdmvButtonCommands(
       com->destination,
       com->source
     );
-
-    if (NULL != last)
-      last->next = com;
-    else
-      button->navigation_commands = com;
-    last = com;
   }
 
   return 0;
 }
 
 static int _decodeHdmvButton(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
-  HdmvButtonParam * param
+  HdmvButtonParam * btn_dst
 )
 {
   /* [u16 button_id] */
-  READ_VALUE_SEQ(&param->button_id, sequence, 2, return -1);
+  READ_VALUE_SEQ(&btn_dst->button_id, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          button_id: %" PRIu16 " (0x%04" PRIX16 ").\n",
-    param->button_id,
-    param->button_id
+    btn_dst->button_id,
+    btn_dst->button_id
   );
 
   /* [u16 button_numeric_select_value] */
-  READ_VALUE_SEQ(&param->button_numeric_select_value, sequence, 2, return -1);
+  READ_VALUE_SEQ(&btn_dst->button_numeric_select_value, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          button_numeric_select_value: "
     "%" PRIu16 " (0x%04" PRIX16 ").\n",
-    param->button_numeric_select_value,
-    param->button_numeric_select_value
+    btn_dst->button_numeric_select_value,
+    btn_dst->button_numeric_select_value
   );
 
-  if (param->button_numeric_select_value == 0xFFFF)
+  if (btn_dst->button_numeric_select_value == 0xFFFF)
     LIBBLU_HDMV_PARSER_DEBUG("           -> Not used.\n");
 
   /* [b1 auto_action_flag] [v7 reserved] */
   uint8_t flags;
   READ_VALUE_SEQ(&flags, sequence, 1, return -1);
-  param->auto_action = (flags & 0x80);
+  btn_dst->auto_action = (flags & 0x80);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          auto_action_flag: %s (0x%x).\n",
-    BOOL_STR(param->auto_action),
-    param->auto_action
+    BOOL_STR(btn_dst->auto_action),
+    btn_dst->auto_action
   );
 
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -1598,162 +1570,165 @@ static int _decodeHdmvButton(
   );
 
   /* [u16 button_horizontal_position] */
-  READ_VALUE_SEQ(&param->button_horizontal_position, sequence, 2, return -1);
+  READ_VALUE_SEQ(&btn_dst->button_horizontal_position, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          button_horizontal_position: %" PRIu16 " px (0x%04" PRIX16 ").\n",
-    param->button_horizontal_position,
-    param->button_horizontal_position
+    btn_dst->button_horizontal_position,
+    btn_dst->button_horizontal_position
   );
 
   /* [u16 button_vertical_position] */
-  READ_VALUE_SEQ(&param->button_vertical_position, sequence, 2, return -1);
+  READ_VALUE_SEQ(&btn_dst->button_vertical_position, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          button_vertical_position: %" PRIu16 " px (0x%04" PRIX16 ").\n",
-    param->button_vertical_position,
-    param->button_vertical_position
+    btn_dst->button_vertical_position,
+    btn_dst->button_vertical_position
   );
 
   /* neighbor_info() */
-  if (_decodeHdmvButtonNeighborInfo(sequence, &param->neighbor_info) < 0)
+  if (_decodeHdmvButtonNeighborInfo(sequence, &btn_dst->neighbor_info) < 0)
     return -1;
 
   /* normal_state_info() */
-  if (_decodeHdmvButtonNormalStateInfo(sequence, &param->normal_state_info) < 0)
+  if (_decodeHdmvButtonNormalStateInfo(sequence, &btn_dst->normal_state_info) < 0)
     return -1;
 
   /* selected_state_info() */
-  if (_decodeHdmvButtonSelectedStateInfo(sequence, &param->selected_state_info) < 0)
+  if (_decodeHdmvButtonSelectedStateInfo(sequence, &btn_dst->selected_state_info) < 0)
     return -1;
 
   /* activated_state_info() */
-  if (_decodeHdmvButtonActivatedStateInfo(sequence, &param->activated_state_info) < 0)
+  if (_decodeHdmvButtonActivatedStateInfo(sequence, &btn_dst->activated_state_info) < 0)
     return -1;
 
   /* [u16 number_of_navigation_commands] */
-  READ_VALUE_SEQ(&param->number_of_navigation_commands, sequence, 2, return -1);
+  READ_VALUE_SEQ(&btn_dst->number_of_navigation_commands, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          number_of_navigation_commands: %u (0x%04" PRIX16 ").\n",
-    param->number_of_navigation_commands,
-    param->number_of_navigation_commands
+    btn_dst->number_of_navigation_commands,
+    btn_dst->number_of_navigation_commands
   );
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "          Navigation_commands():\n"
   );
 
-  if (!param->number_of_navigation_commands)
+  if (!btn_dst->number_of_navigation_commands)
     LIBBLU_HDMV_PARSER_DEBUG("           *none*\n");
 
+  if (allocateCommandsHdmvButtonParam(btn_dst) < 0)
+    return -1;
+
   /* Commands() */
-  if (_decodeHdmvButtonCommands(ctx, sequence, param) < 0)
+  if (_decodeHdmvButtonCommands(sequence, btn_dst) < 0)
     return -1;
 
   return 0;
 }
 
 static int _decodeHdmvButtonOverlapGroup(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
-  HdmvButtonOverlapGroupParameters * param
+  HdmvButtonOverlapGroupParameters * bog_ret
 )
 {
   /* [u16 default_valid_button_id_ref] */
-  READ_VALUE_SEQ(&param->default_valid_button_id_ref, sequence, 2, return -1);
+  READ_VALUE_SEQ(&bog_ret->default_valid_button_id_ref, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "        default_valid_button_id_ref: %" PRIu16 " (0x%04" PRIX16 ").\n",
-    param->default_valid_button_id_ref,
-    param->default_valid_button_id_ref
+    bog_ret->default_valid_button_id_ref,
+    bog_ret->default_valid_button_id_ref
   );
 
   /* [u8 number_of_buttons] */
-  READ_VALUE_SEQ(&param->number_of_buttons, sequence, 1, return -1);
+  READ_VALUE_SEQ(&bog_ret->number_of_buttons, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "        number_of_buttons: %u (0x%02X).\n",
-    param->number_of_buttons,
-    param->number_of_buttons
+    bog_ret->number_of_buttons,
+    bog_ret->number_of_buttons
   );
+
+  if (HDMV_MAX_NB_ICS_BUTTONS < bog_ret->number_of_buttons)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Number of buttons in BOG exceeds " STR(HDMV_MAX_NB_ICS_BUTTONS) " "
+      "('number_of_buttons' == %" PRIu8 ").\n",
+      bog_ret->number_of_buttons
+    );
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "        Buttons:\n"
   );
 
-  if (!param->number_of_buttons)
+  if (!bog_ret->number_of_buttons)
     LIBBLU_HDMV_PARSER_DEBUG("         *empty*\n");
 
-  for (unsigned i = 0; i < param->number_of_buttons; i++) {
+  for (unsigned i = 0; i < bog_ret->number_of_buttons; i++) {
     LIBBLU_HDMV_PARSER_DEBUG("         Button[%u]():\n", i);
 
-    HdmvButtonParam * btn;
-    if (NULL == (btn = getHdmvBtnParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
-
     /* Button() */
-    if (_decodeHdmvButton(ctx, sequence, btn) < 0)
+    if (_decodeHdmvButton(sequence, &bog_ret->buttons[i]) < 0)
       return -1;
-    param->buttons[i] = btn;
   }
 
   return 0;
 }
 
 static int _decodeHdmvPage(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence,
-  HdmvPageParameters * param
+  HdmvPageParameters * page_ret
 )
 {
   /* [u8 page_id] */
-  READ_VALUE_SEQ(&param->page_id, sequence, 1, return -1);
+  READ_VALUE_SEQ(&page_ret->page_id, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    page_id: %u (0x%x).\n",
-    param->page_id,
-    param->page_id
+    page_ret->page_id,
+    page_ret->page_id
   );
 
   /* [u8 page_version_number] */
-  READ_VALUE_SEQ(&param->page_version_number, sequence, 1, return -1);
+  READ_VALUE_SEQ(&page_ret->page_version_number, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    page_version_number: %" PRIu8 " (0x%02" PRIX8 ").\n",
-    param->page_version_number,
-    param->page_version_number
+    page_ret->page_version_number,
+    page_ret->page_version_number
   );
 
   /* [u64 UO_mask_table()] */
-  READ_VALUE_SEQ(&param->UO_mask_table, sequence, 8, return -1);
+  READ_VALUE_SEQ(&page_ret->UO_mask_table, sequence, 8, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    UO_mask_table(): 0x%016" PRIX64 ".\n",
-    param->UO_mask_table
+    page_ret->UO_mask_table
   );
 
   /* In_effects() */
   LIBBLU_HDMV_PARSER_DEBUG("    In_effects():\n");
-  if (_decodeHdmvEffectSequence(ctx, sequence, &param->in_effects) < 0)
+  if (_decodeHdmvEffectSequence(sequence, &page_ret->in_effects) < 0)
     return -1;
   /* Out_effects() */
   LIBBLU_HDMV_PARSER_DEBUG("    Out_effects():\n");
-  if (_decodeHdmvEffectSequence(ctx, sequence, &param->out_effects) < 0)
+  if (_decodeHdmvEffectSequence(sequence, &page_ret->out_effects) < 0)
     return -1;
 
   /* [u8 animation_frame_rate_code] */
-  READ_VALUE_SEQ(&param->animation_frame_rate_code, sequence, 1, return -1);
+  READ_VALUE_SEQ(&page_ret->animation_frame_rate_code, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    animation_frame_rate_code: %" PRIu8 " (0x%02" PRIX8 ").\n",
-    param->animation_frame_rate_code,
-    param->animation_frame_rate_code
+    page_ret->animation_frame_rate_code,
+    page_ret->animation_frame_rate_code
   );
-  if (param->animation_frame_rate_code)
+  if (page_ret->animation_frame_rate_code)
     LIBBLU_HDMV_PARSER_DEBUG(
       "     -> Animation at 1/%" PRIu8 " of frame-rate speed.\n",
-      param->animation_frame_rate_code
+      page_ret->animation_frame_rate_code
     );
   else
     LIBBLU_HDMV_PARSER_DEBUG(
@@ -1761,69 +1736,66 @@ static int _decodeHdmvPage(
     );
 
   /* [u16 default_selected_button_id_ref] */
-  READ_VALUE_SEQ(&param->default_selected_button_id_ref, sequence, 2, return -1);
+  READ_VALUE_SEQ(&page_ret->default_selected_button_id_ref, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    default_selected_button_id_ref: %" PRIu16 " (0x%" PRIX16 ").\n",
-    param->default_selected_button_id_ref,
-    param->default_selected_button_id_ref
+    page_ret->default_selected_button_id_ref,
+    page_ret->default_selected_button_id_ref
   );
 
   /* [u16 default_activated_button_id_ref] */
-  READ_VALUE_SEQ(&param->default_activated_button_id_ref, sequence, 2, return -1);
+  READ_VALUE_SEQ(&page_ret->default_activated_button_id_ref, sequence, 2, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    default_activated_button_id_ref: %" PRIu16 " (0x%" PRIX16 ").\n",
-    param->default_activated_button_id_ref,
-    param->default_activated_button_id_ref
+    page_ret->default_activated_button_id_ref,
+    page_ret->default_activated_button_id_ref
   );
 
   /* [u8 palette_id_ref] */
-  READ_VALUE_SEQ(&param->palette_id_ref, sequence, 1, return -1);
+  READ_VALUE_SEQ(&page_ret->palette_id_ref, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    palette_id_ref: %" PRIu8 " (0x%02" PRIX8 ").\n",
-    param->palette_id_ref,
-    param->palette_id_ref
+    page_ret->palette_id_ref,
+    page_ret->palette_id_ref
   );
 
   /* [u8 number_of_BOGs] */
-  READ_VALUE_SEQ(&param->number_of_BOGs, sequence, 1, return -1);
+  READ_VALUE_SEQ(&page_ret->number_of_BOGs, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "    number_of_BOGs: %u BOGs (0x%02X).\n",
-    param->number_of_BOGs,
-    param->number_of_BOGs
+    page_ret->number_of_BOGs,
+    page_ret->number_of_BOGs
   );
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "     Button Overlap Groups:\n"
   );
 
-  if (!param->number_of_BOGs)
+  if (!page_ret->number_of_BOGs)
     LIBBLU_HDMV_PARSER_DEBUG("      *none*\n");
 
-  for (unsigned i = 0; i < param->number_of_BOGs; i++) {
-    LIBBLU_HDMV_PARSER_DEBUG("      Button_overlap_group[%u]():\n", i);
+  if (allocateBogsHdmvPageParameters(page_ret) < 0)
+    return -1;
 
-    HdmvButtonOverlapGroupParameters * bog;
-    if (NULL == (bog = getHdmvBOGParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
+  for (uint8_t i = 0; i < page_ret->number_of_BOGs; i++) {
+    LIBBLU_HDMV_PARSER_DEBUG("      Button_overlap_group[%" PRIu8 "]():\n", i);
 
-    if (_decodeHdmvButtonOverlapGroup(ctx, sequence, bog) < 0)
-      return -1;
-    param->bogs[i] = bog;
+    if (_decodeHdmvButtonOverlapGroup(sequence, &page_ret->bogs[i]) < 0)
+      LIBBLU_HDMV_PARSER_ERROR_RETURN("Error in Button_overlap_group[%" PRIu8 "].\n", i);
   }
 
   return 0;
 }
 
 static int _decodeHdmvInteractiveCompositionData(
-  HdmvContextPtr ctx,
   HdmvSequencePtr sequence
 )
 {
-  HdmvICParameters * param = &sequence->data.ic;
+  HdmvICParameters * ic = &sequence->data.ic;
 
   LIBBLU_HDMV_PARSER_DEBUG(
     " Interactive_composition(): "
@@ -1831,102 +1803,111 @@ static int _decodeHdmvInteractiveCompositionData(
   );
 
   /* [u24 interactive_composition_length] */
-  READ_VALUE_SEQ(&param->interactive_composition_length, sequence, 3, return -1);
+  READ_VALUE_SEQ(&ic->interactive_composition_length, sequence, 3, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "  interactive_composition_length: %" PRIu32 " bytes (0x%06" PRIX32 ").\n",
-    param->interactive_composition_length,
-    param->interactive_composition_length
+    ic->interactive_composition_length,
+    ic->interactive_composition_length
   );
+
+  uint32_t ic_readed_length = getRemFragmentsLenHdmvSequence(
+    sequence
+  );
+  if (ic_readed_length != ic->interactive_composition_length)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid ICS sequence, "
+      "parsed interactive composition data length mismatch with segments "
+      "data length ('interactive_composition_length' == %" PRIu32 ", "
+      "got %" PRIu32 " bytes).\n",
+      ic->interactive_composition_length,
+      ic_readed_length
+    );
 
   /* [b1 stream_model] [b1 user_interface_model] [v6 reserved] */
   uint8_t flags;
   READ_VALUE_SEQ(&flags, sequence, 1, return -1);
-  param->stream_model         = flags & 0x80;
-  param->user_interface_model = flags & 0x40;
+  ic->stream_model         = (flags & 0x80) >> 7;
+  ic->user_interface_model = (flags & 0x40) >> 6;
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "  stream_model: %s (0b%x).\n",
-    HdmvStreamModelStr(param->stream_model),
-    param->stream_model
+    HdmvStreamModelStr(ic->stream_model),
+    ic->stream_model
   );
   LIBBLU_HDMV_PARSER_DEBUG(
     "  user_interface_model: %s (0b%x).\n",
-    HdmvUserInterfaceModelStr(param->user_interface_model),
-    param->user_interface_model
+    HdmvUserInterfaceModelStr(ic->user_interface_model),
+    ic->user_interface_model
   );
   LIBBLU_HDMV_PARSER_DEBUG(
     "  reserved: 0x%02X.\n",
     flags & 0x3F
   );
 
-  if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
+  if (ic->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
     /* In Mux related parameters */
     LIBBLU_HDMV_PARSER_DEBUG("  Mux related parameters:\n");
 
     /* [v7 reserved] [u33 composition_time_out_pts] */
-    READ_VALUE_SEQ(&param->composition_time_out_pts, sequence, 5, return -1);
-    param->composition_time_out_pts &= 0x1FFFFFFFF;
+    READ_VALUE_SEQ(&ic->composition_time_out_pts, sequence, 5, return -1);
+    ic->composition_time_out_pts &= 0x1FFFFFFFF;
 
     LIBBLU_HDMV_PARSER_DEBUG(
-      "   composition_time_out_pts: %" PRIu64 " (0x%09" PRIX64 ").\n",
-      param->composition_time_out_pts,
-      param->composition_time_out_pts
+      "   composition_time_out_pts: %" PRId64 " (0x%09" PRIX64 ").\n",
+      ic->composition_time_out_pts,
+      ic->composition_time_out_pts
     );
 
     /* [v7 reserved] [u33 selection_time_out_pts] */
-    READ_VALUE_SEQ(&param->selection_time_out_pts, sequence, 5, return -1);
-    param->selection_time_out_pts &= 0x1FFFFFFFF;
+    READ_VALUE_SEQ(&ic->selection_time_out_pts, sequence, 5, return -1);
+    ic->selection_time_out_pts &= 0x1FFFFFFFF;
 
     LIBBLU_HDMV_PARSER_DEBUG(
-      "   selection_time_out_pts: %" PRIu64 " (0x%09" PRIX64 ").\n",
-      param->selection_time_out_pts,
-      param->selection_time_out_pts
+      "   selection_time_out_pts: %" PRId64 " (0x%09" PRIX64 ").\n",
+      ic->selection_time_out_pts,
+      ic->selection_time_out_pts
     );
   }
 
   /* [u24 user_time_out_duration] */
-  READ_VALUE_SEQ(&param->user_time_out_duration, sequence, 3, return -1);
+  READ_VALUE_SEQ(&ic->user_time_out_duration, sequence, 3, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "  user_time_out_duration: %" PRIu32 " (0x%06" PRIX32 ").\n",
-    param->user_time_out_duration,
-    param->user_time_out_duration
+    ic->user_time_out_duration,
+    ic->user_time_out_duration
   );
 
   /* [u8 number_of_pages] */
-  READ_VALUE_SEQ(&param->number_of_pages, sequence, 1, return -1);
+  READ_VALUE_SEQ(&ic->number_of_pages, sequence, 1, return -1);
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "  number_of_pages: %u (0x%02X).\n",
-    param->number_of_pages,
-    param->number_of_pages
+    ic->number_of_pages,
+    ic->number_of_pages
   );
 
   LIBBLU_HDMV_PARSER_DEBUG(
     "  Pages():\n"
   );
-  if (!param->number_of_pages)
+  if (!ic->number_of_pages)
     LIBBLU_HDMV_PARSER_DEBUG("   *none*\n");
 
-  for (unsigned i = 0; i < param->number_of_pages; i++) {
+  if (allocatePagesHdmvICParameters(ic) < 0)
+    return -1;
+  for (uint8_t i = 0; i < ic->number_of_pages; i++) {
     LIBBLU_HDMV_PARSER_DEBUG("   Page[%u]():\n", i);
-
-    HdmvPageParameters * page;
-    if (NULL == (page = getHdmvPageParamHdmvSegmentsInventory(&ctx->seg_inv)))
-      return -1;
-
     /* Page() */
-    if (_decodeHdmvPage(ctx, sequence, page) < 0)
-      return -1;
-    param->pages[i] = page;
+    if (_decodeHdmvPage(sequence, &ic->pages[i]) < 0)
+      LIBBLU_HDMV_PARSER_ERROR_RETURN("Error in Page[%" PRIu8 "].\n", i);
   }
 
   return 0;
 }
 
 static int _parseHdmvICS(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -1969,7 +1950,7 @@ static int _parseHdmvICS(
     /* Decode complete interactive composition data. */
 
     /* Interactive_composition() */
-    if (_decodeHdmvInteractiveCompositionData(ctx, sequence) < 0)
+    if (_decodeHdmvInteractiveCompositionData(sequence) < 0)
       goto free_return;
 
     /* Mark sequence as completed/decoded. */
@@ -1992,7 +1973,7 @@ free_return:
 /* ### END segments : ###################################################### */
 
 static int _parseHdmvEND(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -2018,7 +1999,7 @@ static int _parseHdmvEND(
 /* ######################################################################### */
 
 int parseHdmvSegment(
-  HdmvContextPtr ctx
+  HdmvContext * ctx
 )
 {
   HdmvSegmentParameters segment;
@@ -2042,40 +2023,40 @@ int parseHdmvSegment(
     return -1;
 
   HdmvSegmentType segment_type;
-  if (checkHdmvSegmentType(segment.desc.segment_type, ctx->type, &segment_type) < 0)
+  if (checkHdmvSegmentType(segment.desc.segment_type, ctx->epoch.type, &segment_type) < 0)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Invalid segment header at offset 0x%" PRIX64 ".\n",
       segment.orig_file_offset
     );
 
   switch (segment_type) {
-    case HDMV_SEGMENT_TYPE_PDS:
-      /* Palette Definition Segment */
-      return _parseHdmvPDS(ctx, segment);
+  case HDMV_SEGMENT_TYPE_PDS:
+    /* Palette Definition Segment */
+    return _parseHdmvPDS(ctx, segment);
 
-    case HDMV_SEGMENT_TYPE_ODS:
-      /* Object Definition Segment */
-      return _parseHdmvODS(ctx, segment);
+  case HDMV_SEGMENT_TYPE_ODS:
+    /* Object Definition Segment */
+    return _parseHdmvODS(ctx, segment);
 
-    case HDMV_SEGMENT_TYPE_PCS:
-      /* Presentation Composition Segment */
-      return _parseHdmvPCS(ctx, segment);
+  case HDMV_SEGMENT_TYPE_PCS:
+    /* Presentation Composition Segment */
+    return _parseHdmvPCS(ctx, segment);
 
-    case HDMV_SEGMENT_TYPE_WDS:
-      /* Window Definition Segment */
-      return _parseHdmvWDS(ctx, segment);
+  case HDMV_SEGMENT_TYPE_WDS:
+    /* Window Definition Segment */
+    return _parseHdmvWDS(ctx, segment);
 
-    case HDMV_SEGMENT_TYPE_ICS:
-      /* Interactive Composition Segment */
-      return _parseHdmvICS(ctx, segment);
+  case HDMV_SEGMENT_TYPE_ICS:
+    /* Interactive Composition Segment */
+    return _parseHdmvICS(ctx, segment);
 
-    case HDMV_SEGMENT_TYPE_END:
-      /* END Segment */
-      if (_parseHdmvEND(ctx, segment) < 0)
-        return -1;
+  case HDMV_SEGMENT_TYPE_END:
+    /* END Segment */
+    if (_parseHdmvEND(ctx, segment) < 0)
+      return -1;
 
-      /* Complete the DS */
-      return completeDSHdmvContext(ctx);
+    /* Complete the DS */
+    return completeCurDSHdmvContext(ctx);
   }
 
   LIBBLU_ERROR_RETURN(

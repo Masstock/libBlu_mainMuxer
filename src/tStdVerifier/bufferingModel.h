@@ -203,7 +203,7 @@ typedef struct {
     buffer use removal timestamps ontput method.                             */
 
   size_t outputDataSize;      /**< Optionnal output data size modifier
-    in bits. If this value is non zero, it will be transfered at frame
+    in bits. If this value is non-zero, it will be transfered at frame
     removal rather than dataSize value.                                      */
   bool doNotRemove;           /**< Optionnal flag, if set to true, data is
     not removed from current buffer at frame removal (as if it is copied).   */
@@ -578,18 +578,18 @@ static inline void cleanBufModelFilterLblValue(
   unsigned i;
 
   switch (type) {
-    case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-      break;
+  case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
+    break;
 
-    case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
-      free(val.string);
-      break;
+  case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
+    free(val.string);
+    break;
 
-    case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
-      for (i = 0; i < val.listLength; i++)
-        cleanBufModelFilterLblValue(val.list[i], val.listItemsType);
-      free(val.list);
-      break;
+  case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
+    for (i = 0; i < val.listLength; i++)
+      cleanBufModelFilterLblValue(val.list[i], val.listItemsType);
+    free(val.list);
+    break;
   }
 }
 
@@ -802,14 +802,14 @@ static inline bool isLinkedBufModelNode(
 )
 {
   switch (node.type) {
-    case NODE_VOID:
-      break;
+  case NODE_VOID:
+    break;
 
-    case NODE_BUFFER:
-      return node.linkedElement.buffer->header.isLinked;
+  case NODE_BUFFER:
+    return node.linkedElement.buffer->header.isLinked;
 
-    case NODE_FILTER:
-      return node.linkedElement.filter->isLinked;
+  case NODE_FILTER:
+    return node.linkedElement.filter->isLinked;
   }
 
   return false;
@@ -820,13 +820,13 @@ static inline void setLinkedBufModelNode(
 )
 {
   switch (node.type) {
-    case NODE_VOID:
-      break;
-    case NODE_BUFFER:
-      node.linkedElement.buffer->header.isLinked = true;
-      break;
-    case NODE_FILTER:
-      node.linkedElement.filter->isLinked = true;
+  case NODE_VOID:
+    break;
+  case NODE_BUFFER:
+    node.linkedElement.buffer->header.isLinked = true;
+    break;
+  case NODE_FILTER:
+    node.linkedElement.filter->isLinked = true;
   }
 }
 

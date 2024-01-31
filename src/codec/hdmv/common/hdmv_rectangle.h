@@ -38,6 +38,10 @@ static inline HdmvRectangle mergeRectangle(
   HdmvRectangle second
 )
 {
+  if (isEmptyRectangle(first))
+    return second;
+  if (isEmptyRectangle(second))
+    return first;
   uint16_t x = MIN(first.x, second.x);
   uint16_t y = MIN(first.y, second.y);
   return (HdmvRectangle) {
@@ -58,6 +62,19 @@ static inline bool areCollidingRectangle(
     && second.x < first.x + first.w
     && first.y < second.y + second.h
     && second.y < first.y + first.h
+  ;
+}
+
+static inline bool isInsideRectangle(
+  HdmvRectangle window,
+  HdmvRectangle rectangle
+)
+{
+  return
+    window.x <= rectangle.x
+    && rectangle.x + rectangle.w <= window.x + window.w
+    && window.y <= rectangle.y
+    && rectangle.y + rectangle.h <= window.y + window.h
   ;
 }
 

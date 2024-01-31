@@ -88,17 +88,17 @@ static int parseLibbluMetaOptionArg(
   LibbluMetaOptionArgValue argVal;
 
   switch (expectedType) {
-    case LBMETA_OPTARG_NO_ARG:
-      LIBBLU_ERROR_RETURN("No argument expected.\n");
+  case LBMETA_OPTARG_NO_ARG:
+    LIBBLU_ERROR_RETURN("No argument expected.\n");
 
-    case LBMETA_OPTARG_UINT64:
-      if (!lbc_sscanf(string, "%" SCNu64, &argVal.u64))
-        return -1;
-      break;
+  case LBMETA_OPTARG_UINT64:
+    if (!lbc_sscanf(string, "%" SCNu64, &argVal.u64))
+      return -1;
+    break;
 
-    case LBMETA_OPTARG_STRING:
-      if (NULL == (argVal.str = lbc_strdup(string)))
-        LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+  case LBMETA_OPTARG_STRING:
+    if (NULL == (argVal.str = lbc_strdup(string)))
+      LIBBLU_ERROR_RETURN("Memory allocation error.\n");
   }
 
   if (NULL != value)

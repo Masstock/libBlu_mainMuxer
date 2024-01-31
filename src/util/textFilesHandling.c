@@ -115,13 +115,13 @@ static int fillBufferTxtFile(
 #if 1
   for (car = handler->lineBuffer; lbc_char('\0') != *car; car++) {
     switch (*car) {
-      case lbc_char('\n'):
-        handler->lineNumber++;
-        break;
+    case lbc_char('\n'):
+      handler->lineNumber++;
+      break;
 
-      case lbc_char('\r'):
-      case lbc_char('\t'):
-        *car = ' ';
+    case lbc_char('\r'):
+    case lbc_char('\t'):
+      *car = ' ';
     }
   }
   *car = lbc_char('\0');
@@ -261,20 +261,20 @@ static int getNextToken(
     return -1;
 
   switch (*handler->rp) {
-    case lbc_char('\''):
-      delimiters = singleQuotesStateDelimiters;
-      expectedFinalChar = lbc_char('\'');
-      break;
+  case lbc_char('\''):
+    delimiters = singleQuotesStateDelimiters;
+    expectedFinalChar = lbc_char('\'');
+    break;
 
-    case lbc_char('\"'):
-      delimiters = doubleQuotesStateDelimiters;
-      expectedFinalChar = lbc_char('\"');
-      break;
+  case lbc_char('\"'):
+    delimiters = doubleQuotesStateDelimiters;
+    expectedFinalChar = lbc_char('\"');
+    break;
 
-    default:
-      delimiters = normalStateDelimiters;
-      expectedFinalChar = lbc_char('\0');
-      break;
+  default:
+    delimiters = normalStateDelimiters;
+    expectedFinalChar = lbc_char('\0');
+    break;
   }
 
   if (consumeToken(handler, delimiters) < 0)

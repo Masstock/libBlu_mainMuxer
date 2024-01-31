@@ -73,16 +73,16 @@ static int _checkH264ProfileIdcCompliance(
 
   compliantProfile = false;
   switch (profile_idc) {
-    case H264_PROFILE_MAIN:
-      compliantProfile = true;
-      break;
+  case H264_PROFILE_MAIN:
+    compliantProfile = true;
+    break;
 
-    case H264_PROFILE_HIGH:
-      compliantProfile = (!constraints.set4);
-      break;
+  case H264_PROFILE_HIGH:
+    compliantProfile = (!constraints.set4);
+    break;
 
-    default:
-      break;
+  default:
+    break;
   }
 
   if (!compliantProfile) {
@@ -1011,30 +1011,30 @@ static const char * _getSequenceScalingListName(
 )
 {
   switch (indice) {
-    case 0:
-      return "Sl_4x4_Intra_Y";
-    case 1:
-      return "Sl_4x4_Intra_Cb";
-    case 2:
-      return "Sl_4x4_Intra_Cr";
-    case 3:
-      return "Sl_4x4_Inter_Y";
-    case 4:
-      return "Sl_4x4_Inter_Cb";
-    case 5:
-      return "Sl_4x4_Inter_Cr";
-    case 6:
-      return "Sl_8x8_Intra_Y";
-    case 7:
-      return "Sl_8x8_Inter_Y";
-    case 8:
-      return "Sl_8x8_Intra_Cb";
-    case 9:
-      return "Sl_8x8_Inter_Cb";
-    case 10:
-      return "Sl_8x8_Intra_Cr";
-    case 11:
-      return "Sl_8x8_Inter_Cr";
+  case 0:
+    return "Sl_4x4_Intra_Y";
+  case 1:
+    return "Sl_4x4_Intra_Cb";
+  case 2:
+    return "Sl_4x4_Intra_Cr";
+  case 3:
+    return "Sl_4x4_Inter_Y";
+  case 4:
+    return "Sl_4x4_Inter_Cb";
+  case 5:
+    return "Sl_4x4_Inter_Cr";
+  case 6:
+    return "Sl_8x8_Intra_Y";
+  case 7:
+    return "Sl_8x8_Inter_Y";
+  case 8:
+    return "Sl_8x8_Intra_Cb";
+  case 9:
+    return "Sl_8x8_Inter_Cb";
+  case 10:
+    return "Sl_8x8_Intra_Cr";
+  case 11:
+    return "Sl_8x8_Inter_Cr";
   }
 
   return "UNKNOWN";
@@ -1435,98 +1435,98 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   switch (param.pic_order_cnt_type) {
-    case 0:
-      LIBBLU_H264_DEBUG_SPS(
-        "   -> Max picture order count LSB value "
-        "(log2_max_pic_order_cnt_lsb_minus4): %d (0x%02" PRIX8 ").\n",
-        param.log2_max_pic_order_cnt_lsb_minus4,
+  case 0:
+    LIBBLU_H264_DEBUG_SPS(
+      "   -> Max picture order count LSB value "
+      "(log2_max_pic_order_cnt_lsb_minus4): %d (0x%02" PRIX8 ").\n",
+      param.log2_max_pic_order_cnt_lsb_minus4,
+      param.log2_max_pic_order_cnt_lsb_minus4
+    );
+    LIBBLU_H264_DEBUG_SPS(
+      "    => MaxPicOrderCntLsb: %u.\n",
+      param.MaxPicOrderCntLsb
+    );
+
+    if (12 < param.log2_max_pic_order_cnt_lsb_minus4) {
+      LIBBLU_H264_ERROR_RETURN(
+        "Out of range 'log2_max_pic_order_cnt_lsb_minus4' == %u, "
+        "shall not exceed 12 (Rec. ITU-T H.264 7.4.2.1.1).\n",
         param.log2_max_pic_order_cnt_lsb_minus4
       );
+    }
+    break;
+
+  case 1:
+    LIBBLU_H264_DEBUG_SPS(
+      "   -> Delta picture order counter "
+      "(delta_pic_order_always_zero_flag): %s (0x%X).\n",
+      BOOL_PRESENCE(!param.delta_pic_order_always_zero_flag),
+      param.delta_pic_order_always_zero_flag
+    );
+
+    if (param.delta_pic_order_always_zero_flag) {
       LIBBLU_H264_DEBUG_SPS(
-        "    => MaxPicOrderCntLsb: %u.\n",
-        param.MaxPicOrderCntLsb
+        "    -> 'delta_pic_order_cnt[0]' and 'delta_pic_order_cnt[1]' "
+        "not present and inferred to be equal to 0.\n"
       );
+    }
 
-      if (12 < param.log2_max_pic_order_cnt_lsb_minus4) {
-        LIBBLU_H264_ERROR_RETURN(
-          "Out of range 'log2_max_pic_order_cnt_lsb_minus4' == %u, "
-          "shall not exceed 12 (Rec. ITU-T H.264 7.4.2.1.1).\n",
-          param.log2_max_pic_order_cnt_lsb_minus4
-        );
-      }
-      break;
+    LIBBLU_H264_DEBUG_SPS(
+      "   -> Offset for non-referential picture "
+      "(offset_for_non_ref_pic): %d (0x%X).\n",
+      param.offset_for_non_ref_pic,
+      param.offset_for_non_ref_pic
+    );
 
-    case 1:
+    LIBBLU_H264_DEBUG_SPS(
+      "   -> Offset for bottom-field "
+      "(offset_for_top_to_bottom_field): %d (0x%X).\n",
+      param.offset_for_top_to_bottom_field,
+      param.offset_for_top_to_bottom_field
+    );
+
+    LIBBLU_H264_DEBUG_SPS(
+      "   -> Number of referential frames in picture order counter cycle "
+      "(num_ref_frames_in_pic_order_cnt_cycle): %u (0x%X)",
+      param.num_ref_frames_in_pic_order_cnt_cycle,
+      param.num_ref_frames_in_pic_order_cnt_cycle
+    );
+
+    for (i = 0; i < param.num_ref_frames_in_pic_order_cnt_cycle; i++) {
       LIBBLU_H264_DEBUG_SPS(
-        "   -> Delta picture order counter "
-        "(delta_pic_order_always_zero_flag): %s (0x%X).\n",
-        BOOL_PRESENCE(!param.delta_pic_order_always_zero_flag),
-        param.delta_pic_order_always_zero_flag
+        "    -> Offset for referential frame %u "
+        "(offset_for_ref_frame[%u]): %d (0x%X).\n",
+        i, i,
+        param.offset_for_ref_frame[i],
+        param.offset_for_ref_frame[i]
       );
+    }
 
-      if (param.delta_pic_order_always_zero_flag) {
-        LIBBLU_H264_DEBUG_SPS(
-          "    -> 'delta_pic_order_cnt[0]' and 'delta_pic_order_cnt[1]' "
-          "not present and inferred to be equal to 0.\n"
-        );
-      }
+    LIBBLU_H264_DEBUG_SPS(
+      "     => ExpectedDeltaPerPicOrderCntCycle: %d.\n",
+      param.ExpectedDeltaPerPicOrderCntCycle
+    );
+    break;
 
-      LIBBLU_H264_DEBUG_SPS(
-        "   -> Offset for non-referential picture "
-        "(offset_for_non_ref_pic): %d (0x%X).\n",
-        param.offset_for_non_ref_pic,
-        param.offset_for_non_ref_pic
-      );
+  case 2:
+    /**
+     * No extra parameters needed.
+     * Forbids the presence of two consecutive non-referential
+     * frames/non-complementary fields.
+     */
+    handle->curProgParam.picOrderCntType2use = true;
+    break;
 
-      LIBBLU_H264_DEBUG_SPS(
-        "   -> Offset for bottom-field "
-        "(offset_for_top_to_bottom_field): %d (0x%X).\n",
-        param.offset_for_top_to_bottom_field,
-        param.offset_for_top_to_bottom_field
-      );
+  default:
+    LIBBLU_H264_DEBUG_SPS(
+      "   -> Reserved value (Unknown type).\n"
+    );
 
-      LIBBLU_H264_DEBUG_SPS(
-        "   -> Number of referential frames in picture order counter cycle "
-        "(num_ref_frames_in_pic_order_cnt_cycle): %u (0x%X)",
-        param.num_ref_frames_in_pic_order_cnt_cycle,
-        param.num_ref_frames_in_pic_order_cnt_cycle
-      );
-
-      for (i = 0; i < param.num_ref_frames_in_pic_order_cnt_cycle; i++) {
-        LIBBLU_H264_DEBUG_SPS(
-          "    -> Offset for referential frame %u "
-          "(offset_for_ref_frame[%u]): %d (0x%X).\n",
-          i, i,
-          param.offset_for_ref_frame[i],
-          param.offset_for_ref_frame[i]
-        );
-      }
-
-      LIBBLU_H264_DEBUG_SPS(
-        "     => ExpectedDeltaPerPicOrderCntCycle: %d.\n",
-        param.ExpectedDeltaPerPicOrderCntCycle
-      );
-      break;
-
-    case 2:
-      /**
-       * No extra parameters needed.
-       * Forbids the presence of two consecutive non-referential
-       * frames/non-complementary fields.
-       */
-      handle->curProgParam.picOrderCntType2use = true;
-      break;
-
-    default:
-      LIBBLU_H264_DEBUG_SPS(
-        "   -> Reserved value (Unknown type).\n"
-      );
-
-      LIBBLU_H264_ERROR_RETURN(
-        "Reserved 'pic_order_cnt_type' == %" PRIu8 " in use, "
-        "unknown picture order count type (expect values between 0 and 2).\n",
-        param.pic_order_cnt_type
-      );
+    LIBBLU_H264_ERROR_RETURN(
+      "Reserved 'pic_order_cnt_type' == %" PRIu8 " in use, "
+      "unknown picture order count type (expect values between 0 and 2).\n",
+      param.pic_order_cnt_type
+    );
   }
 
   LIBBLU_H264_DEBUG_SPS(
@@ -1920,35 +1920,35 @@ int checkH264SpsBitstreamCompliance(
     );
 
   switch (ret) {
-    case CHK_VIDEO_CONF_RET_OK:
-      break;
+  case CHK_VIDEO_CONF_RET_OK:
+    break;
 
-    case CHK_VIDEO_CONF_RET_ILL_VIDEO_SIZE:
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-        "Unallowed video definition %ux%u, do not form part of BD-specs.\n",
-        param.FrameWidth,
-        param.FrameHeight
-      );
+  case CHK_VIDEO_CONF_RET_ILL_VIDEO_SIZE:
+    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      "Unallowed video definition %ux%u, do not form part of BD-specs.\n",
+      param.FrameWidth,
+      param.FrameHeight
+    );
 
-    case CHK_VIDEO_CONF_RET_ILL_FRAME_RATE:
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-        "Frame-rate value %.3f is not allowed for video definition %ux%u "
-        "according to BD-specs.\n",
-        param.vui_parameters.FrameRate,
-        param.FrameWidth,
-        param.FrameHeight
-      );
+  case CHK_VIDEO_CONF_RET_ILL_FRAME_RATE:
+    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      "Frame-rate value %.3f is not allowed for video definition %ux%u "
+      "according to BD-specs.\n",
+      param.vui_parameters.FrameRate,
+      param.FrameWidth,
+      param.FrameHeight
+    );
 
-    case CHK_VIDEO_CONF_RET_ILL_DISP_MODE:
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-        "%s display mode is forbidden in the configuration of "
-        "video definition %ux%u at frame-rate %.3f "
-        "according to BD-specs.\n",
-        (param.frame_mbs_only_flag) ? "Progressive" : "Interlaced",
-        param.FrameWidth,
-        param.FrameHeight,
-        param.vui_parameters.FrameRate
-      );
+  case CHK_VIDEO_CONF_RET_ILL_DISP_MODE:
+    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      "%s display mode is forbidden in the configuration of "
+      "video definition %ux%u at frame-rate %.3f "
+      "according to BD-specs.\n",
+      (param.frame_mbs_only_flag) ? "Progressive" : "Interlaced",
+      param.FrameWidth,
+      param.FrameHeight,
+      param.vui_parameters.FrameRate
+    );
   }
 
   return 0;
@@ -3033,40 +3033,40 @@ int checkH264SeiRecoveryPointCompliance(
     "0x%02" PRIX8 ".\n", param.changing_slice_group_idc
   );
   switch (param.changing_slice_group_idc) {
-    case 0x0:
-      LIBBLU_H264_DEBUG_SEI(
-        "    -> All decoded pictures between message and "
-        "recovery point are correct.\n"
-      );
-      break;
+  case 0x0:
+    LIBBLU_H264_DEBUG_SEI(
+      "    -> All decoded pictures between message and "
+      "recovery point are correct.\n"
+    );
+    break;
 
-    case 0x1:
-      LIBBLU_H264_DEBUG_SEI(
-        "    -> All macroblocks in slice group 0 between message and recovery "
-        "point produce correct decoded pictures.\n"
-      );
-      LIBBLU_H264_DEBUG_SEI(
-        "    -> Number of slice groups should be equal to 2.\n"
-      );
-      break;
+  case 0x1:
+    LIBBLU_H264_DEBUG_SEI(
+      "    -> All macroblocks in slice group 0 between message and recovery "
+      "point produce correct decoded pictures.\n"
+    );
+    LIBBLU_H264_DEBUG_SEI(
+      "    -> Number of slice groups should be equal to 2.\n"
+    );
+    break;
 
-    case 0x2:
-      LIBBLU_H264_DEBUG_SEI(
-        "    -> All macroblocks in slice group 1 between message and recovery "
-        "point produce correct decoded pictures.\n"
-      );
-      LIBBLU_H264_DEBUG_SEI(
-        "    -> Number of slice groups should be equal to 2.\n"
-      );
-      break;
+  case 0x2:
+    LIBBLU_H264_DEBUG_SEI(
+      "    -> All macroblocks in slice group 1 between message and recovery "
+      "point produce correct decoded pictures.\n"
+    );
+    LIBBLU_H264_DEBUG_SEI(
+      "    -> Number of slice groups should be equal to 2.\n"
+    );
+    break;
 
-    default:
-      LIBBLU_H264_DEBUG_SEI("    -> Reserved value.\n");
+  default:
+    LIBBLU_H264_DEBUG_SEI("    -> Reserved value.\n");
 
-      LIBBLU_H264_ERROR_RETURN(
-        "Reserved 'changing_slice_group_idc' == %" PRIu8 " in use.\n",
-        param.changing_slice_group_idc
-      );
+    LIBBLU_H264_ERROR_RETURN(
+      "Reserved 'changing_slice_group_idc' == %" PRIu8 " in use.\n",
+      param.changing_slice_group_idc
+    );
   }
 
   if (param.changing_slice_group_idc != 0x0) {

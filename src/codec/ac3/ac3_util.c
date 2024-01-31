@@ -148,7 +148,7 @@ Ac3ContentType initNextFrameAc3Context(
       }
       else {
         // TODO: Add support for Dolby_TrueHD_file syntax described in [3].
-        LIBBLU_TODO(
+        LIBBLU_TODO_MSG(
           "Dolby_TrueHD_file defined in "
           "'TrueHD - Dolby TrueHD (MLP) - High-level bitstream description' "
           "is not yet supported.\n"
@@ -293,24 +293,24 @@ int completeFrameAc3Context(
   unsigned sfile_idx = ctx->src_file_idx;
 
   switch (au->type) {
-    case AC3_CORE:
-      if (initAudioPesPacketEsmsHandler(ctx->script, false, false, ctx->core.pts, 0) < 0)
-        return -1;
-      break;
+  case AC3_CORE:
+    if (initAudioPesPacketEsmsHandler(ctx->script, false, false, ctx->core.pts, 0) < 0)
+      return -1;
+    break;
 
-    case AC3_EAC3:
-      if (ctx->skip_ext)
-        return 0; // Skip extensions.
-      if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->eac3.pts, 0) < 0)
-        return -1;
-      break;
+  case AC3_EAC3:
+    if (ctx->skip_ext)
+      return 0; // Skip extensions.
+    if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->eac3.pts, 0) < 0)
+      return -1;
+    break;
 
-    case AC3_TRUEHD:
-      if (ctx->skip_ext)
-        return 0; // Skip extensions.
-      if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->mlp.pts, 0) < 0)
-        return -1;
-      break;
+  case AC3_TRUEHD:
+    if (ctx->skip_ext)
+      return 0; // Skip extensions.
+    if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->mlp.pts, 0) < 0)
+      return -1;
+    break;
   }
 
   if (appendAddPesPayloadCommandEsmsHandler(ctx->script, sfile_idx, 0x0, au->start_offset, au->size) < 0)
@@ -415,12 +415,12 @@ static SampleRateCode _detectSampleRateCode(
   }
 
   switch (ext_audio_freq) {
-    case 96000:
-      return 0x04; // 96 kHz
-    case 192000:
-      return 0x0E; // 192 kHz + 48 kHz core
-    default:
-      return 0x01; // 48 kHz
+  case 96000:
+    return 0x04; // 96 kHz
+  case 192000:
+    return 0x0E; // 192 kHz + 48 kHz core
+  default:
+    return 0x01; // 48 kHz
   }
 }
 
@@ -478,16 +478,16 @@ static const char * _streamFormatStr(
 )
 {
   switch (stream_type) {
-    case AC3_CORE:
-      return "Audio/AC-3";
-    case AC3_TRUEHD:
-      if (ctx->mlp.info.atmos)
-        return "Audio/AC-3 (+ TrueHD/Dolby Atmos Extensions)";
-      return "Audio/AC-3 (+ TrueHD Extension)";
-    case AC3_EAC3:
-      if (ctx->eac3.info.atmos)
-        return "Audio/AC-3 (+ E-AC-3/Dolby Atmos Extensions)";
-      return "Audio/AC-3 (+ E-AC-3 Extension)";
+  case AC3_CORE:
+    return "Audio/AC-3";
+  case AC3_TRUEHD:
+    if (ctx->mlp.info.atmos)
+      return "Audio/AC-3 (+ TrueHD/Dolby Atmos Extensions)";
+    return "Audio/AC-3 (+ TrueHD Extension)";
+  case AC3_EAC3:
+    if (ctx->eac3.info.atmos)
+      return "Audio/AC-3 (+ E-AC-3/Dolby Atmos Extensions)";
+    return "Audio/AC-3 (+ E-AC-3 Extension)";
   }
 
   return "Audio/Unknown";

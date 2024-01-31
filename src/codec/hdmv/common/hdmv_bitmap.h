@@ -22,6 +22,9 @@ typedef struct {
   uint32_t * rgba;
   uint16_t width;
   uint16_t height;
+
+  HdmvODSUsage usage;
+  uint16_t object_id;
 } HdmvBitmap;
 
 int initHdmvBitmap(

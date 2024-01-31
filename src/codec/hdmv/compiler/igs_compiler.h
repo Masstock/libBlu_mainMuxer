@@ -33,7 +33,7 @@
 int processIgsCompiler(
   const lbc * xml_filepath,
   HdmvTimecodes * timecodes,
-  IniFileContextPtr conf
+  IniFileContext conf_hdl
 );
 
 #endif

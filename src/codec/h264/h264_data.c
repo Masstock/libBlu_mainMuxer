@@ -14,63 +14,63 @@ const char * H264ProfileIdcValueStr(
 )
 {
   switch (val) {
-    case H264_PROFILE_CAVLC_444_INTRA:
-      return "CAVLC 4:4:4 Intra";
+  case H264_PROFILE_CAVLC_444_INTRA:
+    return "CAVLC 4:4:4 Intra";
 
-    case H264_PROFILE_BASELINE:
+  case H264_PROFILE_BASELINE:
+    if (constraints.set1)
+      return "Constrained Baseline";
+    else
+      return "Baseline";
+
+  case H264_PROFILE_MAIN:
+    return "Main";
+
+  case H264_PROFILE_EXTENDED:
+    return "Extended";
+
+  case H264_PROFILE_SCALABLE_BASELINE:
+    return "Scalable Baseline";
+
+  case H264_PROFILE_SCALABLE_HIGH:
+    return "Scalable High";
+
+  case H264_PROFILE_HIGH:
+    if (constraints.set4) {
       if (constraints.set1)
-        return "Constrained Baseline";
-      else
-        return "Baseline";
+        return "Constrained High";
+      return "Progressive High";
+    }
+    return "High";
 
-    case H264_PROFILE_MAIN:
-      return "Main";
+  case H264_PROFILE_MULTIVIEW_HIGH:
+    return "Multiview High";
 
-    case H264_PROFILE_EXTENDED:
-      return "Extended";
+  case H264_PROFILE_HIGH_10:
+    if (constraints.set4)
+      return "Progressive High 10";
+    return "High 10";
 
-    case H264_PROFILE_SCALABLE_BASELINE:
-      return "Scalable Baseline";
+  case H264_PROFILE_HIGH_422:
+    return "High 4:2:2";
 
-    case H264_PROFILE_SCALABLE_HIGH:
-      return "Scalable High";
+  case H264_PROFILE_MFC_HIGH:
+    return "MFC High";
 
-    case H264_PROFILE_HIGH:
-      if (constraints.set4) {
-        if (constraints.set1)
-          return "Constrained High";
-        return "Progressive High";
-      }
-      return "High";
+  case H264_PROFILE_DEPTH_MFC_HIGH:
+    return "MFC Depth High";
 
-    case H264_PROFILE_MULTIVIEW_HIGH:
-      return "Multiview High";
+  case H264_PROFILE_MULTIVIEW_DEPTH_HIGH:
+    return "Multiview Depth High";
 
-    case H264_PROFILE_HIGH_10:
-      if (constraints.set4)
-        return "Progressive High 10";
-      return "High 10";
+  case H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH:
+    return "Enhanced Multiview Depth High";
 
-    case H264_PROFILE_HIGH_422:
-      return "High 4:2:2";
+  case H264_PROFILE_HIGH_444_PREDICTIVE:
+    return "High 4:4:4 Intra";
 
-    case H264_PROFILE_MFC_HIGH:
-      return "MFC High";
-
-    case H264_PROFILE_DEPTH_MFC_HIGH:
-      return "MFC Depth High";
-
-    case H264_PROFILE_MULTIVIEW_DEPTH_HIGH:
-      return "Multiview Depth High";
-
-    case H264_PROFILE_ENHANCED_MULTIVIEW_DEPTH_HIGH:
-      return "Enhanced Multiview Depth High";
-
-    case H264_PROFILE_HIGH_444_PREDICTIVE:
-      return "High 4:4:4 Intra";
-
-    default:
-      break;
+  default:
+    break;
   }
 
   return "Unknown";
@@ -160,13 +160,13 @@ unsigned getH264BrNal(
 )
 {
   switch (profile_idc) {
-    case H264_PROFILE_BASELINE:
-    case H264_PROFILE_MAIN:
-    case H264_PROFILE_EXTENDED:
-      return 1200 * constraints.MaxBR;
+  case H264_PROFILE_BASELINE:
+  case H264_PROFILE_MAIN:
+  case H264_PROFILE_EXTENDED:
+    return 1200 * constraints.MaxBR;
 
-    default:
-      assert(0 < constraints.cpbBrNalFactor);
+  default:
+    assert(0 < constraints.cpbBrNalFactor);
   }
 
   return constraints.cpbBrNalFactor * constraints.MaxBR;
@@ -180,49 +180,49 @@ unsigned getH264MaxMBPS(
   /* Rec. ITU-T H.264 - Table A-1 */
 
   switch (level_idc) {
-    case 10:
-    case H264_LEVEL_1B:
-      return 1485;
-    case 11:
-      return 3000;
-    case 12:
-      return 6000;
-    case 13:
-      return 11880;
+  case 10:
+  case H264_LEVEL_1B:
+    return 1485;
+  case 11:
+    return 3000;
+  case 12:
+    return 6000;
+  case 13:
+    return 11880;
 
-    case 20:
-      return 11880;
-    case 21:
-      return 19800;
-    case 22:
-      return 20250;
+  case 20:
+    return 11880;
+  case 21:
+    return 19800;
+  case 22:
+    return 20250;
 
-    case 30:
-      return 40500;
-    case 31:
-      return 108000;
-    case 32:
-      return 216000;
+  case 30:
+    return 40500;
+  case 31:
+    return 108000;
+  case 32:
+    return 216000;
 
-    case 40:
-    case 41:
-      return 245760;
-    case 42:
-      return 522240;
+  case 40:
+  case 41:
+    return 245760;
+  case 42:
+    return 522240;
 
-    case 50:
-      return 589824;
-    case 51:
-      return 983040;
-    case 52:
-      return 2073600;
+  case 50:
+    return 589824;
+  case 51:
+    return 983040;
+  case 52:
+    return 2073600;
 
-    case 60:
-      return 4177920;
-    case 61:
-      return 8355840;
-    case 62:
-      return 16711680;
+  case 60:
+    return 4177920;
+  case 61:
+    return 8355840;
+  case 62:
+    return 16711680;
   }
 
   return 0; /* Unknown/Unsupported level. */
@@ -236,37 +236,37 @@ unsigned getH264MaxFS(
   /* Rec. ITU-T H.264 - Table A-1 */
 
   switch (level_idc) {
-    case 10:
-    case H264_LEVEL_1B:
-      return 99;
-    case 11:
-    case 12:
-    case 13:
-    case 20:
-      return 396;
-    case 21:
-      return 792;
-    case 22:
-    case 30:
-      return 1620;
-    case 31:
-      return 3600;
-    case 32:
-      return 5120;
-    case 40:
-    case 41:
-      return 8192;
-    case 42:
-      return 8704;
-    case 50:
-      return 22080;
-    case 51:
-    case 52:
-      return 36864;
-    case 60:
-    case 61:
-    case 62:
-      return 139264;
+  case 10:
+  case H264_LEVEL_1B:
+    return 99;
+  case 11:
+  case 12:
+  case 13:
+  case 20:
+    return 396;
+  case 21:
+    return 792;
+  case 22:
+  case 30:
+    return 1620;
+  case 31:
+    return 3600;
+  case 32:
+    return 5120;
+  case 40:
+  case 41:
+    return 8192;
+  case 42:
+    return 8704;
+  case 50:
+    return 22080;
+  case 51:
+  case 52:
+    return 36864;
+  case 60:
+  case 61:
+  case 62:
+    return 139264;
   }
 
   return 0; /* Unknown/Unsupported level. */
@@ -280,38 +280,38 @@ unsigned getH264MaxDpbMbs(
   /* Rec. ITU-T H.264 - Table A-1 */
 
   switch (level_idc) {
-    case 10:
-    case H264_LEVEL_1B:
-      return 396;
-    case 11:
-      return 900;
-    case 12:
-    case 13:
-    case 20:
-      return 2376;
-    case 21:
-      return 4752;
-    case 22:
-    case 30:
-      return 8100;
-    case 31:
-      return 18000;
-    case 32:
-      return 20480;
-    case 40:
-    case 41:
-      return 32768;
-    case 42:
-      return 34816;
-    case 50:
-      return 110400;
-    case 51:
-    case 52:
-      return 184320;
-    case 60:
-    case 61:
-    case 62:
-      return 696320;
+  case 10:
+  case H264_LEVEL_1B:
+    return 396;
+  case 11:
+    return 900;
+  case 12:
+  case 13:
+  case 20:
+    return 2376;
+  case 21:
+    return 4752;
+  case 22:
+  case 30:
+    return 8100;
+  case 31:
+    return 18000;
+  case 32:
+    return 20480;
+  case 40:
+  case 41:
+    return 32768;
+  case 42:
+    return 34816;
+  case 50:
+    return 110400;
+  case 51:
+  case 52:
+    return 184320;
+  case 60:
+  case 61:
+  case 62:
+    return 696320;
   }
 
   return 0; /* Unknown/Unsupported level. */
@@ -325,41 +325,41 @@ unsigned getH264MaxBR(
   /* Rec. ITU-T H.264 - Table A-1 */
 
   switch (level_idc) {
-    case 10:
-      return 64;
-    case H264_LEVEL_1B:
-      return 128;
-    case 11:
-      return 192;
-    case 12:
-      return 384;
-    case 13:
-      return 768;
-    case 20:
-      return 2000;
-    case 21:
-    case 22:
-      return 4000;
-    case 30:
-      return 10000;
-    case 31:
-      return 14000;
-    case 32:
-    case 40:
-      return 20000;
-    case 41:
-    case 42:
-      return 50000;
-    case 50:
-      return 135000;
-    case 51:
-    case 52:
-    case 60:
-      return 240000;
-    case 61:
-      return 480000;
-    case 62:
-      return 800000;
+  case 10:
+    return 64;
+  case H264_LEVEL_1B:
+    return 128;
+  case 11:
+    return 192;
+  case 12:
+    return 384;
+  case 13:
+    return 768;
+  case 20:
+    return 2000;
+  case 21:
+  case 22:
+    return 4000;
+  case 30:
+    return 10000;
+  case 31:
+    return 14000;
+  case 32:
+  case 40:
+    return 20000;
+  case 41:
+  case 42:
+    return 50000;
+  case 50:
+    return 135000;
+  case 51:
+  case 52:
+  case 60:
+    return 240000;
+  case 61:
+    return 480000;
+  case 62:
+    return 800000;
   }
 
   return 0; /* Unknown/Unsupported level. */
@@ -373,41 +373,41 @@ unsigned getH264MaxCPB(
   /* Rec. ITU-T H.264 - Table A-1 */
 
   switch (level_idc) {
-    case 10:
-      return 175;
-    case H264_LEVEL_1B:
-      return 350;
-    case 11:
-      return 500;
-    case 12:
-      return 1000;
-    case 13:
-    case 20:
-      return 2000;
-    case 21:
-    case 22:
-      return 4000;
-    case 30:
-      return 10000;
-    case 31:
-      return 14000;
-    case 32:
-      return 20000;
-    case 40:
-      return 25000;
-    case 41:
-    case 42:
-      return 62500;
-    case 50:
-      return 135000;
-    case 51:
-    case 52:
-    case 60:
-      return 240000;
-    case 61:
-      return 480000;
-    case 62:
-      return 800000;
+  case 10:
+    return 175;
+  case H264_LEVEL_1B:
+    return 350;
+  case 11:
+    return 500;
+  case 12:
+    return 1000;
+  case 13:
+  case 20:
+    return 2000;
+  case 21:
+  case 22:
+    return 4000;
+  case 30:
+    return 10000;
+  case 31:
+    return 14000;
+  case 32:
+    return 20000;
+  case 40:
+    return 25000;
+  case 41:
+  case 42:
+    return 62500;
+  case 50:
+    return 135000;
+  case 51:
+  case 52:
+  case 60:
+    return 240000;
+  case 61:
+    return 480000;
+  case 62:
+    return 800000;
   }
 
   return 0; /* Unknown/Unsupported level. */
@@ -421,31 +421,31 @@ unsigned getH264MaxVmvR(
   /* Rec. ITU-T H.264 - Table A-1 */
 
   switch (level_idc) {
-    case 10:
-    case H264_LEVEL_1B:
-      return 64;
-    case 11:
-    case 12:
-    case 13:
-    case 20:
-      return 128;
-    case 21:
-    case 22:
-    case 30:
-      return 256;
-    case 31:
-    case 32:
-    case 40:
-    case 41:
-    case 42:
-    case 50:
-    case 51:
-    case 52:
-      return 512;
-    case 60:
-    case 61:
-    case 62:
-      return 8192;
+  case 10:
+  case H264_LEVEL_1B:
+    return 64;
+  case 11:
+  case 12:
+  case 13:
+  case 20:
+    return 128;
+  case 21:
+  case 22:
+  case 30:
+    return 256;
+  case 31:
+  case 32:
+  case 40:
+  case 41:
+  case 42:
+  case 50:
+  case 51:
+  case 52:
+    return 512;
+  case 60:
+  case 61:
+  case 62:
+    return 8192;
   }
 
   return 0; /* Unknown/Unsupported level. */
@@ -560,24 +560,24 @@ unsigned getH264cpbBrVclFactor(
   /* And A.3.1 */
 
   switch (profile_idc) {
-    case H264_PROFILE_BASELINE:
-    case H264_PROFILE_MAIN:
-    case H264_PROFILE_EXTENDED:
-      return 1000;
+  case H264_PROFILE_BASELINE:
+  case H264_PROFILE_MAIN:
+  case H264_PROFILE_EXTENDED:
+    return 1000;
 
-    case H264_PROFILE_HIGH:
-      return 1250;
+  case H264_PROFILE_HIGH:
+    return 1250;
 
-    case H264_PROFILE_HIGH_10:
-      return 3000;
+  case H264_PROFILE_HIGH_10:
+    return 3000;
 
-    case H264_PROFILE_HIGH_422:
-    case H264_PROFILE_HIGH_444_PREDICTIVE:
-    case H264_PROFILE_CAVLC_444_INTRA:
-      return 4000;
+  case H264_PROFILE_HIGH_422:
+  case H264_PROFILE_HIGH_444_PREDICTIVE:
+  case H264_PROFILE_CAVLC_444_INTRA:
+    return 4000;
 
-    default:
-      break;
+  default:
+    break;
   }
 
   return 0; /* Unconcerned profile. */
@@ -592,24 +592,24 @@ unsigned getH264cpbBrNalFactor(
   /* And A.3.1 */
 
   switch (profile_idc) {
-    case H264_PROFILE_BASELINE:
-    case H264_PROFILE_MAIN:
-    case H264_PROFILE_EXTENDED:
-      return 1200;
+  case H264_PROFILE_BASELINE:
+  case H264_PROFILE_MAIN:
+  case H264_PROFILE_EXTENDED:
+    return 1200;
 
-    case H264_PROFILE_HIGH:
-      return 1500;
+  case H264_PROFILE_HIGH:
+    return 1500;
 
-    case H264_PROFILE_HIGH_10:
-      return 3600;
+  case H264_PROFILE_HIGH_10:
+    return 3600;
 
-    case H264_PROFILE_HIGH_422:
-    case H264_PROFILE_HIGH_444_PREDICTIVE:
-    case H264_PROFILE_CAVLC_444_INTRA:
-      return 4800;
+  case H264_PROFILE_HIGH_422:
+  case H264_PROFILE_HIGH_444_PREDICTIVE:
+  case H264_PROFILE_CAVLC_444_INTRA:
+    return 4800;
 
-    default:
-      break;
+  default:
+    break;
   }
 
   return 0; /* Unconcerned profile. */

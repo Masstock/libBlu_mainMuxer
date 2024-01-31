@@ -524,12 +524,12 @@ int parseESFmtPropertiesEsms(
   );
 
   switch (dst->type) {
-    case ES_VIDEO:
-      return _parseVideoESFmtPropertiesEsms(esms_bs, dst, fmt_prop_ret);
-    case ES_AUDIO:
-      return _parseAudioESFmtPropertiesEsms(esms_bs, dst, fmt_prop_ret);
-    default: // ES_HDMV
-      return 0; // No ES Format Properties section defined.
+  case ES_VIDEO:
+    return _parseVideoESFmtPropertiesEsms(esms_bs, dst, fmt_prop_ret);
+  case ES_AUDIO:
+    return _parseAudioESFmtPropertiesEsms(esms_bs, dst, fmt_prop_ret);
+  default: // ES_HDMV
+    return 0; // No ES Format Properties section defined.
   }
 }
 
@@ -696,10 +696,10 @@ static int _parseEsmsPesPacketExtData(
   );
 
   switch (coding_type) {
-    case STREAM_CODING_TYPE_AVC:
-      return parseEsmsPesPacketH264ExtData(&dst->h264, esms_bs, ext_data_size);
-    default:
-      break; /* Unsupported Extension data */
+  case STREAM_CODING_TYPE_AVC:
+    return parseEsmsPesPacketH264ExtData(&dst->h264, esms_bs, ext_data_size);
+  default:
+    break; /* Unsupported Extension data */
   }
 
   LIBBLU_SCRIPTR_DEBUG(
@@ -1284,18 +1284,18 @@ static int _parseCommand(
 )
 {
   switch (command_type) {
-    case ESMS_ADD_DATA:
-      return _parseAddDataCommand(dst_command, command_data);
-    case ESMS_CHANGE_BYTEORDER:
-      return _parseChangeByteOrderCommand(dst_command, command_data);
-    case ESMS_ADD_PAYLOAD_DATA:
-      return _parseAddPesPayloadCommandode(dst_command, command_data);
-    case ESMS_ADD_PADDING_DATA:
-      return _parseAddPaddingCommand(dst_command, command_data);
-    case ESMS_ADD_DATA_BLOCK:
-      return _parseAddDataBlockCommand(dst_command, command_data);
-    default:
-      break;
+  case ESMS_ADD_DATA:
+    return _parseAddDataCommand(dst_command, command_data);
+  case ESMS_CHANGE_BYTEORDER:
+    return _parseChangeByteOrderCommand(dst_command, command_data);
+  case ESMS_ADD_PAYLOAD_DATA:
+    return _parseAddPesPayloadCommandode(dst_command, command_data);
+  case ESMS_ADD_PADDING_DATA:
+    return _parseAddPaddingCommand(dst_command, command_data);
+  case ESMS_ADD_DATA_BLOCK:
+    return _parseAddDataBlockCommand(dst_command, command_data);
+  default:
+    break;
   }
 
   LIBBLU_ERROR_RETURN(

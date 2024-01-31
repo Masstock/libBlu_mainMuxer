@@ -29,20 +29,20 @@ int analyzePgs(
 #endif
   }
 
-  HdmvContextPtr ctx;
-  if (NULL == (ctx = createHdmvContext(settings, NULL, HDMV_STREAM_TYPE_PGS, false)))
+  HdmvContext ctx;
+  if (initHdmvContext(&ctx, settings, NULL, HDMV_STREAM_TYPE_PGS, false) < 0)
     return -1;
 
-  while (!isEofHdmvContext(ctx)) {
+  while (!isEofHdmvContext(&ctx)) {
     /* Progress bar : */
-    printFileParsingProgressionBar(inputHdmvContext(ctx));
+    printFileParsingProgressionBar(inputHdmvContext(&ctx));
 
-    if (parseHdmvSegment(ctx) < 0)
+    if (parseHdmvSegment(&ctx) < 0)
       goto free_return;
   }
 
   /* Process remaining segments: */
-  if (completeDSHdmvContext(ctx) < 0)
+  if (completeCurDSHdmvContext(&ctx) < 0)
     return -1;
 
   lbc_printf(" === Parsing finished with success. ===              \n");
@@ -50,19 +50,19 @@ int analyzePgs(
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: HDMV/PGS Subtitles format.\n");
-  lbc_printf("Number of Display Sets: %u.\n", ctx->nb_DS);
-  lbc_printf("Number of Epochs: %u.\n", ctx->nb_epochs);
+  lbc_printf("Number of Display Sets: %u.\n", ctx.nb_DS);
+  lbc_printf("Number of Epochs: %u.\n", ctx.nb_epochs);
   lbc_printf("Total number of segments per type:\n");
   printContentHdmvContext(ctx);
   lbc_printf("=======================================================================================\n");
 
-  if (closeHdmvContext(ctx) < 0)
+  if (closeHdmvContext(&ctx) < 0)
     goto free_return;
-  destroyHdmvContext(ctx);
+  cleanHdmvContext(ctx);
   return 0;
 
 free_return:
-  destroyHdmvContext(ctx);
+  cleanHdmvContext(ctx);
 
   return -1;
 }

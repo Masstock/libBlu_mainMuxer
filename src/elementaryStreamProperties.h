@@ -211,15 +211,35 @@ static inline int64_t frameDur27MHzHdmvFrameRateCode(
   HdmvFrameRateCode code
 )
 {
-  static const double frame_duration_values[] = {
-    0,                                     // reserved
-    1001ull * MAIN_CLOCK_27MHZ / 24000ull, // 23.976
-    1000ull * MAIN_CLOCK_27MHZ / 24000ull, // 24
-    1000ull * MAIN_CLOCK_27MHZ / 25000ull, // 25
-    1001ull * MAIN_CLOCK_27MHZ / 30000ull, // 29.970
-    0,                                     // reserved
-    1000ull * MAIN_CLOCK_27MHZ / 50000ull, // 50
-    1001ull * MAIN_CLOCK_27MHZ / 60000ull  // 59.940
+  static const int64_t frame_duration_values[] = {
+    0,                                   // reserved
+    1001ll * MAIN_CLOCK_27MHZ / 24000ll, // 23.976
+    1000ll * MAIN_CLOCK_27MHZ / 24000ll, // 24
+    1000ll * MAIN_CLOCK_27MHZ / 25000ll, // 25
+    1001ll * MAIN_CLOCK_27MHZ / 30000ll, // 29.970
+    0,                                   // reserved
+    1000ll * MAIN_CLOCK_27MHZ / 50000ll, // 50
+    1001ll * MAIN_CLOCK_27MHZ / 60000ll  // 59.940
+  };
+
+  if (code < ARRAY_SIZE(frame_duration_values))
+    return frame_duration_values[code];
+  return 0;
+}
+
+static inline int64_t frameDur90kHzHdmvFrameRateCode(
+  HdmvFrameRateCode code
+)
+{
+  static const int64_t frame_duration_values[] = {
+    0,                                  // reserved
+    1001ll * SUB_CLOCK_90KHZ / 24000ll, // 23.976
+    1000ll * SUB_CLOCK_90KHZ / 24000ll, // 24
+    1000ll * SUB_CLOCK_90KHZ / 25000ll, // 25
+    1001ll * SUB_CLOCK_90KHZ / 30000ll, // 29.970
+    0,                                  // reserved
+    1000ll * SUB_CLOCK_90KHZ / 50000ll, // 50
+    1001ll * SUB_CLOCK_90KHZ / 60000ll  // 59.940
   };
 
   if (code < ARRAY_SIZE(frame_duration_values))
@@ -239,14 +259,14 @@ static inline const char * AudioFormatCodeStr(
 )
 {
   switch (code) {
-    case AUDIO_FORMAT_MONO:
-      return "Mono";
-    case AUDIO_FORMAT_STEREO:
-      return "Stereo";
-    case AUDIO_FORMAT_MULTI_CHANNEL:
-      return "Multi-channel";
-    case AUDIO_FORMAT_STEREO_MULTI_CHANNEL:
-      return "Stereo core + Multi-channel extension";
+  case AUDIO_FORMAT_MONO:
+    return "Mono";
+  case AUDIO_FORMAT_STEREO:
+    return "Stereo";
+  case AUDIO_FORMAT_MULTI_CHANNEL:
+    return "Multi-channel";
+  case AUDIO_FORMAT_STEREO_MULTI_CHANNEL:
+    return "Stereo core + Multi-channel extension";
   }
   return "Unknown";
 }
@@ -262,12 +282,12 @@ static inline unsigned valueSampleRateCode(
 )
 {
   switch (code) {
-    case SAMPLE_RATE_CODE_48000:
-      return 48000;
-    case SAMPLE_RATE_CODE_96000:
-      return 96000;
-    case SAMPLE_RATE_CODE_192000:
-      return 19200;
+  case SAMPLE_RATE_CODE_48000:
+    return 48000;
+  case SAMPLE_RATE_CODE_96000:
+    return 96000;
+  case SAMPLE_RATE_CODE_192000:
+    return 19200;
   }
   return 0;
 }
@@ -277,12 +297,12 @@ static inline double sampleRateCodeToDouble(
 )
 {
   switch (code) {
-    case SAMPLE_RATE_CODE_48000:
-      return 48000.0;
-    case SAMPLE_RATE_CODE_96000:
-      return 96000.0;
-    case SAMPLE_RATE_CODE_192000:
-      return 19200.0;
+  case SAMPLE_RATE_CODE_48000:
+    return 48000.0;
+  case SAMPLE_RATE_CODE_96000:
+    return 96000.0;
+  case SAMPLE_RATE_CODE_192000:
+    return 19200.0;
   }
   return -1.0;
 }
@@ -298,12 +318,12 @@ static inline unsigned valueBitDepthCode(
 )
 {
   switch (code) {
-    case BIT_DEPTH_16_BITS:
-      return 16u;
-    case BIT_DEPTH_20_BITS:
-      return 20u;
-    case BIT_DEPTH_24_BITS:
-      return 24u;
+  case BIT_DEPTH_16_BITS:
+    return 16u;
+  case BIT_DEPTH_20_BITS:
+    return 20u;
+  case BIT_DEPTH_24_BITS:
+    return 24u;
   }
   return 0u;
 }

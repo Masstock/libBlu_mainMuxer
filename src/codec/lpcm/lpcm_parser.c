@@ -406,29 +406,29 @@ static int _decodeWaveFmtChunk(
     return -1;
 
   switch (fmt->common_fields.wFormatTag) {
-    case WAVE_FORMAT_PCM:
-      if (rem_bytes != 2)
-        LIBBLU_LPCM_ERROR_RETURN(
-          "WAVE format chunk ('fmt') PCM format category size error, "
-          "shall be equal to 2 bytes.\n"
-        );
-      if (_parseWaveFmtPCMFormatSpecific(br, &fmt->fmt_spec.pcm) < 0)
-        return -1;
-      if (_checkWaveFmtPCMFormatSpecific(fmt) < 0)
-        return -1;
-      break;
+  case WAVE_FORMAT_PCM:
+    if (rem_bytes != 2)
+      LIBBLU_LPCM_ERROR_RETURN(
+        "WAVE format chunk ('fmt') PCM format category size error, "
+        "shall be equal to 2 bytes.\n"
+      );
+    if (_parseWaveFmtPCMFormatSpecific(br, &fmt->fmt_spec.pcm) < 0)
+      return -1;
+    if (_checkWaveFmtPCMFormatSpecific(fmt) < 0)
+      return -1;
+    break;
 
-    case WAVE_FORMAT_EXTENSIBLE:
-      if (rem_bytes < 2)
-        LIBBLU_LPCM_ERROR_RETURN(
-          "WAVE format chunk ('fmt') Extensible format category size error, "
-          "shall be at least 2 bytes.\n"
-        );
-      if (_parseWaveFmtExtensibleSpecific(br, &fmt->fmt_spec.extensible) < 0)
-        return -1;
-      if (_checkWaveFmtExtensibleSpecific(fmt) < 0)
-        return -1;
-      break;
+  case WAVE_FORMAT_EXTENSIBLE:
+    if (rem_bytes < 2)
+      LIBBLU_LPCM_ERROR_RETURN(
+        "WAVE format chunk ('fmt') Extensible format category size error, "
+        "shall be at least 2 bytes.\n"
+      );
+    if (_parseWaveFmtExtensibleSpecific(br, &fmt->fmt_spec.extensible) < 0)
+      return -1;
+    if (_checkWaveFmtExtensibleSpecific(fmt) < 0)
+      return -1;
+    break;
   }
 
   PAD_WORD(br, return -1);
@@ -504,14 +504,14 @@ static int _decodeWaveChunk(
     );
 
   switch (header.ckID) {
-    case WAVE_RIFF:
-      assert(0);
-    case WAVE_FMT:
-      return _decodeWaveFmtChunk(br, header, &chunk->fmt);
-    case WAVE_JUNK:
-      return _decodeWaveJunkChunk(br, header);
-    case WAVE_DATA:
-      return 0;
+  case WAVE_RIFF:
+    assert(0);
+  case WAVE_FMT:
+    return _decodeWaveFmtChunk(br, header, &chunk->fmt);
+  case WAVE_JUNK:
+    return _decodeWaveJunkChunk(br, header);
+  case WAVE_DATA:
+    return 0;
   }
 
   LIBBLU_LPCM_ERROR_RETURN(
@@ -545,16 +545,16 @@ static int decodeWaveHeaders(
     if (_decodeWaveChunk(br, &chunk, allowed_chunks) < 0)
       return -1;
     switch (chunk.header.ckID) {
-      case WAVE_FMT:
-        chunks->fmt = chunk.fmt;
-        chunks->fmt_present = true;
-        allowed_chunks[ARRAY_SIZE(allowed_chunks)-2] = 0x0;
-        break;
-      case WAVE_DATA:
-        chunks->data = chunk.header;
-        break;
-      default:
-        break;
+    case WAVE_FMT:
+      chunks->fmt = chunk.fmt;
+      chunks->fmt_present = true;
+      allowed_chunks[ARRAY_SIZE(allowed_chunks)-2] = 0x0;
+      break;
+    case WAVE_DATA:
+      chunks->data = chunk.header;
+      break;
+    default:
+      break;
     }
   } while (chunk.header.ckID != WAVE_DATA);
 
@@ -777,7 +777,6 @@ int analyzeLpcm(
     /* Writing PES frames cutting commands : */
     printFileParsingProgressionBar(waveInput);
     int64_t start_off = tellPos(waveInput);
-    // fprintf(stderr, "0x%llX\n", start_off);
 
     if (
       initAudioPesPacketEsmsHandler(

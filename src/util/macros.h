@@ -27,7 +27,7 @@
 #  define PRI_SIZET "zu"
 
 /* Windows */
-#elif defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__) || defined(__CYGWIN__)
+#elif defined(_WIN32) || defined(__WIN32__) || defined(__NT__) || defined(__CYGWIN__)
 #  define ARCH_WIN32
 
 #  if defined(_WIN64) || defined(__CYGWIN__)
@@ -104,11 +104,17 @@
 #define PONG()  fprintf(stderr, "PONG\n");
 
 /** \~english
- * \brief Assert or NULL pointer dereference.
- *
+ * \def lb_assert
+ * \brief Equivalent to assert macro, but expr is still executed when debug is
+ * disabled.
  */
-#define lb_assert_npd(expr) \
-  do {if (0 == (expr)) *((uint8_t *) 0) = 0; } while (0)
+#if !defined(NDEBUG)
+#  define lb_assert(expr)  assert(expr)
+#  define lb_npd_assert(expr)  \
+  if (!(expr)) {int a = *((int *) NULL); (void) a;}
+#else
+#  define lb_assert(expr)  (void) expr
+#endif
 
 #if defined(ARCH_WIN32)
 #  include <wchar.h>
@@ -150,6 +156,7 @@
 
 #  define lbc_atob  lb_watob
 #  define lbc_strtoul  wcstoul
+#  define lbc_strtof  wcstof
 
 #  define lbc_equal  lb_wstr_equal
 #  define lbc_equaln  lb_wstrn_equal
@@ -222,6 +229,7 @@
 
 #  define lbc_atob  lb_atob
 #  define lbc_strtoul  strtoul
+#  define lbc_strtof  strtof
 
 #  define lbc_access_fp  lb_access_fp
 #  define lbc_chdir  chdir

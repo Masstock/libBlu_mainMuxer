@@ -337,16 +337,16 @@ static inline const char * H262LevelIdentificationStr(
 )
 {
   switch (levelId) {
-    case H262_LEVEL_ID_HIGH:
-      return "High";
-    case H262_LEVEL_ID_HIGH_1440:
-      return "High 1440";
-    case H262_LEVEL_ID_MAIN:
-      return "Main";
-    case H262_LEVEL_ID_LOW:
-      return "Low";
-    default:
-      break;
+  case H262_LEVEL_ID_HIGH:
+    return "High";
+  case H262_LEVEL_ID_HIGH_1440:
+    return "High 1440";
+  case H262_LEVEL_ID_MAIN:
+    return "Main";
+  case H262_LEVEL_ID_LOW:
+    return "Low";
+  default:
+    break;
   }
 
   return "Reserved";

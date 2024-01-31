@@ -84,13 +84,13 @@ void destroyIniFileNode(
   free(node->name);
 
   switch (node->type) {
-    case INI_ENTRY:
-      free(node->entryValue);
-      break;
+  case INI_ENTRY:
+    free(node->entryValue);
+    break;
 
-    case INI_SECTION:
-      destroyIniFileNode(node->sectionChild);
-      break;
+  case INI_SECTION:
+    destroyIniFileNode(node->sectionChild);
+    break;
   }
 
   free(node);
@@ -161,15 +161,15 @@ lbc * lookupIniFileNode(
 
   if (matchIniFileNode(node, expr, &nameSize)) {
     switch (node->type) {
-      case INI_ENTRY:
-        if (expr[nameSize] != '\0')
-          break;
-        return node->entryValue;
+    case INI_ENTRY:
+      if (expr[nameSize] != '\0')
+        break;
+      return node->entryValue;
 
-      case INI_SECTION:
-        if (expr[nameSize] != '.')
-          break;
-        return lookupIniFileNode(node->sectionChild, expr + nameSize + 1);
+    case INI_SECTION:
+      if (expr[nameSize] != '.')
+        break;
+      return lookupIniFileNode(node->sectionChild, expr + nameSize + 1);
     }
   }
 
@@ -185,17 +185,17 @@ static void sub_printIniFileNode(
     return;
 
   switch (node->type) {
-    case INI_ENTRY:
-      printf(
-        "%*c'%s' = '%" PRI_LBCS "'\n", indent, '\0',
-        node->name, node->entryValue
-      );
-      break;
+  case INI_ENTRY:
+    printf(
+      "%*c'%s' = '%" PRI_LBCS "'\n", indent, '\0',
+      node->name, node->entryValue
+    );
+    break;
 
-    case INI_SECTION:
-      printf("%*c[%s]\n", indent, '\0', node->name);
-      sub_printIniFileNode(node->sectionChild, indent + 4);
-      break;
+  case INI_SECTION:
+    printf("%*c[%s]\n", indent, '\0', node->name);
+    sub_printIniFileNode(node->sectionChild, indent + 4);
+    break;
   }
 
   sub_printIniFileNode(node->sibling, indent);

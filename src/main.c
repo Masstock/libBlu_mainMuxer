@@ -23,7 +23,7 @@
 
 /* From errorCodes.h */
 extern int readSettingsExplodeLevels(
-  IniFileContextPtr handle
+  IniFileContext handle
 );
 
 #endif
@@ -413,34 +413,57 @@ static void printDebugOptions(
   lbc_printf("\n");
 }
 
+#define ERROR_RETURN(format, ...)  \
+  __LIBBLU_ERROR_INSTR_(return EXIT_FAILURE, format, ##__VA_ARGS__)
+
 int main(
   int argc,
   char ** argv
 )
 {
-  int option;
-  clock_t duration, start;
-  bool cont;
-
-  LibbluMuxingSettings param;
-  IniFileContextPtr confFile = NULL;
-
-#if !defined(DISABLE_INI)
-  const lbc * confFilepath = NULL;
-#endif
-  const lbc * inputInstructionsFilepath = NULL;
-  const lbc * outputTsFilepath = NULL;
-
-  bool esmsGenerationOnlyMode;
-  bool forceRemakeScripts;
+  /* Set locale */
+  if (NULL == setlocale(LC_ALL, ""))
+    ERROR_RETURN("Unable to set locale.\n");
+  if (NULL == setlocale(LC_NUMERIC, "C"))
+    ERROR_RETURN("Unable to set locale.\n");
 
 #if defined(ARCH_WIN32)
+  /* On windows, get the command line version with unicode characters
+  (due to lack of UTF-8). */
   int argc_wchar;
-  LPWSTR * argv_wchar;
+  LPWSTR * argv_wchar = CommandLineToArgvW(
+    GetCommandLineW(),
+    &argc_wchar
+  );
+
+  /* Initiate the iconv library used for UTF-8/Windows locale conversions */
+  if (lb_init_iconv() < 0)
+    return -1;
 #endif
 
+#if 0
+  CrcParam crc_param = (CrcParam) {
+    .length = 8,
+    .poly = 0x163,
+    .shifted = true
+  };
+
+  crcTableGenerator(crc_param);
+  exit(0);
+#endif
+
+  lbc_printf(PROG_INFOS " (" PROG_ARCH ")\n\n");
+
+  /* Command line options parsing */
+  const lbc * conf_fp   = NULL; // Configuration INI file
+  const lbc * input_fp  = NULL; // Input META file
+  const lbc * output_fp = NULL; // Output M2TS file
+
+  bool script_gen_mode_only = false; // Script generation without TS output mode
+  bool force_script_regen = false;   // Force scripts (re-)generation
+
   enum {
-    END_OF_LIST = 0,
+    END_OF_LIST,
     BD_CLIPINF_OUTPUT = 'A',
     CONFIG_FILE,
     DEBUG,
@@ -453,7 +476,7 @@ int main(
     LOG_FILE
   };
 
-  static const struct option programOptions[] = {
+  static const struct option prog_cmd_opts[] = {
   //{"clip"            , optional_argument, NULL, BD_CLIPINF_OUTPUT          },
     {"conf"            , required_argument, NULL, CONFIG_FILE                },
     {"d"               , optional_argument, NULL, DEBUG                      },
@@ -473,42 +496,7 @@ int main(
     {NULL              , no_argument      , NULL, END_OF_LIST                }
   };
 
-  if (NULL == setlocale(LC_ALL, ""))
-    LIBBLU_ERROR_RETURN("Unable to set locale.\n");
-  if (NULL == setlocale(LC_NUMERIC, "C"))
-    LIBBLU_ERROR_RETURN("Unable to set locale.\n");
-
-#if defined(ARCH_WIN32)
-  /* On windows, get the command line version with unicode characters
-  (due to lack of UTF-8). */
-  argv_wchar = CommandLineToArgvW(
-    GetCommandLineW(),
-    &argc_wchar
-  );
-
-  /* Initiate the iconv library used for UTF-8/Windows locale conversions */
-  if (lb_init_iconv() < 0)
-    return -1;
-#endif
-
-  opterr = 0;
-  esmsGenerationOnlyMode = false;
-  forceRemakeScripts = false;
-
-  start = clock();
-
-#if 0
-  CrcParam crc_param = (CrcParam) {
-    .length = 8,
-    .poly = 0x163,
-    .shifted = true
-  };
-
-  crcTableGenerator(crc_param);
-  exit(0);
-#endif
-
-  lbc_printf(PROG_INFOS " (" PROG_ARCH ")\n\n");
+  opterr = 0; // Inhibit getopt error message printing
 
 #if defined(ARCH_WIN32)
 #  define ARG_VAL  argv_wchar[optind-1]
@@ -516,121 +504,123 @@ int main(
 #  define ARG_VAL  optarg
 #endif
 
-  cont = true;
-  while (
-    cont
-    && 0 <= (
-      option = getopt_long_only(argc, argv, "", programOptions, NULL)
-    )
-  ) {
-    switch (option) {
-      case CONFIG_FILE:
+  int opt;
+  while (0 <= (opt = getopt_long_only(argc, argv, "", prog_cmd_opts, NULL))) {
+    switch (opt) {
+    case CONFIG_FILE:
 #if !defined(DISABLE_INI)
-        if (NULL == optarg)
-          LIBBLU_ERROR_RETURN("Expect a configuration filename after '-c'.\n");
-        confFilepath = ARG_VAL;
+      if (NULL == optarg)
+        LIBBLU_ERROR_RETURN("Expect a configuration filename after '-c'.\n");
+      conf_fp = ARG_VAL;
 #else
-        LIBBLU_ERROR_RETURN("Configuration file unsupported in this build.\n");
+      LIBBLU_ERROR_RETURN("Configuration file unsupported in this build.\n");
 #endif
-        break;
+      break;
 
-      case DEBUG:
-        if (enableDebugStatusString(NULL != optarg ? optarg : "all") < 0)
-          return -1;
-        break;
+    case DEBUG:
+      if (enableDebugStatusString(NULL != optarg ? optarg : "all") < 0)
+        return EXIT_FAILURE;
+      break;
 
-      case ESMS_GENERATION_ONLY:
-        esmsGenerationOnlyMode = true;
-        break;
+    case ESMS_GENERATION_ONLY:
+      script_gen_mode_only = true;
+      break;
 
-      case FORCE_ESMS_GENERATION:
-        forceRemakeScripts = true;
-        break;
+    case FORCE_ESMS_GENERATION:
+      force_script_regen = true;
+      break;
 
-      case HELP:
-        /* Help */
-        printHelp();
-        return 0;
+    case HELP:
+      printHelp();
+      return EXIT_SUCCESS;
 
-      case INPUT:
-        /* Input */
-        if (NULL == optarg)
-          LIBBLU_ERROR_RETURN("Expect a META filename after '-i'.\n");
-        inputInstructionsFilepath = ARG_VAL;
-        break;
+    case INPUT:
+      if (NULL == optarg)
+        LIBBLU_ERROR_RETURN("Expect a META filename after '-i'.\n");
+      input_fp = ARG_VAL;
+      break;
 
-      case OUTPUT:
-        /* Output */
-        if (NULL == optarg)
-          LIBBLU_ERROR_RETURN("Expect a output filename after '-o'.\n");
-        outputTsFilepath = ARG_VAL;
-        break;
+    case OUTPUT:
+      if (NULL == optarg)
+        LIBBLU_ERROR_RETURN("Expect a output filename after '-o'.\n");
+      output_fp = ARG_VAL;
+      break;
 
-      case PRINT_DEBUG_OPTIONS:
-        printDebugOptions();
-        return 0;
+    case PRINT_DEBUG_OPTIONS:
+      printDebugOptions();
+      return EXIT_SUCCESS;
 
-      case LOG_FILE:
-        if (NULL == optarg)
-          LIBBLU_ERROR_RETURN("Expect a log filename after '--log'.\n");
-        if (initDebugLogFile(ARG_VAL) < 0)
-          return -1;
-        break;
+    case LOG_FILE:
+      if (NULL == optarg)
+        LIBBLU_ERROR_RETURN("Expect a log filename after '--log'.\n");
+      if (initDebugLogFile(ARG_VAL) < 0)
+        return EXIT_FAILURE;
+      break;
 
-      default:
-        LIBBLU_ERROR_RETURN(
-          "Unknown option '%s', type -h/--help to get full list.\n",
-          argv[optind-1]
-        );
+    default:
+      LIBBLU_ERROR_RETURN(
+        "Unknown option '%s', type -h/--help to get full list.\n",
+        argv[optind-1]
+      );
     }
   }
 
 #undef ARG_VAL
 
+  /* Configuration file reading */
+  IniFileContext conf_file = {0};
+
 #if !defined(DISABLE_INI)
-  if (NULL == confFilepath) {
+  if (NULL == conf_fp) {
     if (0 <= lbc_access_fp(PROG_CONF_FILENAME, "r")) {
-      if (parseIniFile(&confFile, PROG_CONF_FILENAME) < 0)
-        return -1;
+      if (parseIniFile(&conf_file, PROG_CONF_FILENAME) < 0)
+        return EXIT_FAILURE;
     }
   }
   else {
-    if (parseIniFile(&confFile, confFilepath) < 0)
-      return -1;
+    if (parseIniFile(&conf_file, conf_fp) < 0)
+      return EXIT_FAILURE;
   }
 
-  if (readSettingsExplodeLevels(confFile) < 0)
-    return -1;
+  if (readSettingsExplodeLevels(conf_file) < 0)
+    return EXIT_FAILURE;
 #endif
 
-  if (NULL == inputInstructionsFilepath)
+  if (NULL == input_fp)
     LIBBLU_ERROR_FRETURN(
       "Expect a input META filename (see -h/--help).\n"
     );
 
-  if (initLibbluMuxingSettings(&param, outputTsFilepath, confFile) < 0)
+  clock_t start = clock();
+
+  LibbluMuxingSettings mux_settings;
+  if (initLibbluMuxingSettings(&mux_settings, output_fp, conf_file) < 0)
     goto free_return;
 
   LIBBLU_MUX_SETTINGS_SET_OPTION(
-    &param,
+    &mux_settings,
     forcedScriptBuilding,
-    forceRemakeScripts
+    force_script_regen
   );
 
-  if (parseMetaFile(inputInstructionsFilepath, &param) < 0)
+  if (parseMetaFile(input_fp, &mux_settings) < 0)
     goto free_return;
 
-  if (!esmsGenerationOnlyMode) {
-    if (mainMux(param) < 0)
+  if (!script_gen_mode_only) {
+    if (mainMux(mux_settings) < 0)
       goto free_return;
   }
   else {
     LibbluMuxingContextPtr ctx;
 
-    param.options.disableBufModel = true;
+    LIBBLU_MUX_SETTINGS_SET_OPTION(
+      &mux_settings,
+      disableBufModel,
+      true
+    );
 
     /* Create muxing context and destroy it immediately */
-    if (NULL == (ctx = createLibbluMuxingContext(param)))
+    if (NULL == (ctx = createLibbluMuxingContext(mux_settings)))
       goto free_return;
     destroyLibbluMuxingContext(ctx);
   }
@@ -641,18 +631,23 @@ int main(
     goto free_return;
 #endif
 
-  duration = clock() - start;
-  lbc_printf("Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n", duration, (float) duration / CLOCKS_PER_SEC, (clock_t) CLOCKS_PER_SEC);
+  clock_t duration = clock() - start;
+  lbc_printf(
+    "Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n",
+    duration, (1.0 * duration) / CLOCKS_PER_SEC, (long) CLOCKS_PER_SEC
+  );
 
   /* DO NOT clean muxing settings since these has been managed by mainMux(). */
-  destroyIniFileContext(confFile);
-  return 0;
+  cleanIniFileContext(conf_file);
+  return EXIT_SUCCESS;
 
 free_return:
-  destroyIniFileContext(confFile);
-
   duration = clock() - start;
-  lbc_printf("Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n", duration, (float) duration / CLOCKS_PER_SEC, (clock_t) CLOCKS_PER_SEC);
+  lbc_printf(
+    "Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n",
+    duration, (1.0 * duration) / CLOCKS_PER_SEC, (long) CLOCKS_PER_SEC
+  );
 
-  return -1;
+  cleanIniFileContext(conf_file);
+  return EXIT_FAILURE;
 }

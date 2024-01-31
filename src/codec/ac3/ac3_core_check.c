@@ -78,29 +78,29 @@ int checkAc3AddbsiCompliance(
     );
 
   switch (param->type) {
-    case AC3_ADDBSI_UNK:
-      LIBBLU_AC3_DEBUG(
-        "    Unknown extension data.\n"
-      );
-      break;
+  case AC3_ADDBSI_UNK:
+    LIBBLU_AC3_DEBUG(
+      "    Unknown extension data.\n"
+    );
+    break;
 
-    case AC3_ADDBSI_EC3_EXT_TYPE_A:
-      LIBBLU_AC3_DEBUG(
-        "    Extension data matches EC3 Extension data (Dolby Atmos).\n"
-      );
+  case AC3_ADDBSI_EC3_EXT_TYPE_A:
+    LIBBLU_AC3_DEBUG(
+      "    Extension data matches EC3 Extension data (Dolby Atmos).\n"
+    );
 
-      LIBBLU_AC3_DEBUG(
-        "    flag_ec3_extension_type_a: 0x1 (used for identification).\n"
-      );
-      LIBBLU_AC3_DEBUG(
-        "    Objects Audio complexity (complexity_index_type_a): %u (0x%x).\n",
-        param->ec3ExtTypeA.complexityIndex,
-        param->ec3ExtTypeA.complexityIndex
-      );
-      LIBBLU_AC3_DEBUG(
-        "     -> %u Audio Object(s).\n",
-        param->ec3ExtTypeA.complexityIndex
-      );
+    LIBBLU_AC3_DEBUG(
+      "    flag_ec3_extension_type_a: 0x1 (used for identification).\n"
+    );
+    LIBBLU_AC3_DEBUG(
+      "    Objects Audio complexity (complexity_index_type_a): %u (0x%x).\n",
+      param->ec3ExtTypeA.complexityIndex,
+      param->ec3ExtTypeA.complexityIndex
+    );
+    LIBBLU_AC3_DEBUG(
+      "     -> %u Audio Object(s).\n",
+      param->ec3ExtTypeA.complexityIndex
+    );
   }
 
   return 0;

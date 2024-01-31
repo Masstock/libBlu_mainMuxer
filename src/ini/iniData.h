@@ -3,11 +3,13 @@
 #define __LIBBLU_MUXER__INI__INI_DATA_H__
 
 #if defined(DISABLE_INI)
-typedef void * IniFileContextPtr;
-#define destroyIniFileContext (void) sizeof
 
-static inline void * lookupIniFile(
-  IniFileContextPtr ctx,
+typedef struct {
+  void * empty;
+} IniFileContext;
+
+static inline lbc * lookupIniFile(
+  const IniFileContext ctx,
   const char * expr
 )
 {
@@ -15,6 +17,13 @@ static inline void * lookupIniFile(
   (void) expr;
 
   return NULL;
+}
+
+static inline void cleanIniFileContext(
+  IniFileContext ctx
+)
+{
+  (void) ctx;
 }
 
 #else
@@ -33,35 +42,25 @@ typedef struct {
   IniFileNodePtr tree;
 
   char ** src;
-  size_t srcNbLines;
-} IniFileContext, *IniFileContextPtr;
+  unsigned src_nb_lines;
+} IniFileContext;
 
-IniFileContextPtr createIniFileContext(
-  void
-);
-
-static inline void destroyIniFileContext(
-  IniFileContextPtr ctx
+static inline void cleanIniFileContext(
+  IniFileContext ctx
 )
 {
-  size_t i;
+  destroyIniFileNode(ctx.tree);
 
-  if (NULL == ctx)
-    return;
-
-  destroyIniFileNode(ctx->tree);
-
-  for (i = ctx->srcNbLines; 0 < i; i--)
-    free(ctx->src[i-1]);
-  free(ctx->src);
-  free(ctx);
+  for (unsigned i = ctx.src_nb_lines; 0 < i; i--)
+    free(ctx.src[i-1]);
+  free(ctx.src);
 }
 
 #define INI_DEFAULT_NB_SOURCE_CODE_LINES 32
 #define INI_DEFAULT_LEN_SOURCE_CODE_LINE 512
 
 int loadSourceIniFileContext(
-  IniFileContextPtr dst,
+  IniFileContext * dst,
   FILE * inputFile
 );
 

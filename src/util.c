@@ -26,20 +26,20 @@ const lbc * streamTypeStr(
 )
 {
   switch (typ) {
-    case TYPE_ES:
-      return lbc_str("Elementary Stream");
-    case TYPE_PAT:
-      return lbc_str("PAT");
-    case TYPE_PMT:
-      return lbc_str("PMT");
-    case TYPE_SIT:
-      return lbc_str("SIT");
-    case TYPE_PCR:
-      return lbc_str("PCR");
-    case TYPE_NULL:
-      return lbc_str("NULL");
-    default:
-      break;
+  case TYPE_ES:
+    return lbc_str("Elementary Stream");
+  case TYPE_PAT:
+    return lbc_str("PAT");
+  case TYPE_PMT:
+    return lbc_str("PMT");
+  case TYPE_SIT:
+    return lbc_str("SIT");
+  case TYPE_PCR:
+    return lbc_str("PCR");
+  case TYPE_NULL:
+    return lbc_str("NULL");
+  default:
+    break;
   }
 
   return lbc_str("Error type");
@@ -113,15 +113,15 @@ int str_time(
 )
 {
   switch (format_mode) {
-    case STRT_H_M_S_MS:
-      return lbc_snprintf(
-        buf, buf_size,
-        "%02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ".%03" PRIu64,
-        (uint64_t) MAIN_CLOCK_HOURS      (clock_value),
-        (uint64_t) MAIN_CLOCK_MINUTES    (clock_value),
-        (uint64_t) MAIN_CLOCK_SECONDS    (clock_value),
-        (uint64_t) MAIN_CLOCK_MILISECONDS(clock_value)
-      );
+  case STRT_H_M_S_MS:
+    return lbc_snprintf(
+      buf, buf_size,
+      "%02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ".%03" PRIu64,
+      (uint64_t) MAIN_CLOCK_HOURS      (clock_value),
+      (uint64_t) MAIN_CLOCK_MINUTES    (clock_value),
+      (uint64_t) MAIN_CLOCK_SECONDS    (clock_value),
+      (uint64_t) MAIN_CLOCK_MILISECONDS(clock_value)
+    );
   }
 
   return 0;

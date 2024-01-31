@@ -235,12 +235,12 @@ static int _parseNextFrame(
 )
 {
   switch (initNextFrameAc3Context(ctx)) {
-    case AC3_CORE:
-      return _parseAc3CoreSyncFrame(ctx);
-    case AC3_EAC3:
-      return _parseEac3SyncFrame(ctx);
-    case AC3_TRUEHD:
-      return _parseMlpSyncFrame(ctx);
+  case AC3_CORE:
+    return _parseAc3CoreSyncFrame(ctx);
+  case AC3_EAC3:
+    return _parseEac3SyncFrame(ctx);
+  case AC3_TRUEHD:
+    return _parseMlpSyncFrame(ctx);
   }
 
   LIBBLU_AC3_DEBUG_UTIL("Unable to parse next frame.\n");

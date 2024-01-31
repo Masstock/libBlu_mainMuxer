@@ -34,11 +34,11 @@ typedef struct PF {
   struct PF * next;
   int64_t timestamp;
 
-  HdmvBitmap bitmaps[HDMV_MAX_NB_PCS_COMPOS];
-  HdmvRectangle bitmaps_pos[HDMV_MAX_NB_PCS_COMPOS];
+  HdmvBitmap bitmaps[HDMV_MAX_NB_PC_COMPO_OBJ];
+  HdmvRectangle bitmaps_pos[HDMV_MAX_NB_PC_COMPO_OBJ];
   unsigned nb_bitmaps;
 
-  PgsCompositionObject compo_obj[HDMV_MAX_NB_PCS_COMPOS];
+  PgsCompositionObject compo_obj[HDMV_MAX_NB_PC_COMPO_OBJ];
   unsigned nb_compo_obj;
 
   uint16_t obj_ids[PGS_ASS_MAX_OBJECTS_PER_FRAME];

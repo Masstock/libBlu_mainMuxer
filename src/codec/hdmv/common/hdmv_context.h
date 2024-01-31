@@ -16,24 +16,31 @@
 #ifndef __LIBBLU_MUXER__CODECS__HDMV__COMMON__CONTEXT_H__
 #define __LIBBLU_MUXER__CODECS__HDMV__COMMON__CONTEXT_H__
 
+#include "hdmv_check.h"
+#include "hdmv_common.h"
+#include "hdmv_seq_indexer.h"
+#include "hdmv_timecodes.h"
+
 #include "../../../esms/scriptCreation.h"
 #include "../../../ini/iniHandler.h"
 #include "../../../util.h"
 #include "../../common/esParsingSettings.h"
-#include "hdmv_check.h"
-#include "hdmv_common.h"
-#include "hdmv_timecodes.h"
+
+#define ENABLE_DEBUG_TIMESTAMPS
 
 typedef struct {
   bool generation_mode;
   bool raw_stream_input_mode;
   bool force_retiming;
 
-  int64_t ref_timestamp;
-  int64_t initial_delay;
+  int64_t ref_timestamp;  /**< Referential "zero" timestamp. This value is
+    used to avoid negative timestamps (e.g. if a presentation timestamp is
+    set to the first video frame, decoding timestamp might be negative).     */
+  int64_t initial_delay;  /**< Timeline origin of the input stream, aka
+    timestamp of time 0. This value is used to convert the timestamps of
+    the input stream to a timeline whose origin is zero.                     */
 
-  HdmvParsingOptions parsing_options;
-
+  /* Retiming related: */
   int64_t last_ds_pres_time;
   int64_t last_ds_end_time;
 } HdmvContextParameters;
@@ -52,15 +59,20 @@ typedef struct {
 typedef struct {
   HdmvContextInput input;
   HdmvContextOutput output;
-  HdmvSegmentsInventory seg_inv;
+  HdmvParsingOptions options;
 
-  HdmvStreamType type;
   HdmvContextParameters param;
   HdmvTimecodes timecodes;
 
-  HdmvDSState ds;  /**< Current Epoch Display Set (DS). */
+  hdmv_segtype_idx cur_segment_type;
+  HdmvDSState ds[2];
+  unsigned cur_ds;
+  bool is_dup_DS;  /**< Current DS shall be a strict copy of previous one.   */
+
+  HdmvEpochState epoch;
+
   HdmvContextSegmentTypesCounter nb_seq;  /**< Number of sequences in epoch. */
-  bool is_dup_DS;  /**< Current DS shall be a strict copy of previous one. */
+
   unsigned last_compo_nb_parsed;
 
   unsigned seq_nb_limit_per_epoch[HDMV_NB_SEGMENT_TYPES];
@@ -72,26 +84,52 @@ typedef struct {
   } global_counters;
   unsigned nb_DS;
   unsigned nb_epochs;
-} HdmvContext, *HdmvContextPtr;
+} HdmvContext;
 
-HdmvContextPtr createHdmvContext(
+static inline HdmvDSState * getPrevDSHdmvContext(
+  HdmvContext * ctx
+)
+{
+  return &ctx->ds[ctx->cur_ds ^ 1];
+}
+
+static inline HdmvDSState * getCurDSHdmvContext(
+  HdmvContext * ctx
+)
+{
+  return &ctx->ds[ctx->cur_ds];
+}
+
+static inline void switchCurDSHdmvContext(
+  HdmvContext * ctx
+)
+{
+  ctx->cur_ds ^= 0x1; // Switch DS
+
+  /* Clean current DS */
+  cleanHdmvDSState(ctx->ds[ctx->cur_ds]);
+  memset(&ctx->ds[ctx->cur_ds], 0x0, sizeof(HdmvDSState));
+}
+
+int initHdmvContext(
+  HdmvContext * dst,
   LibbluESParsingSettings * settings,
   const lbc * infilepath,
   HdmvStreamType type,
   bool generation_mode
 );
 
-void destroyHdmvContext(
-  HdmvContextPtr ctx
+void cleanHdmvContext(
+  HdmvContext ctx
 );
 
 int addOriginalFileHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   const lbc * filepath
 );
 
 static inline int addTimecodeHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   uint64_t value
 )
 {
@@ -102,7 +140,7 @@ static inline int addTimecodeHdmvContext(
 }
 
 static inline int addTimecodesHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvTimecodes timecodes
 )
 {
@@ -113,28 +151,28 @@ static inline int addTimecodesHdmvContext(
 }
 
 int closeHdmvContext(
-  HdmvContextPtr ctx
+  HdmvContext * ctx
 );
 
 static inline void printContentHdmvContext(
-  HdmvContextPtr ctx
+  HdmvContext ctx
 )
 {
   printContentHdmvContextSegmentTypesCounter(
-    ctx->global_counters.nb_seg,
-    ctx->type
+    ctx.global_counters.nb_seg,
+    ctx.epoch.type
   );
 }
 
 static inline BitstreamReaderPtr inputHdmvContext(
-  HdmvContextPtr ctx
+  HdmvContext * ctx
 )
 {
   return ctx->input.file;
 }
 
 static inline int readValueHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   size_t length,
   uint64_t * value
 )
@@ -143,26 +181,10 @@ static inline int readValueHdmvContext(
 }
 
 static inline bool isEofHdmvContext(
-  const HdmvContextPtr ctx
+  const HdmvContext * ctx
 )
 {
-  return isEof(inputHdmvContext(ctx));
-}
-
-static inline void setReferenceTimecodeHdmvContext(
-  HdmvContextPtr ctx,
-  int64_t timecode
-)
-{
-  ctx->param.ref_timestamp = timecode;
-}
-
-static inline void setInitialDelayHdmvContext(
-  HdmvContextPtr ctx,
-  int64_t delay
-)
-{
-  ctx->param.initial_delay = delay;
+  return isEof(ctx->input.file);
 }
 
 /** \~english
@@ -176,7 +198,7 @@ static inline void setInitialDelayHdmvContext(
  * Takes the composition_descriptor of the first Display Set segment/sequence.
  */
 int initEpochHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   HdmvCDParameters composition_descriptor,
   HdmvVDParameters video_descriptor
 );
@@ -187,8 +209,8 @@ int initEpochHdmvContext(
  * \param ctx
  * \return int
  */
-int completeDSHdmvContext(
-  HdmvContextPtr ctx
+int completeCurDSHdmvContext(
+  HdmvContext * ctx
 );
 
 /** \~english
@@ -212,7 +234,7 @@ int completeDSHdmvContext(
  *  - A sequence start segment is not preceded by a completion segment.
  */
 HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   hdmv_segtype_idx idx,
   HdmvSegmentParameters seg_param,
   HdmvSequenceLocation location
@@ -226,12 +248,12 @@ HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
  * \return int
  */
 int completeSeqDisplaySetHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   hdmv_segtype_idx idx
 );
 
 static inline void incrementSegmentsNbHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   hdmv_segtype_idx idx
 )
 {
@@ -242,22 +264,19 @@ static inline void incrementSegmentsNbHdmvContext(
 }
 
 static inline void incrementSequencesNbDSHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   hdmv_segtype_idx idx
 )
 {
-  incByIdxHdmvContextSegmentTypesCounter(&ctx->ds.nb_seq, idx);
   incByIdxHdmvContextSegmentTypesCounter(&ctx->global_counters.nb_seq, idx);
 }
 
 static inline void incrementSequencesNbEpochHdmvContext(
-  HdmvContextPtr ctx,
+  HdmvContext * ctx,
   hdmv_segtype_idx idx
 )
 {
   incByIdxHdmvContextSegmentTypesCounter(&ctx->nb_seq, idx);
-  // incByIdxHdmvContextSegmentTypesCounter(&ctx->epoch.nb_seq, idx);
-  // incByIdxHdmvContextSegmentTypesCounter(&ctx->global_counters.nb_seq, idx);
 }
 
 #endif

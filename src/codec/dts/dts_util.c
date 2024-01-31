@@ -157,35 +157,35 @@ int _setScriptProperties(
     script->PTS_final = getPTSDtsDcaCoreSSContext(&ctx->core);
 
     switch (bsh->AMODE) {
-      case DCA_AMODE_A:
-        /* Mono */
-        script->prop.audio_format = 0x01;
-        break;
+    case DCA_AMODE_A:
+      /* Mono */
+      script->prop.audio_format = 0x01;
+      break;
 
-      case DCA_AMODE_A_B:
-        /* Dual-Mono */
-        script->prop.audio_format = 0x02;
-        break;
+    case DCA_AMODE_A_B:
+      /* Dual-Mono */
+      script->prop.audio_format = 0x02;
+      break;
 
-      case DCA_AMODE_L_R:
-      case DCA_AMODE_L_R_SUMDIF:
-      case DCA_AMODE_LT_LR:
-        /* Stereo */
-        script->prop.audio_format = 0x03;
-        break;
+    case DCA_AMODE_L_R:
+    case DCA_AMODE_L_R_SUMDIF:
+    case DCA_AMODE_LT_LR:
+      /* Stereo */
+      script->prop.audio_format = 0x03;
+      break;
 
-      default:
-        /* Multi-channel */
-        script->prop.audio_format = 0x06;
+    default:
+      /* Multi-channel */
+      script->prop.audio_format = 0x06;
     }
 
     switch (getDcaCoreAudioSampFreqCode(bsh->SFREQ)) {
-      case 48000: /* 48 kHz */
-        script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
-      case 96000: /* 96 kHz */
-        script->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
-      default: /* 192 kHz */
-        script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
+    case 48000: /* 48 kHz */
+      script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
+    case 96000: /* 96 kHz */
+      script->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
+    default: /* 192 kHz */
+      script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
     script->prop.bit_depth = (getDcaCoreSourcePcmResCode(bsh->PCMR) - 12) >> 2;
@@ -209,12 +209,12 @@ int _setScriptProperties(
       script->prop.audio_format = 0x06; /* Multi-channel */
 
     switch (ctx->ext_ss.content.audioFreq) {
-      case 48000: /* 48 kHz */
-        script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
-      case 96000: /* 96 kHz */
-        script->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
-      default: /* 192 kHz */
-        script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
+    case 48000: /* 48 kHz */
+      script->prop.sample_rate = SAMPLE_RATE_CODE_48000; break;
+    case 96000: /* 96 kHz */
+      script->prop.sample_rate = SAMPLE_RATE_CODE_96000; break;
+    default: /* 192 kHz */
+      script->prop.sample_rate = SAMPLE_RATE_CODE_192000;
     }
 
     script->prop.bit_depth = (ctx->ext_ss.content.bitDepth - 12) >> 2;
@@ -314,22 +314,22 @@ DtsFrameInitializationRet initNextDtsFrame(
   DtsAUInnerType type;
   DtsFrameInitializationRet ret;
   switch ((sync_word = nextUint32(ctx->bs))) {
-    case DCA_SYNCWORD_CORE:
-      /* DTS Coherent Acoustics Core */
-      type = DTS_FRM_INNER_CORE_SS;
-      ret = DTS_FRAME_INIT_CORE_SUBSTREAM;
-      break;
+  case DCA_SYNCWORD_CORE:
+    /* DTS Coherent Acoustics Core */
+    type = DTS_FRM_INNER_CORE_SS;
+    ret = DTS_FRAME_INIT_CORE_SUBSTREAM;
+    break;
 
-    case DCA_SYNCEXTSSH:
-      type = DTS_FRM_INNER_EXT_SS_HDR;
-      ret = DTS_FRAME_INIT_EXT_SUBSTREAM;
-      break;
+  case DCA_SYNCEXTSSH:
+    type = DTS_FRM_INNER_EXT_SS_HDR;
+    ret = DTS_FRAME_INIT_EXT_SUBSTREAM;
+    break;
 
-    default:
-      LIBBLU_DTS_ERROR_RETURN(
-        "Unknown sync word 0x%08" PRIX32 ".\n",
-        sync_word
-      );
+  default:
+    LIBBLU_DTS_ERROR_RETURN(
+      "Unknown sync word 0x%08" PRIX32 ".\n",
+      sync_word
+    );
   }
 
   DtsAUCellPtr cell;
@@ -377,12 +377,12 @@ static uint64_t _getAndUpdatePTS(
   DtsAUContentType content_type = identifyContentTypeDtsAUFrame(&ctx->cur_au);
 
   switch (content_type) {
-    case DTS_AU_EMPTY:
-      break;
-    case DTS_AU_CORE_SS:
-      return _getAndUpdatePTSCore(&ctx->core, &ctx->nb_audio_frames);
-    case DTS_AU_EXT_SS:
-      return _getAndUpdatePTSExtSS(&ctx->ext_ss);
+  case DTS_AU_EMPTY:
+    break;
+  case DTS_AU_CORE_SS:
+    return _getAndUpdatePTSCore(&ctx->core, &ctx->nb_audio_frames);
+  case DTS_AU_EXT_SS:
+    return _getAndUpdatePTSExtSS(&ctx->ext_ss);
   }
 
   return 0;

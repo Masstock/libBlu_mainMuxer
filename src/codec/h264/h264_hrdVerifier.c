@@ -106,7 +106,7 @@ static int _initH264HrdVerifierOptions(
 {
   lbc * string;
 
-  string = lookupIniFile(options.confHandle, "HRD.CRASHONERROR");
+  string = lookupIniFile(options.conf_hdl, "HRD.CRASHONERROR");
   if (NULL != string) {
     bool value;
 
@@ -313,10 +313,10 @@ static void _initH264HrdVerifierWarnings(
 {
   memset(warnings, 0, sizeof(H264HrdVerifierWarnings));
 
-  const IniFileContextPtr conf = options->confHandle;
-  lbc * string;
+  const IniFileContext conf_hdl = options->conf_hdl;
 
-  if (NULL != (string = lookupIniFile(conf, "HRD.MAXNUMBEROFWARNINGS"))) {
+  lbc * string = lookupIniFile(conf_hdl, "HRD.MAXNUMBEROFWARNINGS");
+  if (NULL != string) {
     warnings->max_amount = lbc_strtoul(string, NULL, 10);
     errno = 0; // Ignore errors
   }
@@ -655,36 +655,36 @@ static int _addDecodedPictureToH264HrdContext(
   H264DpbHrdPicInfos infos = au_from_cpb.infos;
 
   switch (infos.usage) {
-    case H264_USED_AS_LONG_TERM_REFERENCE:
-      for (unsigned i = 0; i < ctx->nb_au_dpb_content; i++) {
-        const H264DpbHrdPic * picture = _getDPByIdxH264HrdContext(ctx, i);
+  case H264_USED_AS_LONG_TERM_REFERENCE:
+    for (unsigned i = 0; i < ctx->nb_au_dpb_content; i++) {
+      const H264DpbHrdPic * picture = _getDPByIdxH264HrdContext(ctx, i);
 
-        if (NULL == picture)
-          return -1; /* Unable to get i-index picture, broken FIFO. */
+      if (NULL == picture)
+        return -1; /* Unable to get i-index picture, broken FIFO. */
 
-        if (
-          H264_USED_AS_LONG_TERM_REFERENCE == picture->usage
-          && picture->LongTermFrameIdx == infos.LongTermFrameIdx
-        ) {
-          /* NOTE: Shall NEVER happen, means broken longTermFrameIdx
-            management. */
-          LIBBLU_H264_HRDV_ERROR_RETURN(
-            "LongTermFrameIdx = %u is already used in DPB.\n",
-            infos.LongTermFrameIdx
-          );
-        }
+      if (
+        H264_USED_AS_LONG_TERM_REFERENCE == picture->usage
+        && picture->LongTermFrameIdx == infos.LongTermFrameIdx
+      ) {
+        /* NOTE: Shall NEVER happen, means broken longTermFrameIdx
+          management. */
+        LIBBLU_H264_HRDV_ERROR_RETURN(
+          "LongTermFrameIdx = %u is already used in DPB.\n",
+          infos.LongTermFrameIdx
+        );
       }
-      newPicture->LongTermFrameIdx = infos.LongTermFrameIdx;
-      ctx->numLongTerm++;
-      break;
+    }
+    newPicture->LongTermFrameIdx = infos.LongTermFrameIdx;
+    ctx->numLongTerm++;
+    break;
 
-    case H264_USED_AS_SHORT_TERM_REFERENCE:
-      ctx->numShortTerm++;
-      break;
+  case H264_USED_AS_SHORT_TERM_REFERENCE:
+    ctx->numShortTerm++;
+    break;
 
-    case H264_NOT_USED_AS_REFERENCE:
-      break; /* Non-used as reference picture, no counter to update rather than
-        nb_au_dpb_content. */
+  case H264_NOT_USED_AS_REFERENCE:
+    break; /* Non-used as reference picture, no counter to update rather than
+      nb_au_dpb_content. */
   }
 
   ctx->nb_au_dpb_content++;
@@ -717,11 +717,11 @@ static int _setDecodedPictureAsRefUnusedInH264HrdContext(
   ];
 
   switch (pic->usage) {
-    case H264_USED_AS_LONG_TERM_REFERENCE: ctx->numLongTerm--; break;
-    case H264_USED_AS_SHORT_TERM_REFERENCE: ctx->numShortTerm--; break;
-    case H264_NOT_USED_AS_REFERENCE: break;
-      // Non-used as reference picture,
-      // no counter to update rather than nb_au_dpb_content.
+  case H264_USED_AS_LONG_TERM_REFERENCE: ctx->numLongTerm--; break;
+  case H264_USED_AS_SHORT_TERM_REFERENCE: ctx->numShortTerm--; break;
+  case H264_NOT_USED_AS_REFERENCE: break;
+    // Non-used as reference picture,
+    // no counter to update rather than nb_au_dpb_content.
   }
 
   pic->usage = H264_NOT_USED_AS_REFERENCE;
@@ -748,17 +748,17 @@ static int _popDecodedPictureFromH264HrdContext(
 
   unsigned array_abs_idx = (ctx->dpb_content_heap - ctx->dpb_content + idx);
   switch (ctx->dpb_content[array_abs_idx & H264_DPB_MOD_MASK].usage) {
-    case H264_USED_AS_LONG_TERM_REFERENCE:
-      ctx->numLongTerm--;
-      break;
+  case H264_USED_AS_LONG_TERM_REFERENCE:
+    ctx->numLongTerm--;
+    break;
 
-    case H264_USED_AS_SHORT_TERM_REFERENCE:
-      ctx->numShortTerm--;
-      break;
+  case H264_USED_AS_SHORT_TERM_REFERENCE:
+    ctx->numShortTerm--;
+    break;
 
-    case H264_NOT_USED_AS_REFERENCE:
-      break; /* Non-used as reference picture, no counter to update rather than
-        nb_au_dpb_content. */
+  case H264_NOT_USED_AS_REFERENCE:
+    break; /* Non-used as reference picture, no counter to update rather than
+      nb_au_dpb_content. */
   }
 
   if (idx == 0) {
@@ -1128,19 +1128,19 @@ static int _applyAdaptiveMemoryControlDecodedReferencePictureMarkingProcess(
     int ret = 0;
 
     switch (opBlk->operation) {
-      case H264_MEM_MGMNT_CTRL_OP_END:
-        break;
+    case H264_MEM_MGMNT_CTRL_OP_END:
+      break;
 
-      case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED:
-        ret = _markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
-          ctx,
-          opBlk->difference_of_pic_nums_minus1,
-          infos
-        );
-        break;
+    case H264_MEM_MGMNT_CTRL_OP_SHORT_TERM_UNUSED:
+      ret = _markShortTermRefPictureAsUnusedForReferenceH264HrdContext(
+        ctx,
+        opBlk->difference_of_pic_nums_minus1,
+        infos
+      );
+      break;
 
-      default:
-        LIBBLU_TODO();
+    default:
+      LIBBLU_TODO();
     }
 
     if (ret < 0)

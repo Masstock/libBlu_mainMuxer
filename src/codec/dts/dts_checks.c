@@ -1138,266 +1138,265 @@ static int _checkDcaAudioAssetDescDNDCompliance(
   LIBBLU_DTS_DEBUG_EXTSS("     Coding Mode related:\n");
 
   switch (param->nuCodingMode) {
-    case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
-    case DCA_EXT_SS_CODING_MODE_DTS_HD_LOSSLESS_WITHOUT_CORE:
-    case DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE:
-      if (param->nuCodingMode == DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS) {
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "      Coding Components Used in Asset mask "
-          "(nuCoreExtensionMask): 0x%04" PRIX16 ".\n",
-          param->nuCoreExtensionMask
-        );
-      }
-      else {
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "      Implied Coding Components Used in Asset mask: "
-          "0x%04" PRIX16 ".\n",
-          param->nuCoreExtensionMask
-        );
-      }
+  case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
+  case DCA_EXT_SS_CODING_MODE_DTS_HD_LOSSLESS_WITHOUT_CORE:
+  case DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE:
+    if (param->nuCodingMode == DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS) {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "      Coding Components Used in Asset mask "
+        "(nuCoreExtensionMask): 0x%04" PRIX16 ".\n",
+        param->nuCoreExtensionMask
+      );
+    }
+    else {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "      Implied Coding Components Used in Asset mask: "
+        "0x%04" PRIX16 ".\n",
+        param->nuCoreExtensionMask
+      );
+    }
 
-      if (!param->nuCoreExtensionMask)
-        LIBBLU_DTS_DEBUG_EXTSS("       => *Empty*\n");
+    if (!param->nuCoreExtensionMask)
+      LIBBLU_DTS_DEBUG_EXTSS("       => *Empty*\n");
 
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_DCA) {
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA Core Component within Core Substream "
-          "(0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_CORE_DCA
-        );
-      }
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_DCA) {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA Core Component within Core Substream "
+        "(0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_CORE_DCA
+      );
+    }
 
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XXCH) {
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XXCH 5.1+ Channels Extension within "
-          "Core Substream (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_CORE_EXT_XXCH
-        );
-      }
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XXCH) {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA XXCH 5.1+ Channels Extension within "
+        "Core Substream (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_CORE_EXT_XXCH
+      );
+    }
 
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_X96) {
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA X96 96kHz Sampling Frequency Extension within "
-          "Core Substream (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_CORE_EXT_X96
-        );
-      }
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_X96) {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA X96 96kHz Sampling Frequency Extension within "
+        "Core Substream (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_CORE_EXT_X96
+      );
+    }
 
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XCH) {
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XCH 6.1 Channels Extension within "
-          "Core Substream (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_CORE_EXT_XCH
-        );
-      }
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_CORE_EXT_XCH) {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA XCH 6.1 Channels Extension within "
+        "Core Substream (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_CORE_EXT_XCH
+      );
+    }
 
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
-        const DcaAudioAssetExSSCoreParameters * p = &param->coding_components.ExSSCore;
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA Core Component within current Extension Substream "
-          "(0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Size of Core Component in Extension Substream "
-          "(nuExSSCoreFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
-          p->nuExSSCoreFsize,
-          p->nuExSSCoreFsize - 1
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Core Sync Word Presence (bExSSCoreSyncPresent): "
-          "%s (0b%x).\n",
-          BOOL_PRESENCE(p->bExSSCoreSyncPresent),
-          p->bExSSCoreSyncPresent
-        );
-
-        if (p->bExSSCoreSyncPresent) {
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        Core Sync Word distance (nuExSSCoreSyncDistInFrames): "
-            "%u frames (0x%X).\n",
-            p->nuExSSCoreSyncDistInFrames,
-            p->nuExSSCoreSyncDistInFrames_code
-          );
-        }
-      }
-
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
-        const DcaAudioAssetExSSXBRParameters * p = &param->coding_components.ExSSXBR;
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XBR Extended Bit Rate within current "
-          "Extension Substream (commercial name: DTS-HDHR) "
-          "(0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_EXTSUB_XBR
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Size of XBR Extension in Extension Substream "
-          "(nuExSSXBRFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
-          p->nuExSSXBRFsize,
-          p->nuExSSXBRFsize - 1
-        );
-      }
-
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
-        const DcaAudioAssetExSSXXCHParameters * p = &param->coding_components.ExSSXXCH;
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XXCH 5.1+ Channels Extension within current "
-          "Extension Substream (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_EXTSUB_XXCH
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Size of XXCH Extension in Extension Substream "
-          "(nuExSSXXCHFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
-          p->nuExSSXXCHFsize,
-          p->nuExSSXXCHFsize - 1
-        );
-      }
-
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
-        const DcaAudioAssetExSSX96Parameters * p = &param->coding_components.ExSSX96;
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA X96 96kHz Sampling Frequency Extension within current "
-          "Extension Substream (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_EXTSUB_X96
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Size of X96 Extension in Extension Substream "
-          "(nuExSSX96Fsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
-          p->nuExSSX96Fsize,
-          p->nuExSSX96Fsize - 1
-        );
-      }
-
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
-        const DcaAudioAssetExSSLBRParameters * p = &param->coding_components.ExSSLBR;
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA LBR Low Bitrate Component within current Extension "
-          "Substream (commercial name: DTS-Express) (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_EXTSUB_LBR
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Size of LBR Extension in Extension Substream "
-          "(nuExSSLBRFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
-          p->nuExSSLBRFsize,
-          p->nuExSSLBRFsize - 1
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        LBR Sync Word Presence (bExSSLBRSyncPresent): "
-          "%s (0b%x).\n",
-          BOOL_PRESENCE(p->bExSSLBRSyncPresent),
-          p->bExSSLBRSyncPresent
-        );
-
-        if (p->bExSSLBRSyncPresent) {
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        LBR Sync Word distance (nuExSSLBRSyncDistInFrames): "
-            "%u frames (0x%X).\n",
-            p->nuExSSLBRSyncDistInFrames,
-            p->nuExSSLBRSyncDistInFrames_code
-          );
-        }
-      }
-
-      if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
-        const DcaAudioAssetExSSXllParameters * p = &param->coding_components.ExSSXLL;
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "       => DCA XLL Lossless Extension within current Extension "
-          "Substream (commercial name: DTS-HDMA) (0x%04" PRIX16 ").\n",
-          DCA_EXT_SS_COD_COMP_EXTSUB_XLL
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        Size of XLL Extension in Extension Substream "
-          "(nuExSSXLLFsize): %" PRIu32 " bytes (0x%" PRIX32 ").\n",
-          p->nuExSSXLLFsize,
-          p->nuExSSXLLFsize - 1
-        );
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        XLL Sync Word Presence (bExSSXLLSyncPresent): "
-          "%s (0b%x).\n",
-          BOOL_PRESENCE(p->bExSSXLLSyncPresent),
-          p->bExSSXLLSyncPresent
-        );
-
-        if (p->bExSSXLLSyncPresent) {
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        Peak Bit-Rate Smoothing Buffer Size "
-            "(nuPeakBRCntrlBuffSzkB): %" PRIu8 " kBits (0x%" PRIX8 ").\n",
-            p->nuPeakBRCntrlBuffSzkB,
-            p->nuPeakBRCntrlBuffSzkB >> 4
-          );
-
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        Size of the XLL Decoding Delay field (nuBitsInitDecDly): "
-            "%" PRIu8 " bits (0x%" PRIX8 ").\n",
-            p->nuBitsInitDecDly,
-            p->nuBitsInitDecDly
-          );
-
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        Initial XLL Decoding Delay (nuInitLLDecDlyFrames): "
-            "%" PRIu32 " frames (0x%" PRIX32 ").\n",
-            p->nuInitLLDecDlyFrames,
-            p->nuInitLLDecDlyFrames
-          );
-
-          LIBBLU_DTS_DEBUG_EXTSS(
-            "        Number of Bytes Offset to XLL Sync word "
-            "(nuExSSXLLSyncOffset): %" PRIu32 " bytes (0x%" PRIX32 ").\n",
-            p->nuExSSXLLSyncOffset,
-            p->nuExSSXLLSyncOffset
-          );
-        }
-
-        LIBBLU_DTS_DEBUG_EXTSS(
-          "        DTS-HD XLL Stream ID (nuDTSHDStreamID): 0x%02" PRIX8 ".\n",
-          p->nuDTSHDStreamID
-        );
-      }
-      break;
-
-    case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING: {
-      const DcaAudioAssetDescDecNDAuxiliaryCoding * aux = &param->auxilary_coding;
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
+      const DcaAudioAssetExSSCoreParameters * p = &param->coding_components.ExSSCore;
 
       LIBBLU_DTS_DEBUG_EXTSS(
-        "      Size of Auxilary Coded Data (nuExSSAuxFsize): "
-        "%" PRIu16 " bytes (0x%" PRIX16 ").\n",
-        aux->nuExSSAuxFsize,
-        aux->nuExSSAuxFsize - 1
+        "       => DCA Core Component within current Extension Substream "
+        "(0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA
       );
 
       LIBBLU_DTS_DEBUG_EXTSS(
-        "      Auxilary Codec Identification (nuAuxCodecID): 0x%02" PRIX8 ".\n",
-        aux->nuAuxCodecID
+        "        Size of Core Component in Extension Substream "
+        "(nuExSSCoreFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
+        p->nuExSSCoreFsize,
+        p->nuExSSCoreFsize - 1
       );
 
       LIBBLU_DTS_DEBUG_EXTSS(
-        "      Aux Sync Word Presence (bExSSAuxSyncPresent): %s (0b%x).\n",
-        BOOL_PRESENCE(aux->bExSSAuxSyncPresent),
-        aux->bExSSAuxSyncPresent
+        "        Core Sync Word Presence (bExSSCoreSyncPresent): "
+        "%s (0b%x).\n",
+        BOOL_PRESENCE(p->bExSSCoreSyncPresent),
+        p->bExSSCoreSyncPresent
       );
 
-      if (aux->bExSSAuxSyncPresent) {
+      if (p->bExSSCoreSyncPresent) {
         LIBBLU_DTS_DEBUG_EXTSS(
-          "      Aux Sync Word distance (nuExSSAuxSyncDistInFrames): "
-          "%" PRIu8 " frames (0x%" PRIX8 ").\n",
-          aux->nuExSSAuxSyncDistInFrames,
-          aux->nuExSSAuxSyncDistInFrames_code
+          "        Core Sync Word distance (nuExSSCoreSyncDistInFrames): "
+          "%u frames (0x%X).\n",
+          p->nuExSSCoreSyncDistInFrames,
+          p->nuExSSCoreSyncDistInFrames_code
         );
       }
+    }
+
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
+      const DcaAudioAssetExSSXBRParameters * p = &param->coding_components.ExSSXBR;
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA XBR Extended Bit Rate within current "
+        "Extension Substream (commercial name: DTS-HDHR) "
+        "(0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_EXTSUB_XBR
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        Size of XBR Extension in Extension Substream "
+        "(nuExSSXBRFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
+        p->nuExSSXBRFsize,
+        p->nuExSSXBRFsize - 1
+      );
+    }
+
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
+      const DcaAudioAssetExSSXXCHParameters * p = &param->coding_components.ExSSXXCH;
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA XXCH 5.1+ Channels Extension within current "
+        "Extension Substream (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_EXTSUB_XXCH
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        Size of XXCH Extension in Extension Substream "
+        "(nuExSSXXCHFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
+        p->nuExSSXXCHFsize,
+        p->nuExSSXXCHFsize - 1
+      );
+    }
+
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
+      const DcaAudioAssetExSSX96Parameters * p = &param->coding_components.ExSSX96;
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA X96 96kHz Sampling Frequency Extension within current "
+        "Extension Substream (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_EXTSUB_X96
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        Size of X96 Extension in Extension Substream "
+        "(nuExSSX96Fsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
+        p->nuExSSX96Fsize,
+        p->nuExSSX96Fsize - 1
+      );
+    }
+
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
+      const DcaAudioAssetExSSLBRParameters * p = &param->coding_components.ExSSLBR;
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA LBR Low Bitrate Component within current Extension "
+        "Substream (commercial name: DTS-Express) (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_EXTSUB_LBR
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        Size of LBR Extension in Extension Substream "
+        "(nuExSSLBRFsize): %" PRIu16 " bytes (0x%04" PRIX16 ").\n",
+        p->nuExSSLBRFsize,
+        p->nuExSSLBRFsize - 1
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        LBR Sync Word Presence (bExSSLBRSyncPresent): "
+        "%s (0b%x).\n",
+        BOOL_PRESENCE(p->bExSSLBRSyncPresent),
+        p->bExSSLBRSyncPresent
+      );
+
+      if (p->bExSSLBRSyncPresent) {
+        LIBBLU_DTS_DEBUG_EXTSS(
+          "        LBR Sync Word distance (nuExSSLBRSyncDistInFrames): "
+          "%u frames (0x%X).\n",
+          p->nuExSSLBRSyncDistInFrames,
+          p->nuExSSLBRSyncDistInFrames_code
+        );
+      }
+    }
+
+    if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
+      const DcaAudioAssetExSSXllParameters * p = &param->coding_components.ExSSXLL;
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "       => DCA XLL Lossless Extension within current Extension "
+        "Substream (commercial name: DTS-HDMA) (0x%04" PRIX16 ").\n",
+        DCA_EXT_SS_COD_COMP_EXTSUB_XLL
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        Size of XLL Extension in Extension Substream "
+        "(nuExSSXLLFsize): %" PRIu32 " bytes (0x%" PRIX32 ").\n",
+        p->nuExSSXLLFsize,
+        p->nuExSSXLLFsize - 1
+      );
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        XLL Sync Word Presence (bExSSXLLSyncPresent): "
+        "%s (0b%x).\n",
+        BOOL_PRESENCE(p->bExSSXLLSyncPresent),
+        p->bExSSXLLSyncPresent
+      );
+
+      if (p->bExSSXLLSyncPresent) {
+        LIBBLU_DTS_DEBUG_EXTSS(
+          "        Peak Bit-Rate Smoothing Buffer Size "
+          "(nuPeakBRCntrlBuffSzkB): %" PRIu8 " kBits (0x%" PRIX8 ").\n",
+          p->nuPeakBRCntrlBuffSzkB,
+          p->nuPeakBRCntrlBuffSzkB >> 4
+        );
+
+        LIBBLU_DTS_DEBUG_EXTSS(
+          "        Size of the XLL Decoding Delay field (nuBitsInitDecDly): "
+          "%" PRIu8 " bits (0x%" PRIX8 ").\n",
+          p->nuBitsInitDecDly,
+          p->nuBitsInitDecDly
+        );
+
+        LIBBLU_DTS_DEBUG_EXTSS(
+          "        Initial XLL Decoding Delay (nuInitLLDecDlyFrames): "
+          "%" PRIu32 " frames (0x%" PRIX32 ").\n",
+          p->nuInitLLDecDlyFrames,
+          p->nuInitLLDecDlyFrames
+        );
+
+        LIBBLU_DTS_DEBUG_EXTSS(
+          "        Number of Bytes Offset to XLL Sync word "
+          "(nuExSSXLLSyncOffset): %" PRIu32 " bytes (0x%" PRIX32 ").\n",
+          p->nuExSSXLLSyncOffset,
+          p->nuExSSXLLSyncOffset
+        );
+      }
+
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "        DTS-HD XLL Stream ID (nuDTSHDStreamID): 0x%02" PRIX8 ".\n",
+        p->nuDTSHDStreamID
+      );
+    }
+    break;
+
+  case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING:
+    const DcaAudioAssetDescDecNDAuxiliaryCoding * aux = &param->auxilary_coding;
+
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "      Size of Auxilary Coded Data (nuExSSAuxFsize): "
+      "%" PRIu16 " bytes (0x%" PRIX16 ").\n",
+      aux->nuExSSAuxFsize,
+      aux->nuExSSAuxFsize - 1
+    );
+
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "      Auxilary Codec Identification (nuAuxCodecID): 0x%02" PRIX8 ".\n",
+      aux->nuAuxCodecID
+    );
+
+    LIBBLU_DTS_DEBUG_EXTSS(
+      "      Aux Sync Word Presence (bExSSAuxSyncPresent): %s (0b%x).\n",
+      BOOL_PRESENCE(aux->bExSSAuxSyncPresent),
+      aux->bExSSAuxSyncPresent
+    );
+
+    if (aux->bExSSAuxSyncPresent) {
+      LIBBLU_DTS_DEBUG_EXTSS(
+        "      Aux Sync Word distance (nuExSSAuxSyncDistInFrames): "
+        "%" PRIu8 " frames (0x%" PRIX8 ").\n",
+        aux->nuExSSAuxSyncDistInFrames,
+        aux->nuExSSAuxSyncDistInFrames_code
+      );
     }
   }
 

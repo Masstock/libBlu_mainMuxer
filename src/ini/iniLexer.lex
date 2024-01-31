@@ -52,7 +52,7 @@ int charno = 1;
 %%
 
 int yyerror(
-  IniFileContextPtr ctx,
+  IniFileContext * ctx,
   char * format,
   ...
 )
@@ -70,7 +70,7 @@ int yyerror(
   va_end(args);
 
   if (NULL != ctx && NULL != ctx->src) {
-    assert(lineno-1 < (int) ctx->srcNbLines);
+    assert(lineno-1 < (int) ctx->src_nb_lines);
     fprintf(stderr, "%4d | %s", lineno, ctx->src[lineno-1]);
   }
 

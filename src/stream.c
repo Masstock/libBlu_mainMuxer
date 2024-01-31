@@ -165,16 +165,16 @@ int requestESPIDLibbluStream(
 
     /* Try to insert value */
     switch (insertLibbluRegisteredPIDValues(&pid_vals->reg_values, sel_pid)) {
-      case 0: /* Unable to insert value */
-        sel_pid++;
-        break;
+    case 0: /* Unable to insert value */
+      sel_pid++;
+      break;
 
-      case 1: /* Insertion successfull */
-        is_valid_sel_pid = true;
-        break;
+    case 1: /* Insertion successfull */
+      is_valid_sel_pid = true;
+      break;
 
-      default: /* Error */
-        return -1;
+    default: /* Error */
+      return -1;
     }
   }
 

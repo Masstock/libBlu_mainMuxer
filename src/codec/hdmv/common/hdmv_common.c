@@ -10,31 +10,6 @@
 
 /* ### HDMV Sequence : ##################################################### */
 
-bool isDuplicateHdmvSequence(
-  const HdmvSequencePtr first,
-  const HdmvSequencePtr second
-)
-{
-  if (first->type != second->type)
-    return false;
-
-  switch (first->type) {
-    case HDMV_SEGMENT_TYPE_PDS:
-      return constantHdmvPDSegmentParameters(first->data.pd, second->data.pd);
-
-    case HDMV_SEGMENT_TYPE_ODS:
-    case HDMV_SEGMENT_TYPE_PCS:
-    case HDMV_SEGMENT_TYPE_WDS:
-    case HDMV_SEGMENT_TYPE_ICS:
-      // TODO
-
-    case HDMV_SEGMENT_TYPE_END:
-      break;
-  }
-
-  return true;
-}
-
 int parseFragmentHdmvSequence(
   HdmvSequencePtr dst,
   BitstreamReaderPtr input,
@@ -71,239 +46,235 @@ int parseFragmentHdmvSequence(
   return 0;
 }
 
-/* ### HDMV Segments Inventory Pool : ###################################### */
+/* ### HDMV Display Set : ################################################## */
 
-static int increaseAllocationHdmvSegmentsInventoryPool(
-  HdmvSegmentsInventoryPool * pool
+HdmvSequencePtr getFirstSequenceByIdxHdmvDSState(
+  const HdmvDSState * ds_state,
+  hdmv_segtype_idx idx
 )
 {
-  void * newSegment;
-  size_t newSegmentSize;
-
-  if (pool->nbAllocElemSegs <= pool->nbUsedElemSegs) {
-    /* Reallocate segments array */
-    void ** newArray;
-    size_t i, newSize;
-
-    newSize = GROW_ALLOCATION(
-      pool->nbAllocElemSegs,
-      HDMV_SEG_INV_POOL_DEFAULT_SEG_NB
-    );
-    if (lb_mul_overflow_size_t(newSize, sizeof(void *)))
-      LIBBLU_HDMV_QUANT_ERROR_RETURN("Inventory segments number overflow.\n");
-
-    newArray = (void **) realloc(pool->elemSegs, newSize * sizeof(void *));
-    if (NULL == newArray)
-      LIBBLU_HDMV_QUANT_ERROR_RETURN("Memory allocation error.\n");
-    for (i = pool->nbAllocElemSegs; i < newSize; i++)
-      newArray[i] = NULL;
-
-    pool->elemSegs = newArray;
-    pool->nbAllocElemSegs = newSize;
-  }
-
-  newSegmentSize = HDMV_SEG_INV_POOL_DEFAULT_SEG_SIZE << pool->nbUsedElemSegs;
-
-  if (NULL == pool->elemSegs[pool->nbUsedElemSegs]) {
-    if (lb_mul_overflow_size_t(newSegmentSize, pool->elemSize))
-      LIBBLU_HDMV_QUANT_ERROR_RETURN("Inventory segment size overflow.\n");
-
-    /* Use of calloc to avoid wild pointer-dereferences when cleaning mem. */
-    if (NULL == (newSegment = calloc(newSegmentSize, pool->elemSize)))
-      LIBBLU_HDMV_QUANT_ERROR_RETURN("Memory allocation error.\n");
-    pool->elemSegs[pool->nbUsedElemSegs] = newSegment;
-  }
-
-  pool->nbUsedElemSegs++;
-  pool->nbRemElem = newSegmentSize;
-
-  return 0;
+  assert(NULL != ds_state);
+  return ds_state->sequences[idx].ds_head;
 }
 
-/* ### HDMV Segments Inventory : ########################################### */
-
-void initHdmvSegmentsInventory(
-  HdmvSegmentsInventory * dst
+static HdmvSequencePtr _getDSLastSequenceByIdxHdmvDSState(
+  const HdmvDSState * ds_state,
+  hdmv_segtype_idx idx
 )
 {
-  HdmvSegmentsInventory inv = {0};
-
-#define INIT_POOL(d, s)  initHdmvSegmentsInventoryPool(d, s)
-  INIT_POOL(&inv.sequences, sizeof(HdmvSequence));
-  INIT_POOL(&inv.segments, sizeof(HdmvSegment));
-  INIT_POOL(&inv.segments, sizeof(HdmvSegment));
-  INIT_POOL(&inv.pages, sizeof(HdmvPageParameters));
-  INIT_POOL(&inv.windows, sizeof(HdmvWindowInfoParameters));
-  INIT_POOL(&inv.effects, sizeof(HdmvEffectInfoParameters));
-  INIT_POOL(&inv.compo_obj, sizeof(HdmvCOParameters));
-  INIT_POOL(&inv.bogs, sizeof(HdmvButtonOverlapGroupParameters));
-  INIT_POOL(&inv.buttons, sizeof(HdmvButtonParam));
-  INIT_POOL(&inv.commands, sizeof(HdmvNavigationCommand));
-  INIT_POOL(&inv.pal_entries, sizeof(HdmvPaletteEntryParameters));
-#undef INIT_POOL
-
-  *dst = inv;
+  return ds_state->sequences[idx].ds_last;
 }
 
-/* ###### Inventory content fetching functions : ########################### */
-
-/** \~english
- * \brief
- *
- * \param d Pointer destination variable.
- * \param tp Type pointer.
- * \param p Source pool.
- */
-#define GET_HDMV_SEGMENTS_INVENTORY_POOL(d, tp, p)                            \
-  do {                                                                        \
-    if (!(p)->nbRemElem) {                                                    \
-      if (increaseAllocationHdmvSegmentsInventoryPool(p) < 0)                 \
-        return NULL;                                                          \
-    }                                                                         \
-    d = &(                                                                    \
-      (tp) (p)->elemSegs[(p)->nbUsedElemSegs-1]                               \
-    )[--(p)->nbRemElem];                                                      \
-  } while (0)
-
-HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+HdmvSequencePtr getICSPCSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
 )
 {
   HdmvSequencePtr seq;
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(seq, HdmvSequence *, &inv->sequences);
-  if (NULL == seq)
-    return NULL;
-  resetHdmvSequence(seq);
+  seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ICS_IDX);
+  if (NULL != seq) {
+    assert(isUniqueInDisplaySetHdmvSequence(seq));
+    return seq;
+  }
 
+  seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PCS_IDX);
+  if (NULL != seq) {
+    assert(isUniqueInDisplaySetHdmvSequence(seq));
+    return seq;
+  }
+
+  LIBBLU_HDMV_COM_ERROR_NRETURN("Internal error, unexpected missing ICS/PCS segment.\n");
+}
+
+HdmvSequencePtr getICSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
+)
+{
+  HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ICS_IDX);
+  if (NULL != seq) {
+    assert(isUniqueInDisplaySetHdmvSequence(seq));
+    return seq;
+  }
+
+  LIBBLU_HDMV_COM_ERROR_NRETURN("Internal error, unexpected missing ICS segment.\n");
+}
+
+HdmvSequencePtr getPCSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
+)
+{
+  HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PCS_IDX);
+  if (NULL != seq) {
+    assert(isUniqueInDisplaySetHdmvSequence(seq));
+    return seq;
+  }
+
+  LIBBLU_HDMV_COM_ERROR_NRETURN("Internal error, unexpected missing PCS segment.\n");
+}
+
+HdmvSequencePtr getWDSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
+)
+{
+  HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_WDS_IDX);
+  assert(atMostOneInDisplaySetHdmvSequence(seq));
   return seq;
 }
 
-HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+HdmvSequencePtr getFirstPDSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
 )
 {
-  HdmvSegmentPtr seg;
-
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(seg, HdmvSegment *, &inv->segments);
-  if (NULL == seg)
-    return NULL;
-  initHdmvSegment(seg);
-
-  return seg;
+  return getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PDS_IDX);
 }
 
-HdmvPageParameters * getHdmvPageParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+HdmvSequencePtr getLastPDSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
 )
 {
-  HdmvPageParameters * page;
-
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(page, HdmvPageParameters *, &inv->pages);
-  if (NULL == page)
-    return NULL;
-  initHdmvPageParameters(page);
-
-  return page;
+  return _getDSLastSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PDS_IDX);
 }
 
-HdmvWindowInfoParameters * getHdmvWinInfoParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+HdmvSequencePtr getFirstODSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
 )
 {
-  HdmvWindowInfoParameters * win;
-
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(win, HdmvWindowInfoParameters *, &inv->windows);
-  if (NULL == win)
-    return NULL;
-  initHdmvWindowInfoParameters(win);
-
-  return win;
+  return getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ODS_IDX);
 }
 
-HdmvEffectInfoParameters * getHdmvEffInfoParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+HdmvSequencePtr getLastODSSequenceHdmvDSState(
+  const HdmvDSState * ds_state
 )
 {
-  HdmvEffectInfoParameters * eff;
-
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(eff, HdmvEffectInfoParameters *, &inv->effects);
-  if (NULL == eff)
-    return NULL;
-  initHdmvEffectInfoParameters(eff);
-
-  return eff;
+  return _getDSLastSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ODS_IDX);
 }
 
-HdmvCOParameters * getHdmvCompoObjParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+HdmvSequencePtr getENDSequenceHdmvDSState(
+  const HdmvDSState * ds_state
 )
 {
-  HdmvCOParameters * compo;
+  HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_END_IDX);
+  if (NULL != seq) {
+    assert(isUniqueInDisplaySetHdmvSequence(seq));
+    return seq;
+  }
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(compo, HdmvCOParameters *, &inv->compo_obj);
-  if (NULL == compo)
-    return NULL;
-  initHdmvCompositionObjectParameters(compo);
-
-  return compo;
+  LIBBLU_HDMV_COM_ERROR_NRETURN("Internal error, unexpected missing END segment.\n");
 }
 
-HdmvButtonOverlapGroupParameters * getHdmvBOGParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+/* ### HDMV Epoch memory state : ########################################### */
+
+void setPaletteHdmvEpochState(
+  HdmvEpochState * epoch_state,
+  const HdmvPDSegmentParameters pal_def
 )
 {
-  HdmvButtonOverlapGroupParameters * bog;
+  HdmvEpochStatePalette * dst_pal = &epoch_state->palettes[
+    pal_def.palette_descriptor.palette_id
+  ];
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(bog, HdmvButtonOverlapGroupParameters *, &inv->bogs);
-  if (NULL == bog)
-    return NULL;
-  initHdmvButtonOverlapGroupParameters(bog);
+  if (HDMV_DEF_NEVER_PROVIDED == dst_pal->state) {
+    dst_pal->def = pal_def; // Initialization, copy whole definition
+    dst_pal->state = HDMV_DEF_JUST_PROVIDED;
+  }
+  else {
+    bool is_update = (
+      dst_pal->def.palette_descriptor.palette_version_number
+      != pal_def.palette_descriptor.palette_version_number
+    );
 
-  return bog;
+    if (is_update) {
+      /* Update only supplied values */
+      dst_pal->def.palette_descriptor = pal_def.palette_descriptor;
+      for (unsigned i = 0; i < HDMV_NB_PAL_ENTRIES; i++) {
+        HdmvPaletteEntryParameters entry = pal_def.palette_entries[i];
+        if (entry.updated)
+          dst_pal->def.palette_entries[i] = entry;
+      }
+      dst_pal->state = HDMV_DEF_JUST_UPDATED;
+    }
+    else
+      dst_pal->state = HDMV_DEF_JUST_PROVIDED;
+  }
+
+  epoch_state->last_PDS[pal_def.palette_descriptor.palette_id] = pal_def;
 }
 
-HdmvButtonParam * getHdmvBtnParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+void setObjectHdmvEpochState(
+  HdmvEpochState * epoch_state,
+  const HdmvODParameters obj_def
 )
 {
-  HdmvButtonParam * btn;
+  HdmvEpochStateObject * dst_obj = &epoch_state->objects[
+    obj_def.object_descriptor.object_id
+  ];
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(btn, HdmvButtonParam *, &inv->buttons);
-  if (NULL == btn)
-    return NULL;
-  initHdmvButtonParam(btn);
+  if (HDMV_DEF_NEVER_PROVIDED == dst_obj->state) {
+    dst_obj->def   = obj_def; // Initialization, copy whole definition
+    dst_obj->state = HDMV_DEF_JUST_PROVIDED;
+  }
+  else {
+    bool is_update = (
+      dst_obj->def.object_descriptor.object_version_number
+      != obj_def.object_descriptor.object_version_number
+    );
 
-  return btn;
+    if (is_update) {
+      dst_obj->def   = obj_def;
+      dst_obj->state = HDMV_DEF_JUST_UPDATED;
+    }
+    else
+      dst_obj->state = HDMV_DEF_JUST_PROVIDED;
+  }
 }
 
-HdmvNavigationCommand * getHdmvNaviComHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+void setActivePCHdmvEpochState(
+  HdmvEpochState * epoch_state,
+  HdmvPCParameters pc,
+  int64_t pc_pts
 )
 {
-  HdmvNavigationCommand * com;
+  epoch_state->cur_active_pc = (epoch_state->cur_active_pc + 1) % HDMV_MAX_NB_ACTIVE_PC;
+  epoch_state->nb_active_pc  = MIN(epoch_state->nb_active_pc + 1, HDMV_MAX_NB_ACTIVE_PC);
 
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(com, HdmvNavigationCommand *, &inv->commands);
-  if (NULL == com)
-    return NULL;
-  initHdmvNavigationCommand(com);
-
-  return com;
+  epoch_state->active_pc[epoch_state->cur_active_pc]     = pc;
+  epoch_state->active_pc_pts[epoch_state->cur_active_pc] = pc_pts;
 }
 
-HdmvPaletteEntryParameters * getHdmvPalEntryParamHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+void setWDHdmvEpochState(
+  HdmvEpochState * epoch_state,
+  const HdmvWDParameters wd
 )
 {
-  HdmvPaletteEntryParameters * entry;
-
-  GET_HDMV_SEGMENTS_INVENTORY_POOL(entry, HdmvPaletteEntryParameters *, &inv->pal_entries);
-  if (NULL == entry)
-    return NULL;
-  initHdmvPaletteEntryParameters(entry);
-
-  return entry;
+  epoch_state->window_def = wd;
+  epoch_state->window_def_present  = true;
+  epoch_state->window_def_provided = true;
 }
 
-#undef INCREMENT_POOL
-#undef GET_POOL
+int setActiveICHdmvEpochState(
+  HdmvEpochState * epoch_state,
+  HdmvICParameters ic,
+  int64_t ic_pts
+)
+{
+  if (!epoch_state->active_ic_present) {
+    if (copyHdmvICParameters(&epoch_state->active_ic, ic) < 0)
+      return -1;
+  }
+  else {
+    /* Update current active IC */
+    HdmvICParameters * dst = &epoch_state->active_ic;
+    assert(dst->number_of_pages == ic.number_of_pages);
+    for (uint8_t i = 0; i < ic.number_of_pages; i++) {
+      if (ic.pages[i].page_version_number != dst->pages[i].page_version_number) {
+        cleanHdmvPageParameters(dst->pages[i]);
+        if (copyHdmvPageParameters(&dst->pages[i], ic.pages[i]) < 0)
+          return -1;
+      }
+    }
+  }
+
+  epoch_state->active_ic_pts = ic_pts;
+  epoch_state->active_ic_present = true;
+  return 0;
+}

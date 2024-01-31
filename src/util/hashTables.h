@@ -14,8 +14,16 @@
 
 #include "common.h"
 
+typedef union {
+  void * ptr;
+  struct {
+    uint32_t val;
+    bool non_empty;
+  } num;
+} HashentryKey;
+
 typedef struct {
-  void * key;
+  HashentryKey key;
   void * data;
 } Hashentry;
 
@@ -28,14 +36,16 @@ typedef int (*HashTable_keyCompFun) (
   const void *
 );
 
-typedef void (*HashTable_datFreeFun) (
+typedef void (*HashTable_freeFun) (
   void *
 );
 
 typedef struct {
   HashTable_keyHashFun key_hash_fun;
   HashTable_keyCompFun key_comp_fun;
-  HashTable_datFreeFun dat_free_fun;
+  HashTable_freeFun key_free_fun;
+  HashTable_freeFun dat_free_fun;
+  bool numeric_key;
 
   Hashentry * array;
   size_t array_used_len;
@@ -43,43 +53,51 @@ typedef struct {
   bool initialized;
 } Hashtable;
 
+static inline Hashtable newHashtable(
+  void
+)
+{
+  return (Hashtable) {0};
+}
+
+static inline Hashtable newNumHashtable(
+  void
+)
+{
+  return (Hashtable) {.numeric_key = true};
+}
+
 void setFunHashTable(
   Hashtable * table,
   HashTable_keyHashFun key_hash_fun,
   HashTable_keyCompFun key_comp_fun,
-  HashTable_datFreeFun dat_free_fun
+  HashTable_freeFun key_free_fun,
+  HashTable_freeFun dat_free_fun
 );
 
-static inline void initHashTable(
-  Hashtable * dst
-)
-{
-  *dst = (Hashtable) {0};
-  setFunHashTable(dst, NULL, NULL, NULL);
-}
-
-static inline void cleanHashTable(
+void cleanHashTable(
   Hashtable table
-)
-{
-  for (size_t i = 0; i < table.array_allocated_len; i++) {
-    const Hashentry entry = table.array[i];
-    if (NULL != entry.key) {
-      free(entry.key);
-      table.dat_free_fun(entry.data);
-    }
-  }
-  free(table.array);
-}
+);
 
 void * getHashTable(
   Hashtable * table,
   const void * entry_key
 );
 
+void * getNumHashTable(
+  Hashtable * table,
+  uint32_t entry_key
+);
+
 int putHashTable(
   Hashtable * table,
   void * entry_key,
+  void * entry_data
+);
+
+int putNumHashTable(
+  Hashtable * table,
+  uint32_t entry_key,
   void * entry_data
 );
 

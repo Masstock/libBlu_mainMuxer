@@ -193,7 +193,7 @@ static int _writeVideoDescriptor(
   );
 }
 
-static int writeCompositionDescriptor(
+static int _writeCompositionDescriptor(
   HdmvSegmentsBuildingContext * ctx,
   const HdmvCDParameters param
 )
@@ -241,7 +241,7 @@ static int _writeSequenceDescriptor(
 /* ###### Palette Definition Segment (0x14) : ############################## */
 
 static inline uint32_t _computeSizePaletteEntries(
-  const HdmvPalette * pal
+  const HdmvPalette pal
 )
 {
   return
@@ -251,18 +251,16 @@ static inline uint32_t _computeSizePaletteEntries(
 }
 
 static uint8_t * _buildPaletteDefinitionEntries(
-  const HdmvPalette * pal,
+  const HdmvPalette pal,
   uint32_t * size_ret
 )
 {
-  assert(NULL != pal);
-
-  if (HDMV_MAX_NB_PDS_ENTRIES < pal->nb_entries)
+  if (HDMV_MAX_NB_PDS_ENTRIES < pal.nb_entries)
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN(
       "Bulding error, too many palette entries in PDS (%u < %u), "
       "broken program.\n",
       HDMV_MAX_NB_PDS_ENTRIES,
-      pal->nb_entries
+      pal.nb_entries
     );
 
   uint32_t exp_len = _computeSizePaletteEntries(pal);
@@ -350,7 +348,7 @@ static inline uint32_t _computeSizePDS(
     size +=
       HDMV_SIZE_SEGMENT_HEADER
       + HDMV_SIZE_PALETTE_DESCRIPTOR
-      + _computeSizePaletteEntries(&palettes_arr[i])
+      + _computeSizePaletteEntries(palettes_arr[i])
     ;
   }
 
@@ -359,19 +357,19 @@ static inline uint32_t _computeSizePDS(
 
 static int _writePaletteDefinitionSegments(
   HdmvSegmentsBuildingContext * ctx,
-  const IgsCompilerComposition * compo
+  const IgsCompilerComposition compo
 )
 {
   uint8_t * pal_data = NULL;
 
   assert(NULL != ctx);
-  assert(NULL != compo);
 
   /* Compute required output buffer size. */
   uint32_t segments_size = _computeSizePDS(
-    compo->palettes,
-    compo->nb_used_palettes
+    compo.palettes,
+    compo.nb_used_palettes
   );
+
   if (!segments_size) {
     LIBBLU_WARNING("No palette in composition.\n");
     return 0;
@@ -380,8 +378,8 @@ static int _writePaletteDefinitionSegments(
   if (_reqBufSizeCtx(ctx, segments_size) < 0)
     return -1;
 
-  for (unsigned i = 0; i < compo->nb_used_palettes; i++) {
-    const HdmvPalette * pal = &compo->palettes[i];
+  for (unsigned i = 0; i < compo.nb_used_palettes; i++) {
+    const HdmvPalette pal = compo.palettes[i];
 
     uint32_t pal_len;
     if (NULL == (pal_data = _buildPaletteDefinitionEntries(pal, &pal_len)))
@@ -395,7 +393,7 @@ static int _writePaletteDefinitionSegments(
     if (_writeSegmentHeader(ctx, seg_desc) < 0)
       goto free_return;
 
-    if (_writePaletteDescriptor(ctx, i, pal->version) < 0)
+    if (_writePaletteDescriptor(ctx, i, pal.version) < 0)
       goto free_return;
 
     if (0 < pal_len) {
@@ -421,14 +419,13 @@ static uint8_t * _buildObjectData(
   uint32_t * size_ret
 )
 {
-  assert(NULL != obj);
   assert(HDMV_OD_MIN_SIZE <= obj->pal_bitmap.width);
   assert(HDMV_OD_MIN_SIZE <= obj->pal_bitmap.height);
 
   uint16_t width  = obj->pal_bitmap.width;
   uint16_t height = obj->pal_bitmap.height;
 
-  const uint8_t * rle_data = getRleHdmvObject(obj);
+  const uint8_t * rle_data = getOrPerformRleHdmvObject(obj);
   if (NULL == rle_data)
     return NULL;
   uint32_t rle_size = obj->rle_size;
@@ -478,7 +475,7 @@ free_return:
   return NULL;
 }
 
-int writeObjectDefinitionSegHeaderIgsCompiler(
+static int _writeObjectDefinitionSegHeader(
   HdmvSegmentsBuildingContext * ctx,
   HdmvODescParameters odesc
 )
@@ -533,11 +530,10 @@ uint32_t computeSizeHdmvObjectDefinitionSegments(
 
 static int _writeObjectDefinitionSegments(
   HdmvSegmentsBuildingContext * ctx,
-  IgsCompilerComposition * compo
+  const IgsCompilerComposition compo
 )
 {
   assert(NULL != ctx);
-  assert(NULL != compo);
 
   LIBBLU_HDMV_SEGBUILD_DEBUG(
     "  Computing required size (performing RLE compression if required).\n"
@@ -545,8 +541,8 @@ static int _writeObjectDefinitionSegments(
 
   /* Compute required output buffer size. */
   uint32_t seg_size = computeSizeHdmvObjectDefinitionSegments(
-    compo->objects,
-    compo->nb_objects
+    compo.objects,
+    compo.nb_objects
   );
   if (!seg_size) {
     LIBBLU_WARNING("No object in composition.\n");
@@ -561,11 +557,11 @@ static int _writeObjectDefinitionSegments(
   );
 
   uint8_t * obj_data = NULL;
-  for (unsigned i = 0; i < compo->nb_objects; i++) {
-    HdmvObject * obj = &compo->objects[i];
+  for (unsigned i = 0; i < compo.nb_objects; i++) {
+    HdmvObject * obj_ptr = &compo.objects[i];
 
     uint32_t obj_size;
-    if (NULL == (obj_data = _buildObjectData(obj, &obj_size)))
+    if (NULL == (obj_data = _buildObjectData(obj_ptr, &obj_size)))
       return -1;
     uint8_t * obj_frag_data = obj_data;
 
@@ -586,7 +582,7 @@ static int _writeObjectDefinitionSegments(
       if (_writeSegmentHeader(ctx, seg_desc) < 0)
         goto free_return;
 
-      if (writeObjectDefinitionSegHeaderIgsCompiler(ctx, obj->desc) < 0)
+      if (_writeObjectDefinitionSegHeader(ctx, obj_ptr->desc) < 0)
         goto free_return;
 
       /* sequence_descriptor() */
@@ -613,8 +609,8 @@ free_return:
 
 /* ###### Interactive Composition Segment (0x18) : ######################### */
 
-static uint32_t _appendButtonNeighborInfoIgsCompiler(
-  HdmvButtonNeighborInfoParam param,
+static uint32_t _appendButtonNeighborInfo(
+  const HdmvButtonNeighborInfoParam param,
   uint8_t * arr,
   uint32_t off
 )
@@ -638,8 +634,8 @@ static uint32_t _appendButtonNeighborInfoIgsCompiler(
   return off;
 }
 
-static uint32_t _appendButtonNormalStateInfoIgsCompiler(
-  HdmvButtonNormalStateInfoParam param,
+static uint32_t _appendButtonNormalStateInfo(
+  const HdmvButtonNormalStateInfoParam param,
   uint8_t * arr,
   uint32_t off
 )
@@ -658,8 +654,8 @@ static uint32_t _appendButtonNormalStateInfoIgsCompiler(
   return off;
 }
 
-static uint32_t _appendButtonSelectedStateInfoIgsCompiler(
-  HdmvButtonSelectedStateInfoParam param,
+static uint32_t _appendButtonSelectedStateInfo(
+  const HdmvButtonSelectedStateInfoParam param,
   uint8_t * arr,
   uint32_t off
 )
@@ -681,8 +677,8 @@ static uint32_t _appendButtonSelectedStateInfoIgsCompiler(
   return off;
 }
 
-static uint32_t _appendButtonActivatedStateInfoIgsCompiler(
-  HdmvButtonActivatedStateInfoParam param,
+static uint32_t _appendButtonActivatedStateInfo(
+  const HdmvButtonActivatedStateInfoParam param,
   uint8_t * arr,
   uint32_t off
 )
@@ -701,221 +697,195 @@ static uint32_t _appendButtonActivatedStateInfoIgsCompiler(
   return off;
 }
 
-static uint32_t _appendNavigationCommandIgsCompiler(
-  const HdmvNavigationCommand * param,
+static uint32_t _appendNavigationCommand(
+  const HdmvNavigationCommand nav_com,
   uint8_t * arr,
   uint32_t off
 )
 {
   /* [u32 opcode] */
-  WB_ARRAY(arr, off, param->opcode >> 24);
-  WB_ARRAY(arr, off, param->opcode >> 16);
-  WB_ARRAY(arr, off, param->opcode >>  8);
-  WB_ARRAY(arr, off, param->opcode);
+  WB_ARRAY(arr, off, nav_com.opcode >> 24);
+  WB_ARRAY(arr, off, nav_com.opcode >> 16);
+  WB_ARRAY(arr, off, nav_com.opcode >>  8);
+  WB_ARRAY(arr, off, nav_com.opcode);
 
   /* [u32 destination] */
-  WB_ARRAY(arr, off, param->destination >> 24);
-  WB_ARRAY(arr, off, param->destination >> 16);
-  WB_ARRAY(arr, off, param->destination >>  8);
-  WB_ARRAY(arr, off, param->destination);
+  WB_ARRAY(arr, off, nav_com.destination >> 24);
+  WB_ARRAY(arr, off, nav_com.destination >> 16);
+  WB_ARRAY(arr, off, nav_com.destination >>  8);
+  WB_ARRAY(arr, off, nav_com.destination);
 
   /* [u32 source] */
-  WB_ARRAY(arr, off, param->source >> 24);
-  WB_ARRAY(arr, off, param->source >> 16);
-  WB_ARRAY(arr, off, param->source >>  8);
-  WB_ARRAY(arr, off, param->source);
+  WB_ARRAY(arr, off, nav_com.source >> 24);
+  WB_ARRAY(arr, off, nav_com.source >> 16);
+  WB_ARRAY(arr, off, nav_com.source >>  8);
+  WB_ARRAY(arr, off, nav_com.source);
 
   return off;
 }
 
-uint32_t appendButtonIgsCompiler(
-  const HdmvButtonParam * param,
+static uint32_t _appendButton(
+  const HdmvButtonParam btn,
   uint8_t * arr,
   uint32_t off
 )
 {
-  assert(NULL != param);
   assert(NULL != arr);
 
   /* [u16 button_id] */
-  WB_ARRAY(arr, off, param->button_id >> 8);
-  WB_ARRAY(arr, off, param->button_id);
+  WB_ARRAY(arr, off, btn.button_id >> 8);
+  WB_ARRAY(arr, off, btn.button_id);
 
   /* [u16 button_numeric_select_value] */
-  WB_ARRAY(arr, off, param->button_numeric_select_value >> 8);
-  WB_ARRAY(arr, off, param->button_numeric_select_value);
+  WB_ARRAY(arr, off, btn.button_numeric_select_value >> 8);
+  WB_ARRAY(arr, off, btn.button_numeric_select_value);
 
   /* [b1 auto_action_flag] [v7 reserved] */
-  WB_ARRAY(arr, off, param->auto_action << 7);
+  WB_ARRAY(arr, off, btn.auto_action << 7);
 
   /* [u16 button_horizontal_position] */
-  WB_ARRAY(arr, off, param->button_horizontal_position >> 8);
-  WB_ARRAY(arr, off, param->button_horizontal_position);
+  WB_ARRAY(arr, off, btn.button_horizontal_position >> 8);
+  WB_ARRAY(arr, off, btn.button_horizontal_position);
 
   /* [u16 button_vertical_position] */
-  WB_ARRAY(arr, off, param->button_vertical_position >> 8);
-  WB_ARRAY(arr, off, param->button_vertical_position);
+  WB_ARRAY(arr, off, btn.button_vertical_position >> 8);
+  WB_ARRAY(arr, off, btn.button_vertical_position);
 
   /* neighbor_info() */
-  off = _appendButtonNeighborInfoIgsCompiler(param->neighbor_info, arr, off);
+  off = _appendButtonNeighborInfo(btn.neighbor_info, arr, off);
 
   /* normal_state_info() */
-  off = _appendButtonNormalStateInfoIgsCompiler(param->normal_state_info, arr, off);
+  off = _appendButtonNormalStateInfo(btn.normal_state_info, arr, off);
 
   /* selected_state_info() */
-  off = _appendButtonSelectedStateInfoIgsCompiler(param->selected_state_info, arr, off);
+  off = _appendButtonSelectedStateInfo(btn.selected_state_info, arr, off);
 
   /* activated_state_info() */
-  off = _appendButtonActivatedStateInfoIgsCompiler(param->activated_state_info, arr, off);
+  off = _appendButtonActivatedStateInfo(btn.activated_state_info, arr, off);
 
   /* [u16 number_of_navigation_commands] */
-  WB_ARRAY(arr, off, param->number_of_navigation_commands >> 8);
-  WB_ARRAY(arr, off, param->number_of_navigation_commands);
+  WB_ARRAY(arr, off, btn.number_of_navigation_commands >> 8);
+  WB_ARRAY(arr, off, btn.number_of_navigation_commands);
 
-  HdmvNavigationCommand * com = param->navigation_commands;
-  for (unsigned i = 0; i < param->number_of_navigation_commands; i++) {
+  for (unsigned i = 0; i < btn.number_of_navigation_commands; i++) {
     /* Navigation_command() */
-    if (NULL == com)
-      LIBBLU_HDMV_SEGBUILD_ERROR_ZRETURN(
-        "Unexpected too short commands list (%u/%u).\n",
-        i, param->number_of_navigation_commands
-      );
-
-    off = _appendNavigationCommandIgsCompiler(com, arr, off);
-    com = com->next;
+    HdmvNavigationCommand com = btn.navigation_commands[i];
+    off = _appendNavigationCommand(com, arr, off);
   }
-
-  if (NULL != com)
-    LIBBLU_HDMV_SEGBUILD_ERROR_ZRETURN(
-      "Unexpected too long commands list (%u).\n",
-      param->number_of_navigation_commands
-    );
 
   return off;
 }
 
-uint32_t appendButtonOverlapGroupIgsCompiler(
-  const HdmvButtonOverlapGroupParameters * param,
+static uint32_t _appendButtonOverlapGroup(
+  const HdmvButtonOverlapGroupParameters bog,
   uint8_t * arr,
   uint32_t off
 )
 {
-  assert(NULL != param);
-  assert(NULL != arr);
-
   /* [u16 default_valid_button_id_ref] */
-  WB_ARRAY(arr, off, param->default_valid_button_id_ref >> 8);
-  WB_ARRAY(arr, off, param->default_valid_button_id_ref);
+  WB_ARRAY(arr, off, bog.default_valid_button_id_ref >> 8);
+  WB_ARRAY(arr, off, bog.default_valid_button_id_ref);
 
   /* [u8 number_of_buttons] */
-  WB_ARRAY(arr, off, param->number_of_buttons);
+  WB_ARRAY(arr, off, bog.number_of_buttons);
 
-  for (unsigned i = 0; i < param->number_of_buttons; i++) {
+  for (unsigned i = 0; i < bog.number_of_buttons; i++) {
     /* button() */
-    if (0 == (off = appendButtonIgsCompiler(param->buttons[i], arr, off)))
+    if (0 == (off = _appendButton(bog.buttons[i], arr, off)))
       return 0;
   }
 
   return off;
 }
 
-uint32_t appendEffectSequenceIgsCompiler(
-  const HdmvEffectSequenceParameters * param,
+static uint32_t _appendEffectSequence(
+  const HdmvEffectSequenceParameters es,
   uint8_t * arr,
   uint32_t off
 )
 {
-  assert(NULL != param);
-  assert(NULL != arr);
-
   /* [u8 number_of_windows] */
-  WB_ARRAY(arr, off, param->number_of_windows);
+  WB_ARRAY(arr, off, es.number_of_windows);
 
-  for (unsigned i = 0; i < param->number_of_effects; i++) {
-    HdmvWindowInfoParameters * window;
-
+  for (unsigned i = 0; i < es.number_of_effects; i++) {
     /* window_info() */
-    window = param->windows[i];
+    const HdmvWindowInfoParameters window = es.windows[i];
 
     /* [u8 window_id] */
-    WB_ARRAY(arr, off, window->window_id);
+    WB_ARRAY(arr, off, window.window_id);
 
     /* [u16 window_horizontal_position] */
-    WB_ARRAY(arr, off, window->window_horizontal_position >> 8);
-    WB_ARRAY(arr, off, window->window_horizontal_position);
+    WB_ARRAY(arr, off, window.window_horizontal_position >> 8);
+    WB_ARRAY(arr, off, window.window_horizontal_position);
 
     /* [u16 window_vertical_position] */
-    WB_ARRAY(arr, off, window->window_vertical_position >> 8);
-    WB_ARRAY(arr, off, window->window_vertical_position);
+    WB_ARRAY(arr, off, window.window_vertical_position >> 8);
+    WB_ARRAY(arr, off, window.window_vertical_position);
 
     /* [u16 window_width] */
-    WB_ARRAY(arr, off, window->window_width >> 8);
-    WB_ARRAY(arr, off, window->window_width);
+    WB_ARRAY(arr, off, window.window_width >> 8);
+    WB_ARRAY(arr, off, window.window_width);
 
     /* [u16 window_height] */
-    WB_ARRAY(arr, off, window->window_height >> 8);
-    WB_ARRAY(arr, off, window->window_height);
+    WB_ARRAY(arr, off, window.window_height >> 8);
+    WB_ARRAY(arr, off, window.window_height);
   }
 
   /* [u8 number_of_effects] */
-  WB_ARRAY(arr, off, param->number_of_effects);
+  WB_ARRAY(arr, off, es.number_of_effects);
 
-  for (unsigned i = 0; i < param->number_of_effects; i++) {
-    HdmvEffectInfoParameters * effect;
-
+  for (unsigned i = 0; i < es.number_of_effects; i++) {
     /* effect_info() */
-    effect = param->effects[i];
+    const HdmvEffectInfoParameters effect = es.effects[i];
 
     /* [u24 effect_duration] */
-    WB_ARRAY(arr, off, effect->effect_duration >> 16);
-    WB_ARRAY(arr, off, effect->effect_duration >>  8);
-    WB_ARRAY(arr, off, effect->effect_duration);
+    WB_ARRAY(arr, off, effect.effect_duration >> 16);
+    WB_ARRAY(arr, off, effect.effect_duration >>  8);
+    WB_ARRAY(arr, off, effect.effect_duration);
 
     /* [u8 palette_id_ref] */
-    WB_ARRAY(arr, off, effect->palette_id_ref);
+    WB_ARRAY(arr, off, effect.palette_id_ref);
 
     /* [u8 number_of_composition_objects] */
-    WB_ARRAY(arr, off, effect->number_of_composition_objects);
+    WB_ARRAY(arr, off, effect.number_of_composition_objects);
 
-    for (unsigned j = 0; j < effect->number_of_composition_objects; j++) {
-      HdmvCOParameters * obj;
-
-      obj = effect->composition_objects[j];
+    for (unsigned j = 0; j < effect.number_of_composition_objects; j++) {
+      const HdmvCOParameters obj = effect.composition_objects[j];
 
       /* [u16 object_id_ref] */
-      WB_ARRAY(arr, off, obj->object_id_ref >> 8);
-      WB_ARRAY(arr, off, obj->object_id_ref);
+      WB_ARRAY(arr, off, obj.object_id_ref >> 8);
+      WB_ARRAY(arr, off, obj.object_id_ref);
 
       /* [u8 window_id_ref] */
-      WB_ARRAY(arr, off, obj->window_id_ref);
+      WB_ARRAY(arr, off, obj.window_id_ref);
 
       /* [b1 object_cropped_flag] [v7 reserved] */
-      WB_ARRAY(arr, off, obj->object_cropped_flag << 7);
+      WB_ARRAY(arr, off, obj.object_cropped_flag << 7);
 
       /* [u16 object_horizontal_position] */
-      WB_ARRAY(arr, off, obj->composition_object_horizontal_position >> 8);
-      WB_ARRAY(arr, off, obj->composition_object_horizontal_position);
+      WB_ARRAY(arr, off, obj.composition_object_horizontal_position >> 8);
+      WB_ARRAY(arr, off, obj.composition_object_horizontal_position);
 
       /* [u16 object_vertical_position] */
-      WB_ARRAY(arr, off, obj->composition_object_vertical_position >> 8);
-      WB_ARRAY(arr, off, obj->composition_object_vertical_position);
+      WB_ARRAY(arr, off, obj.composition_object_vertical_position >> 8);
+      WB_ARRAY(arr, off, obj.composition_object_vertical_position);
 
-      if (obj->object_cropped_flag) {
+      if (obj.object_cropped_flag) {
         /* [u16 object_cropping_horizontal_position] */
-        WB_ARRAY(arr, off, obj->object_cropping.horizontal_position >> 8);
-        WB_ARRAY(arr, off, obj->object_cropping.horizontal_position);
+        WB_ARRAY(arr, off, obj.object_cropping.horizontal_position >> 8);
+        WB_ARRAY(arr, off, obj.object_cropping.horizontal_position);
 
         /* [u16 object_cropping_vertical_position] */
-        WB_ARRAY(arr, off, obj->object_cropping.vertical_position >> 8);
-        WB_ARRAY(arr, off, obj->object_cropping.vertical_position);
+        WB_ARRAY(arr, off, obj.object_cropping.vertical_position >> 8);
+        WB_ARRAY(arr, off, obj.object_cropping.vertical_position);
 
         /* [u16 object_cropping_width] */
-        WB_ARRAY(arr, off, obj->object_cropping.width >> 8);
-        WB_ARRAY(arr, off, obj->object_cropping.width);
+        WB_ARRAY(arr, off, obj.object_cropping.width >> 8);
+        WB_ARRAY(arr, off, obj.object_cropping.width);
 
         /* [u16 object_cropping_height] */
-        WB_ARRAY(arr, off, obj->object_cropping.height >> 8);
-        WB_ARRAY(arr, off, obj->object_cropping.height);
+        WB_ARRAY(arr, off, obj.object_cropping.height >> 8);
+        WB_ARRAY(arr, off, obj.object_cropping.height);
       }
     }
   }
@@ -923,73 +893,68 @@ uint32_t appendEffectSequenceIgsCompiler(
   return off;
 }
 
-uint32_t appendPageIgsCompiler(
-  const HdmvPageParameters * param,
+static uint32_t _appendPage(
+  const HdmvPageParameters page,
   uint8_t * arr,
   uint32_t off
 )
 {
-  assert(NULL != param);
-  assert(NULL != arr);
-
   /* [u8 page_id] */
-  WB_ARRAY(arr, off, param->page_id);
+  WB_ARRAY(arr, off, page.page_id);
 
   /* [u8 page_version_number] */
-  WB_ARRAY(arr, off, param->page_version_number);
+  WB_ARRAY(arr, off, page.page_version_number);
 
   /* [u64 UO_mask_table()] */
-  WB_ARRAY(arr, off, param->UO_mask_table >> 56);
-  WB_ARRAY(arr, off, param->UO_mask_table >> 48);
-  WB_ARRAY(arr, off, param->UO_mask_table >> 40);
-  WB_ARRAY(arr, off, param->UO_mask_table >> 32);
-  WB_ARRAY(arr, off, param->UO_mask_table >> 24);
-  WB_ARRAY(arr, off, param->UO_mask_table >> 16);
-  WB_ARRAY(arr, off, param->UO_mask_table >>  8);
-  WB_ARRAY(arr, off, param->UO_mask_table);
+  WB_ARRAY(arr, off, page.UO_mask_table >> 56);
+  WB_ARRAY(arr, off, page.UO_mask_table >> 48);
+  WB_ARRAY(arr, off, page.UO_mask_table >> 40);
+  WB_ARRAY(arr, off, page.UO_mask_table >> 32);
+  WB_ARRAY(arr, off, page.UO_mask_table >> 24);
+  WB_ARRAY(arr, off, page.UO_mask_table >> 16);
+  WB_ARRAY(arr, off, page.UO_mask_table >>  8);
+  WB_ARRAY(arr, off, page.UO_mask_table);
 
   /* In_effects() */
-  if (0 == (off = appendEffectSequenceIgsCompiler(&param->in_effects, arr, off)))
+  if (0 == (off = _appendEffectSequence(page.in_effects, arr, off)))
     return 0;
 
   /* Out_effects() */
-  if (0 == (off = appendEffectSequenceIgsCompiler(&param->out_effects, arr, off)))
+  if (0 == (off = _appendEffectSequence(page.out_effects, arr, off)))
     return 0;
 
   /* [u8 animation_frame_rate_code] */
-  WB_ARRAY(arr, off, param->animation_frame_rate_code);
+  WB_ARRAY(arr, off, page.animation_frame_rate_code);
 
   /* [u16 default_selected_button_id_ref] */
-  WB_ARRAY(arr, off, param->default_selected_button_id_ref >> 8);
-  WB_ARRAY(arr, off, param->default_selected_button_id_ref);
+  WB_ARRAY(arr, off, page.default_selected_button_id_ref >> 8);
+  WB_ARRAY(arr, off, page.default_selected_button_id_ref);
 
   /* [u16 default_activated_button_id_ref] */
-  WB_ARRAY(arr, off, param->default_activated_button_id_ref >> 8);
-  WB_ARRAY(arr, off, param->default_activated_button_id_ref);
+  WB_ARRAY(arr, off, page.default_activated_button_id_ref >> 8);
+  WB_ARRAY(arr, off, page.default_activated_button_id_ref);
 
   /* [u8 palette_id_ref] */
-  WB_ARRAY(arr, off, param->palette_id_ref);
+  WB_ARRAY(arr, off, page.palette_id_ref);
 
   /* [u8 number_of_BOGs] */
-  WB_ARRAY(arr, off, param->number_of_BOGs);
+  WB_ARRAY(arr, off, page.number_of_BOGs);
 
-  for (unsigned i = 0; i < param->number_of_BOGs; i++) {
+  for (unsigned i = 0; i < page.number_of_BOGs; i++) {
     /* button_overlap_group() */
-    if (0 == (off = appendButtonOverlapGroupIgsCompiler(param->bogs[i], arr, off)))
+    if (0 == (off = _appendButtonOverlapGroup(page.bogs[i], arr, off)))
       return 0;
   }
 
   return off;
 }
 
-uint8_t * buildInteractiveCompositionIgsCompiler(
-  const HdmvICParameters * param,
+static uint8_t * _buildInteractiveComposition(
+  const HdmvICParameters ic,
   uint32_t * ic_data_length_ret
 )
 {
-  assert(NULL != param);
-
-  uint32_t ic_data_exp_len = computeSizeHdmvInteractiveComposition(param);
+  uint32_t ic_data_exp_len = computeSizeHdmvInteractiveComposition(ic);
   uint8_t * arr = (uint8_t *) malloc(ic_data_exp_len);
   if (NULL == arr)
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN("Memory allocation error.\n");
@@ -1004,39 +969,39 @@ uint8_t * buildInteractiveCompositionIgsCompiler(
   /* [b1 stream_model] [b1 user_interface_model] [v6 reserved] */
   WB_ARRAY(
     arr, off,
-    ((param->stream_model           & 0x1) << 7)
-    | ((param->user_interface_model & 0x1) << 6)
+    ((ic.stream_model           & 0x1) << 7)
+    | ((ic.user_interface_model & 0x1) << 6)
   );
 
-  if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
+  if (ic.stream_model == HDMV_STREAM_MODEL_MULTIPLEXED) {
     /* In Mux related parameters */
 
     /* [v7 reserved] [u33 composition_time_out_pts] */
-    WB_ARRAY(arr, off, param->composition_time_out_pts >> 32);
-    WB_ARRAY(arr, off, param->composition_time_out_pts >> 24);
-    WB_ARRAY(arr, off, param->composition_time_out_pts >> 16);
-    WB_ARRAY(arr, off, param->composition_time_out_pts >>  8);
-    WB_ARRAY(arr, off, param->composition_time_out_pts);
+    WB_ARRAY(arr, off, ic.composition_time_out_pts >> 32);
+    WB_ARRAY(arr, off, ic.composition_time_out_pts >> 24);
+    WB_ARRAY(arr, off, ic.composition_time_out_pts >> 16);
+    WB_ARRAY(arr, off, ic.composition_time_out_pts >>  8);
+    WB_ARRAY(arr, off, ic.composition_time_out_pts);
 
     /* [v7 reserved] [u33 selection_time_out_pts] */
-    WB_ARRAY(arr, off, param->selection_time_out_pts >> 32);
-    WB_ARRAY(arr, off, param->selection_time_out_pts >> 24);
-    WB_ARRAY(arr, off, param->selection_time_out_pts >> 16);
-    WB_ARRAY(arr, off, param->selection_time_out_pts >>  8);
-    WB_ARRAY(arr, off, param->selection_time_out_pts);
+    WB_ARRAY(arr, off, ic.selection_time_out_pts >> 32);
+    WB_ARRAY(arr, off, ic.selection_time_out_pts >> 24);
+    WB_ARRAY(arr, off, ic.selection_time_out_pts >> 16);
+    WB_ARRAY(arr, off, ic.selection_time_out_pts >>  8);
+    WB_ARRAY(arr, off, ic.selection_time_out_pts);
   }
 
   /* [u24 user_time_out_duration] */
-  WB_ARRAY(arr, off, param->user_time_out_duration >> 16);
-  WB_ARRAY(arr, off, param->user_time_out_duration >>  8);
-  WB_ARRAY(arr, off, param->user_time_out_duration);
+  WB_ARRAY(arr, off, ic.user_time_out_duration >> 16);
+  WB_ARRAY(arr, off, ic.user_time_out_duration >>  8);
+  WB_ARRAY(arr, off, ic.user_time_out_duration);
 
   /* [u8 number_of_pages] */
-  WB_ARRAY(arr, off, param->number_of_pages);
+  WB_ARRAY(arr, off, ic.number_of_pages);
 
-  for (unsigned i = 0; i < param->number_of_pages; i++) {
+  for (unsigned i = 0; i < ic.number_of_pages; i++) {
     /* page() */
-    if (0 == (off = appendPageIgsCompiler(param->pages[i], arr, off)))
+    if (0 == (off = _appendPage(ic.pages[i], arr, off)))
       goto free_return;
   }
 
@@ -1062,11 +1027,7 @@ free_return:
  * \brief Computes and return size required by
  * interactive composition segments.
  *
- * \param param Structure parameters, if interaComposSize is non zero, this
- *  parameter can be ignored.
- * \param interaComposSize Optionnal pre-computed
- *  interactive_composition() structure length. If this value is zero,
- *  it is computed.
+ * \param ic_compo_data_length Interactive composition structure size in bytes.
  * \return uint32_t Number of bytes required to store builded structure.
  *
  * Used to define how many bytes are required to store generated
@@ -1075,15 +1036,11 @@ free_return:
  * between multiple ICS, this function return this global
  * size requirement.
  */
-static inline uint32_t computeSizeHdmvInteractiveCompositionSegments(
-  const HdmvICParameters * param,
+static uint32_t _computeSizeHdmvICSegments(
   uint32_t ic_compo_data_length
 )
 {
-  if (!ic_compo_data_length) {
-    assert(NULL != param);
-    ic_compo_data_length = computeSizeHdmvInteractiveComposition(param);
-  }
+  assert(0 < ic_compo_data_length);
 
   uint32_t nb_seg =
     ic_compo_data_length
@@ -1106,17 +1063,16 @@ static inline uint32_t computeSizeHdmvInteractiveCompositionSegments(
   return segments_size;
 }
 
-int writeInteractiveCompositionSegmentsIgsCompiler(
+int _writeICSegments(
   HdmvSegmentsBuildingContext * ctx,
-  const IgsCompilerComposition * compo
+  const IgsCompilerComposition compo
 )
 {
   assert(NULL != ctx);
-  assert(NULL != compo);
 
   uint32_t compo_size;
-  uint8_t * ic_compo_data = buildInteractiveCompositionIgsCompiler(
-    &compo->interactive_composition,
+  uint8_t * ic_compo_data = _buildInteractiveComposition(
+    compo.interactive_composition,
     &compo_size
   );
   if (NULL == ic_compo_data)
@@ -1127,9 +1083,7 @@ int writeInteractiveCompositionSegmentsIgsCompiler(
   interactive_composition_fragment()s. */
 
   /* Compute required output buffer size. */
-  uint32_t segments_size = computeSizeHdmvInteractiveCompositionSegments(
-    NULL, compo_size
-  );
+  uint32_t segments_size = _computeSizeHdmvICSegments(compo_size);
 
   if (_reqBufSizeCtx(ctx, segments_size) < 0)
     goto free_return;
@@ -1154,11 +1108,11 @@ int writeInteractiveCompositionSegmentsIgsCompiler(
       goto free_return;
 
     /* video_descriptor() */
-    if (_writeVideoDescriptor(ctx, compo->video_descriptor) < 0)
+    if (_writeVideoDescriptor(ctx, compo.video_descriptor) < 0)
       goto free_return;
 
     /* composition_descriptor() */
-    if (writeCompositionDescriptor(ctx, compo->composition_descriptor) < 0)
+    if (_writeCompositionDescriptor(ctx, compo.composition_descriptor) < 0)
       goto free_return;
 
     /* sequence_descriptor() */
@@ -1227,14 +1181,13 @@ int buildIgsCompiler(
 
   LIBBLU_HDMV_SEGBUILD_DEBUG("Building each composition:\n");
   for (unsigned i = 0; i < param->nb_compositions; i++) {
-    IgsCompilerComposition * compo = &param->compositions[i];
-    assert(NULL != compo);
+    const IgsCompilerComposition compo = param->compositions[i];
 
     LIBBLU_HDMV_SEGBUILD_DEBUG(" - Interactive Composition %u:\n", i);
 
     /* Interactive Composition Segments */
     LIBBLU_HDMV_SEGBUILD_DEBUG("  Building Interactive Composition Segments...\n");
-    if (writeInteractiveCompositionSegmentsIgsCompiler(&ctx, compo) < 0)
+    if (_writeICSegments(&ctx, compo) < 0)
       goto free_return;
 
     /* Palette Definition Segments */

@@ -410,8 +410,8 @@ static int _checkMlp16ChChannelMeaning(
   }
   else {
     // TODO: Support !dyn_object_only streams if required.
-    LIBBLU_TODO(
-
+    LIBBLU_TODO_MSG(
+      "Mixed dynamic objects/classic channels streams not supported.\n"
     );
   }
 
@@ -433,11 +433,11 @@ static int _checkMlpExtraChannelMeaningData(
   );
 
   switch (ecmd->type) {
-    case MLP_EXTRA_CH_MEANING_CONTENT_UNKNOWN:
-      break;
-    case MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING:
-      if (_checkMlp16ChChannelMeaning(&ecmd->content.v16ch_channel_meaning) < 0)
-        return -1;
+  case MLP_EXTRA_CH_MEANING_CONTENT_UNKNOWN:
+    break;
+  case MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING:
+    if (_checkMlp16ChChannelMeaning(&ecmd->content.v16ch_channel_meaning) < 0)
+      return -1;
   }
 
   char reserved_field[32*5] = {0};

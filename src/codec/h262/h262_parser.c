@@ -15,49 +15,49 @@ unsigned getH262MaxBr(
 {
   /* Values from [1] ITU-T H.262 02/2000 - Table 8-13 */
   switch (profileIDC) {
-    case H262_PROFILE_ID_SIMPLE:
-      if (levelIDC == H262_LEVEL_ID_MAIN)
-        return    15000000;
-      break;
+  case H262_PROFILE_ID_SIMPLE:
+    if (levelIDC == H262_LEVEL_ID_MAIN)
+      return    15000000;
+    break;
 
-    case H262_PROFILE_ID_MAIN:
-      switch (levelIDC) {
-        case H262_LEVEL_ID_LOW:
-          return   4000000;
-        case H262_LEVEL_ID_MAIN:
-          return  15000000;
-        case H262_LEVEL_ID_HIGH_1440:
-          return  60000000;
-        case H262_LEVEL_ID_HIGH:
-          return  80000000;
-      }
-      break;
+  case H262_PROFILE_ID_MAIN:
+    switch (levelIDC) {
+    case H262_LEVEL_ID_LOW:
+      return   4000000;
+    case H262_LEVEL_ID_MAIN:
+      return  15000000;
+    case H262_LEVEL_ID_HIGH_1440:
+      return  60000000;
+    case H262_LEVEL_ID_HIGH:
+      return  80000000;
+    }
+    break;
 
-    case H262_PROFILE_ID_SNR_SCALABLE:
-      switch (levelIDC) {
-        case H262_LEVEL_ID_LOW:
-          return   4000000;
-        case H262_LEVEL_ID_MAIN:
-          return  15000000;
-      }
-      break;
+  case H262_PROFILE_ID_SNR_SCALABLE:
+    switch (levelIDC) {
+    case H262_LEVEL_ID_LOW:
+      return   4000000;
+    case H262_LEVEL_ID_MAIN:
+      return  15000000;
+    }
+    break;
 
-    case H262_PROFILE_ID_SPATIALLY_SCALABLE:
-      switch (levelIDC) {
-        case H262_LEVEL_ID_HIGH_1440:
-          return  60000000;
-      }
-      break;
+  case H262_PROFILE_ID_SPATIALLY_SCALABLE:
+    switch (levelIDC) {
+    case H262_LEVEL_ID_HIGH_1440:
+      return  60000000;
+    }
+    break;
 
-    case H262_PROFILE_ID_HIGH:
-      switch (levelIDC) {
-        case H262_LEVEL_ID_MAIN:
-          return  20000000;
-        case H262_LEVEL_ID_HIGH_1440:
-          return  80000000;
-        case H262_LEVEL_ID_HIGH:
-          return 100000000;
-      }
+  case H262_PROFILE_ID_HIGH:
+    switch (levelIDC) {
+    case H262_LEVEL_ID_MAIN:
+      return  20000000;
+    case H262_LEVEL_ID_HIGH_1440:
+      return  80000000;
+    case H262_LEVEL_ID_HIGH:
+      return 100000000;
+    }
   }
 
   return 0;
@@ -869,38 +869,38 @@ int checkSequenceExtensionCompliance(
   }
 
   switch (checkRet) {
-    case CHK_VIDEO_CONF_RET_OK:
-      break;
+  case CHK_VIDEO_CONF_RET_OK:
+    break;
 
-    case CHK_VIDEO_CONF_RET_ILL_VIDEO_SIZE:
-      /**
-       * NOTE: No need to check for UHD, UHD dimensions are rejected by
-       * profile/level tests
-       */
-      LIBBLU_H262_ERROR_RETURN(
-        "Video size %ux%u px is not allowed by BDAV specifications.\n",
-        horizontal_size,
-        vertical_size
-      );
+  case CHK_VIDEO_CONF_RET_ILL_VIDEO_SIZE:
+    /**
+     * NOTE: No need to check for UHD, UHD dimensions are rejected by
+     * profile/level tests
+     */
+    LIBBLU_H262_ERROR_RETURN(
+      "Video size %ux%u px is not allowed by BDAV specifications.\n",
+      horizontal_size,
+      vertical_size
+    );
 
-    case CHK_VIDEO_CONF_RET_ILL_FRAME_RATE:
-      LIBBLU_H262_ERROR_RETURN(
-        "Frame-rate value %.3f is not allowed in combination with video size "
-        "%ux%u px according to BDAV specifications.\n",
-        frameRate,
-        horizontal_size,
-        vertical_size
-      );
+  case CHK_VIDEO_CONF_RET_ILL_FRAME_RATE:
+    LIBBLU_H262_ERROR_RETURN(
+      "Frame-rate value %.3f is not allowed in combination with video size "
+      "%ux%u px according to BDAV specifications.\n",
+      frameRate,
+      horizontal_size,
+      vertical_size
+    );
 
-    case CHK_VIDEO_CONF_RET_ILL_DISP_MODE:
-      LIBBLU_H262_ERROR_RETURN(
-        "%s display mode is not allowed in %uux%u@%.3f FPS configuration "
-        "according to BDAV specifications.\n",
-        (param->progressive_sequence) ? "Progressive" : "Interlaced",
-        horizontal_size,
-        vertical_size,
-        frameRate
-      );
+  case CHK_VIDEO_CONF_RET_ILL_DISP_MODE:
+    LIBBLU_H262_ERROR_RETURN(
+      "%s display mode is not allowed in %uux%u@%.3f FPS configuration "
+      "according to BDAV specifications.\n",
+      (param->progressive_sequence) ? "Progressive" : "Interlaced",
+      horizontal_size,
+      vertical_size,
+      frameRate
+    );
   }
 
   return 0;
@@ -1755,64 +1755,64 @@ int decodeExtension(
       );
 
     switch (location) {
-      case EXT_LOC_SEQUENCE_EXTENSION:
-        switch (nextUint8(m2vInput) >> 4) {
-          case H262_EXT_STARTCODEEXT_SEQUENCE_DISPLAY:
-            param->sequenceDisplayPresence = true;
-            if (decodeSequenceDisplayExtension(m2vInput, &(param->sequenceDisplay)) < 0)
-              return -1;
-            break;
-
-          case H262_EXT_STARTCODEEXT_SEQUENCE_SCALABLE:
-            LIBBLU_H262_ERROR_RETURN(
-              "Unexpected scalable extension, scalable bitstream aren't "
-              "allowed in BDAV specifications.\n"
-            );
-
-          default:
-            LIBBLU_H262_ERROR_RETURN(
-              "Unknown extension identifier 0x%X.\n",
-              nextUint8(m2vInput) >> 4
-            );
-        }
+    case EXT_LOC_SEQUENCE_EXTENSION:
+      switch (nextUint8(m2vInput) >> 4) {
+      case H262_EXT_STARTCODEEXT_SEQUENCE_DISPLAY:
+        param->sequenceDisplayPresence = true;
+        if (decodeSequenceDisplayExtension(m2vInput, &(param->sequenceDisplay)) < 0)
+          return -1;
         break;
 
-      case EXT_LOC_GROUP_OF_PICTURE_HEADER:
-        LIBBLU_ERROR_RETURN(
-          "Unexpected extension section after GOP header.\n"
+      case H262_EXT_STARTCODEEXT_SEQUENCE_SCALABLE:
+        LIBBLU_H262_ERROR_RETURN(
+          "Unexpected scalable extension, scalable bitstream aren't "
+          "allowed in BDAV specifications.\n"
         );
 
-      case EXT_LOC_PICTURE_CODING_EXTENSION:
-        switch (nextUint8(m2vInput) >> 4) {
-          case H262_EXT_STARTCODEEXT_QUANT_MATRIX:
-            param->quantMatrixPresence = true;
-            if (decodeQuantMatrixExtension(m2vInput, &(param->quantMatrix)) < 0)
-              return -1;
-            break;
+      default:
+        LIBBLU_H262_ERROR_RETURN(
+          "Unknown extension identifier 0x%X.\n",
+          nextUint8(m2vInput) >> 4
+        );
+      }
+      break;
 
-          case H262_EXT_STARTCODEEXT_PICTURE_DISPLAY:
-          case H262_EXT_STARTCODEEXT_SPATIAL_SCALABLE:
-          case H262_EXT_STARTCODEEXT_TEMPORAL_SCALABLE:
-          case H262_EXT_STARTCODEEXT_CAMERA_PARAMETERS:
-          case H262_EXT_STARTCODEEXT_ITU_T:
-            LIBBLU_ERROR_RETURN(
-              "Unsupported extension id %X.\n",
-              nextUint8(m2vInput) >> 4
-            );
+    case EXT_LOC_GROUP_OF_PICTURE_HEADER:
+      LIBBLU_ERROR_RETURN(
+        "Unexpected extension section after GOP header.\n"
+      );
 
-          case H262_EXT_STARTCODEEXT_COPYRIGHT:
-            param->copyrightPresence = true;
-            if (decodeCopyrightExtension(m2vInput, &(param->copyright)) < 0)
-              return -1;
-            break;
-
-          default:
-            LIBBLU_ERROR_RETURN(
-              "Unknown/Unexpected extension id %X.\n",
-              nextUint8(m2vInput) >> 4
-            );
-        }
+    case EXT_LOC_PICTURE_CODING_EXTENSION:
+      switch (nextUint8(m2vInput) >> 4) {
+      case H262_EXT_STARTCODEEXT_QUANT_MATRIX:
+        param->quantMatrixPresence = true;
+        if (decodeQuantMatrixExtension(m2vInput, &(param->quantMatrix)) < 0)
+          return -1;
         break;
+
+      case H262_EXT_STARTCODEEXT_PICTURE_DISPLAY:
+      case H262_EXT_STARTCODEEXT_SPATIAL_SCALABLE:
+      case H262_EXT_STARTCODEEXT_TEMPORAL_SCALABLE:
+      case H262_EXT_STARTCODEEXT_CAMERA_PARAMETERS:
+      case H262_EXT_STARTCODEEXT_ITU_T:
+        LIBBLU_ERROR_RETURN(
+          "Unsupported extension id %X.\n",
+          nextUint8(m2vInput) >> 4
+        );
+
+      case H262_EXT_STARTCODEEXT_COPYRIGHT:
+        param->copyrightPresence = true;
+        if (decodeCopyrightExtension(m2vInput, &(param->copyright)) < 0)
+          return -1;
+        break;
+
+      default:
+        LIBBLU_ERROR_RETURN(
+          "Unknown/Unexpected extension id %X.\n",
+          nextUint8(m2vInput) >> 4
+        );
+      }
+      break;
     }
   }
 
@@ -2119,21 +2119,21 @@ int checkPictureCodingExtensionCompliance(
 
   /* LIBBLU_DEBUG_COM("  Picture structure type: "); */
   switch (param->pictStruct) {
-    case PICTURE_STRUCT_TOP_FIELD:
-      /* LIBBLU_DEBUG_COM_NO_HEADER("Top Field (0b01).\n"); */
-      break;
-    case PICTURE_STRUCT_BOTTOM_FIELD:
-      /* LIBBLU_DEBUG_COM_NO_HEADER("Bottom Field (0b10).\n"); */
-      break;
-    case PICTURE_STRUCT_FRAME_PICTURE:
-      /* LIBBLU_DEBUG_COM_NO_HEADER("Frame Picture (0b11).\n"); */
-      break;
-    default:
-      /* LIBBLU_DEBUG_COM_NO_HEADER("Reserved value (0b00).\n"); */
-      LIBBLU_H262_ERROR_RETURN(
-        "Reserved value in use (picture_structure == 0x%01X).\n",
-        param->pictStruct
-      );
+  case PICTURE_STRUCT_TOP_FIELD:
+    /* LIBBLU_DEBUG_COM_NO_HEADER("Top Field (0b01).\n"); */
+    break;
+  case PICTURE_STRUCT_BOTTOM_FIELD:
+    /* LIBBLU_DEBUG_COM_NO_HEADER("Bottom Field (0b10).\n"); */
+    break;
+  case PICTURE_STRUCT_FRAME_PICTURE:
+    /* LIBBLU_DEBUG_COM_NO_HEADER("Frame Picture (0b11).\n"); */
+    break;
+  default:
+    /* LIBBLU_DEBUG_COM_NO_HEADER("Reserved value (0b00).\n"); */
+    LIBBLU_H262_ERROR_RETURN(
+      "Reserved value in use (picture_structure == 0x%01X).\n",
+      param->pictStruct
+    );
   }
 
   if (seqExtParam->progressive_sequence && param->pictStruct != PICTURE_STRUCT_FRAME_PICTURE)
@@ -2240,28 +2240,28 @@ int analyzeH262(
     printFileParsingProgressionBar(m2vInput);
 
     switch (nextUint32(m2vInput)) {
-      case SEQUENCE_HEADER_CODE:
-        /* [v32 sequence_header_code] // 0x000001B3*/
-        break;
+    case SEQUENCE_HEADER_CODE:
+      /* [v32 sequence_header_code] // 0x000001B3*/
+      break;
 
-      case SEQUENCE_END_CODE:
-        /* [v32 sequence_end_code] // 0x000001B7 */
-        if (skipBytes(m2vInput, 4) < 0)
-          return -1;
-        continue;
+    case SEQUENCE_END_CODE:
+      /* [v32 sequence_end_code] // 0x000001B7 */
+      if (skipBytes(m2vInput, 4) < 0)
+        return -1;
+      continue;
 
-      case GROUP_START_CODE:
-        /* [v32 group_start_code] // 0x000001B8 */
-        LIBBLU_H262_ERROR_RETURN(
-          "Expect a sequence header before GOP header, each GOP shall be "
-          "preceded by a sequence header.\n"
-        );
+    case GROUP_START_CODE:
+      /* [v32 group_start_code] // 0x000001B8 */
+      LIBBLU_H262_ERROR_RETURN(
+        "Expect a sequence header before GOP header, each GOP shall be "
+        "preceded by a sequence header.\n"
+      );
 
-      default:
-        LIBBLU_H262_ERROR_RETURN(
-          "Unknown section start code 0x%08" PRIX32 ".\n",
-          nextUint32(m2vInput)
-        );
+    default:
+      LIBBLU_H262_ERROR_RETURN(
+        "Unknown section start code 0x%08" PRIX32 ".\n",
+        nextUint32(m2vInput)
+      );
     }
 
     frameOff = tellPos(m2vInput);

@@ -27,12 +27,6 @@
 #define LIBBLU_HDMV_COM_ERROR_BRETURN(format, ...)                            \
   LIBBLU_ERROR_BRETURN(LIBBLU_HDMV_COM_PREFIX format, ##__VA_ARGS__)
 
-#define LIBBLU_HDMV_FAIL_RETURN(format, ...)                                  \
-  LIBBLU_FAIL_RETURN(LIBBLU_EXPLODE_COMPLIANCE, format, ##__VA_ARGS__)
-
-#define LIBBLU_HDMV_FAIL_RETURN(format, ...)                                  \
-  LIBBLU_FAIL_RETURN(LIBBLU_EXPLODE_COMPLIANCE, format, ##__VA_ARGS__)
-
 #define LIBBLU_HDMV_COM_DEBUG(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
     LIBBLU_DEBUG_HDMV_COMMON,                                                 \
@@ -87,6 +81,9 @@
 
 #define LIBBLU_HDMV_TS_COMPUTE_NAME  LIBBLU_HDMV_KEYWORD "/TsCompute"
 #define LIBBLU_HDMV_TS_COMPUTE_PREFIX LIBBLU_HDMV_TS_COMPUTE_NAME ": "
+
+#define LIBBLU_HDMV_TSC_ERROR_RETURN(format, ...)                             \
+  LIBBLU_ERROR_RETURN(LIBBLU_HDMV_TS_COMPUTE_PREFIX format, ##__VA_ARGS__)
 
 #define LIBBLU_HDMV_TSC_DEBUG(format, ...)                                    \
   LIBBLU_DEBUG(                                                               \
@@ -337,6 +334,13 @@
 
 #define LIBBLU_HDMV_CK_WARNING(format, ...)                                   \
   LIBBLU_WARNING(LIBBLU_HDMV_CK_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_HDMV_CK_TC_FAIL_RETURN(format, ...)                            \
+  LIBBLU_FAIL_RETURN(                                                         \
+    LIBBLU_EXPLODE_HDMV_TC_COMPLIANCE,                                        \
+    LIBBLU_HDMV_CK_PREFIX format,                                            \
+    ##__VA_ARGS__                                                             \
+  )
 
 #define LIBBLU_HDMV_CK_DEBUG(format, ...)                                     \
   LIBBLU_DEBUG(                                                               \

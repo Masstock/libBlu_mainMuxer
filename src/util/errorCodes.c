@@ -14,13 +14,14 @@ static struct {
   const LibbluExplodeLevel level;
   const char * name;
   bool disabled;
-} explodeLevels[] = {
+} explode_lvls[] = {
 #define DECLARE_LEVEL(l, n)  {.level = l, .name = n}
 
-  DECLARE_LEVEL(LIBBLU_EXPLODE_COMPLIANCE, "COMPLIANCE"),
-  DECLARE_LEVEL(LIBBLU_EXPLODE_BD_COMPLIANCE, "BDCOMPLIANCE"),
+  // DECLARE_LEVEL(LIBBLU_EXPLODE_COMPLIANCE, "COMPLIANCE"),
+  // DECLARE_LEVEL(LIBBLU_EXPLODE_BD_COMPLIANCE, "BDCOMPLIANCE"),
   DECLARE_LEVEL(LIBBLU_EXPLODE_STD_COMPLIANCE, "STDCOMPLIANCE"),
   DECLARE_LEVEL(LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE, "BDAVSTDCOMPLIANCE"),
+  DECLARE_LEVEL(LIBBLU_EXPLODE_HDMV_TC_COMPLIANCE, "HDMVTIMECODESCOMPLIANCE"),
 
 #undef DECLARE_LEVEL
 };
@@ -29,25 +30,22 @@ int isDisabledExplodeLevel(
   LibbluExplodeLevel level
 )
 {
-  for (size_t i = 0; i < ARRAY_SIZE(explodeLevels); i++) {
-    if (explodeLevels[i].level == level)
-      return explodeLevels[i].disabled;
+  for (size_t i = 0; i < ARRAY_SIZE(explode_lvls); i++) {
+    if (explode_lvls[i].level == level)
+      return explode_lvls[i].disabled;
   }
   return false;
 }
 
 int readSettingsExplodeLevels(
-  IniFileContextPtr handle
+  IniFileContext conf_hdl
 )
 {
-  if (NULL == handle)
-    return 0;
-
-  for (size_t i = 0; i < ARRAY_SIZE(explodeLevels); i++) {
+  for (size_t i = 0; i < ARRAY_SIZE(explode_lvls); i++) {
     char optionPath[1024];
-    snprintf(optionPath, 1024, "DISABLEDERRORS.%s", explodeLevels[i].name);
+    snprintf(optionPath, 1024, "DISABLEDERRORS.%s", explode_lvls[i].name);
 
-    lbc * string = lookupIniFile(handle, optionPath);
+    lbc * string = lookupIniFile(conf_hdl, optionPath);
     if (NULL != string) {
       bool value;
 
@@ -55,9 +53,9 @@ int readSettingsExplodeLevels(
         LIBBLU_ERROR_RETURN(
           "Invalid boolean value setting '%s' in section "
           "[DisabledErrors] of INI file.\n",
-          explodeLevels[i].name
+          explode_lvls[i].name
         );
-      explodeLevels[i].disabled = value;
+      explode_lvls[i].disabled = value;
     }
   }
 

@@ -67,7 +67,7 @@ int addPaletteIgsCompilerComposition(
   assert(NULL != dst);
   assert(NULL != pal);
 
-  if (HDMV_MAX_PALETTE_ID < dst->nb_used_palettes)
+  if (HDMV_MAX_NB_PDS_ENTRIES < dst->nb_used_palettes)
     LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN("Too many palettes ids used.\n");
 
   if (dst->nb_allocated_palettes <= dst->nb_used_palettes) {

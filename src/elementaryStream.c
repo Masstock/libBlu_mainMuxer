@@ -63,7 +63,7 @@ int setHdmvInitialTimestampLibbluESSettings(
   if (LIBBLU_MAX_HDMV_INIT_TIMESTAMP < value)
     return -1;
 
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, hdmv.initialTimestamp, value);
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, hdmv.initial_timestamp, value);
   return 0;
 }
 
@@ -281,72 +281,72 @@ static int setPesPacketsDurationLibbluES(
   }
 
   switch (prop->coding_type) {
-    case STREAM_CODING_TYPE_MPEG1: /* H.261 / MPEG-1 */
-    case STREAM_CODING_TYPE_H262: /* H.262 / MPEG-2 */
-    case STREAM_CODING_TYPE_AVC:   /* H.264 / AVC    */
-    case STREAM_CODING_TYPE_VC1:   /* VC-1           */
-    case STREAM_CODING_TYPE_HEVC:  /* H.265 / HEVC   */
-      assert(0 < frame_rate);
-      prop->nb_pes_per_sec = frame_rate;
-      break;
+  case STREAM_CODING_TYPE_MPEG1: /* H.261 / MPEG-1 */
+  case STREAM_CODING_TYPE_H262:  /* H.262 / MPEG-2 */
+  case STREAM_CODING_TYPE_AVC:   /* H.264 / AVC    */
+  case STREAM_CODING_TYPE_VC1:   /* VC-1           */
+  case STREAM_CODING_TYPE_HEVC:  /* H.265 / HEVC   */
+    assert(0 < frame_rate);
+    prop->nb_pes_per_sec = frame_rate;
+    break;
 
-    case STREAM_CODING_TYPE_LPCM:  /* LPCM */
-      /* Frame duration: 1/200s */
-      prop->nb_pes_per_sec = LPCM_PES_FRAMES_PER_SECOND;
-      break;
+  case STREAM_CODING_TYPE_LPCM:  /* LPCM */
+    /* Frame duration: 1/200s */
+    prop->nb_pes_per_sec = LPCM_PES_FRAMES_PER_SECOND;
+    break;
 
-    case STREAM_CODING_TYPE_AC3:   /* AC-3 */
-      /* Frame duration: 1536 samples */
-      assert(0 < sample_rate);
-      prop->nb_pes_per_sec = sample_rate / 1536;
-      break;
+  case STREAM_CODING_TYPE_AC3:   /* AC-3 */
+    /* Frame duration: 1536 samples */
+    assert(0 < sample_rate);
+    prop->nb_pes_per_sec = sample_rate / 1536;
+    break;
 
-    case STREAM_CODING_TYPE_DTS:   /* DTS Coherent Acoustics */
-      /* Frame duration: 512 samples */
-      assert(0 < sample_rate);
-      prop->nb_pes_per_sec = sample_rate / 512;
-      break;
+  case STREAM_CODING_TYPE_DTS:   /* DTS Coherent Acoustics */
+    /* Frame duration: 512 samples */
+    assert(0 < sample_rate);
+    prop->nb_pes_per_sec = sample_rate / 512;
+    break;
 
-    case STREAM_CODING_TYPE_HDHR:  /* DTS-HDHR */
-    case STREAM_CODING_TYPE_HDMA:  /* DTS-HDMA */
-      /* Frame duration: 512 samples (2 consecutive frames) */
-      assert(0 < sample_rate);
-      prop->nb_pes_per_sec = sample_rate / 512;
-      prop->nb_ped_sec_per_sec = sample_rate / 512;
-      break;
+  case STREAM_CODING_TYPE_HDHR:  /* DTS-HDHR */
+  case STREAM_CODING_TYPE_HDMA:  /* DTS-HDMA */
+    /* Frame duration: 512 samples (2 consecutive frames) */
+    assert(0 < sample_rate);
+    prop->nb_pes_per_sec = sample_rate / 512;
+    prop->nb_ped_sec_per_sec = sample_rate / 512;
+    break;
 
-    case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD (+AC-3 Core) */
-      /* Frame duration: 1536 samples & 1/200s */
-      assert(0 < sample_rate);
-      prop->nb_pes_per_sec = sample_rate / 1536;
-      prop->nb_ped_sec_per_sec = 200;
-      break;
+  case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD (+AC-3 Core) */
+    /* Frame duration: 1536 samples & 1/200s */
+    assert(0 < sample_rate);
+    prop->nb_pes_per_sec = sample_rate / 1536;
+    prop->nb_ped_sec_per_sec = 200;
+    break;
 
-    case STREAM_CODING_TYPE_EAC3:  /* EAC-3 (+AC-3 Core) */
-      /* Frame duration: 1536 samples (2 consecutive frames) */
-      assert(0 < sample_rate);
-      prop->nb_pes_per_sec = sample_rate / 1536;
-      prop->nb_ped_sec_per_sec = sample_rate / 1536;
-      break;
+  case STREAM_CODING_TYPE_EAC3:  /* EAC-3 (+AC-3 Core) */
+    /* Frame duration: 1536 samples (2 consecutive frames) */
+    assert(0 < sample_rate);
+    prop->nb_pes_per_sec = sample_rate / 1536;
+    prop->nb_ped_sec_per_sec = sample_rate / 1536;
+    break;
 
-    case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express (Secondary track) */
-      /* Frame duration: 4096 samples */
-      assert(0 < sample_rate);
-      prop->nb_pes_per_sec = sample_rate / 4096;
-      prop->nb_ped_sec_per_sec = sample_rate / 4096;
-      break;
+  case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express (Secondary track) */
+    /* Frame duration: 4096 samples */
+    assert(0 < sample_rate);
+    prop->nb_pes_per_sec = sample_rate / 4096;
+    prop->nb_ped_sec_per_sec = sample_rate / 4096;
+    break;
 
-    case STREAM_CODING_TYPE_IG: /* Interactive Graphic Stream (IGS, Menus) */
-    case STREAM_CODING_TYPE_PG: /* Presentation Graphic Stream (PGS, Subs) */
-      prop->br_based_on_duration = true;
-      break;
+  case STREAM_CODING_TYPE_IG: /* Interactive Graphic Stream (IGS, Menus) */
+  case STREAM_CODING_TYPE_PG: /* Presentation Graphic Stream (PGS, Subs) */
+    prop->br_based_on_duration = true;
+    break;
 
-    default:
-      LIBBLU_ERROR_RETURN(
-        "Missing PES packets timing information specification "
-        "for %s stream coding type.\n",
-        LibbluStreamCodingTypeStr(prop->coding_type)
-      );
+  default:
+    LIBBLU_ERROR_RETURN(
+      "Missing PES packets timing information specification "
+      "for %s stream coding type.\n",
+      LibbluStreamCodingTypeStr(prop->coding_type)
+    );
   }
 
   assert(
@@ -580,24 +580,24 @@ static int _buildNextPesPacket(
 
     int ret = 0;
     switch (command->type) {
-      case ESMS_ADD_DATA:
-        ret = applyEsmsAddDataCommand(command->data.add_data, payload_dst, payload_size);
-        break;
+    case ESMS_ADD_DATA:
+      ret = applyEsmsAddDataCommand(command->data.add_data, payload_dst, payload_size);
+      break;
 
-      case ESMS_CHANGE_BYTEORDER:
-        ret = applyEsmsChangeByteOrderCommand(command->data.change_byte_order, payload_dst, payload_size);
-        break;
+    case ESMS_CHANGE_BYTEORDER:
+      ret = applyEsmsChangeByteOrderCommand(command->data.change_byte_order, payload_dst, payload_size);
+      break;
 
-      case ESMS_ADD_PAYLOAD_DATA:
-        ret = applyEsmsAddPesPayloadCommand(command->data.add_pes_payload, payload_dst, payload_size, &es->sourceFiles);
-        break;
+    case ESMS_ADD_PAYLOAD_DATA:
+      ret = applyEsmsAddPesPayloadCommand(command->data.add_pes_payload, payload_dst, payload_size, &es->sourceFiles);
+      break;
 
-      case ESMS_ADD_PADDING_DATA:
-        ret = applyEsmsAddPaddingCommand(command->data.add_padding, payload_dst, payload_size);
-        break;
+    case ESMS_ADD_PADDING_DATA:
+      ret = applyEsmsAddPaddingCommand(command->data.add_padding, payload_dst, payload_size);
+      break;
 
-      case ESMS_ADD_DATA_BLOCK:
-        ret = applyEsmsAddDataBlockCommand(command->data.add_data_block, payload_dst, payload_size, es->scriptDataSections);
+    case ESMS_ADD_DATA_BLOCK:
+      ret = applyEsmsAddDataBlockCommand(command->data.add_data_block, payload_dst, payload_size, es->scriptDataSections);
     }
 
     if (ret < 0)
@@ -675,46 +675,46 @@ int buildPesPacketDataLibbluES(
 
     ret = 0;
     switch (command.type) {
-      case ESMS_ADD_DATA:
-        ret = applyEsmsAddDataCommand(
-          command.data.add_data,
-          payload,
-          payloadSize
-        );
-        break;
+    case ESMS_ADD_DATA:
+      ret = applyEsmsAddDataCommand(
+        command.data.add_data,
+        payload,
+        payloadSize
+      );
+      break;
 
-      case ESMS_CHANGE_BYTEORDER:
-        ret = applyEsmsChangeByteOrderCommand(
-          command.data.change_byte_order,
-          payload,
-          payloadSize
-        );
-        break;
+    case ESMS_CHANGE_BYTEORDER:
+      ret = applyEsmsChangeByteOrderCommand(
+        command.data.change_byte_order,
+        payload,
+        payloadSize
+      );
+      break;
 
-      case ESMS_ADD_PAYLOAD_DATA:
-        ret = applyEsmsAddPesPayloadCommand(
-          command.data.add_pes_payload,
-          payload,
-          payloadSize,
-          &es->sourceFiles
-        );
-        break;
+    case ESMS_ADD_PAYLOAD_DATA:
+      ret = applyEsmsAddPesPayloadCommand(
+        command.data.add_pes_payload,
+        payload,
+        payloadSize,
+        &es->sourceFiles
+      );
+      break;
 
-      case ESMS_ADD_PADDING_DATA:
-        ret = applyEsmsAddPaddingCommand(
-          command.data.add_padding,
-          payload,
-          payloadSize
-        );
-        break;
+    case ESMS_ADD_PADDING_DATA:
+      ret = applyEsmsAddPaddingCommand(
+        command.data.add_padding,
+        payload,
+        payloadSize
+      );
+      break;
 
-      case ESMS_ADD_DATA_BLOCK:
-        ret = applyEsmsAddDataBlockCommand(
-          command.data.add_data_block,
-          payload,
-          payloadSize,
-          es->scriptDataSections
-        );
+    case ESMS_ADD_DATA_BLOCK:
+      ret = applyEsmsAddDataBlockCommand(
+        command.data.add_data_block,
+        payload,
+        payloadSize,
+        es->scriptDataSections
+      );
     }
 
     if (ret < 0)

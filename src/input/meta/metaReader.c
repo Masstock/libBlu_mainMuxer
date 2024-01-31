@@ -18,19 +18,19 @@ static size_t _parseString(
   size_t prefixSize;
 
   switch (*expr) {
-    case lbc_char('"'):
-      ret = lbc_sscanf(expr, "\"%" PRI_LBCP "[^\"]", dst);
-      prefixSize = 2;
-      break;
+  case lbc_char('"'):
+    ret = lbc_sscanf(expr, "\"%" PRI_LBCP "[^\"]", dst);
+    prefixSize = 2;
+    break;
 
-    case lbc_char('\''):
-      ret = lbc_sscanf(expr, "'%" PRI_LBCP "[^']", dst);
-      prefixSize = 2;
-      break;
+  case lbc_char('\''):
+    ret = lbc_sscanf(expr, "'%" PRI_LBCP "[^']", dst);
+    prefixSize = 2;
+    break;
 
-    default:
-      ret = lbc_sscanf(expr, "%" PRI_LBCS, dst);
-      prefixSize = 0;
+  default:
+    ret = lbc_sscanf(expr, "%" PRI_LBCS, dst);
+    prefixSize = 0;
   }
 
   if (!ret)

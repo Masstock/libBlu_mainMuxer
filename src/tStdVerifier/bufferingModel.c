@@ -48,30 +48,30 @@ static int _updateBufModelNode(
 )
 {
   switch (node.type) {
-    case NODE_VOID:
-      if (0 < inputData)
-        LIBBLU_DEBUG_COM("Discarding %zu bytes.\n", inputData);
-      break;
+  case NODE_VOID:
+    if (0 < inputData)
+      LIBBLU_DEBUG_COM("Discarding %zu bytes.\n", inputData);
+    break;
 
-    case NODE_BUFFER:
-      return _updateBufModelBuffer(
-        options,
-        node.linkedElement.buffer,
-        timestamp,
-        inputData,
-        fillingBitrate,
-        streamContext
-      );
+  case NODE_BUFFER:
+    return _updateBufModelBuffer(
+      options,
+      node.linkedElement.buffer,
+      timestamp,
+      inputData,
+      fillingBitrate,
+      streamContext
+    );
 
-    case NODE_FILTER:
-      return _updateBufModelFilter(
-        options,
-        node.linkedElement.filter,
-        timestamp,
-        inputData,
-        fillingBitrate,
-        streamContext
-      );
+  case NODE_FILTER:
+    return _updateBufModelFilter(
+      options,
+      node.linkedElement.filter,
+      timestamp,
+      inputData,
+      fillingBitrate,
+      streamContext
+    );
   }
 
   return 0;
@@ -82,12 +82,12 @@ void cleanBufModelNode(
 )
 {
   switch (node.type) {
-    case NODE_VOID:
-      break;
-    case NODE_BUFFER:
-      return destroyBufModelBuffer(node.linkedElement.buffer);
-    case NODE_FILTER:
-      return destroyBufModelFilter(node.linkedElement.filter);
+  case NODE_VOID:
+    break;
+  case NODE_BUFFER:
+    return destroyBufModelBuffer(node.linkedElement.buffer);
+  case NODE_FILTER:
+    return destroyBufModelFilter(node.linkedElement.filter);
   }
 }
 
@@ -99,11 +99,11 @@ void destroyBufModelBuffer(
     return;
 
   switch (buf->header.type) {
-    case LEAKING_BUFFER:
-      return destroyLeakingBuffer((BufModelLeakingBufferPtr) buf);
+  case LEAKING_BUFFER:
+    return destroyLeakingBuffer((BufModelLeakingBufferPtr) buf);
 
-    case TIME_REMOVAL_BUFFER:
-      return destroyRemovalBuffer((BufModelRemovalBufferPtr) buf);
+  case TIME_REMOVAL_BUFFER:
+    return destroyRemovalBuffer((BufModelRemovalBufferPtr) buf);
   }
 }
 
@@ -318,25 +318,25 @@ static int _computeBufferDataOutput(
   int ret = 0;
 
   switch (buf->header.type) {
-    case LEAKING_BUFFER:
-      dataBandwidth = _computeLeakingBufferDataBandwidth(
-        (BufModelLeakingBufferPtr) buf,
-        fillingLevel,
-        timestamp
-      );
-      break;
+  case LEAKING_BUFFER:
+    dataBandwidth = _computeLeakingBufferDataBandwidth(
+      (BufModelLeakingBufferPtr) buf,
+      fillingLevel,
+      timestamp
+    );
+    break;
 
-    case TIME_REMOVAL_BUFFER:
-      dataBandwidth = _computeRemovalBufferDataBandwidth(
-        (BufModelRemovalBufferPtr) buf,
-        timestamp
-      );
-      break;
+  case TIME_REMOVAL_BUFFER:
+    dataBandwidth = _computeRemovalBufferDataBandwidth(
+      (BufModelRemovalBufferPtr) buf,
+      timestamp
+    );
+    break;
 
-    default:
-      LIBBLU_ERROR_RETURN(
-        "Unable to update buffer model, unknown buffer type."
-      );
+  default:
+    LIBBLU_ERROR_RETURN(
+      "Unable to update buffer model, unknown buffer type."
+    );
   }
 
   if (buf->header.param.dontOverflowOutput) {
@@ -427,21 +427,21 @@ static uint64_t _computeDelayForBufferDataOutput(
 )
 {
   switch (buf->header.type) {
-    case LEAKING_BUFFER:
-      return _computeLeakingBufferDelayForBufferDataOutput(
-        (BufModelLeakingBufferPtr) buf,
-        requestedOutput
-      );
+  case LEAKING_BUFFER:
+    return _computeLeakingBufferDelayForBufferDataOutput(
+      (BufModelLeakingBufferPtr) buf,
+      requestedOutput
+    );
 
-    case TIME_REMOVAL_BUFFER:
-      return _computeRemovalBufferDelayForBufferDataOutput(
-        (BufModelRemovalBufferPtr) buf,
-        requestedOutput,
-        timestamp
-      );
+  case TIME_REMOVAL_BUFFER:
+    return _computeRemovalBufferDelayForBufferDataOutput(
+      (BufModelRemovalBufferPtr) buf,
+      requestedOutput,
+      timestamp
+    );
 
-    default:
-      break;
+  default:
+    break;
   }
 
   return 0;
@@ -1041,19 +1041,19 @@ static bool areEqualBufModelFilterLblValues(
 )
 {
   switch (type) {
-    case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-      return left.number == right.number;
+  case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
+    return left.number == right.number;
 
-    case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
-      return
-        left.stringHash == right.stringHash
-        && !strcmp(left.string, right.string)
-      ;
+  case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
+    return
+      left.stringHash == right.stringHash
+      && !strcmp(left.string, right.string)
+    ;
 
-    case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
-      return _isInListBufModelFilterLblValue(
-        left, right
-      );
+  case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
+    return _isInListBufModelFilterLblValue(
+      left, right
+    );
   }
 
   /* Shall never happen */
@@ -1109,34 +1109,34 @@ int setBufModelFilterLblList(
 
   /* Build values array */
   switch (valuesType) {
-    case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-      for (i = 0; i < valuesNb; i++)
-        array[i] = BUF_MODEL_FILTER_NUMERIC_LABEL_VALUE(
-          ((int *) valuesList)[i]
-        );
-      break;
-
-    case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
-      for (i = 0; i < valuesNb; i++) {
-        array[i] = BUF_MODEL_FILTER_STRING_LABEL_VALUE(
-          ((char **) valuesList)[i]
-        );
-
-        if (NULL == array[i].string) {
-          /* Release already allocated memory */
-          while (i--)
-            cleanBufModelFilterLblValue(array[i], valuesType);
-          LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-        }
-      }
-      break;
-
-    default:
-      LIBBLU_ERROR_FRETURN(
-        "Unexpected list label values type '%s', "
-        "expect numeric or string value type.",
-        getBufModelFilterLblTypeString(valuesType)
+  case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
+    for (i = 0; i < valuesNb; i++)
+      array[i] = BUF_MODEL_FILTER_NUMERIC_LABEL_VALUE(
+        ((int *) valuesList)[i]
       );
+    break;
+
+  case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
+    for (i = 0; i < valuesNb; i++) {
+      array[i] = BUF_MODEL_FILTER_STRING_LABEL_VALUE(
+        ((char **) valuesList)[i]
+      );
+
+      if (NULL == array[i].string) {
+        /* Release already allocated memory */
+        while (i--)
+          cleanBufModelFilterLblValue(array[i], valuesType);
+        LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
+      }
+    }
+    break;
+
+  default:
+    LIBBLU_ERROR_FRETURN(
+      "Unexpected list label values type '%s', "
+      "expect numeric or string value type.",
+      getBufModelFilterLblTypeString(valuesType)
+    );
   }
 
   *dst = BUF_MODEL_FILTER_LIST_LABEL(
@@ -1588,32 +1588,32 @@ static bool _checkBufModelNode(
 )
 {
   switch (node.type) {
-    case NODE_VOID:
-      break; /* Data sent to void */
+  case NODE_VOID:
+    break; /* Data sent to void */
 
-    case NODE_BUFFER:
-      return _checkBufModelBuffer(
-        options,
-        node.linkedElement.buffer,
-        timestamp,
-        inputData,
-        fillingBitrate,
-        streamContext,
-        totalInputData,
-        delay
-      );
+  case NODE_BUFFER:
+    return _checkBufModelBuffer(
+      options,
+      node.linkedElement.buffer,
+      timestamp,
+      inputData,
+      fillingBitrate,
+      streamContext,
+      totalInputData,
+      delay
+    );
 
-    case NODE_FILTER:
-      return _checkBufModelFilter(
-        options,
-        node.linkedElement.filter,
-        timestamp,
-        inputData,
-        fillingBitrate,
-        streamContext,
-        totalInputData,
-        delay
-      );
+  case NODE_FILTER:
+    return _checkBufModelFilter(
+      options,
+      node.linkedElement.filter,
+      timestamp,
+      inputData,
+      fillingBitrate,
+      streamContext,
+      totalInputData,
+      delay
+    );
   }
 
   return true;
@@ -1686,28 +1686,28 @@ void printBufModelFilterLbl(const BufModelFilterLbl label)
   unsigned i;
 
   switch (label.type) {
-    case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-      lbc_printf("0x%X", label.value.number);
-      break;
+  case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
+    lbc_printf("0x%X", label.value.number);
+    break;
 
-    case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
-      lbc_printf("%s", label.value.string);
-      break;
+  case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
+    lbc_printf("%s", label.value.string);
+    break;
 
-    case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
-      lbc_printf("[");
-      for (i = 0; i < label.value.listLength; i++) {
-        if (0 < i)
-          lbc_printf(", ");
+  case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
+    lbc_printf("[");
+    for (i = 0; i < label.value.listLength; i++) {
+      if (0 < i)
+        lbc_printf(", ");
 
-        printBufModelFilterLbl(
-          (BufModelFilterLbl) {
-            .type = label.value.listItemsType,
-            .value = label.value.list[i]
-          }
-        );
-      }
-      lbc_printf("]");
+      printBufModelFilterLbl(
+        (BufModelFilterLbl) {
+          .type = label.value.listItemsType,
+          .value = label.value.list[i]
+        }
+      );
+    }
+    lbc_printf("]");
   }
 }
 
@@ -1729,17 +1729,17 @@ void printBufModelFilter(const BufModelFilterPtr filter)
 void printBufModelBufferingChain(const BufModelNode node)
 {
   switch (node.type) {
-    case NODE_VOID:
-      lbc_printf("*void*\n");
-      break;
+  case NODE_VOID:
+    lbc_printf("*void*\n");
+    break;
 
-    case NODE_BUFFER:
-      printBufModelBuffer(node.linkedElement.buffer);
-      break;
+  case NODE_BUFFER:
+    printBufModelBuffer(node.linkedElement.buffer);
+    break;
 
-    case NODE_FILTER:
-      printBufModelFilter(node.linkedElement.filter);
-      break;
+  case NODE_FILTER:
+    printBufModelFilter(node.linkedElement.filter);
+    break;
   }
 }
 

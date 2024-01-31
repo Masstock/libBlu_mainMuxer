@@ -527,12 +527,12 @@ static inline const char * DcaCoreExtendedAudioCodingCodeStr(
 )
 {
   switch (EXT_AUDIO_ID) {
-    case DCA_EXT_AUDIO_ID_XCH:
-      return "DTS XCH (Extra centre surround channel extension)";
-    case DCA_EXT_AUDIO_ID_X96:
-      return "DTS X96 (96KHz sampling frequency extension)";
-    case DCA_EXT_AUDIO_ID_XXCH:
-      return "DTS XXCH (Channel extension).\n";
+  case DCA_EXT_AUDIO_ID_XCH:
+    return "DTS XCH (Extra centre surround channel extension)";
+  case DCA_EXT_AUDIO_ID_X96:
+    return "DTS X96 (96KHz sampling frequency extension)";
+  case DCA_EXT_AUDIO_ID_XXCH:
+    return "DTS XXCH (Channel extension).\n";
   }
   return "Reserved value";
 }

@@ -455,7 +455,7 @@ static int _parseUserInterfaceModel(
 
 static int _parseCompositionTimeOutPts(
   IgsCompilerContext * ctx,
-  uint64_t * ret
+  int64_t * ret
 )
 {
   uint64_t composition_time_out_pts;
@@ -475,13 +475,13 @@ static int _parseCompositionTimeOutPts(
     );
 
   PDEBUG_PARSE(2, "composition_time_out_pts: %" PRIu64 ".\n", composition_time_out_pts);
-  *ret = composition_time_out_pts;
+  *ret = (int64_t) composition_time_out_pts;
   return 0;
 }
 
 static int _parseSelectionTimeOutPts(
   IgsCompilerContext * ctx,
-  uint64_t * ret
+  int64_t * ret
 )
 {
   uint64_t selection_time_out_pts;
@@ -501,7 +501,7 @@ static int _parseSelectionTimeOutPts(
     );
 
   PDEBUG_PARSE(2, "selection_time_out_pts: %" PRIu64 ".\n", selection_time_out_pts);
-  *ret = selection_time_out_pts;
+  *ret = (int64_t) selection_time_out_pts;
   return 0;
 }
 
@@ -646,7 +646,7 @@ static int _parseBitmapIgsXmlFile(
     img_path, _lastParsedLine(ctx)
   );
 
-  if (openHdmvBitmap(dst, &ctx->img_io_libs, img_path, ctx->conf) < 0)
+  if (openHdmvBitmap(dst, &ctx->img_io_libs, img_path, ctx->conf_hdl) < 0)
     goto free_return;
 
   if (!isEmptyRectangle(cutting_rect)) {
@@ -877,7 +877,8 @@ static int _parseButtonStateImg(
 static int _parseButton(
   IgsCompilerContext * ctx,
   HdmvButtonParam * btn,
-  uint16_t * next_button_id_ref
+  uint16_t * next_button_id_ref,
+  bool used_button_id_ref[static HDMV_MAX_NB_BUTTONS]
 )
 {
   GET_UINT16(
@@ -893,11 +894,20 @@ static int _parseButton(
     btn->button_id
   );
 
-  if (0x1FDF < btn->button_id)
+  if (HDMV_MAX_NB_BUTTONS <= btn->button_id)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR(
       "Unexpected 'button_id' value, values shall be between 0x0000 "
-      "and 0x1FDF inclusive.\n"
+      "and 0x%04X inclusive (got 0x%04" PRIX16 ").\n",
+      HDMV_MAX_NB_BUTTONS-1,
+      btn->button_id
     );
+
+  if (used_button_id_ref[btn->button_id])
+    LIBBLU_HDMV_IGS_COMPL_XML_ERROR(
+      "Non-unique button ID 0x%04" PRIX16 ", values must be unique on the page.",
+      btn->button_id
+    );
+  used_button_id_ref[btn->button_id] = true;
   *next_button_id_ref = btn->button_id + 1;
 
   GET_UINT16(
@@ -912,6 +922,8 @@ static int _parseButton(
     8, "button_numeric_select_value: 0x%" PRIX16 ".\n",
     btn->button_numeric_select_value
   );
+
+
 
   GET_BOOL(&btn->auto_action, false, return -1, "//auto_action_flag");
   PDEBUG_PARSE(
@@ -1137,19 +1149,26 @@ static int _parseButton(
   xmlXPathObjectPtr com_path_obj = GET_OBJ("//commands/command");
   int nb_nav_com = XML_PATH_NODE_NB(com_path_obj);
 
+  if (HDMV_MAX_NB_BUTTON_NAV_COM < nb_nav_com)
+    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
+      "Invalid number of navigation commands in button, "
+      "%d exceeds maximum of " STR(HDMV_MAX_NB_BUTTON_NAV_COM) ".\n",
+      nb_nav_com
+    );
+  btn->number_of_navigation_commands = nb_nav_com;
+
   if (!nb_nav_com)
     PDEBUG_PARSE(9, "*no command*\n");
 
-  HdmvNavigationCommand * last_com = NULL;
+  if (allocateCommandsHdmvButtonParam(btn) < 0)
+    return -1;
+
   for (int i = 0; i < nb_nav_com; i++) {
+    HdmvNavigationCommand * com = &btn->navigation_commands[i];
     if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), com_path_obj, i) < 0) {
       xmlXPathFreeObject(com_path_obj);
       return -1;
     }
-
-    HdmvNavigationCommand * com = getHdmvNaviComHdmvSegmentsInventory(&ctx->inv);
-    if (NULL == com)
-      return -1;
 
     /* command/@code */
     GET_UINT32(
@@ -1178,29 +1197,23 @@ static int _parseButton(
       "//@source"
     );
 
-    if (NULL != last_com)
-      last_com->next = com;
-    else
-      btn->navigation_commands = com;
-    last_com = com;
-
     if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
       xmlXPathFreeObject(com_path_obj);
       return -1;
     }
-
-    btn->number_of_navigation_commands++;
   }
 
   xmlXPathFreeObject(com_path_obj);
-
   return 0;
 }
 
 static int _parseBog(
   IgsCompilerContext * ctx,
   HdmvButtonOverlapGroupParameters * bog,
-  uint16_t * next_button_id_ref
+  uint16_t * next_button_id_ref,
+  bool used_btn_id_ref[static HDMV_MAX_NB_BUTTONS],
+  uint8_t used_btn_num_sel_val_ref[static HDMV_MAX_BUTTON_NUMERIC_SELECT_VALUE],
+  uint8_t bog_idx
 )
 {
   /* bog/default_valid_button */
@@ -1221,16 +1234,19 @@ static int _parseBog(
   bool auto_def_val_btn_id     = !EXISTS("//default_valid_button");
 
   xmlXPathObjectPtr btn_path_obj = GET_OBJ("//button");
-  int nb_btn = XML_PATH_NODE_NB(btn_path_obj);
-  if (HDMV_MAX_NB_ICS_BUTTONS < nb_btn)
-    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
-      "Number of buttons is invalid (%d, shall be between 0-255).\n",
-      nb_btn
-    );
+  {
+    int nb_btn = XML_PATH_NODE_NB(btn_path_obj);
+    if (HDMV_MAX_NB_ICS_BUTTONS < nb_btn)
+      LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
+        "Number of buttons is invalid (%d, shall be between 0-255).\n",
+        nb_btn
+      );
+    bog->number_of_buttons = nb_btn;
+  }
 
   PDEBUG_PARSE(6, "buttons:\n");
 
-  if (!nb_btn) {
+  if (!bog->number_of_buttons) {
     PDEBUG_PARSE(7, "None.\n");
     LIBBLU_HDMV_IGS_COMPL_XML_WARNING(
       "BOG at line %u is empty.\n",
@@ -1238,31 +1254,35 @@ static int _parseBog(
     );
   }
 
-  for (int i = 0; i < nb_btn; i++) {
+  for (int i = 0; i < bog->number_of_buttons; i++) {
+    HdmvButtonParam * btn = &bog->buttons[i];
     /* Set path for relative path accessing: */
     if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), btn_path_obj, i) < 0)
       return -1;
 
     PDEBUG_PARSE(7, "button[%d]:\n", i);
 
-    HdmvButtonParam * btn = getHdmvBtnParamHdmvSegmentsInventory(&ctx->inv);
-    if (NULL == btn)
-      return -1;
-
     /* bog/button[i] */
-    if (_parseButton(ctx, btn, next_button_id_ref) < 0)
+    if (_parseButton(ctx, btn, next_button_id_ref, used_btn_id_ref) < 0)
       goto free_return;
 
-    if (0 < i && btn->button_id <= bog->buttons[i-1]->button_id)
-      LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
-        "BOG's button IDs order broken (duplicated values or broken order), "
-        "button IDs must be unique and strictly increasing.\n"
-      );
+    uint16_t btn_num_sel_val = btn->button_numeric_select_value;
+    if (0xFFFF != btn_num_sel_val) {
+      uint16_t bog_using_num_sel_val = used_btn_num_sel_val_ref[btn_num_sel_val];
+      if (0xFFFF != bog_using_num_sel_val && bog_using_num_sel_val != bog_idx)
+        LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
+          "Button numeric selection value must be unique to those of other "
+          "buttons on the page that are not part of the same BOG "
+          "(problematic value: %u, found in BOG %u and already used in BOG %u).\n",
+          btn_num_sel_val,
+          bog_idx,
+          used_btn_num_sel_val_ref[btn_num_sel_val]
+        );
+      used_btn_num_sel_val_ref[btn_num_sel_val] = bog_idx;
+    }
 
     if (btn->button_id == bog->default_valid_button_id_ref)
       def_val_btn_id_ref_pres = true;
-
-    bog->buttons[bog->number_of_buttons++] = btn;
 
     /* Restore original path */
     if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
@@ -1275,7 +1295,7 @@ static int _parseBog(
     );
 
   if (auto_def_val_btn_id && 0 < bog->number_of_buttons)
-    bog->default_valid_button_id_ref = bog->buttons[0]->button_id;
+    bog->default_valid_button_id_ref = bog->buttons[0].button_id;
 
   xmlXPathFreeObject(btn_path_obj);
   return 0;
@@ -1288,42 +1308,14 @@ free_return:
 static int _parsePage(
   IgsCompilerContext * ctx,
   HdmvPageParameters * page,
-  uint8_t * next_page_id_ref
+  uint8_t page_idx
 )
 {
-  GET_UINT8(
-    &page->page_id,
-    *next_page_id_ref,
-    "Page's 'page_id' optionnal parameter must be between "
-    "0x00 and 0xFE inclusive",
-    return -1,
-    "//@id"
-  );
-  *next_page_id_ref = page->page_id + 1;
-
-  PDEBUG_PARSE(3, "page_id: %" PRIu8 ".\n", page->page_id);
-  if (0xFE < page->page_id)
-    LIBBLU_HDMV_IGS_COMPL_XML_ERROR(
-      "Unexpected 'page_id' value, values shall be between 0x00 "
-      "and 0xFE inclusive.\n"
-    );
-
-#if 0
-  /* page/@version */
-  GET_UINT8(
-    &page->page_version_number, 0x00,
-    "Page's 'version' optionnal parameter must be between 0 and 255 inclusive",
-    return -1,
-    "//page[%d]/@version",
-    index+1
-  );
-
-  PDEBUG_PARSE(
-    "   @version: %" PRIu8 ".\n",
-    page->page_version_number
-  );
-#endif
+  page->page_id = page_idx;
   page->page_version_number = 0x00;
+
+  PDEBUG_PARSE(3, "page_id (infered): %" PRIu8 ".\n", page->page_id);
+  PDEBUG_PARSE(3, "page_version_number (infered): %" PRIu8 ".\n", page->page_version_number);
 
   /* page/parameters/uop */
   uint64_t uop_mask = ctx->data.common_uop_mask; // Applying global flags
@@ -1410,16 +1402,18 @@ static int _parsePage(
   memset(&page->out_effects, 0x0, sizeof(HdmvEffectSequenceParameters));
   PDEBUG_PARSE(4, "TODO\n"); // TODO
 
+  PDEBUG_PARSE(3, "BOGs (Button Overlap Groups):\n");
+
   /* page/bog */
   xmlXPathObjectPtr bog_path_obj = GET_OBJ("//bog");
   int nb_bog = XML_PATH_NODE_NB(bog_path_obj);
+
   if (HDMV_MAX_NB_ICS_BOGS < nb_bog)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
       "Number of BOGs described is invalid (shall be between 1-255).\n",
       nb_bog
     );
-
-  PDEBUG_PARSE(3, "BOGs (Button Overlap Groups):\n");
+  page->number_of_BOGs = nb_bog;
 
   if (!nb_bog) {
     PDEBUG_PARSE(4, "None.\n");
@@ -1428,32 +1422,34 @@ static int _parsePage(
     );
   }
 
+  if (allocateBogsHdmvPageParameters(page) < 0)
+    return -1;
+
+  bool used_btn_id[HDMV_MAX_NB_BUTTONS];
+    MEMSET_ARRAY(used_btn_id, false);
+  uint8_t used_btn_num_sel_val[HDMV_MAX_BUTTON_NUMERIC_SELECT_VALUE];
+    MEMSET_ARRAY(used_btn_num_sel_val, 0xFF);
   uint16_t button_id = 0x0000;
-  page->number_of_BOGs = 0;
 
-  for (int i = 0; i < nb_bog; i++) {
+  for (int bog_i = 0; bog_i < nb_bog; bog_i++) {
+    HdmvButtonOverlapGroupParameters * bog = &page->bogs[bog_i];
+
     /* Set path for relative path accessing: */
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), bog_path_obj, i) < 0)
+    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), bog_path_obj, bog_i) < 0)
       goto free_return;
 
-    PDEBUG_PARSE(4, "bog[%d]:\n", i);
-
-    HdmvButtonOverlapGroupParameters * bog;
-    if (NULL == (bog = getHdmvBOGParamHdmvSegmentsInventory(&ctx->inv)))
-      goto free_return;
+    PDEBUG_PARSE(4, "bog[%d]:\n", bog_i);
 
     /* page/bog[i] */
-    if (_parseBog(ctx, bog, &button_id) < 0)
+    if (_parseBog(ctx, bog, &button_id, used_btn_id, used_btn_num_sel_val, (uint8_t) bog_i) < 0)
       goto free_return;
 
     if (bog->default_valid_button_id_ref == page->default_selected_button_id_ref)
       def_sel_btn_id_pres = true;
     for (uint8_t j = 0; j < bog->number_of_buttons; j++) {
-      if (bog->buttons[j]->button_id == page->default_activated_button_id_ref)
+      if (bog->buttons[j].button_id == page->default_activated_button_id_ref)
         def_act_btn_id_pres = true;
     }
-
-    page->bogs[page->number_of_BOGs++] = bog;
 
     /* Restore original path */
     if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
@@ -1473,7 +1469,7 @@ static int _parsePage(
     );
 
   if (auto_def_sel_btn_id && 0 < page->number_of_BOGs)
-    page->default_selected_button_id_ref = page->bogs[0]->buttons[0]->button_id;
+    page->default_selected_button_id_ref = page->bogs[0].buttons[0].button_id;
   page->palette_id_ref = 0x00; // Apply default palette ID
 
   xmlXPathFreeObject(bog_path_obj);
@@ -1491,30 +1487,27 @@ static int _parsePages(
 {
   xmlXPathObjectPtr page_path_obj = GET_OBJ("//page");
   int nb_pages = XML_PATH_NODE_NB(page_path_obj);
-  if (nb_pages < 1 || HDMV_MAX_NB_IC_PAGES < nb_pages)
+  if (HDMV_MAX_NB_IC_PAGES < nb_pages)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
-      "Number of IGS pages described in input XML file is invalid "
-      "(shall be between 1-255).\n"
+      "Number of IGS pages described in input XML file is too large "
+      "(shall be up to " STR(HDMV_MAX_NB_IC_PAGES) " inclusive, found %d pages).\n",
+      nb_pages
     );
+  compo->number_of_pages = nb_pages;
 
   PDEBUG_PARSE(1, "pages:\n");
 
-  uint8_t page_id = 0x00;
-  compo->number_of_pages = 0;
+  if (allocatePagesHdmvICParameters(compo) < 0)
+    return -1;
 
-  for (int i = 0; i < nb_pages; i++) {
-    PDEBUG_PARSE(2, "page[%d]:\n", i);
+  for (int page_i = 0; page_i < nb_pages; page_i++) {
+    PDEBUG_PARSE(2, "page[%d]:\n", page_i);
 
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), page_path_obj, i) < 0)
+    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), page_path_obj, page_i) < 0)
       goto free_return;
 
-    HdmvPageParameters * page;
-    if (NULL == (page = getHdmvPageParamHdmvSegmentsInventory(&ctx->inv)))
-      goto free_return;
-
-    if (_parsePage(ctx, page, &page_id) < 0)
-      LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN("Error happen in page %d.\n", i);
-    compo->pages[compo->number_of_pages++] = page;
+    if (_parsePage(ctx, &compo->pages[page_i], (uint8_t) page_i) < 0)
+      LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN("Error happen in page %d.\n", page_i);
 
     /* Restore original path */
     if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
@@ -1535,7 +1528,7 @@ static int _parseComposition(
 )
 {
   /* Presentation timecode */
-  if (addTimecodeIgsCompilerContext(ctx, 0) < 0)
+  if (addHdmvTimecodes(ctx->timecodes, 0) < 0)
     return -1;
   /* TODO: Enable custom */
 

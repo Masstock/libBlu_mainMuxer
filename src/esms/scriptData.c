@@ -492,12 +492,12 @@ int isPresentDirectory(
 )
 {
   switch (getDirectoryOffset(essFilename, id, NULL)) {
-    case ESMS_DF_OK:
-      return 1;
-    case ESMS_DF_NOT_FOUND:
-      return 0;
-    default: // Error
-      return -1;
+  case ESMS_DF_OK:
+    return 1;
+  case ESMS_DF_NOT_FOUND:
+    return 0;
+  default: // Error
+    return -1;
   }
 }
 
@@ -510,31 +510,31 @@ int seekDirectoryOffset(
 
   int64_t dir_offset;
   switch (getDirectoryOffset(essFilename, id, &dir_offset)) {
-    case ESMS_DF_OK:
-      break; /* OK */
+  case ESMS_DF_OK:
+    break; /* OK */
 
-    case ESMS_DF_READ_ERROR:
-      LIBBLU_ERROR_RETURN(
-        "Broken script '%" PRI_LBCS "', "
-        "reading error.\n",
-        essFilename
-      );
+  case ESMS_DF_READ_ERROR:
+    LIBBLU_ERROR_RETURN(
+      "Broken script '%" PRI_LBCS "', "
+      "reading error.\n",
+      essFilename
+    );
 
-    case ESMS_DF_NOT_FOUND:
-      LIBBLU_ERROR_RETURN(
-        "Broken script '%" PRI_LBCS "', "
-        "unable to find directory \"%s\".\n",
-        essFilename,
-        ESMSDirectoryIdStr(id)
-      );
+  case ESMS_DF_NOT_FOUND:
+    LIBBLU_ERROR_RETURN(
+      "Broken script '%" PRI_LBCS "', "
+      "unable to find directory \"%s\".\n",
+      essFilename,
+      ESMSDirectoryIdStr(id)
+    );
 
-    case ESMS_DF_INVALID:
-      LIBBLU_ERROR_RETURN(
-        "Broken script '%" PRI_LBCS "', "
-        "invalid directory \"%s\".\n",
-        essFilename,
-        ESMSDirectoryIdStr(id)
-      );
+  case ESMS_DF_INVALID:
+    LIBBLU_ERROR_RETURN(
+      "Broken script '%" PRI_LBCS "', "
+      "invalid directory \"%s\".\n",
+      essFilename,
+      ESMSDirectoryIdStr(id)
+    );
   }
 
   if (seekPos(esms_bs, dir_offset, SEEK_SET) < 0)
@@ -572,24 +572,24 @@ const char * ESMSValidatorErrorStr(
 )
 {
   switch (code) {
-    case ESMS_FV_OK:
-      return "OK";
-    case ESMS_FV_NO_SCRIPT:
-      return "Unable to found script";
-    case ESMS_FV_READ_ERROR:
-      return "Reading error in script";
-    case ESMS_FV_HEADER_ERROR:
-      return "Error in script header";
-    case ESMS_FV_VERSION_ERROR:
-      return "Incompatible script version";
-    case ESMS_FV_INCOMPLETE_FILE:
-      return "Unfinished script.";
-    case ESMS_FV_INCOMPATIBLE_FLAGS:
-      return "Incompatible flags in script";
-    case ESMS_FV_INVALID_SOURCE_FILE:
-      return "Incompatible source file checksum";
-    case ESMS_FV_MEMORY_ERROR:
-      return "Memory allocation error";
+  case ESMS_FV_OK:
+    return "OK";
+  case ESMS_FV_NO_SCRIPT:
+    return "Unable to found script";
+  case ESMS_FV_READ_ERROR:
+    return "Reading error in script";
+  case ESMS_FV_HEADER_ERROR:
+    return "Error in script header";
+  case ESMS_FV_VERSION_ERROR:
+    return "Incompatible script version";
+  case ESMS_FV_INCOMPLETE_FILE:
+    return "Unfinished script.";
+  case ESMS_FV_INCOMPATIBLE_FLAGS:
+    return "Incompatible flags in script";
+  case ESMS_FV_INVALID_SOURCE_FILE:
+    return "Incompatible source file checksum";
+  case ESMS_FV_MEMORY_ERROR:
+    return "Memory allocation error";
   }
 
   return "Unknown error code";

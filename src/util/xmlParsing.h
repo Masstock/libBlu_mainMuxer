@@ -284,7 +284,7 @@ int getNbObjectsFromExprIgsXmlFile(
  * \brief Fetch a string from given XPath expression (or use default value).
  *
  * \param string String result of request.
- * \param def Default string pointer used if no object is founded (can be NULL).
+ * \param def Default string pointer used if no object is found (can be NULL).
  * \param ctx Context to use.
  * \param path XPath format request.
  * \return int A zero value on success, otherwise a negative value.
@@ -303,7 +303,7 @@ int getIfExistsStringIgsXmlFile(
  * with arguments pile.
  *
  * \param string String result of request.
- * \param def Default string pointer used if no object is founded (can be NULL).
+ * \param def Default string pointer used if no object is found (can be NULL).
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
@@ -324,7 +324,7 @@ int getIfExistsStringFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param string String result of request.
- * \param def Default string pointer used if no object is founded (can be NULL).
+ * \param def Default string pointer used if no object is found (can be NULL).
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
@@ -362,7 +362,7 @@ int getIfExistsInt64FromExprIgsXmlFile(
  * \brief Fetch a long from given XPath expression (or use default value).
  *
  * \param dst Long result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path XPath format request.
  * \return int A zero value on success, otherwise a negative value.
@@ -380,7 +380,7 @@ int getIfExistsLongFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param dst Long result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
@@ -399,7 +399,7 @@ int getIfExistsLongFromExprIgsXmlFile(
  * with arguments pile.
  *
  * \param dst Int result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
@@ -418,7 +418,7 @@ int getIfExistsIntegerFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param dst Int result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
@@ -439,7 +439,7 @@ int getIfExistsIntegerFromExprIgsXmlFile(
  * with arguments pile.
  *
  * \param dst Boolean result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
@@ -458,7 +458,7 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
  * accepting arguments.
  *
  * \param dst Boolean result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
@@ -529,7 +529,7 @@ int getIfExistsUint64FromExprIgsXmlFile(
  * value).
  *
  * \param dst Unsigned int result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path XPath format request.
  * \return int A zero value on success, otherwise a negative value.
@@ -547,7 +547,7 @@ int getIfExistsUnsignedFromExprVaIgsXmlFile(
  * value) accepting arguments.
  *
  * \param dst Unsigned int result destination of request.
- * \param def Default value used if no object is founded.
+ * \param def Default value used if no object is found.
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.

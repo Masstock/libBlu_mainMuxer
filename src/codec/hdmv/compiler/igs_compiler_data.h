@@ -71,6 +71,7 @@ static inline void cleanIgsCompilerComposition(
   IgsCompilerComposition compo
 )
 {
+  cleanHdmvICParameters(compo.interactive_composition);
   cleanHdmvPicturesIndexer(compo.ref_pics_indexer);
   for (unsigned i = 0; i < compo.nb_used_object_bitmaps; i++)
     cleanHdmvBitmap(compo.object_bitmaps[i]);

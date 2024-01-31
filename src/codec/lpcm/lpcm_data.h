@@ -17,14 +17,14 @@ static inline const char * WaveRIFFChunkIdStr(
 )
 {
   switch (ckID) {
-    case WAVE_RIFF:
-      return "RIFF";
-    case WAVE_FMT:
-      return "fmt";
-    case WAVE_JUNK:
-      return "JUNK";
-    case WAVE_DATA:
-      return "DATA";
+  case WAVE_RIFF:
+    return "RIFF";
+  case WAVE_FMT:
+    return "fmt";
+  case WAVE_JUNK:
+    return "JUNK";
+  case WAVE_DATA:
+    return "DATA";
   }
   return "Unknown";
 }
@@ -43,8 +43,8 @@ static inline const char * RiffFormTypeStr(
 )
 {
   switch (formType) {
-    case RIFF_WAVE_FORM:
-      return "Waveform Audio Format";
+  case RIFF_WAVE_FORM:
+    return "Waveform Audio Format";
   }
   return "Unknown";
 }

@@ -9,12 +9,12 @@
 
 static int _readSettingsFromConfigHandle(
   LibbluMuxingSettings * dst,
-  const IniFileContextPtr handle
+  const IniFileContext conf_hdl
 )
 {
   lbc * string;
 
-  string = lookupIniFile(handle, "BUFFERINGMODEL.CRASHONERROR");
+  string = lookupIniFile(conf_hdl, "BUFFERINGMODEL.CRASHONERROR");
   if (NULL != string) {
     bool value;
 
@@ -26,7 +26,7 @@ static int _readSettingsFromConfigHandle(
     dst->options.bufModelOptions.abortOnUnderflow = value;
   }
 
-  string = lookupIniFile(handle, "BUFFERINGMODEL.TIMEOUT");
+  string = lookupIniFile(conf_hdl, "BUFFERINGMODEL.TIMEOUT");
   if (NULL != string) {
     uint64_t value;
 
@@ -44,7 +44,7 @@ static int _readSettingsFromConfigHandle(
 int initLibbluMuxingSettings(
   LibbluMuxingSettings * dst,
   const lbc * outputTsFilename,
-  IniFileContextPtr confHandle
+  IniFileContext conf_hdl
 )
 {
   assert(NULL != dst);
@@ -56,8 +56,8 @@ int initLibbluMuxingSettings(
   };
 
   setHdmvDefaultUnencryptedLibbluDtcpSettings(&dst->dtcpParameters);
-  defaultLibbluMuxingOptions(&dst->options, confHandle);
-  if (_readSettingsFromConfigHandle(dst, confHandle) < 0)
+  defaultLibbluMuxingOptions(&dst->options, conf_hdl);
+  if (_readSettingsFromConfigHandle(dst, conf_hdl) < 0)
     return -1;
 
   if (NULL == outputTsFilename)

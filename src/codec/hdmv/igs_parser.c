@@ -87,7 +87,6 @@ int analyzeIgs(
   LibbluESParsingSettings * settings
 )
 {
-  HdmvContextPtr ctx;
   HdmvTimecodes timecodes;
 
   lbc * infilepathDup;
@@ -102,7 +101,7 @@ int analyzeIgs(
 
     LIBBLU_HDMV_IGS_DEBUG("Processing input file as Igs Compiler file.\n");
 
-    if (processIgsCompiler(settings->esFilepath, &timecodes, settings->options.confHandle) < 0)
+    if (processIgsCompiler(settings->esFilepath, &timecodes, settings->options.conf_hdl) < 0)
       return -1;
 
     ret = lbc_asprintf(
@@ -128,7 +127,8 @@ int analyzeIgs(
       LIBBLU_HDMV_IGS_ERROR_RETURN("Memory allocation error.\n");
   }
 
-  if (NULL == (ctx = createHdmvContext(settings, infilepathDup, HDMV_STREAM_TYPE_IGS, igsCompilerFileMode)))
+  HdmvContext ctx;
+  if (initHdmvContext(&ctx, settings, infilepathDup, HDMV_STREAM_TYPE_IGS, igsCompilerFileMode) < 0)
     goto free_return;
 
   if (igsCompilerFileMode) {
@@ -137,23 +137,23 @@ int analyzeIgs(
      * It is not used in script but will be check-summed. If the XML file is
      * updated, the script will be regenerated.
      */
-    if (addOriginalFileHdmvContext(ctx, settings->esFilepath) < 0)
+    if (addOriginalFileHdmvContext(&ctx, settings->esFilepath) < 0)
       goto free_return;
     /* Send timecode values to the HDMV context */
-    if (addTimecodesHdmvContext(ctx, timecodes) < 0)
+    if (addTimecodesHdmvContext(&ctx, timecodes) < 0)
       goto free_return;
   }
 
-  while (!isEofHdmvContext(ctx)) {
+  while (!isEofHdmvContext(&ctx)) {
     /* Progress bar : */
-    printFileParsingProgressionBar(inputHdmvContext(ctx));
+    printFileParsingProgressionBar(inputHdmvContext(&ctx));
 
-    if (parseHdmvSegment(ctx) < 0)
+    if (parseHdmvSegment(&ctx) < 0)
       goto free_return;
   }
 
   /* Process remaining segments: */
-  if (completeDSHdmvContext(ctx) < 0)
+  if (completeCurDSHdmvContext(&ctx) < 0)
     return -1;
 
   lbc_printf(" === Parsing finished with success. ===              \n");
@@ -161,21 +161,21 @@ int analyzeIgs(
   /* Display infos : */
   lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf("Codec: HDMV/IGS Menu format.\n");
-  lbc_printf("Number of Display Sets: %u.\n", ctx->nb_DS);
-  lbc_printf("Number of Epochs: %u.\n", ctx->nb_epochs);
+  lbc_printf("Number of Display Sets: %u.\n", ctx.nb_DS);
+  lbc_printf("Number of Epochs: %u.\n", ctx.nb_epochs);
   lbc_printf("Total number of segments per type:\n");
   printContentHdmvContext(ctx);
   lbc_printf("=======================================================================================\n");
 
-  if (closeHdmvContext(ctx) < 0)
+  if (closeHdmvContext(&ctx) < 0)
     goto free_return;
-  destroyHdmvContext(ctx);
+  cleanHdmvContext(ctx);
   cleanHdmvTimecodes(timecodes);
   free(infilepathDup);
   return 0;
 
 free_return:
-  destroyHdmvContext(ctx);
+  cleanHdmvContext(ctx);
   cleanHdmvTimecodes(timecodes);
   free(infilepathDup);
 

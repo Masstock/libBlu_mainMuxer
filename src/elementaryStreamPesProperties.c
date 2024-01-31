@@ -52,30 +52,30 @@ int preparePesHeaderCommon(
   dst->packetStartCode = PES_PACKET_START_CODE_PREFIX;
 
   switch (codingType) {
-    case STREAM_CODING_TYPE_H262: /* MPEG-2 */
-    case STREAM_CODING_TYPE_AVC: /* H.264/AVC */
-      dst->packetStartCode |= 0xE0; break;
-    case STREAM_CODING_TYPE_LPCM: /* LPCM */
-    case STREAM_CODING_TYPE_IG: /* IGS */
-    case STREAM_CODING_TYPE_PG: /* PGS */
-      /* private-stream-1 */
-      dst->packetStartCode |= 0xBD; break;
-    case STREAM_CODING_TYPE_AC3: /* AC-3 */
-    case STREAM_CODING_TYPE_DTS: /* DTS Coherent Acoustics */
-    case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD */
-    case STREAM_CODING_TYPE_EAC3: /* E-AC-3 */
-    case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR */
-    case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA */
-    case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express Secondary */
-      /* extended_stream_id */
-      dst->packetStartCode |= 0xFD; break;
-    default: /* Unsupported streamCodingType */
-      LIBBLU_ERROR_RETURN(
-        "Unable to prepare PES packet header, unknown parameters for stream "
-        "coding type 0x%02X (%s).\n",
-        (unsigned) codingType,
-        LibbluStreamCodingTypeStr(codingType)
-      );
+  case STREAM_CODING_TYPE_H262: /* MPEG-2 */
+  case STREAM_CODING_TYPE_AVC: /* H.264/AVC */
+    dst->packetStartCode |= 0xE0; break;
+  case STREAM_CODING_TYPE_LPCM: /* LPCM */
+  case STREAM_CODING_TYPE_IG: /* IGS */
+  case STREAM_CODING_TYPE_PG: /* PGS */
+    /* private-stream-1 */
+    dst->packetStartCode |= 0xBD; break;
+  case STREAM_CODING_TYPE_AC3: /* AC-3 */
+  case STREAM_CODING_TYPE_DTS: /* DTS Coherent Acoustics */
+  case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD */
+  case STREAM_CODING_TYPE_EAC3: /* E-AC-3 */
+  case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR */
+  case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA */
+  case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express Secondary */
+    /* extended_stream_id */
+    dst->packetStartCode |= 0xFD; break;
+  default: /* Unsupported streamCodingType */
+    LIBBLU_ERROR_RETURN(
+      "Unable to prepare PES packet header, unknown parameters for stream "
+      "coding type 0x%02X (%s).\n",
+      (unsigned) codingType,
+      LibbluStreamCodingTypeStr(codingType)
+    );
   }
 
   if (!IS_SHORT_PES_HEADER(dst->packetStartCode & 0xFF)) {
@@ -98,16 +98,15 @@ int preparePesHeaderCommon(
 
     dst->ptsFlag = 0x1;
     if (dst->ptsFlag) {
-      switch (codingType)
-      {
-        case STREAM_CODING_TYPE_H262: /* MPEG-2 */
-        case STREAM_CODING_TYPE_AVC: /* H.264/AVC */
-        case STREAM_CODING_TYPE_IG: /* IGS */
-        case STREAM_CODING_TYPE_PG: /* IGS */
-          dst->dtsFlag = prop.dtsPresent;
-          break;
-        default:
-          dst->dtsFlag = 0x0;
+      switch (codingType) {
+      case STREAM_CODING_TYPE_H262: /* MPEG-2 */
+      case STREAM_CODING_TYPE_AVC: /* H.264/AVC */
+      case STREAM_CODING_TYPE_IG: /* IGS */
+      case STREAM_CODING_TYPE_PG: /* IGS */
+        dst->dtsFlag = prop.dtsPresent;
+        break;
+      default:
+        dst->dtsFlag = 0x0;
       }
     }
 
@@ -118,19 +117,19 @@ int preparePesHeaderCommon(
     dst->pesCrcFlag = 0x0;
 
     switch (codingType) {
-      case STREAM_CODING_TYPE_AC3: /* AC-3 (Dolby Digital) */
-      case STREAM_CODING_TYPE_DTS: /* DTS */
-      case STREAM_CODING_TYPE_TRUEHD: /* MLP (Dolby TrueHD) */
-      case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
-      case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
-      case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
-      case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (Dolby Digital Plus) (Secondary Audio) */
-      case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-HD Express (Secondary Audio) */
-      case STREAM_CODING_TYPE_VC1: /* VC-1 */
-        dst->pesExtFlag = 0x1;
-        break;
-      default:
-        dst->pesExtFlag = 0x0;
+    case STREAM_CODING_TYPE_AC3: /* AC-3 (Dolby Digital) */
+    case STREAM_CODING_TYPE_DTS: /* DTS */
+    case STREAM_CODING_TYPE_TRUEHD: /* MLP (Dolby TrueHD) */
+    case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
+    case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
+    case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
+    case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (Dolby Digital Plus) (Secondary Audio) */
+    case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-HD Express (Secondary Audio) */
+    case STREAM_CODING_TYPE_VC1: /* VC-1 */
+      dst->pesExtFlag = 0x1;
+      break;
+    default:
+      dst->pesExtFlag = 0x0;
     }
 
     dst->pesHeaderDataLen = 0x00; /* Updated in the continuation of the function. */
@@ -230,37 +229,37 @@ int preparePesHeaderCommon(
 
         if (0x0 == dst->extParam.streamIdExtensionFlag) {
           switch (codingType) {
-            case STREAM_CODING_TYPE_AC3: /* AC-3 (Dolby Digital) */
-            case STREAM_CODING_TYPE_DTS: /* DTS */
-              dst->extParam.streamIdExtension = 0x71; break;
-            case STREAM_CODING_TYPE_TRUEHD: /* MLP (Dolby TrueHD) */
-              if (prop.extensionFrame)
-                dst->extParam.streamIdExtension = 0x72;
-              else
-                dst->extParam.streamIdExtension = 0x76;
-              break;
-            case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
-            case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
-            case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
-              if (prop.extensionFrame)
-                dst->extParam.streamIdExtension = 0x72;
-              else
-                dst->extParam.streamIdExtension = 0x71;
-              break;
-            case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (Dolby Digital Plus) (Secondary Audio) */
-            case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-HD Express (Secondary Audio) */
-              dst->extParam.streamIdExtension = 0x72; break;
-            case STREAM_CODING_TYPE_VC1: /* VC-1 */
-              /* Values from 0x55 to 0x5F are reserved for VC-1 */
-              dst->extParam.streamIdExtension = 0x55; break;
-            default:
-              LIBBLU_ERROR_RETURN(
-                "Unable to prepare PES packet header, "
-                "unknown PES Extension parameters for stream "
-                "coding type 0x%02X (%s).\n",
-                (unsigned) codingType,
-                LibbluStreamCodingTypeStr(codingType)
-              );
+          case STREAM_CODING_TYPE_AC3: /* AC-3 (Dolby Digital) */
+          case STREAM_CODING_TYPE_DTS: /* DTS */
+            dst->extParam.streamIdExtension = 0x71; break;
+          case STREAM_CODING_TYPE_TRUEHD: /* MLP (Dolby TrueHD) */
+            if (prop.extensionFrame)
+              dst->extParam.streamIdExtension = 0x72;
+            else
+              dst->extParam.streamIdExtension = 0x76;
+            break;
+          case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
+          case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
+          case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
+            if (prop.extensionFrame)
+              dst->extParam.streamIdExtension = 0x72;
+            else
+              dst->extParam.streamIdExtension = 0x71;
+            break;
+          case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (Dolby Digital Plus) (Secondary Audio) */
+          case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-HD Express (Secondary Audio) */
+            dst->extParam.streamIdExtension = 0x72; break;
+          case STREAM_CODING_TYPE_VC1: /* VC-1 */
+            /* Values from 0x55 to 0x5F are reserved for VC-1 */
+            dst->extParam.streamIdExtension = 0x55; break;
+          default:
+            LIBBLU_ERROR_RETURN(
+              "Unable to prepare PES packet header, "
+              "unknown PES Extension parameters for stream "
+              "coding type 0x%02X (%s).\n",
+              (unsigned) codingType,
+              LibbluStreamCodingTypeStr(codingType)
+            );
           }
         }
         else /* Not currently used */

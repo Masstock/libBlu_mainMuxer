@@ -220,15 +220,15 @@ DtsAUContentType identifyContentTypeDtsAUFrame(
   bool core_ss_present = false;
   for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
     switch (frm->contentCells[i].type) {
-      case DTS_FRM_INNER_CORE_SS:
-        core_ss_present = true;
-        break;
+    case DTS_FRM_INNER_CORE_SS:
+      core_ss_present = true;
+      break;
 
-      case DTS_FRM_INNER_EXT_SS_HDR:
-        return DTS_AU_EXT_SS;
+    case DTS_FRM_INNER_EXT_SS_HDR:
+      return DTS_AU_EXT_SS;
 
-      default:
-        break;
+    default:
+      break;
     }
   }
 
@@ -245,15 +245,15 @@ static int _appendReplacementParameters(
   const DtsAUInnerReplacementParam * param = cell->param;
 
   switch (cell->type) {
-    case DTS_FRM_INNER_EXT_SS_HDR:
-      return appendDcaExtSSHeader(script, cur_off, &param->ext_ss_hdr);
-    case DTS_FRM_INNER_EXT_SS_ASSET:
-      return appendDcaExtSSAsset(script, cur_off, &param->ext_ss_asset, src_file_idx);
-    default:
-      LIBBLU_DTS_ERROR_RETURN(
-        "Unknown replacement for AU cell type code: %u.\n",
-        cell->type
-      );
+  case DTS_FRM_INNER_EXT_SS_HDR:
+    return appendDcaExtSSHeader(script, cur_off, &param->ext_ss_hdr);
+  case DTS_FRM_INNER_EXT_SS_ASSET:
+    return appendDcaExtSSAsset(script, cur_off, &param->ext_ss_asset, src_file_idx);
+  default:
+    LIBBLU_DTS_ERROR_RETURN(
+      "Unknown replacement for AU cell type code: %u.\n",
+      cell->type
+    );
   }
 }
 
@@ -280,16 +280,16 @@ int processCompleteFrameDtsAUFrame(
 
   bool is_ext;
   switch (identifyContentTypeDtsAUFrame(frm)) {
-    case DTS_AU_CORE_SS:
-      LIBBLU_DTS_DEBUG(" AU type: Core substream.\n");
-      is_ext = false;
-      break;
-    case DTS_AU_EXT_SS:
-      LIBBLU_DTS_DEBUG(" AU type: Extension substream.\n");
-      is_ext = true;
-      break;
-    default:
-      LIBBLU_DTS_ERROR_RETURN("Unexpected AU content.\n");
+  case DTS_AU_CORE_SS:
+    LIBBLU_DTS_DEBUG(" AU type: Core substream.\n");
+    is_ext = false;
+    break;
+  case DTS_AU_EXT_SS:
+    LIBBLU_DTS_DEBUG(" AU type: Extension substream.\n");
+    is_ext = true;
+    break;
+  default:
+    LIBBLU_DTS_ERROR_RETURN("Unexpected AU content.\n");
   }
 
   if (initAudioPesPacketEsmsHandler(script, is_ext, false, pts, 0) < 0)
@@ -309,24 +309,22 @@ int processCompleteFrameDtsAUFrame(
 
     size_t added_size = 0;
     switch (cell->treatment) {
-      case DTS_AU_KEEP: {
-        int ret = appendAddPesPayloadCommandEsmsHandler(
-          script, src_file_idx, cur_off, cell->offset, cell->size
-        );
-        if (0 <= ret)
-          added_size = cell->size; // Only set if successfull
-        break;
-      }
+    case DTS_AU_KEEP:
+      int ret = appendAddPesPayloadCommandEsmsHandler(
+        script, src_file_idx, cur_off, cell->offset, cell->size
+      );
+      if (0 <= ret)
+        added_size = cell->size; // Only set if successfull
+      break;
 
-      case DTS_AU_SKIP:
-        continue; // Skip, do nothing.
+    case DTS_AU_SKIP:
+      continue; // Skip, do nothing.
 
-      case DTS_AU_REPLACE: {
-        LIBBLU_DTS_DEBUG("   Replacement parameters:\n");
-        added_size = _appendReplacementParameters(
-          cell, script, cur_off, src_file_idx
-        );
-      }
+    case DTS_AU_REPLACE:
+      LIBBLU_DTS_DEBUG("   Replacement parameters:\n");
+      added_size = _appendReplacementParameters(
+        cell, script, cur_off, src_file_idx
+      );
     }
 
     if (!added_size)

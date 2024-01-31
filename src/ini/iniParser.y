@@ -12,7 +12,7 @@
 #define inierror yyerror
 
 extern int yylex();
-extern int yyerror(IniFileContextPtr ctx, char * format, ...);
+extern int yyerror(IniFileContext * ctx, char * format, ...);
 extern char * yytext;
 extern int lineno;
 
@@ -39,7 +39,7 @@ extern int lineno;
 }
 
 %locations
-%parse-param {IniFileContextPtr ctx}
+%parse-param {IniFileContext * ctx}
 
 %union {
   IniFileNodePtr node;

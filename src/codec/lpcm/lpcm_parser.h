@@ -133,10 +133,10 @@ static inline const char * WaveFmtFormatTagStr(
 )
 {
   switch (wFormatTag) {
-    case WAVE_FORMAT_PCM:
-      return "Microsoft Pulse Code Modulation (PCM)";
-    case WAVE_FORMAT_EXTENSIBLE:
-      return "Extensible";
+  case WAVE_FORMAT_PCM:
+    return "Microsoft Pulse Code Modulation (PCM)";
+  case WAVE_FORMAT_EXTENSIBLE:
+    return "Extensible";
   }
   return "Unknown";
 }

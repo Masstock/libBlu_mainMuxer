@@ -33,28 +33,28 @@ static int _addSystemStreamToContext(
   uint64_t pes_duration = PAT_DELAY;
 
   switch (sys_stream->type) {
-    case TYPE_PCR:
-      priority = 1;
-      pes_duration = PCR_DELAY;
-      break;
+  case TYPE_PCR:
+    priority = 1;
+    pes_duration = PCR_DELAY;
+    break;
 
-    case TYPE_SIT:
-      priority = 2;
-      pes_duration = SIT_DELAY;
-      break;
+  case TYPE_SIT:
+    priority = 2;
+    pes_duration = SIT_DELAY;
+    break;
 
-    case TYPE_PMT:
-      priority = 3;
-      pes_duration = PMT_DELAY;
-      break;
+  case TYPE_PMT:
+    priority = 3;
+    pes_duration = PMT_DELAY;
+    break;
 
-    case TYPE_PAT:
-      priority = 4;
-      pes_duration = PAT_DELAY;
-      break;
+  case TYPE_PAT:
+    priority = 4;
+    pes_duration = PAT_DELAY;
+    break;
 
-    default:
-      LIBBLU_WARNING("Use of an unknown type system stream.\n");
+  default:
+    LIBBLU_WARNING("Use of an unknown type system stream.\n");
   }
 
   uint64_t pes_nb_tp = MAX(
@@ -713,16 +713,16 @@ LibbluMuxingContextPtr createLibbluMuxingContext(
       utilities.preparePesHeader
     );
     switch (ret) {
-      case 0: /* No more PES packet */
-        LIBBLU_ERROR_FRETURN(
-          "Empty script, unable to build a single PES packet, "
-          "'%" PRI_LBCS "'.\n",
-          stream->es.settings_ref->scriptFilepath
-        );
-      case 1: /* Success */
-        break;
-      default: /* Error */
-        goto free_return;
+    case 0: /* No more PES packet */
+      LIBBLU_ERROR_FRETURN(
+        "Empty script, unable to build a single PES packet, "
+        "'%" PRI_LBCS "'.\n",
+        stream->es.settings_ref->scriptFilepath
+      );
+    case 1: /* Success */
+      break;
+    default: /* Error */
+      goto free_return;
     }
 
     LIBBLU_DEBUG_COM(" Use properties to set timestamps.\n");
@@ -1191,12 +1191,12 @@ static int _muxNextESPacket(
       utilities.preparePesHeader
     );
     switch (ret) {
-      case 0:
-        return 1; /* No more data */
-      case 1:
-        break; /* Next PES packet successfully builded */
-      default:
-        return -1; /* Error */
+    case 0:
+      return 1; /* No more data */
+    case 1:
+      break; /* Next PES packet successfully builded */
+    default:
+      return -1; /* Error */
     }
 
     LIBBLU_DEBUG(

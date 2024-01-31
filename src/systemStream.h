@@ -161,7 +161,7 @@ typedef struct {
  * \brief Registration descriptor format_identifier.
  *
  * Values are attributed by the SMPTE Registration Authority (nominated by the
- * ISO/IEC JTC 1/SC 29). List of registered values can be founded at
+ * ISO/IEC JTC 1/SC 29). List of registered values can be found at
  * https://smpte-ra.org/registered-mpeg-ts-ids.
  */
 typedef enum {

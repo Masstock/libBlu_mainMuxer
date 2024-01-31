@@ -158,39 +158,39 @@ static inline int determineLibbluESType(
 )
 {
   switch (coding_type) {
-    /* Video :                                                               */
-    case STREAM_CODING_TYPE_MPEG1:    /* MPEG-1 (deprecated)                 */
-    case STREAM_CODING_TYPE_H262:     /* H.262/MPEG-2                        */
-    case STREAM_CODING_TYPE_AVC:      /* H.264/AVC                           */
-    case STREAM_CODING_TYPE_VC1:      /* VC-1                                */
-    case STREAM_CODING_TYPE_MVC:      /* H.264/MVC                           */
-    case STREAM_CODING_TYPE_HEVC:     /* H.265/HEVC                          */
-      *type_ret = ES_VIDEO;
-      return 0;
+  /* Video :                                                               */
+  case STREAM_CODING_TYPE_MPEG1:    /* MPEG-1 (deprecated)                 */
+  case STREAM_CODING_TYPE_H262:     /* H.262/MPEG-2                        */
+  case STREAM_CODING_TYPE_AVC:      /* H.264/AVC                           */
+  case STREAM_CODING_TYPE_VC1:      /* VC-1                                */
+  case STREAM_CODING_TYPE_MVC:      /* H.264/MVC                           */
+  case STREAM_CODING_TYPE_HEVC:     /* H.265/HEVC                          */
+    *type_ret = ES_VIDEO;
+    return 0;
 
-    /* Primary Audio :                                                       */
-    case STREAM_CODING_TYPE_LPCM:     /* LPCM                                */
-    case STREAM_CODING_TYPE_AC3:      /* AC-3                                */
-    case STREAM_CODING_TYPE_DTS:      /* DCA                                 */
-    case STREAM_CODING_TYPE_TRUEHD:   /* AC-3+MLP                            */
-    case STREAM_CODING_TYPE_EAC3:     /* E-AC-3                              */
-    case STREAM_CODING_TYPE_HDHR:     /* DTS-HDHR                            */
-    case STREAM_CODING_TYPE_HDMA:     /* DTS-HDMA                            */
-    /* Secondary Audio :                                                     */
-    case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (DD Plus)                     */
-    case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express                         */
-      *type_ret = ES_AUDIO;
-      return 0;
+  /* Primary Audio :                                                       */
+  case STREAM_CODING_TYPE_LPCM:     /* LPCM                                */
+  case STREAM_CODING_TYPE_AC3:      /* AC-3                                */
+  case STREAM_CODING_TYPE_DTS:      /* DCA                                 */
+  case STREAM_CODING_TYPE_TRUEHD:   /* AC-3+MLP                            */
+  case STREAM_CODING_TYPE_EAC3:     /* E-AC-3                              */
+  case STREAM_CODING_TYPE_HDHR:     /* DTS-HDHR                            */
+  case STREAM_CODING_TYPE_HDMA:     /* DTS-HDMA                            */
+  /* Secondary Audio :                                                     */
+  case STREAM_CODING_TYPE_EAC3_SEC: /* E-AC-3 (DD Plus)                     */
+  case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express                         */
+    *type_ret = ES_AUDIO;
+    return 0;
 
-    /* HDMV Streams :                                                        */
-    case STREAM_CODING_TYPE_PG:       /* Presentation Graphics (PG)          */
-    case STREAM_CODING_TYPE_IG:       /* Interactive Graphics (IG)           */
-    case STREAM_CODING_TYPE_TEXT:     /* Text-Subtitles                      */
-      *type_ret = ES_HDMV;
-      return 0;
+  /* HDMV Streams :                                                        */
+  case STREAM_CODING_TYPE_PG:       /* Presentation Graphics (PG)          */
+  case STREAM_CODING_TYPE_IG:       /* Interactive Graphics (IG)           */
+  case STREAM_CODING_TYPE_TEXT:     /* Text-Subtitles                      */
+    *type_ret = ES_HDMV;
+    return 0;
 
-    default:
-      return -1; // Error, unknow id
+  default:
+    return -1; // Error, unknow id
   }
 }
 

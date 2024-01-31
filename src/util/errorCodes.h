@@ -57,11 +57,20 @@
 #define LIBBLU_DEBUG_COM_NO_HEADER(format, ...)                               \
   LIBBLU_ECHO(LIBBLU_DEBUG_GLB, format, ##__VA_ARGS__)
 
-#define LIBBLU_TODO(format, ...)                                              \
+#define LIBBLU_TODO_MSG(format, ...)                                          \
   do {                                                                        \
     LIBBLU_ECHO(                                                              \
       LIBBLU_FATAL_ERROR, "[TODO] %s(), line %d, %s: " format,                \
       __func__, __LINE__, __FILE__, ##__VA_ARGS__                             \
+    );                                                                        \
+    exit(EXIT_FAILURE);                                                       \
+  } while(0)
+
+#define LIBBLU_TODO()                                                         \
+  do {                                                                        \
+    LIBBLU_ECHO(                                                              \
+      LIBBLU_FATAL_ERROR, "[TODO] %s(), line %d, %s\n",                       \
+      __func__, __LINE__, __FILE__                                            \
     );                                                                        \
     exit(EXIT_FAILURE);                                                       \
   } while(0)
@@ -91,10 +100,11 @@
   __LIBBLU_ERROR_INSTR_(return, format, ##__VA_ARGS__)
 
 typedef enum {
-  LIBBLU_EXPLODE_COMPLIANCE,
-  LIBBLU_EXPLODE_BD_COMPLIANCE,
+  // LIBBLU_EXPLODE_COMPLIANCE,
+  // LIBBLU_EXPLODE_BD_COMPLIANCE,
   LIBBLU_EXPLODE_STD_COMPLIANCE,
-  LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE
+  LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE,
+  LIBBLU_EXPLODE_HDMV_TC_COMPLIANCE
 } LibbluExplodeLevel;
 
 int isDisabledExplodeLevel(

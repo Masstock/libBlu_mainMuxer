@@ -89,16 +89,16 @@ int addHdmvTimecodes(
  */
 static inline int getHdmvTimecodes(
   HdmvTimecodes * tm,
-  int64_t * value
+  int64_t * pres_time_ret
 )
 {
   assert(NULL != tm);
-  assert(NULL != value);
+  assert(NULL != pres_time_ret);
 
   if (tm->readedValues == tm->usedValues)
     LIBBLU_HDMV_TC_ERROR_RETURN("No timecode to extract.\n");
 
-  *value = tm->values[tm->readedValues++];
+  *pres_time_ret = tm->values[tm->readedValues++];
   return 0;
 }
 

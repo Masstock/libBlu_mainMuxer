@@ -1,2 +1,2 @@
 MUXOPT --start-time=1048560
-M_HDMV/IGS, "00067.track_5120.mnu" --hdmv-initial-timestamp=1048560 --force-esms # --hdmv-force-retiming
+M_HDMV/IGS, "00067.track_5120.mnu" --force-esms --hdmv-force-retiming # --hdmv-initial-timestamp=1048560

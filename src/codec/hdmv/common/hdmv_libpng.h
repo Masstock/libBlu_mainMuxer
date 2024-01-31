@@ -169,16 +169,16 @@ static inline const char * color_typeHdmvLibpngStr(
 )
 {
   switch (color_type) {
-    case PNG_COLOR_TYPE_GRAY:
-      return "Shades of gray";
-    case PNG_COLOR_TYPE_GRAY_ALPHA:
-      return "Shades of gray with transparency";
-    case PNG_COLOR_TYPE_PALETTE:
-      return "Indexed colors";
-    case PNG_COLOR_TYPE_RGB:
-      return "RGB";
-    case PNG_COLOR_TYPE_RGB_ALPHA:
-      return "RGB with transparency";
+  case PNG_COLOR_TYPE_GRAY:
+    return "Shades of gray";
+  case PNG_COLOR_TYPE_GRAY_ALPHA:
+    return "Shades of gray with transparency";
+  case PNG_COLOR_TYPE_PALETTE:
+    return "Indexed colors";
+  case PNG_COLOR_TYPE_RGB:
+    return "RGB";
+  case PNG_COLOR_TYPE_RGB_ALPHA:
+    return "RGB with transparency";
   }
 
   return "Unknown";
@@ -189,12 +189,12 @@ static inline const char * interlace_methodHdmvLibpngStr(
 )
 {
   switch (interlace_method) {
-    case PNG_INTERLACE_NONE:
-      return "Not interlaced (progressive)";
-    case PNG_INTERLACE_ADAM7:
-      return "Adam7 interlacing";
-    case PNG_INTERLACE_LAST:
-      return "Invalid";
+  case PNG_INTERLACE_NONE:
+    return "Not interlaced (progressive)";
+  case PNG_INTERLACE_ADAM7:
+    return "Adam7 interlacing";
+  case PNG_INTERLACE_LAST:
+    return "Invalid";
   }
 
   return "Unknown";
@@ -205,8 +205,8 @@ static inline const char * compression_methodHdmvLibpngStr(
 )
 {
   switch (compression_method) {
-    case PNG_COMPRESSION_TYPE_BASE:
-      return "Method 0 Inflate/Deflate (default)";
+  case PNG_COMPRESSION_TYPE_BASE:
+    return "Method 0 Inflate/Deflate (default)";
   }
 
   return "Unknown";
@@ -217,10 +217,10 @@ static inline const char * filter_methodHdmvLibpngStr(
 )
 {
   switch (filter_method) {
-    case PNG_FILTER_TYPE_BASE:
-      return "Method 0 (default)";
-    case PNG_INTRAPIXEL_DIFFERENCING:
-      return "Method 0 w/ Intra differencing (MNG standard)";
+  case PNG_FILTER_TYPE_BASE:
+    return "Method 0 (default)";
+  case PNG_INTRAPIXEL_DIFFERENCING:
+    return "Method 0 w/ Intra differencing (MNG standard)";
   }
 
   return "Unknown";

@@ -21,121 +21,121 @@ static int _parseHeaderMetaFile(
     LibbluMetaOptionArgValue argument;
 
     switch (parseLibbluMetaOption(optNode, &option, &argument, -1)) {
-      case -1: /* Invalid option */
-        return -1;
+    case -1: /* Invalid option */
+      return -1;
 
-      case LBMETA_OPT__NO_EXTRA_HEADER:
-        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, writeTPExtraHeaders, false);
-        break;
+    case LBMETA_OPT__NO_EXTRA_HEADER:
+      LIBBLU_MUX_SETTINGS_SET_OPTION(dst, writeTPExtraHeaders, false);
+      break;
 
-      case LBMETA_OPT__CBR_MUX:
-        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, cbrMuxing, true);
-        break;
+    case LBMETA_OPT__CBR_MUX:
+      LIBBLU_MUX_SETTINGS_SET_OPTION(dst, cbrMuxing, true);
+      break;
 
-      case LBMETA_OPT__FORCE_ESMS:
-        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, forcedScriptBuilding, true);
-        break;
+    case LBMETA_OPT__FORCE_ESMS:
+      LIBBLU_MUX_SETTINGS_SET_OPTION(dst, forcedScriptBuilding, true);
+      break;
 
-      case LBMETA_OPT__DISABLE_T_STD:
-        LIBBLU_MUX_SETTINGS_SET_OPTION(dst, disableBufModel, true);
-        break;
+    case LBMETA_OPT__DISABLE_T_STD:
+      LIBBLU_MUX_SETTINGS_SET_OPTION(dst, disableBufModel, true);
+      break;
 
-      case LBMETA_OPT__START_TIME:
-        if (setInitPresTimeLibbluMuxingSettings(dst, argument.u64) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "expect a value between %" PRIu64 " (inclusive) "
-            "and %" PRIu64 " (non-inclusive).\n",
-            option.name,
-            LIBBLU_MIN_INIT_PRES_TIME,
-            LIBBLU_MAX_INIT_PRES_TIME
-          );
-        break;
-
-      case LBMETA_OPT__MUX_RATE:
-        if (setTargetMuxRateLibbluMuxingSettings(dst, argument.u64) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "expect a value between %" PRIu64 " (inclusive) "
-            "and %" PRIu64 " (non-inclusive).\n",
-            option.name,
-            LIBBLU_MIN_MUXING_RATE,
-            LIBBLU_MAX_MUXING_RATE
-          );
-        break;
-
-      case LBMETA_OPT__DVD_MEDIA:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, dvdMedia, true);
-        break;
-
-      case LBMETA_OPT__DISABLE_FIXES:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, disableFixes, true);
-        break;
-
-      case LBMETA_OPT__EXTRACT_CORE:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, extractCore, true);
-        break;
-
-      case LBMETA_OPT__SET_FPS:
-        if (setFpsChangeLibbluMuxingSettings(dst, argument.str) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "only standard FPS values can be used (see help).\n",
-            option.name
-          );
-        break;
-
-      case LBMETA_OPT__SET_AR:
-        if (setArChangeLibbluMuxingSettings(dst, argument.str) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "must be in the format 'width:height' "
-            "with non-zero numeric values (or '0:0' for 'unspecified').\n",
-            option.name
-          );
-        break;
-
-      case LBMETA_OPT__SET_LEVEL:
-        if (setLevelChangeLibbluMuxingSettings(dst, argument.str) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "wrong level format or unknown value. Value format must be xx "
-            "or x.x with numeric values (e.g. '4' or '40' or '4.0'). "
-            "See ITU-T Rec. H.264 for level values list.\n",
-            option.name
-          );
-        break;
-
-      case LBMETA_OPT__REMOVE_SEI:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, discardSei, true);
-        break;
-
-      case LBMETA_OPT__DISABLE_HRD_VERIF:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, disableHrdVerifier, true);
-        break;
-
-      case LBMETA_OPT__HDMV_INITIAL_TS:
-        if (setHdmvInitialTimestampLibbluMuxingSettings(dst, argument.u64) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "value shall be between %" PRIu64 " and %" PRIu64 " "
-            "(inclusive).\n",
-            option.name,
-            LIBBLU_MIN_HDMV_INIT_TIMESTAMP,
-            LIBBLU_MAX_HDMV_INIT_TIMESTAMP
-          );
-        break;
-
-      case LBMETA_OPT__HDMV_FORCE_RETIMING:
-        LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.force_retiming, true);
-        break;
-
-      default:
+    case LBMETA_OPT__START_TIME:
+      if (setInitPresTimeLibbluMuxingSettings(dst, argument.u64) < 0)
         LIBBLU_ERROR_RETURN(
-          "Unexpected option '%" PRI_LBCS "', "
-          "cannot be used in file header.\n",
-          optNode->name
+          "Invalid '%" PRI_LBCS "' option value, "
+          "expect a value between %" PRIu64 " (inclusive) "
+          "and %" PRIu64 " (non-inclusive).\n",
+          option.name,
+          LIBBLU_MIN_INIT_PRES_TIME,
+          LIBBLU_MAX_INIT_PRES_TIME
         );
+      break;
+
+    case LBMETA_OPT__MUX_RATE:
+      if (setTargetMuxRateLibbluMuxingSettings(dst, argument.u64) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "expect a value between %" PRIu64 " (inclusive) "
+          "and %" PRIu64 " (non-inclusive).\n",
+          option.name,
+          LIBBLU_MIN_MUXING_RATE,
+          LIBBLU_MAX_MUXING_RATE
+        );
+      break;
+
+    case LBMETA_OPT__DVD_MEDIA:
+      LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, dvdMedia, true);
+      break;
+
+    case LBMETA_OPT__DISABLE_FIXES:
+      LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, disableFixes, true);
+      break;
+
+    case LBMETA_OPT__EXTRACT_CORE:
+      LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, extractCore, true);
+      break;
+
+    case LBMETA_OPT__SET_FPS:
+      if (setFpsChangeLibbluMuxingSettings(dst, argument.str) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "only standard FPS values can be used (see help).\n",
+          option.name
+        );
+      break;
+
+    case LBMETA_OPT__SET_AR:
+      if (setArChangeLibbluMuxingSettings(dst, argument.str) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "must be in the format 'width:height' "
+          "with non-zero numeric values (or '0:0' for 'unspecified').\n",
+          option.name
+        );
+      break;
+
+    case LBMETA_OPT__SET_LEVEL:
+      if (setLevelChangeLibbluMuxingSettings(dst, argument.str) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "wrong level format or unknown value. Value format must be xx "
+          "or x.x with numeric values (e.g. '4' or '40' or '4.0'). "
+          "See ITU-T Rec. H.264 for level values list.\n",
+          option.name
+        );
+      break;
+
+    case LBMETA_OPT__REMOVE_SEI:
+      LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, discardSei, true);
+      break;
+
+    case LBMETA_OPT__DISABLE_HRD_VERIF:
+      LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, disableHrdVerifier, true);
+      break;
+
+    case LBMETA_OPT__HDMV_INITIAL_TS:
+      if (setHdmvInitialTimestampLibbluMuxingSettings(dst, argument.u64) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "value shall be between %" PRIu64 " and %" PRIu64 " "
+          "(inclusive).\n",
+          option.name,
+          LIBBLU_MIN_HDMV_INIT_TIMESTAMP,
+          LIBBLU_MAX_HDMV_INIT_TIMESTAMP
+        );
+      break;
+
+    case LBMETA_OPT__HDMV_FORCE_RETIMING:
+      LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.force_retiming, true);
+      break;
+
+    default:
+      LIBBLU_ERROR_RETURN(
+        "Unexpected option '%" PRI_LBCS "', "
+        "cannot be used in file header.\n",
+        optNode->name
+      );
     }
 
     cleanLibbluMetaOptionArgValue(option, argument);
@@ -251,123 +251,123 @@ static int parseTrackMetaFile(
     LibbluMetaOptionArgValue argument;
 
     switch (parseLibbluMetaOption(optNode, &option, &argument, trackCodingType)) {
-      case -1:
+    case -1:
+      return -1;
+
+    case LBMETA_OPT__FORCE_ESMS:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, forcedScriptBuilding, true);
+      break;
+
+    case LBMETA_OPT__SECONDARY:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, secondaryStream, true);
+      break;
+
+    case LBMETA_OPT__DISABLE_FIXES:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, disableFixes, true);
+      break;
+
+    case LBMETA_OPT__EXTRACT_CORE:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, extractCore, true);
+      break;
+
+    case LBMETA_OPT__PBR_FILE: {
+      lbc * path;
+      if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
         return -1;
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, pbrFilepath, path);
+      break;
+    }
 
-      case LBMETA_OPT__FORCE_ESMS:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, forcedScriptBuilding, true);
-        break;
-
-      case LBMETA_OPT__SECONDARY:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, secondaryStream, true);
-        break;
-
-      case LBMETA_OPT__DISABLE_FIXES:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, disableFixes, true);
-        break;
-
-      case LBMETA_OPT__EXTRACT_CORE:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, extractCore, true);
-        break;
-
-      case LBMETA_OPT__PBR_FILE: {
-        lbc * path;
-        if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
-          return -1;
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, pbrFilepath, path);
-        break;
-      }
-
-      case LBMETA_OPT__SET_FPS:
-        if (setFpsChangeLibbluESSettings(elemStream, argument.str) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "only standard FPS values can be used (see help).\n",
-            option.name
-          );
-        break;
-
-      case LBMETA_OPT__SET_AR:
-        if (setArChangeLibbluESSettings(elemStream, argument.str) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "must be in the format 'width:height' "
-            "with non-zero numeric values (or '0:0' for 'unspecified').\n",
-            option.name
-          );
-        break;
-
-      case LBMETA_OPT__SET_LEVEL:
-        if (setLevelChangeLibbluESSettings(elemStream, argument.str) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "wrong level format or unknown value. Value format must be xx "
-            "or x.x with numeric values (e.g. '4' or '40' or '4.0'). "
-            "See ITU-T Rec. H.264 for level values list.\n",
-            option.name
-          );
-        break;
-
-      case LBMETA_OPT__REMOVE_SEI:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, discardSei, true);
-        break;
-
-      case LBMETA_OPT__DISABLE_HRD_VERIF:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, disableHrdVerifier, true);
-        break;
-
-      case LBMETA_OPT__HRD_CPB_STATS: {
-        lbc * path;
-        if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
-          return -1;
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdCpbStatsFilepath, path);
-        break;
-      }
-
-      case LBMETA_OPT__HRD_DPB_STATS: {
-        lbc * path;
-        if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
-          return -1;
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdDpbStatsFilepath, path);
-        break;
-      }
-
-      case LBMETA_OPT__HDMV_INITIAL_TS:
-        if (setHdmvInitialTimestampLibbluESSettings(elemStream, argument.u64) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "value shall be between %" PRIu64 " and %" PRIu64 " "
-            "(inclusive).\n",
-            option.name,
-            LIBBLU_MIN_HDMV_INIT_TIMESTAMP,
-            LIBBLU_MAX_HDMV_INIT_TIMESTAMP
-          );
-        break;
-
-      case LBMETA_OPT__HDMV_FORCE_RETIMING:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.force_retiming, true);
-        break;
-
-      case LBMETA_OPT__HDMV_ASS_INPUT:
-        LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.ass_input, true);
-        break;
-
-      case LBMETA_OPT__ESMS:
-        if (setScriptFilepathLibbluESSettings(elemStream, argument.str, metaFilepath) < 0)
-          LIBBLU_ERROR_RETURN(
-            "Invalid '%" PRI_LBCS "' option value, "
-            "unable to set '%" PRI_LBCS "' as script filepath.\n",
-            option.name,
-            argument.str
-          );
-        break;
-
-      default:
+    case LBMETA_OPT__SET_FPS:
+      if (setFpsChangeLibbluESSettings(elemStream, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Unexpected option '%" PRI_LBCS "', cannot be used on a %s track.\n",
-          optNode->name,
-          trackCodingTypeName
+          "Invalid '%" PRI_LBCS "' option value, "
+          "only standard FPS values can be used (see help).\n",
+          option.name
         );
+      break;
+
+    case LBMETA_OPT__SET_AR:
+      if (setArChangeLibbluESSettings(elemStream, argument.str) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "must be in the format 'width:height' "
+          "with non-zero numeric values (or '0:0' for 'unspecified').\n",
+          option.name
+        );
+      break;
+
+    case LBMETA_OPT__SET_LEVEL:
+      if (setLevelChangeLibbluESSettings(elemStream, argument.str) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "wrong level format or unknown value. Value format must be xx "
+          "or x.x with numeric values (e.g. '4' or '40' or '4.0'). "
+          "See ITU-T Rec. H.264 for level values list.\n",
+          option.name
+        );
+      break;
+
+    case LBMETA_OPT__REMOVE_SEI:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, discardSei, true);
+      break;
+
+    case LBMETA_OPT__DISABLE_HRD_VERIF:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, disableHrdVerifier, true);
+      break;
+
+    case LBMETA_OPT__HRD_CPB_STATS: {
+      lbc * path;
+      if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
+        return -1;
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdCpbStatsFilepath, path);
+      break;
+    }
+
+    case LBMETA_OPT__HRD_DPB_STATS: {
+      lbc * path;
+      if (lb_gen_anchor_absolute_fp(&path, metaFilepath, argument.str) < 0)
+        return -1;
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hrdDpbStatsFilepath, path);
+      break;
+    }
+
+    case LBMETA_OPT__HDMV_INITIAL_TS:
+      if (setHdmvInitialTimestampLibbluESSettings(elemStream, argument.u64) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "value shall be between %" PRIu64 " and %" PRIu64 " "
+          "(inclusive).\n",
+          option.name,
+          LIBBLU_MIN_HDMV_INIT_TIMESTAMP,
+          LIBBLU_MAX_HDMV_INIT_TIMESTAMP
+        );
+      break;
+
+    case LBMETA_OPT__HDMV_FORCE_RETIMING:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.force_retiming, true);
+      break;
+
+    case LBMETA_OPT__HDMV_ASS_INPUT:
+      LIBBLU_ES_SETTINGS_SET_OPTION(elemStream, hdmv.ass_input, true);
+      break;
+
+    case LBMETA_OPT__ESMS:
+      if (setScriptFilepathLibbluESSettings(elemStream, argument.str, metaFilepath) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%" PRI_LBCS "' option value, "
+          "unable to set '%" PRI_LBCS "' as script filepath.\n",
+          option.name,
+          argument.str
+        );
+      break;
+
+    default:
+      LIBBLU_ERROR_RETURN(
+        "Unexpected option '%" PRI_LBCS "', cannot be used on a %s track.\n",
+        optNode->name,
+        trackCodingTypeName
+      );
     }
 
     cleanLibbluMetaOptionArgValue(option, argument);

@@ -678,64 +678,64 @@ int rebuildH264SPSNalVuiParameters(
 
     /* Set VUI Color Description parameters : */
     switch (handle->sequenceParametersSet.data.FrameHeight) {
-      case 576: /* SD PAL */
-        colourDesc->colour_primaries = H264_COLOR_PRIM_BT470BG;
-        colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT470BG;
-        colourDesc->matrix_coefficients = H264_MATRX_COEF_BT470BG;
-        break;
+    case 576: /* SD PAL */
+      colourDesc->colour_primaries = H264_COLOR_PRIM_BT470BG;
+      colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT470BG;
+      colourDesc->matrix_coefficients = H264_MATRX_COEF_BT470BG;
+      break;
 
-      case 480: /* SD NTSC */
-        colourDesc->colour_primaries = H264_COLOR_PRIM_SMPTE170M;
-        colourDesc->transfer_characteristics = H264_TRANS_CHAR_SMPTE170M;
-        colourDesc->matrix_coefficients = H264_MATRX_COEF_SMPTE170M;
-        break;
+    case 480: /* SD NTSC */
+      colourDesc->colour_primaries = H264_COLOR_PRIM_SMPTE170M;
+      colourDesc->transfer_characteristics = H264_TRANS_CHAR_SMPTE170M;
+      colourDesc->matrix_coefficients = H264_MATRX_COEF_SMPTE170M;
+      break;
 
-      default: /* HD */
-        colourDesc->colour_primaries = H264_COLOR_PRIM_BT709;
-        colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT709;
-        colourDesc->matrix_coefficients = H264_MATRX_COEF_BT709;
+    default: /* HD */
+      colourDesc->colour_primaries = H264_COLOR_PRIM_BT709;
+      colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT709;
+      colourDesc->matrix_coefficients = H264_MATRX_COEF_BT709;
     }
   }
 
   if (handle->curProgParam.useVuiUpdate) {
     switch (options.fpsChange) {
-      case 0x0: /* No change */
-        break;
+    case 0x0: /* No change */
+      break;
 
-      case FRAME_RATE_CODE_23976: /* 23.976 */
-        vuiParam->num_units_in_tick = 1001;
-        vuiParam->time_scale = 48000;
-        break;
+    case FRAME_RATE_CODE_23976: /* 23.976 */
+      vuiParam->num_units_in_tick = 1001;
+      vuiParam->time_scale = 48000;
+      break;
 
-      case FRAME_RATE_CODE_24: /* 24 */
-        vuiParam->num_units_in_tick = 1000;
-        vuiParam->time_scale = 48000;
-        break;
+    case FRAME_RATE_CODE_24: /* 24 */
+      vuiParam->num_units_in_tick = 1000;
+      vuiParam->time_scale = 48000;
+      break;
 
-      case FRAME_RATE_CODE_25: /* 25 */
-        vuiParam->num_units_in_tick = 1000;
-        vuiParam->time_scale = 50000;
-        break;
+    case FRAME_RATE_CODE_25: /* 25 */
+      vuiParam->num_units_in_tick = 1000;
+      vuiParam->time_scale = 50000;
+      break;
 
-      case FRAME_RATE_CODE_29970: /* 29.970 */
-        vuiParam->num_units_in_tick = 1001;
-        vuiParam->time_scale = 60000;
-        break;
+    case FRAME_RATE_CODE_29970: /* 29.970 */
+      vuiParam->num_units_in_tick = 1001;
+      vuiParam->time_scale = 60000;
+      break;
 
-      case FRAME_RATE_CODE_50: /* 50 */
-        vuiParam->num_units_in_tick = 1000;
-        vuiParam->time_scale = 100000;
-        break;
+    case FRAME_RATE_CODE_50: /* 50 */
+      vuiParam->num_units_in_tick = 1000;
+      vuiParam->time_scale = 100000;
+      break;
 
-      case FRAME_RATE_CODE_59940: /* 59.940 */
-        vuiParam->num_units_in_tick = 1001;
-        vuiParam->time_scale = 120000;
-        break;
+    case FRAME_RATE_CODE_59940: /* 59.940 */
+      vuiParam->num_units_in_tick = 1001;
+      vuiParam->time_scale = 120000;
+      break;
 
-      default:
-        LIBBLU_H264_ERROR_RETURN(
-          "Patcher is unable to get FPS destination value.\n"
-        );
+    default:
+      LIBBLU_H264_ERROR_RETURN(
+        "Patcher is unable to get FPS destination value.\n"
+      );
     }
 
     if (isUsedLibbluAspectRatioMod(options.arChange)) {
@@ -1007,17 +1007,17 @@ int buildH264SeiMessage(
 
   /* sei_payload() */
   switch (param->payloadType) {
-    case H264_SEI_TYPE_BUFFERING_PERIOD:
-      ret = buildH264SeiBufferingPeriodMessage(
-        handle, seiNal, &param->bufferingPeriod
-      );
-      break;
+  case H264_SEI_TYPE_BUFFERING_PERIOD:
+    ret = buildH264SeiBufferingPeriodMessage(
+      handle, seiNal, &param->bufferingPeriod
+    );
+    break;
 
-    default:
-      LIBBLU_ERROR_RETURN(
-        "Internal error, missing building rules for SEI %s message type.\n",
-        H264SEIMessagePayloadTypeStr(param->payloadType)
-      );
+  default:
+    LIBBLU_ERROR_RETURN(
+      "Internal error, missing building rules for SEI %s message type.\n",
+      H264SEIMessagePayloadTypeStr(param->payloadType)
+    );
   }
 
   return ret;

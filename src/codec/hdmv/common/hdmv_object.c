@@ -150,6 +150,5 @@ bool performRleHdmvObject(
   }
 
   obj->rle_size = dst - obj->rle;
-  printf("%u\n", obj->rle_size);
   return true;
 }

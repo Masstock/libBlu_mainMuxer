@@ -1486,14 +1486,14 @@ static inline unsigned getMlpMaxNbChannels(
 )
 {
   switch (ss_idx) {
-    case 0:  // Substream 0
-      return 2;  // 2-channel presentation
-    case 1:  // Substream 1
-      return 6;  // 6-channel presentation
-    case 2:  // Substream 2
-      return 8;  // 8-channel presentation
-    default: // Substream 3
-      return 16; // 16-channel presentation
+  case 0:  // Substream 0
+    return 2;  // 2-channel presentation
+  case 1:  // Substream 1
+    return 6;  // 6-channel presentation
+  case 2:  // Substream 2
+    return 8;  // 8-channel presentation
+  default: // Substream 3
+    return 16; // 16-channel presentation
   }
 }
 

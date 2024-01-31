@@ -7,7 +7,7 @@ CC :=  gcc
 LEX := flex
 YACC := bison
 
-CFLAGS := -std=c99 -Wall -Wextra -Winline -Werror
+CFLAGS := -std=c99 -Wall -Wextra -Winline -Werror -Wpointer-arith
 LDLIBS := -lm
 
 EXEC := mainMuxer
@@ -41,7 +41,7 @@ EXTCFLAGS += -D NDEBUGMSG
 endif
 
 ifneq "$(findstring build, $(MAKECMDGOALS))" ""
-EXTCFLAGS += -D NDEBUG -O2
+EXTCFLAGS += -D NDEBUG -O2 -Werror
 else
 EXTCFLAGS += -g -ggdb -O0
 endif
@@ -86,6 +86,7 @@ SOURCE_FILES =																\
 	codec/h264/h264_patcher.o												\
 	codec/h264/h264_util.o													\
 	codec/hdmv/common/hdmv_check.o											\
+	codec/hdmv/common/hdmv_collision_tree.o									\
 	codec/hdmv/common/hdmv_common.o											\
 	codec/hdmv/common/hdmv_context.o										\
 	codec/hdmv/common/hdmv_data.o											\
@@ -94,10 +95,10 @@ SOURCE_FILES =																\
 	codec/hdmv/common/hdmv_palette.o										\
 	codec/hdmv/common/hdmv_palette_gen.o									\
 	codec/hdmv/common/hdmv_parser.o											\
-	codec/hdmv/common/hdmv_bitmap_indexer.o									\
 	codec/hdmv/common/hdmv_bitmap_list.o									\
 	codec/hdmv/common/hdmv_bitmap.o											\
 	codec/hdmv/common/hdmv_quantizer.o										\
+	codec/hdmv/common/hdmv_seq_indexer.o									\
 	codec/hdmv/common/hdmv_timecodes.o										\
 	codec/hdmv/igs_parser.o													\
 	codec/hdmv/pgs_parser.o													\

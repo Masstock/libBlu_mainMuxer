@@ -500,12 +500,12 @@ static int _updatePalFromRgbaHdmvPicture(
     LIBBLU_HDMV_PIC_DEBUG("   Warning: Unable to compute duration.\n");
 
   switch (pic->infos.ditherMeth) {
-    case HDMV_PIC_CDM_DISABLED:
-      updatePalFromRgbaNoDitheringHdmvPicture(pic);
-      break;
+  case HDMV_PIC_CDM_DISABLED:
+    updatePalFromRgbaNoDitheringHdmvPicture(pic);
+    break;
 
-    case HDMV_PIC_CDM_FLOYD_STEINBERG:
-      updatePalFromRgbaFloydSteinbergHdmvPicture(pic);
+  case HDMV_PIC_CDM_FLOYD_STEINBERG:
+    updatePalFromRgbaFloydSteinbergHdmvPicture(pic);
   }
 
   duration = clock() - start;

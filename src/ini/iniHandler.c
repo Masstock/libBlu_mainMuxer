@@ -9,18 +9,16 @@
 #include "iniHandler.h"
 
 extern FILE * yyin;
-extern int iniparse(IniFileContextPtr ctx);
+extern int iniparse(IniFileContext * ctx);
 extern int yylex_destroy (void);
 
 int parseIniFile(
-  IniFileContextPtr * dst,
+  IniFileContext * dst,
   const lbc * filepath
 )
 {
-  IniFileContextPtr ctx;
-  FILE * fp;
-
-  if (NULL == (fp = lbc_fopen(filepath, "r")))
+  FILE * fp = lbc_fopen(filepath, "r");
+  if (NULL == fp)
     LIBBLU_ERROR_RETURN(
       "Unable to open INI file '%" PRI_LBCS "', %s (errno: %d).\n",
       filepath,
@@ -28,45 +26,25 @@ int parseIniFile(
       errno
     );
 
-  if (NULL == (ctx = createIniFileContext()))
-    goto free_return;
-
-  if (loadSourceIniFileContext(ctx, fp) < 0)
+  IniFileContext ctx = {0};
+  if (loadSourceIniFileContext(&ctx, fp) < 0)
     goto free_return;
 
   yyin = fp;
-  if (0 != iniparse(ctx))
+  if (0 != iniparse(&ctx))
     LIBBLU_ERROR_FRETURN(
       "Unable to parse INI file '%" PRI_LBCS "'.\n",
       filepath
     );
+
   yylex_destroy();
-
-#if 0
-  printIniFileNode(ctx->tree);
-  printf("Found: '%s'.\n", lookupIniFileNode(ctx->tree, "LIBRARIES.LIBPNG"));
-#endif
-
-  if (NULL != dst)
-    *dst = ctx;
-  else
-    destroyIniFileContext(ctx);
-
   fclose(fp);
+
+  *dst = ctx;
   return 0;
 
 free_return:
-  destroyIniFileContext(ctx);
+  cleanIniFileContext(ctx);
   fclose(fp);
   return -1;
-}
-
-lbc * lookupIniFile(
-  const IniFileContextPtr ctx,
-  const char * expr
-)
-{
-  if (NULL == ctx)
-    return NULL;
-  return lookupIniFileNode(ctx->tree, expr);
 }

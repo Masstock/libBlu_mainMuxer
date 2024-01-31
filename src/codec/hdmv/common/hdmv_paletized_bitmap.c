@@ -233,10 +233,10 @@ static int _applyPalette(
 
   int ret;
   switch (dither_method) {
-    case HDMV_PIC_CDM_DISABLED:
-      ret = _applyPaletteNoDithering(dst, src, pal); break;
-    case HDMV_PIC_CDM_FLOYD_STEINBERG:
-      ret = _applyPaletteFloydSteinberg(dst, src, pal);
+  case HDMV_PIC_CDM_DISABLED:
+    ret = _applyPaletteNoDithering(dst, src, pal); break;
+  case HDMV_PIC_CDM_FLOYD_STEINBERG:
+    ret = _applyPaletteFloydSteinberg(dst, src, pal);
   }
   if (ret < 0)
     return -1;

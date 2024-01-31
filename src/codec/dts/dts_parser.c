@@ -848,25 +848,25 @@ static int _decodeDcaExtSSAssetDescDecND(
 
   int ret;
   switch (param->nuCodingMode) {
-    case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
-      /* DTS-HD component(s). */
-      ret = _decodeDcaExSSAssetDescDecNDMode0(file, param, nuBits4ExSSFsize);
-      break;
+  case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
+    /* DTS-HD component(s). */
+    ret = _decodeDcaExSSAssetDescDecNDMode0(file, param, nuBits4ExSSFsize);
+    break;
 
-    case DCA_EXT_SS_CODING_MODE_DTS_HD_LOSSLESS_WITHOUT_CORE:
-      /* DTS-HD Master Audio without retro-compatible core. */
-      ret = _decodeDcaExSSAssetDescDecNDMode1(file, param, nuBits4ExSSFsize);
-      break;
+  case DCA_EXT_SS_CODING_MODE_DTS_HD_LOSSLESS_WITHOUT_CORE:
+    /* DTS-HD Master Audio without retro-compatible core. */
+    ret = _decodeDcaExSSAssetDescDecNDMode1(file, param, nuBits4ExSSFsize);
+    break;
 
-    case DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE:
-      /* DTS-HD Express. */
-      ret = _decodeDcaExSSAssetDescDecNDMode2(file, param);
-      break;
+  case DCA_EXT_SS_CODING_MODE_DTS_HD_LOW_BITRATE:
+    /* DTS-HD Express. */
+    ret = _decodeDcaExSSAssetDescDecNDMode2(file, param);
+    break;
 
-    case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING:
-      /* Auxiliary audio coding. */
-      ret = _decodeDcaExSSAssetDescDecNDMode3(file, param);
-      break;
+  case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING:
+    /* Auxiliary audio coding. */
+    ret = _decodeDcaExSSAssetDescDecNDMode3(file, param);
+    break;
   }
   if (ret < 0)
     return ret;
@@ -1586,34 +1586,34 @@ int parseDts(
     if (isDtshdFileDtsContext(ctx)) {
       /* Read DTS-HD file chunks : */
       switch (_parseDtshdChunk(ctx, settings)) {
-        case 0: /* Read next DTS-HD file chunk */
-          continue;
+      case 0: /* Read next DTS-HD file chunk */
+        continue;
 
-        case 1:
-          break; /* In DTS-HD Stream Data chunk, read DTS audio frames */
+      case 1:
+        break; /* In DTS-HD Stream Data chunk, read DTS audio frames */
 
-        default:
-          return -1; /* Error */
+      default:
+        return -1; /* Error */
       }
     }
 
     int64_t start_off = tellPos(ctx->bs);
 
     switch (initNextDtsFrame(ctx)) {
-      case DTS_FRAME_INIT_CORE_SUBSTREAM:
-        /* DTS Coherent Acoustics Core */
-        if (_decodeDcaCoreSS(ctx) < 0)
-          return -1;
-        break;
-
-      case DTS_FRAME_INIT_EXT_SUBSTREAM:
-        /* DTS Coherent Acoustics Extension Substream */
-        if (_decodeDcaExtSS(ctx) < 0)
-          return -1;
-        break;
-
-      default: /* Error */
+    case DTS_FRAME_INIT_CORE_SUBSTREAM:
+      /* DTS Coherent Acoustics Core */
+      if (_decodeDcaCoreSS(ctx) < 0)
         return -1;
+      break;
+
+    case DTS_FRAME_INIT_EXT_SUBSTREAM:
+      /* DTS Coherent Acoustics Extension Substream */
+      if (_decodeDcaExtSS(ctx) < 0)
+        return -1;
+      break;
+
+    default: /* Error */
+      return -1;
     }
 
     if (completeDtsFrame(ctx) < 0)

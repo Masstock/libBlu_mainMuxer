@@ -75,6 +75,23 @@ static inline int getHdmvBitmapList(
   return 0;
 }
 
+static inline int getRefHdmvBitmapList(
+  HdmvBitmapList * list,
+  HdmvBitmap ** dst,
+  unsigned index
+)
+{
+  if (list->nb_bitmaps <= index)
+    LIBBLU_HDMV_PIC_ERROR_RETURN(
+      "Unknown picture id %u in list.\n",
+      list->nb_bitmaps
+    );
+
+  *dst = &list->bitmaps[index];
+
+  return 0;
+}
+
 static inline bool iterateHdmvBitmapList(
   HdmvBitmapList * list,
   HdmvBitmap * dst,
@@ -89,5 +106,9 @@ static inline bool iterateHdmvBitmapList(
   *dst = list->bitmaps[(*index)++];
   return true;
 }
+
+void sortByUsageHdmvBitmapList(
+  HdmvBitmapList * list
+);
 
 #endif

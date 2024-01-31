@@ -23,7 +23,7 @@ static inline bool isUsedLibbluAspectRatioMod(
 }
 
 typedef struct {
-  IniFileContextPtr confHandle;
+  IniFileContext conf_hdl;
   bool forcedScriptBuilding;  /**< Forced script building. */
   bool dvdMedia;
   bool secondaryStream;         /**< Set to true if ES must be muxed as a
@@ -55,7 +55,7 @@ typedef struct {
   };  /**< Video codecs related options.                                     */
 
   struct {
-    int64_t initialTimestamp;
+    int64_t initial_timestamp;
     bool force_retiming;
     bool ass_input;
   } hdmv;  /**< HDMV codecs related options. */

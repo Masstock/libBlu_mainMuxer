@@ -32,14 +32,14 @@ typedef struct {
 
 static inline void defaultLibbluMuxingOptions(
   LibbluMuxingOptions * dst,
-  IniFileContextPtr confHandle
+  IniFileContext conf_hdl
 )
 {
   *dst = (LibbluMuxingOptions) {
     .writeTPExtraHeaders = true,
     .disableBufModel = false,
     .globalSharedOptions = {
-      .confHandle = confHandle
+      .conf_hdl = conf_hdl
     },
     .bufModelOptions = {
       .abortOnUnderflow = false,
@@ -85,14 +85,14 @@ typedef struct {
  *
  * \param dst
  * \param outputTsFilename
- * \param confHandle
+ * \param conf_hdl
  * \return int Upon success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
 int initLibbluMuxingSettings(
   LibbluMuxingSettings * dst,
   const lbc * outputTsFilename,
-  IniFileContextPtr confHandle
+  IniFileContext conf_hdl
 );
 
 /** \~english
@@ -243,7 +243,7 @@ static inline int setHdmvInitialTimestampLibbluMuxingSettings(
   if (LIBBLU_MAX_HDMV_INIT_TIMESTAMP < value)
     return -1;
 
-  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.initialTimestamp, value);
+  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.initial_timestamp, value);
   return 0;
 }
 

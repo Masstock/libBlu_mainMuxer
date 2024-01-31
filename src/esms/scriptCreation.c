@@ -398,6 +398,9 @@ int initHDMVPesPacketEsmsHandler(
   if (esms_hdl->type != ES_HDMV)
     LIBBLU_ERROR_RETURN("Can't create HDMV PES frame in non-HDMV stream.\n");
 
+  assert(0 == (pts >> 33));
+  assert(0 == (dts >> 33) || !dts_present);
+
   return _initEsmsPesPacket(
     esms_hdl,
     (EsmsPesPacket) {
@@ -414,10 +417,10 @@ bool _isEsmsPesPacketExtensionDataSupported(
 )
 {
   switch (esms_hdl->prop.coding_type) {
-    case STREAM_CODING_TYPE_AVC:
-      return true;
-    default:
-      return false;
+  case STREAM_CODING_TYPE_AVC:
+    return true;
+  default:
+    return false;
   }
 }
 
@@ -712,10 +715,10 @@ static int _writeEsmsPesPacketExtensionData(
 )
 {
   switch (coding_type) {
-    case STREAM_CODING_TYPE_AVC:
-      return _writeEsmsPesPacketH264ExtData(esms_bs, &ext_param.h264);
-    default:
-      break;
+  case STREAM_CODING_TYPE_AVC:
+    return _writeEsmsPesPacketH264ExtData(esms_bs, &ext_param.h264);
+  default:
+    break;
   }
 
   /* [v16 ext_data_size] // 0: No extension */
@@ -1032,16 +1035,16 @@ static int _writeEsmsCommand(
   /* [u16 command_size] [vn command()] */
   const EsmsCommandData * cd = &com->data;
   switch (com->type) {
-    case ESMS_ADD_DATA:
-      return _writeEsmsAddDataCommand(esms_bs, &cd->add_data);
-    case ESMS_CHANGE_BYTEORDER:
-      return _writeEsmsChangeByteOrderCommand(esms_bs, &cd->change_byte_order);
-    case ESMS_ADD_PAYLOAD_DATA:
-      return _writeEsmsAddPesPayloadCommand(esms_bs, &cd->add_pes_payload);
-    case ESMS_ADD_PADDING_DATA:
-      return _writeEsmsAddPaddingDataCommand(esms_bs, &cd->add_padding);
-    case ESMS_ADD_DATA_BLOCK:
-      return _writeEsmsAddDataBlockCommand(esms_bs, &cd->add_data_block);
+  case ESMS_ADD_DATA:
+    return _writeEsmsAddDataCommand(esms_bs, &cd->add_data);
+  case ESMS_CHANGE_BYTEORDER:
+    return _writeEsmsChangeByteOrderCommand(esms_bs, &cd->change_byte_order);
+  case ESMS_ADD_PAYLOAD_DATA:
+    return _writeEsmsAddPesPayloadCommand(esms_bs, &cd->add_pes_payload);
+  case ESMS_ADD_PADDING_DATA:
+    return _writeEsmsAddPaddingDataCommand(esms_bs, &cd->add_padding);
+  case ESMS_ADD_DATA_BLOCK:
+    return _writeEsmsAddDataBlockCommand(esms_bs, &cd->add_data_block);
   }
 
   LIBBLU_ERROR_RETURN("Unknown com type %d.\n", com->type);
@@ -1055,10 +1058,10 @@ static uint32_t _computeInsertSize(
 )
 {
   switch (insert_mode) {
-    case INSERTION_MODE_OVERWRITE:
-      return MAX(cur_size, insert_off + insert_size);
-    case INSERTION_MODE_INSERT:
-      return cur_size + insert_size;
+  case INSERTION_MODE_OVERWRITE:
+    return MAX(cur_size, insert_off + insert_size);
+  case INSERTION_MODE_INSERT:
+    return cur_size + insert_size;
   }
 
   LIBBLU_ERROR_RETURN("Unknown insert mode %u.\n", insert_mode);
@@ -1080,37 +1083,33 @@ static uint32_t _computePesPacketSize(
   for (unsigned i = 0; i < pes->nb_commands; i++) {
     const EsmsCommand * com = &pes->commands[i];
 
-    switch (com->type) {
-      case ESMS_ADD_DATA: {
-        const EsmsAddDataCommand * ad_c = &com->data.add_data;
-        size = _computeInsertSize(
-          size, ad_c->insert_offset, ad_c->data_size, ad_c->insert_mode
-        );
-        break;
-      }
+  switch (com->type) {
+    case ESMS_ADD_DATA:
+      const EsmsAddDataCommand * ad_c = &com->data.add_data;
+      size = _computeInsertSize(
+        size, ad_c->insert_offset, ad_c->data_size, ad_c->insert_mode
+      );
+      break;
 
-      case ESMS_ADD_PAYLOAD_DATA: {
-        const EsmsAddPesPayloadCommand * app_c = &com->data.add_pes_payload;
-        size = MAX(size, app_c->insert_offset + app_c->size);
-        break;
-      }
+    case ESMS_ADD_PAYLOAD_DATA:
+      const EsmsAddPesPayloadCommand * app_c = &com->data.add_pes_payload;
+      size = MAX(size, app_c->insert_offset + app_c->size);
+      break;
 
-      case ESMS_ADD_PADDING_DATA: {
-        const EsmsAddPaddingCommand * ap_c = &com->data.add_padding;
-        size = MAX(size, ap_c->insert_offset + ap_c->size);
-        break;
-      }
+    case ESMS_ADD_PADDING_DATA:
+      const EsmsAddPaddingCommand * ap_c = &com->data.add_padding;
+      size = MAX(size, ap_c->insert_offset + ap_c->size);
+      break;
 
-      case ESMS_CHANGE_BYTEORDER:
-        break;
+    case ESMS_CHANGE_BYTEORDER:
+      break;
 
-      case ESMS_ADD_DATA_BLOCK: {
-        const EsmsAddDataBlockCommand * adb_c = &com->data.add_data_block;
-        const EsmsDataBlockEntry * dbe = &data_blks->entries[adb_c->data_block_id];
-        size = _computeInsertSize(
-          size, adb_c->insert_offset, dbe->data_block_size, adb_c->insert_mode
-        );
-      }
+    case ESMS_ADD_DATA_BLOCK:
+      const EsmsAddDataBlockCommand * adb_c = &com->data.add_data_block;
+      const EsmsDataBlockEntry * dbe = &data_blks->entries[adb_c->data_block_id];
+      size = _computeInsertSize(
+        size, adb_c->insert_offset, dbe->data_block_size, adb_c->insert_mode
+      );
     }
   }
 
@@ -1147,42 +1146,40 @@ static uint16_t _getPesPacketPropWord(
   uint16_t prefix = 0x00;
 
   switch (pes_packet_prop->type) {
-    case ES_VIDEO: {
-      const EsmsPesPacketPropVideo * vprop = &pes_packet_prop->prefix.video;
+  case ES_VIDEO:
+    const EsmsPesPacketPropVideo * vprop = &pes_packet_prop->prefix.video;
 
-      /* [u2 picture_type] [v5 reserved] [v1 '0' marker_bit] */
-      prefix = vprop->picture_type << 6;
+    /* [u2 picture_type] [v5 reserved] [v1 '0' marker_bit] */
+    prefix = vprop->picture_type << 6;
 
-      LIBBLU_SCRIPTW_DEBUG(
-        "   Picture type (picture_type): 0x%X.\n",
-        vprop->picture_type
-      );
-      break;
-    }
+    LIBBLU_SCRIPTW_DEBUG(
+      "   Picture type (picture_type): 0x%X.\n",
+      vprop->picture_type
+    );
+    break;
 
-    case ES_AUDIO: {
-      const EsmsPesPacketPropAudio * aprop = &pes_packet_prop->prefix.audio;
+  case ES_AUDIO:
+    const EsmsPesPacketPropAudio * aprop = &pes_packet_prop->prefix.audio;
 
-      /* [b1 extension_frame] [v6 reserved] [v1 '0' marker_bit] */
-      prefix = aprop->extension_frame << 7;
-      LIBBLU_SCRIPTW_DEBUG(
-        "   Audio extension frame (extension_frame): %s (0x%X).\n",
-        BOOL_STR(aprop->extension_frame),
-        aprop->extension_frame
-      );
-      break;
-    }
+    /* [b1 extension_frame] [v6 reserved] [v1 '0' marker_bit] */
+    prefix = aprop->extension_frame << 7;
+    LIBBLU_SCRIPTW_DEBUG(
+      "   Audio extension frame (extension_frame): %s (0x%X).\n",
+      BOOL_STR(aprop->extension_frame),
+      aprop->extension_frame
+    );
+    break;
 
-    case ES_HDMV:
-      /* [v7 reserved] [v1 '0' marker_bit] */
-      break;
+  case ES_HDMV:
+    /* [v7 reserved] [v1 '0' marker_bit] */
+    break;
 
-    default:
-      /* Error, unexpected type */
-      LIBBLU_ERROR_RETURN(
-        "Unexpected ESMS stream type %u at PES frame writing.\n",
-        pes_packet_prop->type
-      );
+  default:
+    /* Error, unexpected type */
+    LIBBLU_ERROR_RETURN(
+      "Unexpected ESMS stream type %u at PES frame writing.\n",
+      pes_packet_prop->type
+    );
   }
 
   assert(0x0 == (prefix & 0x1)); // Ensure presence of '0' marker_bit.
@@ -1743,30 +1740,30 @@ static int _writeEsmsEsCodecSpecParametersSection(
   );
 
   switch (prop->coding_type) {
-    case STREAM_CODING_TYPE_H262:
-    case STREAM_CODING_TYPE_AVC:
-      return _writeEsmsVideoSpecParam(esms_bs, esms_hdl);
+  case STREAM_CODING_TYPE_H262:
+  case STREAM_CODING_TYPE_AVC:
+    return _writeEsmsVideoSpecParam(esms_bs, esms_hdl);
 
-    case STREAM_CODING_TYPE_LPCM:
-    case STREAM_CODING_TYPE_AC3:
-    case STREAM_CODING_TYPE_DTS:
-    case STREAM_CODING_TYPE_TRUEHD:
-    case STREAM_CODING_TYPE_EAC3:
-    case STREAM_CODING_TYPE_HDHR:
-    case STREAM_CODING_TYPE_HDMA:
-    case STREAM_CODING_TYPE_EAC3_SEC:
-    case STREAM_CODING_TYPE_DTSE_SEC:
-      return _writeEsmsAudioSpecParam(esms_bs, esms_hdl);
+  case STREAM_CODING_TYPE_LPCM:
+  case STREAM_CODING_TYPE_AC3:
+  case STREAM_CODING_TYPE_DTS:
+  case STREAM_CODING_TYPE_TRUEHD:
+  case STREAM_CODING_TYPE_EAC3:
+  case STREAM_CODING_TYPE_HDHR:
+  case STREAM_CODING_TYPE_HDMA:
+  case STREAM_CODING_TYPE_EAC3_SEC:
+  case STREAM_CODING_TYPE_DTSE_SEC:
+    return _writeEsmsAudioSpecParam(esms_bs, esms_hdl);
 
-    case STREAM_CODING_TYPE_IG:
-    case STREAM_CODING_TYPE_PG:
-      break; // None
+  case STREAM_CODING_TYPE_IG:
+  case STREAM_CODING_TYPE_PG:
+    break; // None
 
-    default:
-      LIBBLU_ERROR_RETURN(
-        "Unknown codec specific informations for stream coding type 0x%x.\n",
-        prop->coding_type
-      );
+  default:
+    LIBBLU_ERROR_RETURN(
+      "Unknown codec specific informations for stream coding type 0x%x.\n",
+      prop->coding_type
+    );
   }
 
   return 0;

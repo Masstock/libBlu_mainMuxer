@@ -435,7 +435,7 @@ static int _peekBitmapsPgsFrame(
   MergingTreeNode * img_merging_tree
 )
 {
-  lb_static_assert(2 == HDMV_MAX_NB_PCS_COMPOS);
+  lb_static_assert(2 == HDMV_MAX_NB_PC_COMPO_OBJ);
 
   if (NULL == img_merging_tree) {
     // Empty
@@ -659,7 +659,7 @@ static int _addNewObjectPgsFrameSequence(
 {
   LIBBLU_HDMV_PGS_ASS_DEBUG("   Adding object:\n");
 
-  if (HDMV_OD_PG_MAX_NB_OBJ <= seq->nb_used_objects)
+  if (HDMV_PG_MAX_NB_OBJ <= seq->nb_used_objects)
     LIBBLU_HDMV_PGS_ASS_ERROR_RETURN(
       "Run out of ids, too many unique objects used between "
       "timestamps %" PRId64 " to %" PRId64 " 27MHz clock ticks.\n",
@@ -736,7 +736,7 @@ static int64_t _computePlaneInitializationTime(
   HdmvVDParameters video_desc
 )
 {
-  // See #hdmv_context._computePlaneInitializationTime()
+  // See #hdmv_context._computePlaneInitializationTimeCurDS()
 
   if (NULL == frame->prev) {
     /* First frame in sequence, Epoch Start, clear whole graphical plane */
@@ -819,10 +819,10 @@ static void _computeAndSetCompositionDecodingDurations(
   HdmvVDParameters video_desc
 )
 {
-  // See #hdmv_context._computePGDisplaySetDecodeDuration()
+  // See #hdmv_context._computeCurPGDisplaySetDecodeDuration()
 
   LIBBLU_HDMV_PGS_ASS_TSC_DEBUG(
-    "Compute DECODE_DURATION of PG Display Set:\n"
+    "Compute PG_DECODE_DURATION of PG Display Set:\n"
   );
 
   int64_t decode_duration = _computePlaneInitializationTime(
@@ -931,7 +931,7 @@ static void _computeAndSetCompositionDecodingDurations(
   decode_duration = MAX(decode_duration, obj_min_decode_duration);
 
   LIBBLU_HDMV_PGS_ASS_TSC_DEBUG(
-    " => DECODE_DURATION(DS_n): %" PRId64 " ticks.\n",
+    " => PG_DECODE_DURATION(DS_n): %" PRId64 " ticks.\n",
     decode_duration
   );
 
@@ -1225,7 +1225,7 @@ static int _generateOutputPgsFrameSequence(
   }
 
   if (0 < nb_complete_seq)
-    LIBBLU_TODO("Done!\n");
+    LIBBLU_TODO_MSG("Done!\n");
 
   return 0;
 }

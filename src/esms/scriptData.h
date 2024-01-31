@@ -612,13 +612,13 @@ static inline void cleanEsmsCommand(
 )
 {
   switch (com->type) {
-    case ESMS_ADD_DATA:
-      return cleanEsmsAddDataCommand(com->data.add_data);
-    case ESMS_CHANGE_BYTEORDER:
-    case ESMS_ADD_PAYLOAD_DATA:
-    case ESMS_ADD_PADDING_DATA:
-    case ESMS_ADD_DATA_BLOCK:
-      break;
+  case ESMS_ADD_DATA:
+    return cleanEsmsAddDataCommand(com->data.add_data);
+  case ESMS_CHANGE_BYTEORDER:
+  case ESMS_ADD_PAYLOAD_DATA:
+  case ESMS_ADD_PADDING_DATA:
+  case ESMS_ADD_DATA_BLOCK:
+    break;
   }
 }
 

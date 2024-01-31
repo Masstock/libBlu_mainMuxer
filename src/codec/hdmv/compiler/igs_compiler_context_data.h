@@ -15,10 +15,9 @@
   GET_COMP(ctx, (ctx)->data.nb_compositions-1)
 
 typedef struct {
-  IniFileContextPtr conf;
+  IniFileContext conf_hdl;
   HdmvPictureLibraries img_io_libs;
   XmlCtx xml_ctx;
-  HdmvSegmentsInventory inv;
   HdmvTimecodes * timecodes;
 
   lbc initial_working_dir[PATH_BUFSIZE];
@@ -28,16 +27,5 @@ typedef struct {
   IgsCompilerData data;
   IgsCompilerSegment * seg;
 } IgsCompilerContext;
-
-static inline int addTimecodeIgsCompilerContext(
-  IgsCompilerContext * ctx,
-  uint64_t value
-)
-{
-  return addHdmvTimecodes(
-    ctx->timecodes,
-    value
-  );
-}
 
 #endif

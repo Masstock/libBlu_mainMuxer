@@ -20,25 +20,25 @@ int createDtsBufferingChainBdavStd(
   BufModelBufferParameters tbParam, bParam;
 
   switch (stream->prop.coding_type) {
-    case STREAM_CODING_TYPE_DTS:
-      rx = BDAV_STD_DTS_RX_DCA;
-      bs = BDAV_STD_DTS_BS_DCA;
-      break;
+  case STREAM_CODING_TYPE_DTS:
+    rx = BDAV_STD_DTS_RX_DCA;
+    bs = BDAV_STD_DTS_BS_DCA;
+    break;
 
-    case STREAM_CODING_TYPE_HDMA:
-      rx = BDAV_STD_DTS_RX_DTS_HDMA;
-      bs = BDAV_STD_DTS_BS_HDMA;
-      break;
+  case STREAM_CODING_TYPE_HDMA:
+    rx = BDAV_STD_DTS_RX_DTS_HDMA;
+    bs = BDAV_STD_DTS_BS_HDMA;
+    break;
 
-    case STREAM_CODING_TYPE_HDHR:
-      rx = BDAV_STD_DTS_RX_DTS_HDHR;
-      bs = BDAV_STD_DTS_BS_HDHR;
-      break;
+  case STREAM_CODING_TYPE_HDHR:
+    rx = BDAV_STD_DTS_RX_DTS_HDHR;
+    bs = BDAV_STD_DTS_BS_HDHR;
+    break;
 
-    default:
-      /* Unmanaged DTS stream coding type */
-      *root = newVoidBufModelNode();
-      return 0;
+  default:
+    /* Unmanaged DTS stream coding type */
+    *root = newVoidBufModelNode();
+    return 0;
   }
 
   tbParam = (BufModelBufferParameters) {

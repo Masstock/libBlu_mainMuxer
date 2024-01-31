@@ -413,73 +413,73 @@ static int _prepareElementDescriptorsPMTParam(
   /* Stream registration descriptors : */
   switch (prop.coding_type) {
     /* Audio: DTS, DTS-HDMA, DTS-HDHR */
-    case STREAM_CODING_TYPE_DTS:
-    case STREAM_CODING_TYPE_HDHR:
-    case STREAM_CODING_TYPE_HDMA:
-    case STREAM_CODING_TYPE_DTSE_SEC:
+  case STREAM_CODING_TYPE_DTS:
+  case STREAM_CODING_TYPE_HDHR:
+  case STREAM_CODING_TYPE_HDMA:
+  case STREAM_CODING_TYPE_DTSE_SEC:
     /* HDMV */
-    case STREAM_CODING_TYPE_IG:
-    case STREAM_CODING_TYPE_PG:
-      return 0; // No descriptor needed
+  case STREAM_CODING_TYPE_IG:
+  case STREAM_CODING_TYPE_PG:
+    return 0; // No descriptor needed
 
-    case STREAM_CODING_TYPE_VC1:
-      format_id = REG_DESC_FMT_ID_VC_1; /* "VC-1" */
+  case STREAM_CODING_TYPE_VC1:
+    format_id = REG_DESC_FMT_ID_VC_1; /* "VC-1" */
 
-      /* VC-1 Additional Identification */
-      /* [u8 subDescriptorTag] [v8 VC1ProfileLevel] */
-      add_id_info[0] = 0x01; /* Profile and Level sub-descriptor */
-      add_id_info[1] = (prop.profile_IDC << 4) | (prop.level_IDC & 0xF);
-      add_id_info_len = 2;
-      break;
+    /* VC-1 Additional Identification */
+    /* [u8 subDescriptorTag] [v8 VC1ProfileLevel] */
+    add_id_info[0] = 0x01; /* Profile and Level sub-descriptor */
+    add_id_info[1] = (prop.profile_IDC << 4) | (prop.level_IDC & 0xF);
+    add_id_info_len = 2;
+    break;
 
-    case STREAM_CODING_TYPE_AC3:
-    case STREAM_CODING_TYPE_TRUEHD:
-    case STREAM_CODING_TYPE_EAC3:
-    case STREAM_CODING_TYPE_EAC3_SEC:
-      format_id = REG_DESC_FMT_ID_AC_3; /* "AC-3" */
-      /* Following AC-3 Audio descriptor (Dolby Digital, TrueHD Audio...) */
-      break;
+  case STREAM_CODING_TYPE_AC3:
+  case STREAM_CODING_TYPE_TRUEHD:
+  case STREAM_CODING_TYPE_EAC3:
+  case STREAM_CODING_TYPE_EAC3_SEC:
+    format_id = REG_DESC_FMT_ID_AC_3; /* "AC-3" */
+    /* Following AC-3 Audio descriptor (Dolby Digital, TrueHD Audio...) */
+    break;
 
-    case STREAM_CODING_TYPE_H262:
-    case STREAM_CODING_TYPE_AVC:
-    case STREAM_CODING_TYPE_HEVC:
-      format_id = REG_DESC_FMT_ID_HDMV;
+  case STREAM_CODING_TYPE_H262:
+  case STREAM_CODING_TYPE_AVC:
+  case STREAM_CODING_TYPE_HEVC:
+    format_id = REG_DESC_FMT_ID_HDMV;
 
-      /* HDMV Video Additional Identification */
-      /* [v8 reserved] */
-      add_id_info[0] = 0xFF;
-      /* [u8 streamCodingType] */
-      add_id_info[1] = prop.coding_type;
-      /* [u4 videoFormat] [u4 frameRate] */
-      add_id_info[2] = (prop.video_format << 4) | (prop.frame_rate & 0xF);
-      /* MPEG-2/AVC/HEVC Additional Identification */
-      /* [v2 reserved 0x0] [v6 reserved 0x1] */
-      add_id_info[3] = 0x3F;
-      add_id_info_len = 4;
-      break;
+    /* HDMV Video Additional Identification */
+    /* [v8 reserved] */
+    add_id_info[0] = 0xFF;
+    /* [u8 streamCodingType] */
+    add_id_info[1] = prop.coding_type;
+    /* [u4 videoFormat] [u4 frameRate] */
+    add_id_info[2] = (prop.video_format << 4) | (prop.frame_rate & 0xF);
+    /* MPEG-2/AVC/HEVC Additional Identification */
+    /* [v2 reserved 0x0] [v6 reserved 0x1] */
+    add_id_info[3] = 0x3F;
+    add_id_info_len = 4;
+    break;
 
-    case STREAM_CODING_TYPE_LPCM:
-      format_id = REG_DESC_FMT_ID_HDMV;
+  case STREAM_CODING_TYPE_LPCM:
+    format_id = REG_DESC_FMT_ID_HDMV;
 
-      /* LPCM Audio Additional Identification */
-      /* [v8 reserved] */
-      add_id_info[0] = 0xFF;
-      /* [u8 streamCodingType] */
-      add_id_info[1] = prop.coding_type;
-      /* [u4 audioFormat] [u4 sampleRate] */
-      add_id_info[2] = (prop.audio_format << 4) | (prop.sample_rate & 0xF);
-      /* [u2 bitDepth] [v6 reserved] */
-      add_id_info[3] = (prop.bit_depth << 6) | 0x3F;
-      add_id_info_len = 4;
-      break;
+    /* LPCM Audio Additional Identification */
+    /* [v8 reserved] */
+    add_id_info[0] = 0xFF;
+    /* [u8 streamCodingType] */
+    add_id_info[1] = prop.coding_type;
+    /* [u4 audioFormat] [u4 sampleRate] */
+    add_id_info[2] = (prop.audio_format << 4) | (prop.sample_rate & 0xF);
+    /* [u2 bitDepth] [v6 reserved] */
+    add_id_info[3] = (prop.bit_depth << 6) | 0x3F;
+    add_id_info_len = 4;
+    break;
 
-    default:
-      LIBBLU_ERROR_RETURN(
-        "Unable to define the PMT content for a program element "
-        "of type '%s' ('stream_coding_type' == 0x%02" PRIX8 ").\n",
-        LibbluStreamCodingTypeStr(prop.coding_type),
-        prop.coding_type
-      );
+  default:
+    LIBBLU_ERROR_RETURN(
+      "Unable to define the PMT content for a program element "
+      "of type '%s' ('stream_coding_type' == 0x%02" PRIX8 ").\n",
+      LibbluStreamCodingTypeStr(prop.coding_type),
+      prop.coding_type
+    );
   }
 
   DescriptorParameters desc_param = (DescriptorParameters) {

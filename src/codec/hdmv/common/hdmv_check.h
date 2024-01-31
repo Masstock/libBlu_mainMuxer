@@ -4,22 +4,24 @@
 #define __LIBBLU_MUXER__CODECS__HDMV__CHECK_H__
 
 #include "hdmv_common.h"
+#include "hdmv_rectangle.h"
+#include "hdmv_collision_tree.h"
+#include "hdmv_seq_indexer.h"
 
-int checkAndBuildDisplaySetHdmvDSState(
-  HdmvParsingOptions options,
-  HdmvStreamType type,
-  HdmvDSState * epoch,
-  unsigned dsIdx
+int checkAndUpdateHdmvDSState(
+  HdmvDSState * ds,
+  HdmvEpochState * epoch_state,
+  int64_t pres_time
 );
 
-int checkObjectsBufferingHdmvDSState(
-  HdmvDSState * epoch,
-  HdmvStreamType type
+int checkObjectsBufferingHdmvEpochState(
+  HdmvEpochState * epoch_state
 );
 
 int checkDuplicatedDSHdmvDSState(
-  HdmvDSState * ds,
-  unsigned lastDSIdx
+  const HdmvDSState * prev_ds_state,
+  HdmvDSState * cur_ds_state,
+  HdmvEpochState * epoch_state
 );
 
 #endif

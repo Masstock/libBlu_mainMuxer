@@ -42,28 +42,28 @@ int pidSwitchFilterDecisionFunBdavStd(
   voidBufDef = false;
   for (i = 0; i < filter->nbUsedNodes; i++) {
     switch (filter->labels[i].type) {
-      case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
-        if (_matchPidSwitchFilterDecisionListBdavStd(filter->labels[i], pid)) {
-          *idx = i;
-          return 0;
-        }
-        break;
+    case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
+      if (_matchPidSwitchFilterDecisionListBdavStd(filter->labels[i], pid)) {
+        *idx = i;
+        return 0;
+      }
+      break;
 
-      case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-        if (filter->labels[i].value.number == pid) {
-          *idx = i;
-          return 0;
-        }
+    case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
+      if (filter->labels[i].value.number == pid) {
+        *idx = i;
+        return 0;
+      }
 
-        if (filter->labels[i].value.number == -1)
-          voidBuf = i, voidBufDef = true;
-        break;
+      if (filter->labels[i].value.number == -1)
+        voidBuf = i, voidBufDef = true;
+      break;
 
-      default:
-        LIBBLU_ERROR_RETURN(
-          "Unexpected PID filter label type '%s'.\n",
-          getBufModelFilterLblTypeString(filter->labels[i].type)
-        );
+    default:
+      LIBBLU_ERROR_RETURN(
+        "Unexpected PID filter label type '%s'.\n",
+        getBufModelFilterLblTypeString(filter->labels[i].type)
+      );
     }
   }
 
@@ -166,52 +166,52 @@ int addESToBdavStd(
     return -1;
 
   switch (es->prop.coding_type) {
-    case STREAM_CODING_TYPE_AVC:
-      ret = createH264BufferingChainBdavStd(
-        &streamNode, es, initialTimestamp, strmBufList
-      );
-      break;
+  case STREAM_CODING_TYPE_AVC:
+    ret = createH264BufferingChainBdavStd(
+      &streamNode, es, initialTimestamp, strmBufList
+    );
+    break;
 
-    case STREAM_CODING_TYPE_DTS:
-    case STREAM_CODING_TYPE_HDHR:
-    case STREAM_CODING_TYPE_HDMA:
-    case STREAM_CODING_TYPE_DTSE_SEC:
-      ret = createDtsBufferingChainBdavStd(
-        &streamNode, es, initialTimestamp, strmBufList
-      );
-      break;
+  case STREAM_CODING_TYPE_DTS:
+  case STREAM_CODING_TYPE_HDHR:
+  case STREAM_CODING_TYPE_HDMA:
+  case STREAM_CODING_TYPE_DTSE_SEC:
+    ret = createDtsBufferingChainBdavStd(
+      &streamNode, es, initialTimestamp, strmBufList
+    );
+    break;
 
-    case STREAM_CODING_TYPE_AC3:
-      ret = createAc3BufferingChainBdavStd(
-        &streamNode, es, initialTimestamp, strmBufList
-      );
-      break;
+  case STREAM_CODING_TYPE_AC3:
+    ret = createAc3BufferingChainBdavStd(
+      &streamNode, es, initialTimestamp, strmBufList
+    );
+    break;
 
-    case STREAM_CODING_TYPE_LPCM:
-      ret = createLpcmBufferingChainBdavStd(
-        &streamNode, es, initialTimestamp, strmBufList
-      );
-      break;
+  case STREAM_CODING_TYPE_LPCM:
+    ret = createLpcmBufferingChainBdavStd(
+      &streamNode, es, initialTimestamp, strmBufList
+    );
+    break;
 
-    case STREAM_CODING_TYPE_PG:
-    case STREAM_CODING_TYPE_IG:
-      ret = createHdmvBufferingChainBdavStd(
-        &streamNode, es, initialTimestamp, strmBufList
-      );
-      break;
+  case STREAM_CODING_TYPE_PG:
+  case STREAM_CODING_TYPE_IG:
+    ret = createHdmvBufferingChainBdavStd(
+      &streamNode, es, initialTimestamp, strmBufList
+    );
+    break;
 
-    default:
-      LIBBLU_INFO(
-        "BDAV-STD implementation does not support "
-        "es coding type 0x%02" PRIX8 ".\n",
-        es->prop.coding_type
-      );
+  default:
+    LIBBLU_INFO(
+      "BDAV-STD implementation does not support "
+      "es coding type 0x%02" PRIX8 ".\n",
+      es->prop.coding_type
+    );
 
-      destroyBufModelBuffersList(strmBufList);
+    destroyBufModelBuffersList(strmBufList);
 
-      ret = 0;
-      strmBufList = NULL;
-      streamNode = newVoidBufModelNode();
+    ret = 0;
+    strmBufList = NULL;
+    streamNode = newVoidBufModelNode();
   }
 
   if (ret < 0)

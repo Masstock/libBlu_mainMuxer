@@ -1,4 +1,3 @@
 MUXOPT --disable-tstd
 # V_MPEG4/ISO/AVC, "00019.track_4113.264"
 M_HDMV/PGS, "00019.track_4608.sup" --force-esms --hdmv-force-retiming
-# M_HDMV/PGS, "00019.track_4609.sup" --force-esms --hdmv-force-retiming

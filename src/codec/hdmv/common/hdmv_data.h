@@ -181,18 +181,18 @@ static inline const char * HdmvSegmentTypeStr(
 )
 {
   switch (type) {
-    case HDMV_SEGMENT_TYPE_PDS:
-      return "Palette Definition Segment";
-    case HDMV_SEGMENT_TYPE_ODS:
-      return "Object Definition Segment";
-    case HDMV_SEGMENT_TYPE_PCS:
-      return "Presentation Composition Segment";
-    case HDMV_SEGMENT_TYPE_WDS:
-      return "Window Definition Segment";
-    case HDMV_SEGMENT_TYPE_ICS:
-      return "Interactive Composition Segment";
-    case HDMV_SEGMENT_TYPE_END:
-      return "End of Display Set Segment";
+  case HDMV_SEGMENT_TYPE_PDS:
+    return "Palette Definition Segment";
+  case HDMV_SEGMENT_TYPE_ODS:
+    return "Object Definition Segment";
+  case HDMV_SEGMENT_TYPE_PCS:
+    return "Presentation Composition Segment";
+  case HDMV_SEGMENT_TYPE_WDS:
+    return "Window Definition Segment";
+  case HDMV_SEGMENT_TYPE_ICS:
+    return "Interactive Composition Segment";
+  case HDMV_SEGMENT_TYPE_END:
+    return "End of Display Set Segment";
   }
 
   return "Unknown type segment";
@@ -255,8 +255,8 @@ typedef struct HdmvVideoDescriptorParameters {
 } HdmvVDParameters;
 
 static inline bool areIdenticalHdmvVDParameters(
-  HdmvVDParameters first,
-  HdmvVDParameters second
+  const HdmvVDParameters first,
+  const HdmvVDParameters second
 )
 {
   return CHECK(
@@ -264,6 +264,33 @@ static inline bool areIdenticalHdmvVDParameters(
     EQUAL(.video_height)
     EQUAL(.frame_rate)
   );
+}
+
+static inline int64_t getFrameDurHdmvVDParameters(
+  const HdmvVDParameters vd
+)
+{
+  return frameDur90kHzHdmvFrameRateCode(vd.frame_rate);
+}
+
+static inline bool isFrameTcAlignedHdmvVDParameters(
+  const HdmvVDParameters vd,
+  int64_t timestamp,
+  int64_t * aligned_timestamp_ret
+)
+{
+  int64_t frame_dur_27MHz = frameDur27MHzHdmvFrameRateCode(vd.frame_rate);
+  assert(0 < frame_dur_27MHz);
+
+  int64_t aligned_timestamp = DIV(
+    DIV_ROUND_UP(timestamp * 300ll, frame_dur_27MHz) * frame_dur_27MHz,
+    300
+  );
+
+  if (NULL != aligned_timestamp_ret)
+    *aligned_timestamp_ret = aligned_timestamp;
+
+  return (timestamp == aligned_timestamp);
 }
 
 /** \~english
@@ -283,7 +310,7 @@ static inline bool areIdenticalHdmvVDParameters(
 
 typedef enum {
   HDMV_COMPO_STATE_NORMAL             = 0x0,
-  HDMV_COMPO_STATE_ACQUISITION_START  = 0x1,
+  HDMV_COMPO_STATE_ACQUISITION_POINT  = 0x1,
   HDMV_COMPO_STATE_EPOCH_START        = 0x2,
   HDMV_COMPO_STATE_EPOCH_CONTINUE     = 0x3,
 } HdmvCompositionState;
@@ -308,6 +335,20 @@ typedef struct HdmvCompositionDescriptorParameters {
   uint16_t composition_number;
   HdmvCompositionState composition_state;
 } HdmvCDParameters;
+
+static inline bool isEpochStartHdmvCDParameters(
+  HdmvCDParameters composition_desc
+)
+{
+  return HDMV_COMPO_STATE_EPOCH_START == composition_desc.composition_state;
+}
+
+static inline bool isNormalHdmvCDParameters(
+  HdmvCDParameters composition_desc
+)
+{
+  return HDMV_COMPO_STATE_NORMAL == composition_desc.composition_state;
+}
 
 /** \~english
  * \brief Size required by composition_descriptor() structure in bytes.
@@ -442,6 +483,20 @@ static inline void initHdmvWindowInfoParameters(
   };
 }
 
+static inline bool constantHdmvWindowInfoParameters(
+  const HdmvWindowInfoParameters first,
+  const HdmvWindowInfoParameters second
+)
+{
+  return CHECK(
+    EQUAL(.window_id)
+    EQUAL(.window_horizontal_position)
+    EQUAL(.window_vertical_position)
+    EQUAL(.window_width)
+    EQUAL(.window_height)
+  );
+}
+
 /** \~english
  * \brief Size required by Window_info() structure in bytes.
  *
@@ -486,6 +541,27 @@ static inline void initHdmvCompositionObjectParameters(
   };
 }
 
+static inline bool constantHdmvCOParameters(
+  const HdmvCOParameters first,
+  const HdmvCOParameters second
+)
+{
+  return CHECK(
+    EQUAL(.object_id_ref)
+    EQUAL(.window_id_ref)
+    EQUAL(.object_cropped_flag)
+    EQUAL(.forced_on_flag)
+    EQUAL(.composition_object_horizontal_position)
+    EQUAL(.composition_object_vertical_position)
+    START_COND(.object_cropped_flag, true)
+      EQUAL(.object_cropping.horizontal_position)
+      EQUAL(.object_cropping.vertical_position)
+      EQUAL(.object_cropping.width)
+      EQUAL(.object_cropping.height)
+    END_COND
+  );
+}
+
 /** \~english
  * \brief
  *
@@ -508,32 +584,27 @@ static inline void initHdmvCompositionObjectParameters(
  * => 8 + (object_cropped_flag ? 8 : 0) bytes.
  */
 static inline size_t computeSizeHdmvCompositionObject(
-  const HdmvCOParameters * param
+  const HdmvCOParameters co
 )
 {
-  assert(NULL != param);
-
-  return 8 + (param->object_cropped_flag ? 8 : 0);
+  return 8 + (co.object_cropped_flag ? 8 : 0);
 }
 
 /* ######### Presentation Composition : #################################### */
 
-#define HDMV_MAX_NB_PCS_COMPOS  2
+#define HDMV_MAX_NB_ACTIVE_PC  8
+
+#define HDMV_MAX_NB_PC_COMPO_OBJ  2
 
 typedef struct HdmvPresentationCompositionParameters {
   bool palette_update_flag;
   uint8_t palette_id_ref;
 
   uint8_t number_of_composition_objects;
-  HdmvCOParameters * composition_objects[
-    HDMV_MAX_NB_PCS_COMPOS
+  HdmvCOParameters composition_objects[
+    HDMV_MAX_NB_PC_COMPO_OBJ
   ];
 } HdmvPCParameters;
-
-int updateHdmvPCParameters(
-  HdmvPCParameters * dst,
-  const HdmvPCParameters * src
-);
 
 /* ######################################################################### */
 
@@ -550,15 +621,38 @@ typedef struct {
 
 typedef struct HdmvWindowDefinitionParameters {
   uint8_t number_of_windows;
-  HdmvWindowInfoParameters * windows[
+  HdmvWindowInfoParameters windows[
     HDMV_MAX_NB_WDS_WINDOWS
   ];
 } HdmvWDParameters;
 
-int updateHdmvWDParameters(
-  HdmvWDParameters * dst,
-  const HdmvWDParameters * src
-);
+static inline int64_t getFillDurationHdmvWD(
+  HdmvWDParameters window_definition
+)
+{
+  int64_t dividend = 0;
+  for (uint8_t i = 0; i < window_definition.number_of_windows; i++) {
+    HdmvWindowInfoParameters window = window_definition.windows[i];
+    dividend += 9LL * window.window_width * window.window_height;
+  }
+  return DIV_ROUND_UP(dividend, 3200);
+}
+
+static inline bool constantHdmvWDParameters(
+  const HdmvWDParameters first,
+  const HdmvWDParameters second
+)
+{
+  bool is_equal = CHECK(
+    EQUAL(.number_of_windows)
+  );
+  for (uint8_t i = 0; is_equal && i < first.number_of_windows; i++)
+    is_equal &= constantHdmvWindowInfoParameters(
+      first.windows[i],
+      second.windows[i]
+    );
+  return is_equal;
+}
 
 /* ######################################################################### */
 
@@ -569,16 +663,14 @@ typedef struct {
 /* ###### HDMV Interactive Composition Segment : ########################### */
 /* ######### Effect Info : ################################################# */
 
-#define HDMV_MAX_NB_ICS_COMP_OBJ  2
+#define HDMV_MAX_NB_EFFECT_COMPO_OBJ  2
 
 typedef struct {
   uint32_t effect_duration;
   uint8_t palette_id_ref;
 
   uint8_t number_of_composition_objects;
-  HdmvCOParameters * composition_objects[
-    HDMV_MAX_NB_ICS_COMP_OBJ
-  ];
+  HdmvCOParameters composition_objects[HDMV_MAX_NB_EFFECT_COMPO_OBJ];
 } HdmvEffectInfoParameters;
 
 static inline void initHdmvEffectInfoParameters(
@@ -588,6 +680,24 @@ static inline void initHdmvEffectInfoParameters(
   *dst = (HdmvEffectInfoParameters) {
     0
   };
+}
+
+static inline bool constantHdmvEffectInfoParameters(
+  const HdmvEffectInfoParameters first,
+  const HdmvEffectInfoParameters second
+)
+{
+  bool is_equal = CHECK(
+    EQUAL(.effect_duration)
+    EQUAL(.palette_id_ref)
+    EQUAL(.number_of_composition_objects)
+  );
+  for (uint8_t i = 0; is_equal && i < first.number_of_composition_objects; i++)
+    is_equal &= constantHdmvCOParameters(
+      first.composition_objects[i],
+      second.composition_objects[i]
+    );
+  return is_equal;
 }
 
 /** \~english
@@ -606,29 +716,26 @@ static inline void initHdmvEffectInfoParameters(
  * => 5 + Composition_object()s bytes.
  */
 static inline size_t computeSizeHdmvEffectInfo(
-  const HdmvEffectInfoParameters * param
+  const HdmvEffectInfoParameters ei
 )
 {
-  assert(NULL != param);
-
   size_t size = 5ull;
-  for (uint8_t i = 0; i < param->number_of_composition_objects; i++)
-    size += computeSizeHdmvCompositionObject(param->composition_objects[i]);
-
+  for (uint8_t i = 0; i < ei.number_of_composition_objects; i++)
+    size += computeSizeHdmvCompositionObject(ei.composition_objects[i]);
   return size;
 }
 
 /* ######### Effect Sequence : ############################################# */
 
-#define HDMV_MAX_NB_ICS_WINDOWS  2
+#define HDMV_MAX_NB_ES_WINDOWS  2
 
-#define HDMV_MAX_NB_ICS_EFFECTS  128
+#define HDMV_MAX_NB_ES_EFFECTS  128
 
 typedef struct {
   uint8_t number_of_windows;
-  HdmvWindowInfoParameters * windows[HDMV_MAX_NB_ICS_WINDOWS];
+  HdmvWindowInfoParameters windows[HDMV_MAX_NB_ES_WINDOWS];
   uint8_t number_of_effects;
-  HdmvEffectInfoParameters * effects[HDMV_MAX_NB_ICS_EFFECTS];
+  HdmvEffectInfoParameters effects[HDMV_MAX_NB_ES_EFFECTS];
 } HdmvEffectSequenceParameters;
 
 /** \~english
@@ -660,10 +767,32 @@ static inline size_t computeSizeHdmvEffectSequence(
   return size;
 }
 
+static inline bool constantHdmvEffectSequenceParameters(
+  const HdmvEffectSequenceParameters first,
+  const HdmvEffectSequenceParameters second
+)
+{
+  bool is_equal = CHECK(
+    EQUAL(.number_of_windows)
+    EQUAL(.number_of_effects)
+  );
+  for (uint8_t i = 0; is_equal && i < first.number_of_windows; i++)
+    is_equal &= constantHdmvWindowInfoParameters(
+      first.windows[i],
+      second.windows[i]
+    );
+  for (uint8_t i = 0; is_equal && i < first.number_of_effects; i++)
+    is_equal &= constantHdmvEffectInfoParameters(
+      first.effects[i],
+      second.effects[i]
+    );
+  return is_equal;
+}
+
 /* ######### Navigation Command : ########################################## */
 
 typedef struct HdmvNavigationCommand {
-  struct HdmvNavigationCommand * next;
+  // struct HdmvNavigationCommand * next;
   uint32_t opcode;
   uint32_t destination;
   uint32_t source;
@@ -676,6 +805,18 @@ static inline void initHdmvNavigationCommand(
   *dst = (HdmvNavigationCommand) {
     0
   };
+}
+
+static inline bool constantHdmvNavigationCommand(
+  const HdmvNavigationCommand first,
+  const HdmvNavigationCommand second
+)
+{
+  return CHECK(
+    EQUAL(.opcode)
+    EQUAL(.destination)
+    EQUAL(.source)
+  );
 }
 
 /* ######### Button Neighbor Info : ######################################## */
@@ -699,6 +840,19 @@ static inline void initHdmvButtonNeighborInfoParam(
   };
 }
 
+static inline bool constantHdmvButtonNeighborInfoParam(
+  const HdmvButtonNeighborInfoParam first,
+  const HdmvButtonNeighborInfoParam second
+)
+{
+  return CHECK(
+    EQUAL(.upper_button_id_ref)
+    EQUAL(.lower_button_id_ref)
+    EQUAL(.left_button_id_ref)
+    EQUAL(.right_button_id_ref)
+  );
+}
+
 /* ######### Button States : ############################################### */
 /* ############ Button Normal State Information : ######################### */
 
@@ -717,6 +871,19 @@ static inline void initHdmvButtonNormalStateInfoParam(
     .start_object_id_ref = 0xFFFF,
     .end_object_id_ref   = 0xFFFF
   };
+}
+
+static inline bool constantHdmvButtonNormalStateInfoParam(
+  const HdmvButtonNormalStateInfoParam first,
+  const HdmvButtonNormalStateInfoParam second
+)
+{
+  return CHECK(
+    EQUAL(.start_object_id_ref)
+    EQUAL(.end_object_id_ref)
+    EQUAL(.repeat_flag)
+    EQUAL(.complete_flag)
+  );
 }
 
 /* ############ Button Selected State Information : ######################## */
@@ -740,6 +907,20 @@ static inline void initHdmvButtonSelectedStateInfoParam(
   };
 }
 
+static inline bool constantHdmvButtonSelectedStateInfoParam(
+  const HdmvButtonSelectedStateInfoParam first,
+  const HdmvButtonSelectedStateInfoParam second
+)
+{
+  return CHECK(
+    EQUAL(.state_sound_id_ref)
+    EQUAL(.start_object_id_ref)
+    EQUAL(.end_object_id_ref)
+    EQUAL(.repeat_flag)
+    EQUAL(.complete_flag)
+  );
+}
+
 /* ############ Button Activated State Information : ####################### */
 
 typedef struct {
@@ -759,7 +940,25 @@ static inline void initHdmvButtonActivatedStateInfoParam(
   };
 }
 
+static inline bool constantHdmvButtonActivatedStateInfoParam(
+  const HdmvButtonActivatedStateInfoParam first,
+  const HdmvButtonActivatedStateInfoParam second
+)
+{
+  return CHECK(
+    EQUAL(.state_sound_id_ref)
+    EQUAL(.start_object_id_ref)
+    EQUAL(.end_object_id_ref)
+  );
+}
+
 /* ######### Button : ###################################################### */
+
+#define HDMV_MAX_NB_BUTTONS  8160
+
+#define HDMV_MAX_BUTTON_NUMERIC_SELECT_VALUE  9999
+
+#define HDMV_MAX_NB_BUTTON_NAV_COM  65535
 
 typedef struct {
   uint16_t button_id;
@@ -779,10 +978,9 @@ typedef struct {
   uint16_t number_of_navigation_commands;
   HdmvNavigationCommand * navigation_commands;
 
-  uint16_t max_initial_width;  /**< Button normal and selected states objects
-    maximum width. Computed at check. */
-  uint16_t max_initial_height;  /**< Buttons normal and selected states objects
-    maximum height. Computed at check. */
+  /* Values computed at check: */
+  uint16_t btn_obj_width;   /**< Button objects width.                       */
+  uint16_t btn_obj_height;  /**< Button objects height.                      */
 } HdmvButtonParam;
 
 static inline void initHdmvButtonParam(
@@ -794,6 +992,53 @@ static inline void initHdmvButtonParam(
   initHdmvButtonNormalStateInfoParam(&dst->normal_state_info);
   initHdmvButtonSelectedStateInfoParam(&dst->selected_state_info);
   initHdmvButtonActivatedStateInfoParam(&dst->activated_state_info);
+}
+
+static inline void cleanHdmvButtonParam(
+  HdmvButtonParam btn
+)
+{
+  free(btn.navigation_commands);
+}
+
+static inline int allocateCommandsHdmvButtonParam(
+  HdmvButtonParam * dst
+)
+{
+  if (!dst->number_of_navigation_commands)
+    return 0;
+  dst->navigation_commands = calloc(
+    dst->number_of_navigation_commands,
+    sizeof(HdmvNavigationCommand)
+  );
+  if (NULL == dst->navigation_commands)
+    LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
+  return 0;
+}
+
+static inline bool constantHdmvButtonParam(
+  const HdmvButtonParam first,
+  const HdmvButtonParam second
+)
+{
+  bool is_equal = CHECK(
+    EQUAL(.button_id)
+    EQUAL(.button_numeric_select_value)
+    EQUAL(.auto_action)
+    EQUAL(.button_horizontal_position)
+    EQUAL(.button_vertical_position)
+    SUB_FUN(.neighbor_info, constantHdmvButtonNeighborInfoParam)
+    SUB_FUN(.normal_state_info, constantHdmvButtonNormalStateInfoParam)
+    SUB_FUN(.selected_state_info, constantHdmvButtonSelectedStateInfoParam)
+    SUB_FUN(.activated_state_info, constantHdmvButtonActivatedStateInfoParam)
+    EQUAL(.number_of_navigation_commands)
+  );
+  for (uint16_t i = 0; is_equal && i < first.number_of_navigation_commands; i++)
+    is_equal &= constantHdmvNavigationCommand(
+      first.navigation_commands[i],
+      second.navigation_commands[i]
+    );
+  return is_equal;
 }
 
 /** \~english
@@ -838,23 +1083,21 @@ static inline void initHdmvButtonParam(
  * => 35 + number_of_navigation_commands * 12 bytes.
  */
 static inline size_t computeSizeHdmvButton(
-  const HdmvButtonParam * btn
+  const HdmvButtonParam btn
 )
 {
-  assert(NULL != btn);
-
-  return 35 + btn->number_of_navigation_commands * 12;
+  return 35ull + btn.number_of_navigation_commands * 12ull;
 }
 
 /* ######### Button Overlap Group : ######################################## */
 
-#define HDMV_MAX_NB_ICS_BUTTONS  255
+#define HDMV_MAX_NB_ICS_BUTTONS  32
 
 typedef struct {
   uint16_t default_valid_button_id_ref;
 
   uint8_t number_of_buttons;
-  HdmvButtonParam * buttons[HDMV_MAX_NB_ICS_BUTTONS];
+  HdmvButtonParam buttons[HDMV_MAX_NB_ICS_BUTTONS];
 } HdmvButtonOverlapGroupParameters;
 
 static inline void initHdmvButtonOverlapGroupParameters(
@@ -864,6 +1107,48 @@ static inline void initHdmvButtonOverlapGroupParameters(
   *dst = (HdmvButtonOverlapGroupParameters) {
     0
   };
+}
+
+static inline void cleanHdmvButtonOverlapGroupParameters(
+  HdmvButtonOverlapGroupParameters bog
+)
+{
+  for (uint8_t i = 0; i < bog.number_of_buttons; i++)
+    cleanHdmvButtonParam(bog.buttons[i]);
+}
+
+static inline int copyHdmvButtonOverlapGroupParameters(
+  HdmvButtonOverlapGroupParameters * dst,
+  const HdmvButtonOverlapGroupParameters src
+)
+{
+  HdmvButtonOverlapGroupParameters bog_copy = src;
+  for (uint8_t i = 0; i < src.number_of_buttons; i++) {
+    HdmvButtonParam * btn = &bog_copy.buttons[i];
+    if (allocateCommandsHdmvButtonParam(btn) < 0)
+      return -1;
+    memcpy(
+      btn->navigation_commands,
+      src.buttons[i].navigation_commands,
+      btn->number_of_navigation_commands * sizeof(HdmvNavigationCommand)
+    );
+  }
+  *dst = bog_copy;
+  return 0;
+}
+
+static inline bool constantHdmvButtonOverlapGroupParameters(
+  const HdmvButtonOverlapGroupParameters first,
+  const HdmvButtonOverlapGroupParameters second
+)
+{
+  bool is_equal = CHECK(
+    EQUAL(.default_valid_button_id_ref)
+    EQUAL(.number_of_buttons)
+  );
+  for (uint8_t i = 0; is_equal && i < first.number_of_buttons; i++)
+    is_equal &= constantHdmvButtonParam(first.buttons[i], second.buttons[i]);
+  return is_equal;
 }
 
 /** \~english
@@ -881,14 +1166,12 @@ static inline void initHdmvButtonOverlapGroupParameters(
  * => 3 + Buttons()s bytes.
  */
 static inline size_t computeSizeHdmvButtonOverlapGroup(
-  const HdmvButtonOverlapGroupParameters * param
+  const HdmvButtonOverlapGroupParameters param
 )
 {
-  assert(NULL != param);
-
   size_t size = 3ull;
-  for (uint8_t i = 0; i < param->number_of_buttons; i++)
-    size += computeSizeHdmvButton(param->buttons[i]);
+  for (uint8_t i = 0; i < param.number_of_buttons; i++)
+    size += computeSizeHdmvButton(param.buttons[i]);
   return size;
 }
 
@@ -912,7 +1195,7 @@ typedef struct {
   uint8_t palette_id_ref;
 
   uint8_t number_of_BOGs;
-  HdmvButtonOverlapGroupParameters * bogs[HDMV_MAX_NB_ICS_BOGS];
+  HdmvButtonOverlapGroupParameters * bogs;
 } HdmvPageParameters;
 
 static inline void initHdmvPageParameters(
@@ -922,6 +1205,46 @@ static inline void initHdmvPageParameters(
   *dst = (HdmvPageParameters) {
     0
   };
+}
+
+static inline void cleanHdmvPageParameters(
+  HdmvPageParameters page
+)
+{
+  for (uint8_t i = 0; i < page.number_of_BOGs; i++)
+    cleanHdmvButtonOverlapGroupParameters(page.bogs[i]);
+  free(page.bogs);
+}
+
+static inline int allocateBogsHdmvPageParameters(
+  HdmvPageParameters * page
+)
+{
+  if (!page->number_of_BOGs)
+    return 0;
+  page->bogs = calloc(
+    page->number_of_BOGs,
+    sizeof(HdmvButtonOverlapGroupParameters)
+  );
+  if (NULL == page->bogs)
+    LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
+  return 0;
+}
+
+static inline int copyHdmvPageParameters(
+  HdmvPageParameters * dst,
+  const HdmvPageParameters src
+)
+{
+  HdmvPageParameters page_copy = src;
+  if (allocateBogsHdmvPageParameters(&page_copy) < 0)
+    return -1;
+  for (uint8_t i = 0; i < src.number_of_BOGs; i++) {
+    if (copyHdmvButtonOverlapGroupParameters(&page_copy.bogs[i], src.bogs[i]) < 0)
+      return -1;
+  }
+  *dst = page_copy;
+  return 0;
 }
 
 /** \~english
@@ -947,20 +1270,40 @@ static inline void initHdmvPageParameters(
  * => 17 + In_effects() + Out_effects() + Button_overlap_group()s bytes.
  */
 static inline size_t computeSizeHdmvPage(
-  const HdmvPageParameters * param
+  const HdmvPageParameters param
 )
 {
-  assert(NULL != param);
-
   size_t size = 17ull;
-  size += computeSizeHdmvEffectSequence(param->in_effects);
-  size += computeSizeHdmvEffectSequence(param->out_effects);
-  for (uint8_t i = 0; i < param->number_of_BOGs; i++)
-    size += computeSizeHdmvButtonOverlapGroup(param->bogs[i]);
+  size += computeSizeHdmvEffectSequence(param.in_effects);
+  size += computeSizeHdmvEffectSequence(param.out_effects);
+  for (uint8_t i = 0; i < param.number_of_BOGs; i++)
+    size += computeSizeHdmvButtonOverlapGroup(param.bogs[i]);
   return size;
 }
 
+static inline bool constantHdmvPageParameters(
+  const HdmvPageParameters first,
+  const HdmvPageParameters second
+)
+{
+  return CHECK(
+    EQUAL(.page_id)
+    EQUAL(.page_version_number)
+    EQUAL(.UO_mask_table)
+    EQUAL(.animation_frame_rate_code)
+    SUB_FUN(.in_effects, constantHdmvEffectSequenceParameters)
+    SUB_FUN(.out_effects, constantHdmvEffectSequenceParameters)
+    EQUAL(.default_selected_button_id_ref)
+    EQUAL(.default_activated_button_id_ref)
+    EQUAL(.palette_id_ref)
+    EQUAL(.number_of_BOGs)
+    // TODO
+  );
+}
+
 /* ######### Interactive Composition : ##################################### */
+
+#define HDMV_MAX_NB_ACTIVE_IC  1
 
 typedef enum {
   HDMV_STREAM_MODEL_MULTIPLEXED  = 0x0,  /**< Muxed in AV stream.            */
@@ -1000,6 +1343,20 @@ static inline const char * HdmvUserInterfaceModelStr(
   return "Unknown";
 }
 
+/** \~english
+ * \brief Maximum size of an Interactive_composition() structure.
+ *
+ * Based on a 1MiB Composition Buffer, this value is the maximum possible size
+ * to store two Interactive_composition plus 256 Palette Definition Segments
+ * (256 PDS of 256 entries, 1285 bytes see #HDMV_MAX_SIZE_PDS, 328960 bytes).
+ * That is 1MiB = 1048576 bytes minus 328960 bytes = 719616 bytes divided by
+ * two = 359808 bytes.
+ *
+ * \todo Is this value accurate? Based on the hypothesis of a 1MiB Composition
+ * Buffer.
+ */
+#define HDMV_MAX_IC_LENGTH  359808
+
 #define HDMV_MAX_NB_IC_PAGES  255
 
 typedef struct HdmvInteractiveCompositionParameters {
@@ -1008,28 +1365,68 @@ typedef struct HdmvInteractiveCompositionParameters {
   HdmvStreamModel stream_model;
   HdmvUserInterfaceModel user_interface_model;
 
-  uint64_t composition_time_out_pts;
-  uint64_t selection_time_out_pts;  /**< Muxed stream_model related parameters. */
+  int64_t composition_time_out_pts;
+  int64_t selection_time_out_pts;  /**< Muxed stream_model related parameters. */
   uint32_t user_time_out_duration;
 
   uint8_t number_of_pages;
-  HdmvPageParameters * pages[HDMV_MAX_NB_IC_PAGES];
+  HdmvPageParameters * pages;
 } HdmvICParameters;
 
-int updateHdmvICParameters(
+static inline void cleanHdmvICParameters(
+  HdmvICParameters ic
+)
+{
+  for (uint8_t i = 0; i < ic.number_of_pages; i++)
+    cleanHdmvPageParameters(ic.pages[i]);
+  free(ic.pages);
+}
+
+static inline void resetHdmvICParameters(
+  HdmvICParameters * ic
+)
+{
+  cleanHdmvICParameters(*ic);
+  memset(ic, 0x00, sizeof(HdmvICParameters));
+}
+
+static inline int allocatePagesHdmvICParameters(
+  HdmvICParameters * dst
+)
+{
+  if (0 == dst->number_of_pages)
+    return 0; // No page
+  dst->pages = calloc(dst->number_of_pages, sizeof(HdmvPageParameters));
+  if (NULL == dst->pages)
+    LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
+  return 0;
+}
+
+static inline int copyHdmvICParameters(
   HdmvICParameters * dst,
-  const HdmvICParameters * src
-);
+  const HdmvICParameters src
+)
+{
+  HdmvICParameters ic_copy = src;
+  if (allocatePagesHdmvICParameters(&ic_copy) < 0)
+    return -1;
+  for (uint8_t i = 0; i < src.number_of_pages; i++) {
+    if (copyHdmvPageParameters(&ic_copy.pages[i], src.pages[i]) < 0)
+      return -1;
+  }
+  *dst = ic_copy;
+  return 0;
+}
 
 /** \~english
  * \brief Computes and return size required by
- * interactive_composition() structure.
+ * Interactive_composition() structure.
  *
  * \param param Structure parameters.
  * \return size_t Number of bytes required to store builded structure.
  *
  * Used to define how many bytes are required to store generated
- * interactive_composition().
+ * Interactive_composition().
  *
  * Composed of:
  *  - u24 : interactive_composition_length;
@@ -1049,16 +1446,14 @@ int updateHdmvICParameters(
  * => 8 + (stream_model == 0b0 ? 10 : 0) + Page()s bytes.
  */
 static inline size_t computeSizeHdmvInteractiveComposition(
-  const HdmvICParameters * param
+  const HdmvICParameters param
 )
 {
-  assert(NULL != param);
-
   size_t size = 8ull;
-  if (param->stream_model == HDMV_STREAM_MODEL_MULTIPLEXED)
+  if (param.stream_model == HDMV_STREAM_MODEL_MULTIPLEXED)
     size += 10ull;
-  for (uint8_t i = 0; i < param->number_of_pages; i++)
-    size += computeSizeHdmvPage(param->pages[i]);
+  for (uint8_t i = 0; i < param.number_of_pages; i++)
+    size += computeSizeHdmvPage(param.pages[i]);
   return size;
 }
 
@@ -1088,12 +1483,25 @@ typedef struct {
 /* ###### HDMV Palette Definition Segment : ################################ */
 /* ######### Palette Descriptor : ########################################## */
 
+#define HDMV_PG_MAX_NB_PAL  8
+#define HDMV_IG_MAX_NB_PAL  256
+#define HDMV_MAX_NB_PAL  HDMV_IG_MAX_NB_PAL
+
+static inline uint16_t getHdmvMaxNbPal(
+  HdmvStreamType type
+)
+{
+  switch (type) {
+  case HDMV_STREAM_TYPE_IGS: return HDMV_IG_MAX_NB_PAL;
+  case HDMV_STREAM_TYPE_PGS: return HDMV_PG_MAX_NB_PAL;
+  }
+  LIBBLU_TODO_MSG("Unreachable");
+}
+
 typedef struct HdmvPaletteDescriptorParameters {
   uint8_t palette_id;
   uint8_t palette_version_number;
 } HdmvPDParameters;
-
-#define HDMV_MAX_PALETTE_ID  255
 
 static inline bool constantHdmvPDParameters(
   HdmvPDParameters first,
@@ -1178,41 +1586,42 @@ static inline bool constantEntriesHdmvPaletteEntryParameters(
 
 /* ######################################################################### */
 
+#define HDMV_NB_PAL_ENTRIES  256
+
+#define HDMV_SIZE_PALETTE_DESCRIPTOR  2
+
+#define HDMV_MAX_SIZE_PDS                                                     \
+  (HDMV_SIZE_SEGMENT_HEADER + HDMV_SIZE_PALETTE_DESCRIPTOR                    \
+   + HDMV_NB_PAL_ENTRIES * HDMV_SIZE_PALETTE_DEFINITION_ENTRY)
+
 #define HDMV_MAX_NB_PDS_ENTRIES  255
 
 /** \~english
  * \brief Transparent color 0xFF id.
  *
  */
-#define HDMV_PAL_FF  HDMV_MAX_NB_PDS_ENTRIES
+#define HDMV_PAL_FF  0xFF
 
 typedef struct {
   HdmvPDParameters palette_descriptor;
-
-  uint16_t number_of_palette_entries;
-  HdmvPaletteEntryParameters palette_entries[HDMV_MAX_NB_PDS_ENTRIES];
+  HdmvPaletteEntryParameters palette_entries[HDMV_NB_PAL_ENTRIES];
 } HdmvPDSegmentParameters;
 
 static inline bool constantHdmvPDSegmentParameters(
-  HdmvPDSegmentParameters first,
-  HdmvPDSegmentParameters second
+  const HdmvPDSegmentParameters first,
+  const HdmvPDSegmentParameters second
 )
 {
-  return CHECK(
+  bool is_equal = CHECK(
     SUB_FUN(.palette_descriptor, constantHdmvPDParameters)
-    EQUAL(.number_of_palette_entries)
-    EXPR(constantEntriesHdmvPaletteEntryParameters(
-      first.palette_entries,
-      second.palette_entries,
-      first.number_of_palette_entries
-    ))
   );
+  for (uint16_t i = 0; i < HDMV_MAX_NB_PDS_ENTRIES && is_equal; i++)
+    is_equal &= constantHdmvPaletteEntryParameters(
+      first.palette_entries[i],
+      second.palette_entries[i]
+    );
+  return is_equal;
 }
-
-int updateHdmvPDSegmentParameters(
-  HdmvPDSegmentParameters * dst,
-  const HdmvPDSegmentParameters * src
-);
 
 /* ###### HDMV Object Definition Segment : ################################# */
 
@@ -1222,11 +1631,29 @@ int32_t computeObjectDataDecodeDuration(
   uint16_t object_height
 );
 
+int32_t computeObjectDataDecodeDelay(
+  HdmvStreamType stream_type,
+  uint16_t object_width,
+  uint16_t object_height,
+  float decode_delay_factor
+);
+
 /* ######### Object Descriptor : ########################################### */
 
-#define HDMV_OD_PG_MAX_NB_OBJ  64
+#define HDMV_PG_MAX_NB_OBJ  64
+#define HDMV_IG_MAX_NB_OBJ  4096
+#define HDMV_MAX_NB_OBJ  HDMV_IG_MAX_NB_OBJ
 
-#define HDMV_OD_IG_MAX_NB_OBJ  4096
+static inline uint16_t getHdmvMaxNbObj(
+  HdmvStreamType type
+)
+{
+  switch (type) {
+  case HDMV_STREAM_TYPE_IGS: return HDMV_IG_MAX_NB_OBJ;
+  case HDMV_STREAM_TYPE_PGS: return HDMV_PG_MAX_NB_OBJ;
+  }
+  LIBBLU_TODO_MSG("Unreachable");
+}
 
 typedef struct HdmvObjectDescriptorParameters {
   uint16_t object_id;
@@ -1259,11 +1686,6 @@ typedef struct HdmvObjectDataParameters {
   uint16_t object_width;
   uint16_t object_height;
 } HdmvODParameters;
-
-int updateHdmvObjectDataParameters(
-  HdmvODParameters * dst,
-  const HdmvODParameters * src
-);
 
 /** \~english
  * \brief
@@ -1303,6 +1725,33 @@ typedef struct {
 #define HDMV_SIZE_OD_SEGMENT_HEADER                                           \
   (HDMV_SIZE_OBJECT_DESCRIPTOR + HDMV_SIZE_SEQUENCE_DESCRIPTOR)
 
+typedef enum {
+  ODS_UNUSED_PAGE0,
+  ODS_USED_OTHER_PAGE0,
+  ODS_DEFAULT_ACTIVATED_PAGE0,
+  ODS_DEFAULT_SELECTED_PAGE0,
+  ODS_DEFAULT_FIRST_SELECTED_PAGE0,
+  ODS_DEFAULT_NORMAL_PAGE0,
+  ODS_IN_EFFECT_PAGE0
+} HdmvODSUsage;
+
+static inline const char * HdmvODSUsageStr(
+  HdmvODSUsage usage
+)
+{
+  static const char * strings[] = {
+    "Unused in Page 0",
+    "Used in Page 0 for non-first Display Update",
+    "Used for a default valid button activated state of Page 0",
+    "Used for a default valid button selected state of Page 0",
+    "First object used by the default selected button of Page 0",
+    "Used for a default valid button normal state of Page 0",
+    "Used in in_effect() of Page 0"
+  };
+
+  return strings[usage];
+}
+
 /* ######################################################################### */
 
 typedef struct {
@@ -1314,6 +1763,22 @@ typedef struct {
 
   uint64_t orig_file_offset;
 } HdmvSegmentParameters;
+
+/* ### HDMV Streams Utilities : ############################################ */
+
+static inline bool interpretHdmvVersionNumber(
+  uint8_t prev_version_number,
+  uint8_t new_version_number,
+  bool * is_same_ret
+)
+{
+  assert(NULL != is_same_ret);
+
+  *is_same_ret   = (  prev_version_number              == new_version_number);
+  bool is_update = (((prev_version_number + 1) & 0xFF) == new_version_number);
+
+  return *is_same_ret || is_update;
+}
 
 /* ######################################################################### */
 

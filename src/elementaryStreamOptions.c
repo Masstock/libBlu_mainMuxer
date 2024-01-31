@@ -57,88 +57,88 @@ int parseArChange(
 
   idc = H264_ASPECT_RATIO_IDC_EXTENDED_SAR;
   switch (x * y) {
-    case 0:
-      x = y = (unsigned) -1;
-      idc = H264_ASPECT_RATIO_IDC_UNSPECIFIED;
-      break;
+  case 0:
+    x = y = (unsigned) -1;
+    idc = H264_ASPECT_RATIO_IDC_UNSPECIFIED;
+    break;
 
-    case 1*1:
-      idc = H264_ASPECT_RATIO_IDC_1_BY_1;
-      break;
+  case 1*1:
+    idc = H264_ASPECT_RATIO_IDC_1_BY_1;
+    break;
 
-    case 12*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_12_BY_11;
-      break;
+  case 12*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_12_BY_11;
+    break;
 
-    case 10*11:
-      if (x < y)
-        idc = H264_ASPECT_RATIO_IDC_10_BY_11;
-      break;
+  case 10*11:
+    if (x < y)
+      idc = H264_ASPECT_RATIO_IDC_10_BY_11;
+    break;
 
-    case 16*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_16_BY_11;
-      break;
+  case 16*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_16_BY_11;
+    break;
 
-    case 40*33:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_40_BY_33;
-      break;
+  case 40*33:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_40_BY_33;
+    break;
 
-    case 24*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_24_BY_11;
-      break;
+  case 24*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_24_BY_11;
+    break;
 
-    case 20*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_20_BY_11;
-      break;
+  case 20*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_20_BY_11;
+    break;
 
-    case 32*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_32_BY_11;
-      break;
+  case 32*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_32_BY_11;
+    break;
 
-    case 80*33:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_80_BY_33;
-      break;
+  case 80*33:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_80_BY_33;
+    break;
 
-    case 18*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_18_BY_11;
-      break;
+  case 18*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_18_BY_11;
+    break;
 
-    case 15*11:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_15_BY_11;
-      break;
+  case 15*11:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_15_BY_11;
+    break;
 
-    case 64*33:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_64_BY_33;
-      break;
+  case 64*33:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_64_BY_33;
+    break;
 
-    case 160*99:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_160_BY_99;
-      break;
+  case 160*99:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_160_BY_99;
+    break;
 
-    case 4*3:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_4_BY_3;
-      break;
+  case 4*3:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_4_BY_3;
+    break;
 
-    case 3*2:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_3_BY_2;
-      break;
+  case 3*2:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_3_BY_2;
+    break;
 
-    case 2*1:
-      if (x > y)
-        idc = H264_ASPECT_RATIO_IDC_2_BY_1;
+  case 2*1:
+    if (x > y)
+      idc = H264_ASPECT_RATIO_IDC_2_BY_1;
   }
 
   *val = (LibbluAspectRatioMod) {
@@ -157,20 +157,20 @@ int parseLevelChange(
   unsigned prefix, suffix;
 
   switch (lbc_sscanf(expr, " %u.%u", &prefix, &suffix)) {
-    case 1: /* No separator, xx format */
-      if (prefix < 10) /* Only one character for one-digit levels (1 => 1.0) */
-        prefix *= 10;
+  case 1: /* No separator, xx format */
+    if (prefix < 10) /* Only one character for one-digit levels (1 => 1.0) */
+      prefix *= 10;
 
-      /* Split value to prefix.suffix */
-      suffix = prefix % 10;
-      prefix = prefix / 10;
-      break;
+    /* Split value to prefix.suffix */
+    suffix = prefix % 10;
+    prefix = prefix / 10;
+    break;
 
-    case 2: /* x.x format */
-      break;
+  case 2: /* x.x format */
+    break;
 
-    default: /* Wrong format */
-      return -1;
+  default: /* Wrong format */
+    return -1;
   }
 
   if (6 < prefix || (((prefix == 1) ? 3 : 2) < suffix))

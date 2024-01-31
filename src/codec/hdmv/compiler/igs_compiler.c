@@ -113,7 +113,6 @@ static void _cleanIgsCompilerContext(
 
   cleanHdmvPictureLibraries(ctx.img_io_libs);
   cleanXmlContext(ctx.xml_ctx);
-  cleanHdmvSegmentsInventory(ctx.inv);
 
   for (unsigned i = 0; i < ctx.data.nb_compositions; i++)
     cleanIgsCompilerComposition(ctx.data.compositions[i]);
@@ -128,12 +127,12 @@ static int _initIgsCompilerContext(
   IgsCompilerContext * dst,
   const lbc * xml_filename,
   HdmvTimecodes * timecodes,
-  IniFileContextPtr conf
+  IniFileContext conf_hdl
 )
 {
   ECHO_DEBUG("IGS Compiler context initialization.\n");
   IgsCompilerContext ctx = {
-    .conf = conf,
+    .conf_hdl  = conf_hdl,
     .timecodes = timecodes
   };
 
@@ -141,9 +140,6 @@ static int _initIgsCompilerContext(
 
   /* Init Picture libraries */
   initHdmvPictureLibraries(&ctx.img_io_libs);
-
-  /* Init HDMV elements allocation inventory */
-  initHdmvSegmentsInventory(&ctx.inv);
 
   /* Set working directory to allow file-relative files handling: */
   ECHO_DEBUG(" Redefinition of working directory.\n");
@@ -205,7 +201,8 @@ static int _buildObjects(
       cleanHdmvPaletizedBitmap(pal_bm);
       goto free_return;
     }
-    obj->desc.object_id = i;
+
+    obj->desc.object_id = bitmap.object_id; // Set object_id as requested
 
     uint16_t line;
     if (!performRleHdmvObject(obj, &line)) {
@@ -230,28 +227,42 @@ free_return:
   return -1;
 }
 
-#define _COLLECT_STATE(name, comp, op)                                        \
-  do {                                                                        \
-    if (0xFFFF != btn->name.start_object_id_ref) {                            \
-      for (                                                                   \
-        uint16_t id = btn->name.start_object_id_ref;                          \
-        id comp btn->name.end_object_id_ref;                                  \
-        id op                                                                 \
-      ) {                                                                     \
-        assert(id < compo->nb_used_object_bitmaps);                           \
-        if (addHdmvBitmapList(&obj_bitmaps, compo->object_bitmaps[id]) < 0)   \
-          goto free_return;                                                   \
-      }                                                                       \
-    }                                                                         \
-  } while (0)
+static int _collectObjectRange(
+  HdmvBitmapList * list,
+  HdmvBitmap * bm_array,
+  uint16_t start_object_id_ref,
+  uint16_t end_object_id_ref,
+  HdmvODSUsage usage
+)
+{
+  if (0xFFFF == start_object_id_ref) {
+    LIBBLU_HDMV_IGS_COMPL_DEBUG("     No object\n");
+    return 0;
+  }
 
-#define COLLECT_STATE(name)                                                   \
-  do {                                                                        \
-    if (btn->name.start_object_id_ref <= btn->name.end_object_id_ref)         \
-      _COLLECT_STATE(name, <=, ++);                                           \
-    else                                                                      \
-      _COLLECT_STATE(name, >=, --);                                           \
-  } while (0)
+  uint16_t start, end;
+  if (start_object_id_ref <= end_object_id_ref)
+    start = start_object_id_ref, end = end_object_id_ref;
+  else
+    start = end_object_id_ref, end = start_object_id_ref;
+
+  for (uint16_t object_id_ref = start; object_id_ref <= end; object_id_ref++) {
+    LIBBLU_HDMV_IGS_COMPL_DEBUG(
+      "      Object with 'object_id' == 0x%04" PRIX16 "\n",
+      object_id_ref
+    );
+
+    HdmvBitmap bitmap = bm_array[object_id_ref];
+
+    bitmap.usage     = MAX(bitmap.usage, usage); // Set usage of the ODS
+    bitmap.object_id = object_id_ref; // Set object_id
+
+    if (addHdmvBitmapList(list, bitmap) < 0)
+      return -1;
+  }
+
+  return 0;
+}
 
 int buildIgsCompilerComposition(
   IgsCompilerComposition * compo,
@@ -263,51 +274,100 @@ int buildIgsCompilerComposition(
 
   LIBBLU_HDMV_IGS_COMPL_INFO("Building interactive compositions...\n");
 
-  HdmvBitmapList obj_bitmaps = {0};
+  HdmvBitmapList obj_bms = {0};
 
-  LIBBLU_HDMV_IGS_COMPL_DEBUG("Collecting content of each page:\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Preparing assets of each page:\n");
 
   /* Collect all composition pictures */
   uint8_t nb_pages = compo->interactive_composition.number_of_pages;
   for (uint8_t page_id = 0; page_id < nb_pages; page_id++) {
     /* Create a palette for each page */
-    HdmvPageParameters * page = compo->interactive_composition.pages[page_id];
+    HdmvPageParameters * page = &compo->interactive_composition.pages[page_id];
 
-    LIBBLU_HDMV_IGS_COMPL_DEBUG(" Page %u\n", page_id);
-    LIBBLU_HDMV_IGS_COMPL_DEBUG("  Collecting every object from each BOG:\n");
+    LIBBLU_HDMV_IGS_COMPL_DEBUG(" Page %" PRIu8 "\n", page_id);
 
+    /* Collect objects */
     for (uint8_t bog_id = 0; bog_id < page->number_of_BOGs; bog_id++) {
-      HdmvButtonOverlapGroupParameters * bog = page->bogs[bog_id];
+      const HdmvButtonOverlapGroupParameters bog = page->bogs[bog_id];
 
-      for (uint8_t btn_id = 0; btn_id < bog->number_of_buttons; btn_id++) {
-        /* Collect all pictures */
-        HdmvButtonParam * btn = bog->buttons[btn_id];
+      LIBBLU_HDMV_IGS_COMPL_DEBUG("  Bog %" PRIu8 "\n", bog_id);
 
-        /* Normal state */
-        COLLECT_STATE(normal_state_info);
+      for (uint8_t btn_id = 0; btn_id < bog.number_of_buttons; btn_id++) {
+        HdmvButtonParam btn = bog.buttons[btn_id];
+        bool is_def_sel_btn = (btn.button_id == page->default_selected_button_id_ref);
+        bool is_def_val_btn = (btn.button_id == bog.default_valid_button_id_ref);
 
-        /* Selected state */
-        COLLECT_STATE(selected_state_info);
+        LIBBLU_HDMV_IGS_COMPL_DEBUG("   Button %" PRIu8 "\n", btn_id);
 
-        /* Activated state */
-        COLLECT_STATE(activated_state_info);
+        uint16_t start_obj_id_ref, end_obj_id_ref;
+        HdmvODSUsage usage = ODS_UNUSED_PAGE0;
+
+        /* Collect ODS used for Normal State */
+        LIBBLU_HDMV_IGS_COMPL_DEBUG("    Normal state\n");
+        start_obj_id_ref = btn.normal_state_info.start_object_id_ref;
+        end_obj_id_ref   = btn.normal_state_info.end_object_id_ref;
+
+        if (0x00 == page_id)
+          usage = (is_def_val_btn) ? ODS_DEFAULT_NORMAL_PAGE0 : ODS_USED_OTHER_PAGE0;
+
+        if (_collectObjectRange(&obj_bms, compo->object_bitmaps, start_obj_id_ref, end_obj_id_ref, usage) < 0)
+          goto free_return;
+
+        /* Collect ODS used for Selected State */
+        LIBBLU_HDMV_IGS_COMPL_DEBUG("    Selected state\n");
+        start_obj_id_ref = btn.selected_state_info.start_object_id_ref;
+        end_obj_id_ref   = btn.selected_state_info.end_object_id_ref;
+
+        if (0x00 == page_id)
+          usage = (is_def_val_btn) ? ODS_DEFAULT_SELECTED_PAGE0 : ODS_USED_OTHER_PAGE0;
+
+        unsigned idx_first_sel_ods = nbPicsHdmvBitmapList(obj_bms);
+        if (_collectObjectRange(&obj_bms, compo->object_bitmaps, start_obj_id_ref, end_obj_id_ref, usage) < 0)
+          goto free_return;
+
+        if (
+          0x00 == page_id
+          && idx_first_sel_ods != nbPicsHdmvBitmapList(obj_bms)
+          && is_def_sel_btn
+        ) {
+          /* Mark first ODS used for default selected button of Page 0 (if exists) */
+          HdmvBitmap * bm;
+          if (getRefHdmvBitmapList(&obj_bms, &bm, idx_first_sel_ods) < 0)
+            LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN("Unable to get default selected button.\n");
+          bm->usage = MAX(bm->usage, ODS_DEFAULT_FIRST_SELECTED_PAGE0);
+        }
+
+        /* Collect ODS used for Activated State */
+        LIBBLU_HDMV_IGS_COMPL_DEBUG("    Activated state\n");
+        start_obj_id_ref = btn.activated_state_info.start_object_id_ref;
+        end_obj_id_ref   = btn.activated_state_info.end_object_id_ref;
+
+        if (0x00 == page_id)
+          usage = (is_def_val_btn) ? ODS_DEFAULT_ACTIVATED_PAGE0 : ODS_USED_OTHER_PAGE0;
+
+        if (_collectObjectRange(&obj_bms, compo->object_bitmaps, start_obj_id_ref, end_obj_id_ref, usage) < 0)
+          goto free_return;
       }
     }
 
     /* Getting the number of collected objects. */
-    unsigned nb_obj = obj_bitmaps.nb_bitmaps;
+    unsigned nb_obj = obj_bms.nb_bitmaps;
     if (0 == nb_obj) {
       LIBBLU_HDMV_IGS_COMPL_DEBUG("  Empty page, skipping to next one.\n");
       continue;
     }
 
+    /* Reorder objects for Page 0 */
+    if (0x00 == page_id)
+      sortByUsageHdmvBitmapList(&obj_bms);
+
     LIBBLU_HDMV_IGS_COMPL_DEBUG("  Creating palette for %u objects.\n", nb_obj);
     HdmvPalette pal;
-    if (_buildPalette(&pal, &obj_bitmaps, color_matrix) < 0)
+    if (_buildPalette(&pal, &obj_bms, color_matrix) < 0)
       goto free_return;
 
     LIBBLU_HDMV_IGS_COMPL_DEBUG("  Apply palette to create objects.\n");
-    if (_buildObjects(compo, &obj_bitmaps, &pal, dither_method) < 0)
+    if (_buildObjects(compo, &obj_bms, &pal, dither_method) < 0)
       goto free_return;
 
     /* Add finished palette to composition and reset list for next page */
@@ -318,16 +378,16 @@ int buildIgsCompilerComposition(
     page->palette_id_ref = palette_id; /* Set page palette id */
 
     LIBBLU_HDMV_IGS_COMPL_DEBUG("  Flushing list.\n");
-    flushHdmvBitmapList(&obj_bitmaps);
+    flushHdmvBitmapList(&obj_bms);
   }
 
   LIBBLU_HDMV_IGS_COMPL_DEBUG(" Completed.\n");
 
-  cleanHdmvBitmapList(obj_bitmaps);
+  cleanHdmvBitmapList(obj_bms);
   return 0;
 
 free_return:
-  cleanHdmvBitmapList(obj_bitmaps);
+  cleanHdmvBitmapList(obj_bms);
   return -1;
 }
 
@@ -337,7 +397,7 @@ static HdmvColorDitheringMethod _getDitherMethodFromConf(
   const IgsCompilerContext * ctx
 )
 {
-  lbc * str = lookupIniFile(ctx->conf, "HDMV.DITHERMETHOD");
+  lbc * str = lookupIniFile(ctx->conf_hdl, "HDMV.DITHERMETHOD");
   if (NULL != str && lbc_equal(str, lbc_str("floydSteinberg")))
     return HDMV_PIC_CDM_FLOYD_STEINBERG;
   return HDMV_PIC_CDM_DISABLED;
@@ -347,7 +407,7 @@ static HdmvPaletteColorMatrix _getColorMatrixFromConf(
   const IgsCompilerContext * ctx
 )
 {
-  lbc * str = lookupIniFile(ctx->conf, "HDMV.COLORMATRIX");
+  lbc * str = lookupIniFile(ctx->conf_hdl, "HDMV.COLORMATRIX");
   if (NULL != str && lbc_equal(str, lbc_str("BT.709")))
     return HDMV_PAL_CM_BT_709;
   if (NULL != str && lbc_equal(str, lbc_str("BT.2020")))
@@ -358,11 +418,11 @@ static HdmvPaletteColorMatrix _getColorMatrixFromConf(
 int processIgsCompiler(
   const lbc * xml_filepath,
   HdmvTimecodes * timecodes,
-  IniFileContextPtr conf
+  IniFileContext conf_hdl
 )
 {
   IgsCompilerContext ctx = {0};
-  if (_initIgsCompilerContext(&ctx, xml_filepath, timecodes, conf) < 0)
+  if (_initIgsCompilerContext(&ctx, xml_filepath, timecodes, conf_hdl) < 0)
     return -1;
 
   LIBBLU_HDMV_IGS_COMPL_INFO("Compiling IGS...\n");

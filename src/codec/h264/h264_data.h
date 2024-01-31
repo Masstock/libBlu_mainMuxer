@@ -1131,14 +1131,14 @@ static inline const char * H264SEIMessagePayloadTypeStr(
 )
 {
   switch (payloadType) {
-    case H264_SEI_TYPE_BUFFERING_PERIOD:
-      return "Buffering period";
-    case H264_SEI_TYPE_PIC_TIMING:
-      return "Picture timing";
-    case H264_SEI_TYPE_USER_DATA_UNREGISTERED:
-      return "User data unregistered";
-    case H264_SEI_TYPE_RECOVERY_POINT:
-      return "Recovery point";
+  case H264_SEI_TYPE_BUFFERING_PERIOD:
+    return "Buffering period";
+  case H264_SEI_TYPE_PIC_TIMING:
+    return "Picture timing";
+  case H264_SEI_TYPE_USER_DATA_UNREGISTERED:
+    return "User data unregistered";
+  case H264_SEI_TYPE_RECOVERY_POINT:
+    return "Recovery point";
   }
 
   return "Reserved/Unknown";
@@ -1943,30 +1943,30 @@ static inline H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
 )
 {
   switch (frameWidth) {
-    case 1920:
-    case 1280:
-      return (H264BdavExpectedAspectRatioRet) {
-        H264_ASPECT_RATIO_IDC_1_BY_1,
-        H264_ASPECT_RATIO_IDC_1_BY_1
-      };
+  case 1920:
+  case 1280:
+    return (H264BdavExpectedAspectRatioRet) {
+      H264_ASPECT_RATIO_IDC_1_BY_1,
+      H264_ASPECT_RATIO_IDC_1_BY_1
+    };
 
-    case 1440:
-      return (H264BdavExpectedAspectRatioRet) {
-        H264_ASPECT_RATIO_IDC_4_BY_3,
-        H264_ASPECT_RATIO_IDC_4_BY_3
-      };
+  case 1440:
+    return (H264BdavExpectedAspectRatioRet) {
+      H264_ASPECT_RATIO_IDC_4_BY_3,
+      H264_ASPECT_RATIO_IDC_4_BY_3
+    };
 
-    case 720:
-      if (frameHeight == 576) {
-        return (H264BdavExpectedAspectRatioRet) {
-          H264_ASPECT_RATIO_IDC_12_BY_11,
-          H264_ASPECT_RATIO_IDC_16_BY_11
-        };
-      }
+  case 720:
+    if (frameHeight == 576) {
       return (H264BdavExpectedAspectRatioRet) {
-        H264_ASPECT_RATIO_IDC_10_BY_11,
-        H264_ASPECT_RATIO_IDC_40_BY_33
+        H264_ASPECT_RATIO_IDC_12_BY_11,
+        H264_ASPECT_RATIO_IDC_16_BY_11
       };
+    }
+    return (H264BdavExpectedAspectRatioRet) {
+      H264_ASPECT_RATIO_IDC_10_BY_11,
+      H264_ASPECT_RATIO_IDC_40_BY_33
+    };
   }
 
   return (H264BdavExpectedAspectRatioRet) {
@@ -1997,8 +1997,8 @@ static inline H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
 )
 {
   switch (frameHeight) {
-    case 576: return H264_COLOR_PRIM_BT470BG;
-    case 480: return H264_COLOR_PRIM_SMPTE170M;
+  case 576: return H264_COLOR_PRIM_BT470BG;
+  case 480: return H264_COLOR_PRIM_SMPTE170M;
   }
   return H264_COLOR_PRIM_BT709;
 }
@@ -2009,8 +2009,8 @@ getH264BdavExpectedTransferCharacteritics(
 )
 {
   switch (frameHeight) {
-    case 576: return H264_TRANS_CHAR_BT470BG;
-    case 480: return H264_TRANS_CHAR_SMPTE170M;
+  case 576: return H264_TRANS_CHAR_BT470BG;
+  case 480: return H264_TRANS_CHAR_SMPTE170M;
   }
   return H264_TRANS_CHAR_BT709;
 }
@@ -2021,8 +2021,8 @@ getH264BdavExpectedMatrixCoefficients(
 )
 {
   switch (frameHeight) {
-    case 576: return H264_MATRX_COEF_BT470M;
-    case 480: return H264_MATRX_COEF_SMPTE170M;
+  case 576: return H264_MATRX_COEF_BT470M;
+  case 480: return H264_MATRX_COEF_SMPTE170M;
   }
   return H264_MATRX_COEF_BT709;
 }

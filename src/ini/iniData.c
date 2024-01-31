@@ -8,130 +8,109 @@
 
 #include "iniData.h"
 
-IniFileContextPtr createIniFileContext(
-  void
-)
-{
-  IniFileContextPtr ctx;
-
-  if (NULL == (ctx = (IniFileContextPtr) malloc(sizeof(IniFileContext))))
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  *ctx = (IniFileContext) {
-    0
-  };
-
-  return ctx;
-}
-
 int loadSourceIniFileContext(
-  IniFileContextPtr dst,
-  FILE * inputFile
+  IniFileContext * dst,
+  FILE * input_fd
 )
 {
-  char ** sourceCode;
-  size_t allocatedLines;
-  size_t usedLines;
+  // char ** sourceCode;
+  // size_t allocatedLines;
+  // size_t usedLines;
 
-  char * lineBuf = NULL;
-  size_t allocatedLineBuf = 0;
+  // char * lineBuf = NULL;
+  // size_t allocatedLineBuf = 0;
 
-  fpos_t originalOffset;
+  // fpos_t originalOffset;
 
   assert(NULL == dst->src);
 
-  if (fgetpos(inputFile, &originalOffset) < 0) {
+  fpos_t orig_off;
+  if (fgetpos(input_fd, &orig_off) < 0) {
     perror("Unable to parse input file");
     return -1;
   }
 
-  sourceCode = NULL;
-  allocatedLines = usedLines = 0;
+  char ** ini_lines = NULL;
+  size_t allocated_ini_lines = 0, used_ini_lines = 0;
+
+  char * line_buf = NULL;
+  size_t allocated_line_buf = 0;
 
   do {
-    size_t usedLineBuf, lineLength;
-
-    if (allocatedLines <= usedLines) {
-      char ** newArray;
-      size_t newSize;
-
-      newSize = GROW_ALLOCATION(
+    if (allocated_ini_lines <= used_ini_lines) {
+      size_t new_size = GROW_ALLOCATION(
         INI_DEFAULT_NB_SOURCE_CODE_LINES,
-        allocatedLines
+        allocated_ini_lines
       );
 
-      if (lb_mul_overflow_size_t(newSize, sizeof(char *)))
+      if (lb_mul_overflow_size_t(new_size, sizeof(char *)))
         LIBBLU_ERROR_FRETURN("Too many lines in input INI file, overflow.\n")
 
-      newArray = (char **) realloc(sourceCode, newSize * sizeof(char *));
-      if (NULL == newArray)
+      char ** new_array = realloc(ini_lines, new_size * sizeof(char *));
+      if (NULL == new_array)
         LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-      sourceCode = newArray;
-      allocatedLines = newSize;
+      ini_lines = new_array;
+      allocated_ini_lines = new_size;
     }
 
-    usedLineBuf = 0;
+    size_t used_line_buf = 0;
     do {
-      char * ret;
-
-      if (allocatedLineBuf <= usedLineBuf) {
-        char * newArray;
-        size_t newSize;
-
-        newSize = GROW_ALLOCATION(
+      if (allocated_line_buf <= used_line_buf) {
+        size_t new_size = GROW_ALLOCATION(
           INI_DEFAULT_LEN_SOURCE_CODE_LINE,
-          allocatedLineBuf
+          allocated_line_buf
         );
 
-        if (newSize <= usedLineBuf)
+        if (new_size <= used_line_buf)
           LIBBLU_ERROR_FRETURN("Too many characters in INI file, overflow.\n");
 
-        if (NULL == (newArray = (char *) realloc(lineBuf, newSize)))
+        char * new_array = realloc(line_buf, new_size);
+        if (NULL == new_array)
           LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-        lineBuf = newArray;
-        allocatedLineBuf = newSize;
+        line_buf = new_array;
+        allocated_line_buf = new_size;
       }
 
-      if ((int) (allocatedLineBuf - usedLineBuf) <= 0)
+      if (INT_MAX < allocated_line_buf - used_line_buf)
         LIBBLU_ERROR_FRETURN("INI file characters amount value overflow.\n");
+      int reading_size = allocated_line_buf - used_line_buf;
 
-      ret = fgets(lineBuf + usedLineBuf, allocatedLineBuf - usedLineBuf, inputFile);
-      if (NULL == ret) {
-        if (ferror(inputFile))
+      if (NULL == fgets(&line_buf[used_line_buf], reading_size, input_fd)) {
+        if (ferror(input_fd))
           LIBBLU_ERROR_FRETURN(
             "Unable to read input INI file, %s (errno: %d).\n",
             strerror(errno),
             errno
           );
-
-        strcpy(lineBuf, "\n");
       }
 
-      lineLength = strlen(lineBuf + usedLineBuf);
+      size_t added_len = strlen(&line_buf[used_line_buf]);
 
-      if (usedLineBuf + lineLength < usedLineBuf)
+      if (used_line_buf + added_len < used_line_buf)
         LIBBLU_ERROR_FRETURN("Too many characters in source code.\n");
-      usedLineBuf += lineLength;
+      used_line_buf += added_len;
 
-    } while (allocatedLineBuf <= usedLineBuf);
+    } while (allocated_line_buf <= used_line_buf);
 
-    lineLength = strlen(lineBuf);
-    sourceCode[usedLines] = (char *) malloc((lineLength + 1) * sizeof(char));
-    if (NULL == sourceCode[usedLines])
+    size_t line_len = strlen(line_buf) + 1;
+
+    char * line = calloc(line_len, sizeof(char));
+    if (NULL == line)
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-    strcpy(sourceCode[usedLines], lineBuf);
+    strncpy(line, line_buf, line_len);
 
-    usedLines++;
-  } while (!feof(inputFile));
+    ini_lines[used_ini_lines] = line;
+    used_ini_lines++;
+  } while (!feof(input_fd));
 
-  free(lineBuf);
+  free(line_buf);
 
-  dst->src = sourceCode;
-  dst->srcNbLines = usedLines;
+  dst->src = ini_lines;
+  dst->src_nb_lines = used_ini_lines;
 
-  if (fsetpos(inputFile, &originalOffset) < 0)
+  if (fsetpos(input_fd, &orig_off) < 0)
     LIBBLU_ERROR_RETURN(
       "Unable to rewind INI file, %s (errno: %d).\n",
       strerror(errno),
@@ -141,7 +120,7 @@ int loadSourceIniFileContext(
   return 0;
 
 free_return:
-  free(sourceCode);
-  free(lineBuf);
+  free(ini_lines);
+  free(line_buf);
   return -1;
 }

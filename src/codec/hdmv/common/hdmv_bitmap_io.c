@@ -53,7 +53,7 @@ int openHdmvBitmap(
   HdmvBitmap * dst,
   HdmvPictureLibraries * libs,
   const lbc * filepath,
-  const IniFileContextPtr conf
+  const IniFileContext conf_hdl
 )
 {
   assert(NULL != filepath);
@@ -69,18 +69,18 @@ int openHdmvBitmap(
 
   /* Use the signature to identify used format */
   switch (_identifyFormatHdmvPictureLibraries(signature)) {
-    case HDMV_PIC_FORMAT_PNG:
-      if (!isLoadedHdmvLibpngHandle(&libs->libpng)) {
-        const lbc * libFilepath = lookupIniFile(conf, "LIBRARIES.LIBPNG");
-        if (loadHdmvLibpngHandle(&libs->libpng, libFilepath) < 0)
-          goto free_return;
-      }
-      if (openPngHdmvBitmap(dst, &libs->libpng, filepath, fd) < 0)
+  case HDMV_PIC_FORMAT_PNG:
+    if (!isLoadedHdmvLibpngHandle(&libs->libpng)) {
+      const lbc * libFilepath = lookupIniFile(conf_hdl, "LIBRARIES.LIBPNG");
+      if (loadHdmvLibpngHandle(&libs->libpng, libFilepath) < 0)
         goto free_return;
-      break;
+    }
+    if (openPngHdmvBitmap(dst, &libs->libpng, filepath, fd) < 0)
+      goto free_return;
+    break;
 
-    default:
-      ERROR_FRETURN("Unhandled picture format");
+  default:
+    ERROR_FRETURN("Unhandled picture format");
   }
 
   fclose(fd);
