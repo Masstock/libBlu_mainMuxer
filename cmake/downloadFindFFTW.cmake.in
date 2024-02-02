@@ -1,0 +1,21 @@
+##
+# Download findFFTW script
+# from: https://github.com/egpbos/findFFTW
+##
+
+cmake_minimum_required(VERSION 3.15)
+
+project(findFFTW-download NONE)
+
+include(ExternalProject)
+
+ExternalProject_Add(findFFTW_download
+  GIT_REPOSITORY    "https://github.com/egpbos/findfftw.git"
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND     ""
+  INSTALL_COMMAND   ""
+  TEST_COMMAND      ""
+  SOURCE_DIR        "${CMAKE_CURRENT_BINARY_DIR}/cmake/findFFTW-src"
+  BINARY_DIR        ""
+  INSTALL_DIR       ""
+)

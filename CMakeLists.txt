@@ -23,6 +23,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(ENABLE_FSANITIZE "Enable fsanitize")
 option(ENABLE_PROFILER  "Enable profiling compile options")
+option(USE_STATIC_LIBS  "Request use of static libraries dependencies if possible")
 
 set(gcc_like_c $<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU,LCC>)
 set(msvc_c $<COMPILE_LANG_AND_ID:CXX,MSVC>)
@@ -32,12 +33,16 @@ configure_file(
   "${PROJECT_BINARY_DIR}/util/config.h"
 )
 
+# Required packages
 find_package(BISON REQUIRED)
 find_package(FLEX REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_search_module(LIBXML REQUIRED libxml-2.0 IMPORTED_TARGET)
-pkg_search_module(FFTW REQUIRED fftw3>=3.3.10 IMPORTED_TARGET)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/downloadFindFFTW.cmake)
+find_package(FFTW REQUIRED)
+
+find_package(LibXml2 REQUIRED)
+
+find_package(PkgConfig)
 pkg_search_module(LIBASS REQUIRED libass>=0.15.0 IMPORTED_TARGET)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ini/)
@@ -96,36 +101,24 @@ target_compile_options(${APP_NAME} PUBLIC
 target_include_directories(${APP_NAME} PRIVATE
   ${SRC_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
-  PkgConfig::LIBXML
-  PkgConfig::FFTW
+  ${LIBXML2_INCLUDE_DIRS}
+  ${FFTW_INCLUDE_DIRS}
   PkgConfig::LIBASS
 )
 
 target_link_libraries(${APP_NAME}
   ${SYSTEM_LIBRARIES}
   ${FLEX_LIBRARIES}
-  PkgConfig::LIBXML
-  PkgConfig::FFTW
+  ${LIBXML2_LIBRARIES}
+  ${FFTW_LIBRARIES}
   PkgConfig::LIBASS
   m
+
+  ${ZLIB_LIBRARIES}
+  ${LIBLZMA_LIBRARIES}
+  ${ICU_LIBRARIES}
 )
 
 target_compile_definitions(${APP_NAME} PRIVATE
   LIBBLU_CMAKE_USED
 )
-
-# target_compile_options(${APP_NAME} INTERFACE
-#   "$<${gcc_like_c}:-Wall;-Wextra;-Wshadow;-Wformat=2;-Wunused>"
-#   "$<${msvc_c}:-W3>"
-# )
-
-# set(CMAKE_CXX_STANDARD 11)
-# set(CMAKE_BUILD_TYPE "Release")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O3")
-
-# find_package(DGtal REQUIRED)
-# include_directories(${DGTAL_INCLUDE_DIRS})
-# link_directories(${DGTAL_LIBRARY_DIRS})
-
-# add_executable(gtia_tp2 main.cpp)
-# target_link_libraries(gtia_tp2 ${DGTAL_LIBRARIES})
