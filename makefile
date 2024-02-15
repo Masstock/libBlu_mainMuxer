@@ -11,6 +11,7 @@ CFLAGS := -std=c99 -Wall -Wextra -Winline -Werror -Wpointer-arith
 LDLIBS := -lm
 
 EXEC := mainMuxer
+VERSION := 0.5
 
 SRC_PATH = src
 OBJ_PATH = obj
@@ -31,11 +32,12 @@ endif
 # Compilation switches                                                        #
 ###############################################################################
 
-COMPILE_WITH_IGS_COMPILER = 1
+COMPILE_WITH_IGS_COMPILER      = 1
 COMPILE_WITH_PGS_ASS_GENERATOR = 1
-COMPILE_WITH_INI_OPTIONS = 1
+COMPILE_WITH_INI_OPTIONS       = 1
 
-EXTCFLAGS :=
+EXTCFLAGS := -DLIBBLU_PROJECT_NAME="\"libBlu Muxer\"" -DLIBBLU_VERSION="\"$(VERSION)\""
+
 ifneq "$(findstring build, $(MAKECMDGOALS))" ""
 EXTCFLAGS += -D NDEBUG -O2 -Werror
 else
@@ -81,6 +83,7 @@ SOURCE_FILES =																\
 	codec/h264/h264_parser.o												\
 	codec/h264/h264_patcher.o												\
 	codec/h264/h264_util.o													\
+	codec/hdmv/common/hdmv_builder.o										\
 	codec/hdmv/common/hdmv_check.o											\
 	codec/hdmv/common/hdmv_collision_tree.o									\
 	codec/hdmv/common/hdmv_common.o											\
@@ -161,7 +164,6 @@ SOURCE_FILES +=																\
 	codec/hdmv/compiler/igs_compiler.o										\
 	codec/hdmv/compiler/igs_compiler_data.o									\
 	codec/hdmv/compiler/igs_debug.o											\
-	codec/hdmv/compiler/igs_segmentsBuilding.o								\
 	codec/hdmv/compiler/igs_xmlParser.o										\
 	codec/hdmv/common/hdmv_libpng.o											\
 	codec/hdmv/common/hdmv_bitmap_io.o

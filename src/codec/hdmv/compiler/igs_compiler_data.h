@@ -10,10 +10,6 @@
 #ifndef __LIBBLU_MUXER__CODECS__IGS_COMPILER__DATA_H__
 #define __LIBBLU_MUXER__CODECS__IGS_COMPILER__DATA_H__
 
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/xpath.h>
-
 #include "igs_debug.h"
 
 #include "../../../util.h"

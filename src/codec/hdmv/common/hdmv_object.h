@@ -48,10 +48,19 @@ static inline uint8_t * getOrPerformRleHdmvObject(
 {
   uint16_t line;
   if (!obj->rle_size && !performRleHdmvObject(obj, &line))
-    LIBBLU_HDMV_COM_ERROR(
+    LIBBLU_HDMV_COM_ERROR_NRETURN(
       "Unable to generate RLE, compressed line %u exceed %u + 2 bytes.\n",
       line, obj->pal_bitmap.width
     );
+  return obj->rle;
+}
+
+static inline uint8_t * getRleHdmvObject(
+  const HdmvObject * obj
+)
+{
+  if (!obj->rle_size)
+    LIBBLU_HDMV_COM_ERROR_NRETURN("RLE not generated.\n");
   return obj->rle;
 }
 

@@ -25,6 +25,8 @@
 
 #if defined(LIBBLU_CMAKE_USED)
 #  include "util/config.h"
+#elif !defined(LIBBLU_PROJECT_NAME) || !defined(LIBBLU_VERSION)
+#  error LIBBLU_PROJECT_NAME and LIBBLU_VERSION shall be defined for non-CMake builds
 #endif
 
 #define PROG_INFOS  "libBlu Muxer Exp. 0.5"

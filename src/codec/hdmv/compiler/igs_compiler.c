@@ -272,7 +272,7 @@ int buildIgsCompilerComposition(
 {
   assert(NULL != compo);
 
-  LIBBLU_HDMV_IGS_COMPL_INFO("Building interactive compositions...\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Building interactive compositions.\n");
 
   HdmvBitmapList obj_bms = {0};
 
@@ -415,6 +415,21 @@ static HdmvPaletteColorMatrix _getColorMatrixFromConf(
   return HDMV_PAL_CM_BT_601;
 }
 
+static HdmvBuilderIGSDSData _fillHdmvBuilderIGSDSData(
+  const IgsCompilerComposition compiler_compo
+)
+{
+  return (HdmvBuilderIGSDSData) {
+    .video_descriptor        = compiler_compo.video_descriptor,
+    .composition_descriptor  = compiler_compo.composition_descriptor,
+    .interactive_composition = compiler_compo.interactive_composition,
+    .palettes                = compiler_compo.palettes,
+    .nb_palettes             = compiler_compo.nb_used_palettes,
+    .objects                 = compiler_compo.objects,
+    .nb_objects              = compiler_compo.nb_objects
+  };
+}
+
 int processIgsCompiler(
   const lbc * xml_filepath,
   HdmvTimecodes * timecodes,
@@ -425,7 +440,7 @@ int processIgsCompiler(
   if (_initIgsCompilerContext(&ctx, xml_filepath, timecodes, conf_hdl) < 0)
     return -1;
 
-  LIBBLU_HDMV_IGS_COMPL_INFO("Compiling IGS...\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Compiling IGS.\n");
   if (parseIgsXmlFile(&ctx) < 0)
     goto free_return;
 
@@ -443,19 +458,33 @@ int processIgsCompiler(
   lbc * igs_out_filename;
   int ret = lbc_asprintf(&igs_out_filename, HDMV_IGS_COMPL_OUTPUT_FMT, xml_filepath);
   if (ret < 0)
-    LIBBLU_HDMV_IGS_COMPL_ERROR_GRETURN(free_return2, "Memory allocation error.\n");
+    LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN("Memory allocation error.\n");
 
-  if (buildIgsCompiler(&ctx.data, igs_out_filename) < 0)
-    goto free_return2;
+  /* Use HDMV builder */
+  HdmvBuilderContext builder_ctx;
+  if (initHdmvBuilderContext(&builder_ctx, igs_out_filename) < 0) {
+    free(igs_out_filename);
+    goto free_return;
+  }
+  free(igs_out_filename);
+
+  for (unsigned i = 0; i < ctx.data.nb_compositions; i++) {
+    const HdmvBuilderIGSDSData ds_data = _fillHdmvBuilderIGSDSData(
+      ctx.data.compositions[i]
+    );
+
+    if (buildIGSDisplaySet(&builder_ctx, ds_data) < 0)
+      goto free_return;
+  }
+
+  if (cleanHdmvBuilderContext(builder_ctx) < 0)
+    goto free_return;
 
   LIBBLU_HDMV_IGS_COMPL_INFO("Compilation finished, parsing output file.\n");
 
-  free(igs_out_filename);
   _cleanIgsCompilerContext(ctx);
   return 0;
 
-free_return2:
-  free(igs_out_filename);
 free_return:
   _cleanIgsCompilerContext(ctx);
   return -1;

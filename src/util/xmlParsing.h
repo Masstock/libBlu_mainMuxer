@@ -15,6 +15,10 @@
 
 #include "common.h"
 
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/xpath.h>
+
 /** \~english
  * \brief libXML boolean true macro.
  */

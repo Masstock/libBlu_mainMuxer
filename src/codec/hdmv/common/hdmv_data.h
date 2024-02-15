@@ -509,7 +509,7 @@ static inline bool constantHdmvWindowInfoParameters(
  *
  * => 9 bytes.
  */
-#define IGS_COMPILER_WINDOW_INFO_LENGTH  9
+#define HDMV_SIZE_WINDOW_INFO  9
 
 /* ###### HDMV Presentation Composition Segment : ########################## */
 /* ######### Composition Object : ########################################## */
@@ -562,6 +562,8 @@ static inline bool constantHdmvCOParameters(
   );
 }
 
+#define HDMV_MAX_SIZE_COMPOSITION_OBJECT  16
+
 /** \~english
  * \brief
  *
@@ -573,8 +575,8 @@ static inline bool constantHdmvCOParameters(
  *  - u8  : window_id_ref;
  *  - b1  : object_cropped_flag;
  *  - v7  : reserved;
- *  - u16 : object_horizontal_position;
- *  - u16 : object_vertical_position;
+ *  - u16 : composition_object_horizontal_position;
+ *  - u16 : composition_object_vertical_position;
  *  if (object_cropped_flag)
  *    - u16 : object_cropping_horizontal_position;
  *    - u16 : object_cropping_vertical_position;
@@ -587,7 +589,7 @@ static inline size_t computeSizeHdmvCompositionObject(
   const HdmvCOParameters co
 )
 {
-  return 8 + (co.object_cropped_flag ? 8 : 0);
+  return 8ull + (co.object_cropped_flag ? 8ull : 0);
 }
 
 /* ######### Presentation Composition : #################################### */
@@ -606,6 +608,35 @@ typedef struct HdmvPresentationCompositionParameters {
   ];
 } HdmvPCParameters;
 
+#define HDMV_SIZE_PRESENTATION_COMPOSITION_HEADER  3
+
+/** \~english
+ * \brief Computes and return size required by Presentation_composition()
+ * structure.
+ *
+ * \param param Structure parameters.
+ * \return size_t Number of bytes required to store builded structure.
+ *
+ * Composed of:
+ *  - b1  : palette_update_flag;
+ *  - v7  : reserved;
+ *  - u8  : palette_id_ref;
+ *  - u8  : number_of_composition_objects;
+ *  for (i = 0; i < number_of_composition_objects; i++)
+ *    - vn  : CompositionObject(i).
+ *
+ * => 3 + CompositionObject()s bytes.
+ */
+static inline size_t computeSizeHdmvPresentationComposition(
+  const HdmvPCParameters param
+)
+{
+  size_t size = HDMV_SIZE_PRESENTATION_COMPOSITION_HEADER;
+  for (uint8_t i = 0; i < param.number_of_composition_objects; i++)
+    size += computeSizeHdmvCompositionObject(param.composition_objects[i]);
+  return size;
+}
+
 /* ######################################################################### */
 
 typedef struct {
@@ -614,8 +645,18 @@ typedef struct {
   HdmvPCParameters presentation_composition;
 } HdmvPcsSegmentParameters;
 
-/* ###### HDMV Windows Definition Segment : ################################ */
-/* ######### Windows Definition : ########################################## */
+/** \~english
+ * \brief Size of Presentation Composition Segment header in bytes.
+ *
+ * Presentation Compostion segments header is composed of:
+ *  - video_descriptor() #HDMV_SIZE_VIDEO_DESCRIPTOR;
+ *  - composition_descriptor() #HDMV_SIZE_VIDEO_DESCRIPTOR;
+ */
+#define HDMV_SIZE_PCS_HEADER                                                  \
+  (HDMV_SIZE_VIDEO_DESCRIPTOR + HDMV_SIZE_COMPOSITION_DESCRIPTOR)
+
+/* ###### HDMV Window Definition Segment : ################################# */
+/* ######### Window Definition : ########################################### */
 
 #define HDMV_MAX_NB_WDS_WINDOWS  2
 
@@ -654,11 +695,14 @@ static inline bool constantHdmvWDParameters(
   return is_equal;
 }
 
-/* ######################################################################### */
+#define HDMV_SIZE_WDS_HEADER  1
 
-typedef struct {
-  HdmvWDParameters window_definition;
-} HdmvWdsSegmentParameters;
+static inline size_t computeSizeHdmvWD(
+  const HdmvWDParameters wd
+)
+{
+  return HDMV_SIZE_WDS_HEADER + (wd.number_of_windows * HDMV_SIZE_WINDOW_INFO);
+}
 
 /* ###### HDMV Interactive Composition Segment : ########################### */
 /* ######### Effect Info : ################################################# */
@@ -761,7 +805,7 @@ static inline size_t computeSizeHdmvEffectSequence(
   const HdmvEffectSequenceParameters param
 )
 {
-  size_t size = 2ull + param.number_of_windows * IGS_COMPILER_WINDOW_INFO_LENGTH;
+  size_t size = 2ull + param.number_of_windows * HDMV_SIZE_WINDOW_INFO;
   for (uint8_t i = 0; i < param.number_of_effects; i++)
     size += computeSizeHdmvEffectInfo(param.effects[i]);
   return size;
@@ -1473,7 +1517,7 @@ typedef struct {
  *  - composition_descriptor() #HDMV_SIZE_VIDEO_DESCRIPTOR;
  *  - sequence_descriptor() #HDMV_SIZE_SEQUENCE_DESCRIPTOR.
  */
-#define HDMV_SIZE_IC_SEGMENT_HEADER                                           \
+#define HDMV_SIZE_ICS_HEADER                                                  \
   (                                                                           \
     HDMV_SIZE_VIDEO_DESCRIPTOR                                                \
     + HDMV_SIZE_COMPOSITION_DESCRIPTOR                                        \

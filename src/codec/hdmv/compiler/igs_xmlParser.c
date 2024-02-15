@@ -8,10 +8,6 @@
 #include <inttypes.h>
 #include <assert.h>
 
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/xpath.h>
-
 #include "igs_xmlParser.h"
 #include "../../../util/errorCodesVa.h"
 

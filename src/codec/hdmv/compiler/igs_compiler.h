@@ -19,13 +19,11 @@
 #include "../../../libs/cwalk/include/cwalk.h"
 #include "../../../ini/iniData.h"
 
-#include "igs_compiler_context_data.h"
-#include "igs_compiler_data.h"
-#include "igs_segmentsBuilding.h"
 #include "igs_xmlParser.h"
 
 #include "../common/hdmv_bitmap_list.h"
 #include "../common/hdmv_bitmap.h"
+#include "../common/hdmv_builder.h"
 #include "../common/hdmv_object.h"
 #include "../common/hdmv_paletized_bitmap.h"
 #include "../common/hdmv_palette_gen.h"

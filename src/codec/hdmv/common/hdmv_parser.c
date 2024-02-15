@@ -972,12 +972,12 @@ static int _computeSizeHdmvICDataFragment(
   uint16_t segment_size
 )
 {
-  if (segment_size < HDMV_SIZE_IC_SEGMENT_HEADER)
+  if (segment_size < HDMV_SIZE_ICS_HEADER)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Unexpected ICS size (smaller than 9 bytes).\n"
     );
 
-  *dst = segment_size - HDMV_SIZE_IC_SEGMENT_HEADER;
+  *dst = segment_size - HDMV_SIZE_ICS_HEADER;
   return 0;
 }
 
