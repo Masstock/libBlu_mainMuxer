@@ -197,21 +197,28 @@ static int _buildObjects(
       goto free_return;
 
     HdmvObject * obj = &objects_arr[nb_objects++];
-    if (initHdmvObject(obj, pal_bm) < 0) {
+    if (initFromPalletizedHdmvObject(obj, pal_bm) < 0) {
       cleanHdmvPaletizedBitmap(pal_bm);
       goto free_return;
     }
 
     obj->desc.object_id = bitmap.object_id; // Set object_id as requested
 
-    uint16_t line;
-    if (!performRleHdmvObject(obj, &line)) {
+    unsigned longuest_compr_line_size;
+    uint16_t longuest_compr_line;
+    if (compressRleHdmvObject(obj, &longuest_compr_line_size, &longuest_compr_line) < 0)
+      return -1;
+
+    unsigned max_allowed_compressed_line_size = compo->video_descriptor.video_width + 2u;
+    if (max_allowed_compressed_line_size < longuest_compr_line_size) {
       // TODO: Provide other solutions
       cleanHdmvPaletizedBitmap(pal_bm);
       LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN(
         "Unable to generate RLE for object %u, "
-        "compressed line %u exceed %u + 2 bytes.\n",
-        i, line, obj->pal_bitmap.width
+        "compressed line %u exceed %u bytes with %u bytes.\n",
+        i, longuest_compr_line,
+        max_allowed_compressed_line_size,
+        longuest_compr_line_size
       );
     }
   }

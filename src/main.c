@@ -567,6 +567,8 @@ int main(
 
 #undef ARG_VAL
 
+  clock_t start = clock();
+
   /* Configuration file reading */
   IniFileContext conf_file = {0};
 
@@ -590,8 +592,6 @@ int main(
     LIBBLU_ERROR_FRETURN(
       "Expect a input META filename (see -h/--help).\n"
     );
-
-  clock_t start = clock();
 
   LibbluMuxingSettings mux_settings;
   if (initLibbluMuxingSettings(&mux_settings, output_fp, conf_file) < 0)

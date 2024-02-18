@@ -4157,7 +4157,7 @@ int analyzeH264(
 
   H264ParametersHandlerPtr handle;
   if (NULL == (handle = initH264ParametersHandler(settings)))
-    goto free_return;
+    return -1;
 
   H264HrdVerifierContextPtr hrd_verif_ctx = NULL;
   bool sei_section = false; // Used to know when inserting SEI custom NALU.

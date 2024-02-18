@@ -1121,7 +1121,7 @@ static int _processCompletePgsFrameSequence(
 
       /* Create a new object */
       HdmvObject obj;
-      if (initHdmvObject(&obj, pal_bm) < 0)
+      if (initFromPalletizedHdmvObject(&obj, pal_bm) < 0)
         return -1;
       uint16_t obj_id_ref;
       if (_addNewObjectPgsFrameSequence(cur_seq, frame, obj, &obj_id_ref) < 0)

@@ -94,12 +94,9 @@ int loadSourceIniFileContext(
 
     } while (allocated_line_buf <= used_line_buf);
 
-    size_t line_len = strlen(line_buf) + 1;
-
-    char * line = calloc(line_len, sizeof(char));
+    char * line = lb_str_dup(line_buf);
     if (NULL == line)
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-    strncpy(line, line_buf, line_len);
 
     ini_lines[used_ini_lines] = line;
     used_ini_lines++;

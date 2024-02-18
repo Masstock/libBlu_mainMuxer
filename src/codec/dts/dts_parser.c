@@ -846,7 +846,7 @@ static int _decodeDcaExtSSAssetDescDecND(
   /* [u2 nuCodingMode] */
   READ_BITS(&param->nuCodingMode, file, 2, return -1);
 
-  int ret;
+  int ret = -1;
   switch (param->nuCodingMode) {
   case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
     /* DTS-HD component(s). */

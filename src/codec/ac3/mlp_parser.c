@@ -754,7 +754,7 @@ static int _decodeVlcMlpSubstreamBitsReader(
   /* Constrain LUT size to the maximum code size */
   unsigned lut_size = huffman_book_lut->book_size[max_code_size];
   /* Pick but do not read next bits of data */
-  uint32_t input;
+  uint32_t input = 0x00;
   getLibbluBitReader(br, &input, max_code_size);
   input <<= (MLP_HUFFMAN_LONGEST_CODE_SIZE - max_code_size);
 

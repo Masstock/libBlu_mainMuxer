@@ -290,15 +290,42 @@ static inline bool atMostOneInDisplaySetHdmvSequence(
   return NULL == sequence || NULL == sequence->next_sequence;
 }
 
+/* ###### Fragments fetching : ############################################# */
+
 int parseFragmentHdmvSequence(
   HdmvSequencePtr dst,
   BitstreamReaderPtr input,
   uint16_t fragment_length
 );
 
-static inline int readValueFromHdmvSequence(
+/* ###### Fragments unpacking : ############################################ */
+
+static inline uint32_t getRemSizeFragmentHdmvSequence(
+  const HdmvSequencePtr sequence
+)
+{
+  return sequence->fragments_used_len - sequence->fragments_parsed_off;
+}
+
+static inline const uint8_t * getRemDataFragmentHdmvSequence(
   HdmvSequencePtr sequence,
-  size_t size,
+  uint32_t * remaining_size_ret
+)
+{
+  assert(NULL != sequence);
+  assert(NULL != sequence->fragments);
+
+  if (NULL != remaining_size_ret)
+    *remaining_size_ret = sequence->fragments_used_len - sequence->fragments_parsed_off;
+
+  return &sequence->fragments[
+    sequence->fragments_parsed_off
+  ];
+}
+
+static inline int readValueFragmentHdmvSequence(
+  HdmvSequencePtr sequence,
+  uint32_t size,
   uint64_t * value_ret
 )
 {
@@ -318,13 +345,6 @@ static inline int readValueFromHdmvSequence(
   if (NULL != value_ret)
     *value_ret = value;
   return 0;
-}
-
-static inline uint32_t getRemFragmentsLenHdmvSequence(
-  const HdmvSequencePtr sequence
-)
-{
-  return sequence->fragments_used_len - sequence->fragments_parsed_off;
 }
 
 /* ### HDMV Display Set : ################################################## */
@@ -566,27 +586,13 @@ static inline void resetNormalHdmvEpochState(
 
 /* ### Palette Definitions : ############################################### */
 
-static inline bool fetchPaletteHdmvEpochState(
+bool fetchPaletteHdmvEpochState(
   const HdmvEpochState * epoch_state,
   uint8_t palette_id,
   bool must_be_in_current_DS,
   HdmvPDSegmentParameters * pd_ret,
   bool * has_been_updated_ret
-)
-{
-  lb_static_assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
-  HdmvEpochStatePalette pal = epoch_state->palettes[palette_id];
-  if (HDMV_DEF_NEVER_PROVIDED == pal.state)
-    return false; // Never transmitted
-  if (HDMV_DEF_NON_REFRESHED == pal.state && must_be_in_current_DS)
-    return false; // Not refreshed
-
-  if (NULL != pd_ret)
-    *pd_ret = pal.def;
-  if (NULL != has_been_updated_ret)
-    *has_been_updated_ret = (HDMV_DEF_JUST_UPDATED == pal.state);
-  return true;
-}
+);
 
 static inline bool justProvidedPaletteHdmvEpochState(
   const HdmvEpochState * epoch_state,
@@ -825,7 +831,7 @@ static inline bool compareICPageEpochState(
 )
 {
   HdmvPageParameters prev_page;
-  lb_assert(fetchActiveICPageHdmvEpochState(epoch_state, page.page_id, &prev_page));
+  lb_cannot_fail(fetchActiveICPageHdmvEpochState(epoch_state, page.page_id, &prev_page));
   return constantHdmvPageParameters(prev_page, page);
 }
 

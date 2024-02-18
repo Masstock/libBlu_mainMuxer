@@ -104,16 +104,16 @@
 #define PONG()  fprintf(stderr, "PONG\n");
 
 /** \~english
- * \def lb_assert
+ * \def lb_cannot_fail
  * \brief Equivalent to assert macro, but expr is still executed when debug is
  * disabled.
  */
 #if !defined(NDEBUG)
-#  define lb_assert(expr)  assert(expr)
+#  define lb_cannot_fail(expr)  assert(expr)
 #  define lb_npd_assert(expr)  \
   if (!(expr)) {int a = *((int *) NULL); (void) a;}
 #else
-#  define lb_assert(expr)  (void) expr
+#  define lb_cannot_fail(expr)  if (!(expr)) LIBBLU_ERROR_EXIT("Unexpected failure.\n")
 #endif
 
 #if defined(ARCH_WIN32)

@@ -56,7 +56,8 @@ static bool _isPaletteIDInActiveUseHdmvEpochState(
     for (unsigned i = 0; i < epoch_state->cur_active_pc; i++) {
       HdmvPCParameters pc;
       int64_t pc_pts;
-      lb_assert(fetchPCHdmvEpochState(epoch_state, i, &pc, &pc_pts));
+      if (!fetchPCHdmvEpochState(epoch_state, i, &pc, &pc_pts))
+        LIBBLU_ERROR_EXIT("Unexpected failure.\n");
 
       if (pc.palette_id_ref == palette_id) {
         latest_pts = pc_pts;
@@ -150,7 +151,6 @@ static int _checkAndUpdateHdmvPDSegment(
     //   );
 
     if (shall_be_same) {
-      TOC();
       if (!comparePDSEpochState(epoch_state, pal_def))
         LIBBLU_HDMV_CK_ERROR_RETURN(
           "Invalid PDS, "
@@ -397,7 +397,7 @@ static bool _isObjectIDInActiveUseHdmvEpochState(
     for (unsigned i = 0; i < epoch_state->cur_active_pc; i++) {
       HdmvPCParameters pc;
       int64_t pc_pts;
-      lb_assert(fetchPCHdmvEpochState(epoch_state, i, &pc, &pc_pts));
+      lb_cannot_fail(fetchPCHdmvEpochState(epoch_state, i, &pc, &pc_pts));
 
       if (_isObjectIDInActiveUseHdmvPC(pc, object_id)) {
         latest_pts = pc_pts;
@@ -1183,7 +1183,7 @@ static int _checkBtnNSI(
   if (no_display_update)
     return 0; // No further tests
 
-  lb_assert(0 <= _checkBtnObjDims(btn_obj_w_ref, btn_obj_h_ref, state_obj_w, state_obj_h)
+  lb_cannot_fail(0 <= _checkBtnObjDims(btn_obj_w_ref, btn_obj_h_ref, state_obj_w, state_obj_h)
   );
 
   if (start_obj_id_ref == end_obj_id_ref) {
@@ -2325,7 +2325,7 @@ static int _checkAndUpdateWDHdmvDSState(
 
   if (!isEpochStartHdmvCDParameters(ds->compo_desc)) {
     HdmvWDParameters prev_wd;
-    lb_assert(fetchCurrentWDHdmvEpochState(epoch_state, false, &prev_wd));
+    lb_cannot_fail(fetchCurrentWDHdmvEpochState(epoch_state, false, &prev_wd));
     if (!constantHdmvWDParameters(prev_wd, wd))
       LIBBLU_HDMV_CK_ERROR_RETURN(
         "Invalid Window Definition Segment, "
@@ -2541,6 +2541,7 @@ int checkDuplicatedDSHdmvDSState(
   HdmvEpochState * epoch_state
 )
 {
+#if !defined(NDEBUG)
   {
     HdmvCDParameters prev_cd = prev_ds_state->compo_desc;
     HdmvCDParameters cur_cd  = cur_ds_state->compo_desc;
@@ -2548,6 +2549,7 @@ int checkDuplicatedDSHdmvDSState(
     assert(HDMV_COMPO_STATE_EPOCH_START != cur_cd.composition_state);
     assert(HDMV_COMPO_STATE_EPOCH_CONTINUE != cur_cd.composition_state);
   }
+#endif
 
   /* PDS */
   if (_checkDuplicatedPDHdmvDSState(prev_ds_state, cur_ds_state, epoch_state) < 0)

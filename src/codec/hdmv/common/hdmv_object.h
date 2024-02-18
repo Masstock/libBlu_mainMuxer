@@ -10,16 +10,25 @@
 #include "hdmv_data.h"
 
 typedef struct {
-  HdmvODescParameters desc;
   HdmvPalletizedBitmap pal_bitmap;
 
   uint8_t * rle;
   uint32_t rle_size;
+
+  HdmvODescParameters desc; /**< User defined values. Initialized to 0. */
 } HdmvObject;
+
+int initFromPalletizedHdmvObject(
+  HdmvObject * dst,
+  HdmvPalletizedBitmap pal_bitmap
+);
 
 int initHdmvObject(
   HdmvObject * dst,
-  HdmvPalletizedBitmap pal_bitmap
+  const uint8_t * rle,
+  uint32_t rle_size,
+  uint16_t width,
+  uint16_t height
 );
 
 static inline void cleanHdmvObject(
@@ -37,21 +46,22 @@ static inline uint32_t decodedSizeHdmvObject(
   return obj.pal_bitmap.width * obj.pal_bitmap.height;
 }
 
-bool performRleHdmvObject(
+int compressRleHdmvObject(
   HdmvObject * obj,
-  uint16_t * problematic_line_ret
+  unsigned * longuest_compressed_line_size_ret,
+  uint16_t * longuest_compressed_line_ret
 );
 
-static inline uint8_t * getOrPerformRleHdmvObject(
-  HdmvObject * obj
+static inline uint8_t * getOrCompressRleHdmvObject(
+  HdmvObject * obj,
+  unsigned * longuest_compressed_line_size_ret,
+  uint16_t * longuest_compressed_line_ret
 )
 {
-  uint16_t line;
-  if (!obj->rle_size && !performRleHdmvObject(obj, &line))
-    LIBBLU_HDMV_COM_ERROR_NRETURN(
-      "Unable to generate RLE, compressed line %u exceed %u + 2 bytes.\n",
-      line, obj->pal_bitmap.width
-    );
+  unsigned * max_size_ret = longuest_compressed_line_size_ret;
+  uint16_t * max_ret      = longuest_compressed_line_ret;
+  if (!obj->rle_size && compressRleHdmvObject(obj, max_size_ret, max_ret) < 0)
+    return NULL;
   return obj->rle;
 }
 
@@ -63,6 +73,12 @@ static inline uint8_t * getRleHdmvObject(
     LIBBLU_HDMV_COM_ERROR_NRETURN("RLE not generated.\n");
   return obj->rle;
 }
+
+int decompressRleHdmvObject(
+  HdmvObject * obj,
+  unsigned * longuest_compressed_line_size_ret,
+  uint16_t * longuest_compressed_line_ret
+);
 
 typedef struct {
   uint8_t mapping[HDMV_NB_PAL_ENTRIES]; // Entry i maps to mapping[i]

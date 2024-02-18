@@ -154,3 +154,67 @@ int32_t computeObjectDataDecodeDelay(
 
   return (int32_t) ceilf(decode_delay_factor * od_decode_duration);
 }
+
+void cleanHdmvPageParameters(
+  HdmvPageParameters page
+)
+{
+  for (uint8_t i = 0; i < page.number_of_BOGs; i++)
+    cleanHdmvButtonOverlapGroupParameters(page.bogs[i]);
+  free(page.bogs);
+}
+
+int allocateBogsHdmvPageParameters(
+  HdmvPageParameters * page
+)
+{
+  if (!page->number_of_BOGs)
+    return 0;
+  page->bogs = calloc(
+    page->number_of_BOGs,
+    sizeof(HdmvButtonOverlapGroupParameters)
+  );
+  if (NULL == page->bogs)
+    LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
+  return 0;
+}
+
+int copyHdmvPageParameters(
+  HdmvPageParameters * dst,
+  const HdmvPageParameters src
+)
+{
+  HdmvPageParameters page_copy = src;
+  if (allocateBogsHdmvPageParameters(&page_copy) < 0)
+    return -1;
+  for (uint8_t i = 0; i < src.number_of_BOGs; i++) {
+    if (copyHdmvButtonOverlapGroupParameters(&page_copy.bogs[i], src.bogs[i]) < 0)
+      return -1;
+  }
+  *dst = page_copy;
+  return 0;
+}
+
+size_t computeSizeHdmvPage(
+  const HdmvPageParameters param
+)
+{
+  size_t size = 17ull;
+  size += computeSizeHdmvEffectSequence(param.in_effects);
+  size += computeSizeHdmvEffectSequence(param.out_effects);
+  for (uint8_t i = 0; i < param.number_of_BOGs; i++)
+    size += computeSizeHdmvButtonOverlapGroup(param.bogs[i]);
+  return size;
+}
+
+size_t computeSizeHdmvInteractiveComposition(
+  const HdmvICParameters param
+)
+{
+  size_t size = 8ull;
+  if (param.stream_model == HDMV_STREAM_MODEL_MULTIPLEXED)
+    size += 10ull;
+  for (uint8_t i = 0; i < param.number_of_pages; i++)
+    size += computeSizeHdmvPage(param.pages[i]);
+  return size;
+}

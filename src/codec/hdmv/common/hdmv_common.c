@@ -164,6 +164,28 @@ HdmvSequencePtr getENDSequenceHdmvDSState(
 
 /* ### HDMV Epoch memory state : ########################################### */
 
+bool fetchPaletteHdmvEpochState(
+  const HdmvEpochState * epoch_state,
+  uint8_t palette_id,
+  bool must_be_in_current_DS,
+  HdmvPDSegmentParameters * pd_ret,
+  bool * has_been_updated_ret
+)
+{
+  lb_static_assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
+  HdmvEpochStatePalette pal = epoch_state->palettes[palette_id];
+  if (HDMV_DEF_NEVER_PROVIDED == pal.state)
+    return false; // Never transmitted
+  if (HDMV_DEF_NON_REFRESHED == pal.state && must_be_in_current_DS)
+    return false; // Not refreshed
+
+  if (NULL != pd_ret)
+    *pd_ret = pal.def;
+  if (NULL != has_been_updated_ret)
+    *has_been_updated_ret = (HDMV_DEF_JUST_UPDATED == pal.state);
+  return true;
+}
+
 void setPaletteHdmvEpochState(
   HdmvEpochState * epoch_state,
   const HdmvPDSegmentParameters pal_def

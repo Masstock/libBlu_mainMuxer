@@ -721,7 +721,7 @@ int analyzeLpcm(
     return -1;
 
   /* WAVE RIFF File */
-  WaveFile chunks;
+  WaveFile chunks = {0};
   if (decodeWaveHeaders(waveInput, &chunks) < 0)
     return -1;
   const WaveFmtChunk * fmt = &chunks.fmt;

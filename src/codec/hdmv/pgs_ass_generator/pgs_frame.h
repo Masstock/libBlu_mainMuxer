@@ -108,57 +108,17 @@ PgsFrameSequence * createPgsFrameSequence(
   void
 );
 
-static inline void destroyPgsFrameSequence(
+void destroyPgsFrameSequence(
   PgsFrameSequence * seq
-)
-{
-  if (NULL == seq)
-    return;
-  destroyPgsFrameSequence(seq->next_seq);
-  destroyPgsFrame(seq->first_frm);
-  free(seq);
-}
+);
 
-static inline int startPgsFrameSequence(
+int startPgsFrameSequence(
   PgsFrameSequence ** cur_frame_seq
-)
-{
-  PgsFrameSequence * new_frame_seq = createPgsFrameSequence();
-  if (NULL == new_frame_seq)
-    return -1;
+);
 
-  if (NULL == *cur_frame_seq)
-    *cur_frame_seq = new_frame_seq;
-  else {
-    (*cur_frame_seq)->next_seq = new_frame_seq;
-    new_frame_seq->prev_seq = *cur_frame_seq; // Only set prev_seq for non-first
-  }
-
-  *cur_frame_seq = new_frame_seq;
-
-  return 0;
-}
-
-static inline PgsFrame * newFramePgsFrameSequence(
+PgsFrame * newFramePgsFrameSequence(
   PgsFrameSequence * sequence,
   int64_t timestamp
-)
-{
-  PgsFrame * frame = createPgsFrame();
-  if (NULL == frame)
-    return NULL;
-  frame->timestamp = timestamp;
-
-  if (NULL == sequence->first_frm)
-    sequence->first_frm = frame;
-  else
-    sequence->last_frm->next = frame;
-
-  frame->prev = sequence->last_frm;
-  sequence->last_frm = frame;
-  sequence->nb_frames++;
-
-  return frame;
-}
+);
 
 #endif

@@ -406,10 +406,12 @@ static int _parseHdmvObjectDataFragment(
 #define READ_VALUE_SEQ(d, seg, s, e)                                          \
   do {                                                                        \
     uint64_t _val;                                                            \
-    if (readValueFromHdmvSequence(seg, s, &_val) < 0)                        \
+    if (readValueFragmentHdmvSequence(seg, s, &_val) < 0)                     \
       e;                                                                      \
     *(d) = _val;                                                              \
   } while (0)
+
+#include "hdmv_object.h"
 
 static int _decodeHdmvObjectData(
   HdmvSequencePtr sequence,
@@ -433,17 +435,14 @@ static int _decodeHdmvObjectData(
     od->object_data_length
   );
 
-  uint32_t object_data_readed_length = getRemFragmentsLenHdmvSequence(
-    sequence
-  );
-
-  if (object_data_readed_length != od->object_data_length)
+  uint32_t od_rem_length = getRemSizeFragmentHdmvSequence(sequence);
+  if (od_rem_length != od->object_data_length)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Invalid ODS sequence, "
       "parsed object data length mismatch with segments data length "
       "('object_data_length' == %" PRIu32 ", got %" PRIu32 " bytes).\n",
       od->object_data_length,
-      object_data_readed_length
+      od_rem_length
     );
 
   /* [u16 object_width] */
@@ -463,6 +462,48 @@ static int _decodeHdmvObjectData(
     od->object_height,
     od->object_height
   );
+
+  /* [v<8*(object_data_length-4)> encoded_data_string] */
+  uint32_t encoded_data_string_size;
+  const uint8_t * encoded_data_string = getRemDataFragmentHdmvSequence(
+    sequence,
+    &encoded_data_string_size
+  );
+
+  if (encoded_data_string_size + 4u != od->object_data_length)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN(
+      "Invalid ODS sequence, "
+      "parsed object data length mismatch with segments data length "
+      "('object_data_length' == %" PRIu32 ", got %" PRIu32 " bytes).\n",
+      od->object_data_length,
+      encoded_data_string_size + 4u
+    );
+
+  if (!encoded_data_string_size)
+    LIBBLU_HDMV_PARSER_ERROR_RETURN("Invalid ODS sequence, empty object data.");
+
+  // TODO: Get RLE data
+  (void) encoded_data_string;
+
+#if 0
+  HdmvObject obj;
+  if (initHdmvObject(&obj, encoded_data_string, encoded_data_string_size, od->object_width, od->object_height) < 0)
+    return -1;
+
+  unsigned longuest_comptr_line_size;
+  uint16_t longuest_comptr_line;
+  if (decompressRleHdmvObject(&obj, &longuest_comptr_line_size, &longuest_comptr_line) < 0)
+    return -1;
+
+  fprintf(
+    stderr, "max_compressed_line_size=%u longuest_comptr_line=%u object_width=%u\n",
+    longuest_comptr_line_size,
+    longuest_comptr_line,
+    od->object_width
+  );
+
+  cleanHdmvObject(obj);
+#endif
 
   return 0;
 }
@@ -1811,17 +1852,17 @@ static int _decodeHdmvInteractiveCompositionData(
     ic->interactive_composition_length
   );
 
-  uint32_t ic_readed_length = getRemFragmentsLenHdmvSequence(
+  uint32_t ic_rem_length = getRemSizeFragmentHdmvSequence(
     sequence
   );
-  if (ic_readed_length != ic->interactive_composition_length)
+  if (ic_rem_length != ic->interactive_composition_length)
     LIBBLU_HDMV_PARSER_ERROR_RETURN(
       "Invalid ICS sequence, "
       "parsed interactive composition data length mismatch with segments "
       "data length ('interactive_composition_length' == %" PRIu32 ", "
       "got %" PRIu32 " bytes).\n",
       ic->interactive_composition_length,
-      ic_readed_length
+      ic_rem_length
     );
 
   /* [b1 stream_model] [b1 user_interface_model] [v6 reserved] */

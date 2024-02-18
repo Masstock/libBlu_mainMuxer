@@ -50,7 +50,7 @@ int cleanHdmvBuilderContext(
   if (EOF == fclose(builder_ctx.out_fd)) {
     LIBBLU_HDMV_SEGBUILD_ERROR(
       "Unable to close ouput file '%" PRI_LBCS "', %s (errno: %d).\n",
-      builder_ctx.out_fd,
+      builder_ctx.out_fp,
       strerror(errno),
       errno
     );

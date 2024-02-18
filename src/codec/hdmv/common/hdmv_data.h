@@ -1251,45 +1251,18 @@ static inline void initHdmvPageParameters(
   };
 }
 
-static inline void cleanHdmvPageParameters(
+void cleanHdmvPageParameters(
   HdmvPageParameters page
-)
-{
-  for (uint8_t i = 0; i < page.number_of_BOGs; i++)
-    cleanHdmvButtonOverlapGroupParameters(page.bogs[i]);
-  free(page.bogs);
-}
+);
 
-static inline int allocateBogsHdmvPageParameters(
+int allocateBogsHdmvPageParameters(
   HdmvPageParameters * page
-)
-{
-  if (!page->number_of_BOGs)
-    return 0;
-  page->bogs = calloc(
-    page->number_of_BOGs,
-    sizeof(HdmvButtonOverlapGroupParameters)
-  );
-  if (NULL == page->bogs)
-    LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
-  return 0;
-}
+);
 
-static inline int copyHdmvPageParameters(
+int copyHdmvPageParameters(
   HdmvPageParameters * dst,
   const HdmvPageParameters src
-)
-{
-  HdmvPageParameters page_copy = src;
-  if (allocateBogsHdmvPageParameters(&page_copy) < 0)
-    return -1;
-  for (uint8_t i = 0; i < src.number_of_BOGs; i++) {
-    if (copyHdmvButtonOverlapGroupParameters(&page_copy.bogs[i], src.bogs[i]) < 0)
-      return -1;
-  }
-  *dst = page_copy;
-  return 0;
-}
+);
 
 /** \~english
  * \brief Computes and return size required by Page() structure.
@@ -1313,17 +1286,9 @@ static inline int copyHdmvPageParameters(
  *
  * => 17 + In_effects() + Out_effects() + Button_overlap_group()s bytes.
  */
-static inline size_t computeSizeHdmvPage(
+size_t computeSizeHdmvPage(
   const HdmvPageParameters param
-)
-{
-  size_t size = 17ull;
-  size += computeSizeHdmvEffectSequence(param.in_effects);
-  size += computeSizeHdmvEffectSequence(param.out_effects);
-  for (uint8_t i = 0; i < param.number_of_BOGs; i++)
-    size += computeSizeHdmvButtonOverlapGroup(param.bogs[i]);
-  return size;
-}
+);
 
 static inline bool constantHdmvPageParameters(
   const HdmvPageParameters first,
@@ -1489,17 +1454,9 @@ static inline int copyHdmvICParameters(
  *
  * => 8 + (stream_model == 0b0 ? 10 : 0) + Page()s bytes.
  */
-static inline size_t computeSizeHdmvInteractiveComposition(
+size_t computeSizeHdmvInteractiveComposition(
   const HdmvICParameters param
-)
-{
-  size_t size = 8ull;
-  if (param.stream_model == HDMV_STREAM_MODEL_MULTIPLEXED)
-    size += 10ull;
-  for (uint8_t i = 0; i < param.number_of_pages; i++)
-    size += computeSizeHdmvPage(param.pages[i]);
-  return size;
-}
+);
 
 /* ######################################################################### */
 
@@ -1729,6 +1686,7 @@ typedef struct HdmvObjectDataParameters {
   uint32_t object_data_length;
   uint16_t object_width;
   uint16_t object_height;
+  uint8_t * encoded_data_string;
 } HdmvODParameters;
 
 /** \~english
@@ -1741,9 +1699,9 @@ typedef struct HdmvObjectDataParameters {
  *  - u24 : object_data_length;
  *  - u16 : object_width;
  *  - u16 : object_height;
- *  - vn  : encoded_data_string. // n = object_data_length
+ *  - vn  : encoded_data_string. // n = 8*(object_data_length-4)
  *
- * => 7 + object_data_length bytes.
+ * => 3 + object_data_length bytes.
  */
 static inline uint32_t computeSizeHdmvObjectData(
   const HdmvODParameters param
