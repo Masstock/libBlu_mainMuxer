@@ -1107,12 +1107,11 @@ static int _decodeDcaExtSSHeader(
   int64_t exp_end_off = start_off + (param->nuExtSSHeaderSize * 8);
   int64_t rem_bits = exp_end_off - tellBinaryPos(file) - 16;
 
-  if (rem_bits < 0) {
-    lbc_printf("LENGTH: 0x%" PRIX64".\n", param->nuExtSSHeaderSize);
+  if (rem_bits < 0)
     LIBBLU_DTS_ERROR_RETURN(
-      "Unexpected DCA Extension Substream header length.\n"
+      "Unexpected DCA Extension Substream header length (LENGTH: 0x%" PRIX64").\n",
+      param->nuExtSSHeaderSize
     );
-  }
 
   /* Compute reserved fields size (and determine if these are saved or not). */
   param->Reserved_size        = rem_bits / 8;
@@ -1659,7 +1658,7 @@ int analyzeDts(
       goto free_return;
   } while (nextPassDtsContext(&ctx));
 
-  lbc_printf(" === Parsing finished with success. ===              \n");
+  lbc_printf(lbc_str(" === Parsing finished with success. ===              \n"));
 
 
   int ret = completeDtsContext(&ctx);

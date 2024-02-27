@@ -94,9 +94,11 @@ void printFileParsingProgressionBar(BitstreamReaderPtr bitStream)
 
   if (percentage != oldPercentage) {
     lbc_printf(
-      "Opening source file... [%.*s%.*s] %3d%%\r",
-      percentage / 5, "====================",
-      20 - (percentage / 5), "                    ",
+      lbc_str("Opening source file... [%.*s%.*s] %3d%%\r"),
+      percentage / 5,
+      "====================",
+      20 - (percentage / 5),
+      "                    ",
       percentage
     );
     fflush(stdout);
@@ -116,7 +118,7 @@ int str_time(
   case STRT_H_M_S_MS:
     return lbc_snprintf(
       buf, buf_size,
-      "%02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ".%03" PRIu64,
+      lbc_str("%02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ".%03" PRIu64),
       (uint64_t) MAIN_CLOCK_HOURS      (clock_value),
       (uint64_t) MAIN_CLOCK_MINUTES    (clock_value),
       (uint64_t) MAIN_CLOCK_SECONDS    (clock_value),

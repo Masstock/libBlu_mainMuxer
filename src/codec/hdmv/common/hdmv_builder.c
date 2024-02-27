@@ -18,7 +18,7 @@ int initHdmvBuilderContext(
     out_filepath
   );
 
-  lbc * out_fp_copy = lb_str_dup(out_filepath);
+  lbc * out_fp_copy = lbc_strdup(out_filepath);
   if (NULL == out_fp_copy)
     LIBBLU_HDMV_SEGBUILD_ERROR_RETURN("Memory allocation error.\n");
 
@@ -357,7 +357,7 @@ static inline uint32_t _computeSizePDS(
   unsigned nb_palettes
 )
 {
-  assert(NULL != palettes_arr);
+  assert(!nb_palettes || NULL != palettes_arr);
 
   uint32_t size = 0;
   for (unsigned i = 0; i < nb_palettes; i++) {
@@ -534,7 +534,7 @@ static uint32_t _computeSizeObjectDefinitionSegments(
   unsigned nb_objects
 )
 {
-  assert(NULL != objects);
+  assert(!nb_objects || NULL != objects);
 
   uint32_t size = 0;
   for (unsigned i = 0; i < nb_objects; i++) {

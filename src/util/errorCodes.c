@@ -7,8 +7,13 @@
 #include <ctype.h>
 #include <assert.h>
 
+#define LBC_VARIADIC
 #include "errorCodes.h"
+
+
+// #include "macros.h"
 #include "../ini/iniHandler.h"
+
 
 static struct {
   const LibbluExplodeLevel level;
@@ -703,18 +708,18 @@ void printDebuggingMessageCategoriesList(
     if (SINGLE_OPTION != debugging_options[i].type)
       continue;
 
-    lbc_printf("%-*c- %s", indent, ' ', debugging_options[i].single.names[0]);
+    lbc_printf(lbc_str("%-*c- %s"), indent, ' ', debugging_options[i].single.names[0]);
 
     char * prefix = " (";
     char * suffix = "";
     char * const * name = &debugging_options[i].single.names[1];
     for (; NULL != *name; name++) {
-      lbc_printf("%s%s", prefix, *name);
+      lbc_printf(lbc_str("%s%s"), prefix, *name);
       prefix = ", ";
       suffix = ")";
     }
 
-    lbc_printf("%s;\n", suffix);
+    lbc_printf(lbc_str("%s;\n"), suffix);
   }
 }
 
@@ -728,20 +733,20 @@ void printDebuggingMessageCategoriesListWithDesc(
     if (SINGLE_OPTION != debugging_options[i].type)
       continue;
 
-    lbc_printf("%-*c- '%s'", indent, ' ', debugging_options[i].single.names[0]);
+    lbc_printf(lbc_str("%-*c- '%s'"), indent, ' ', debugging_options[i].single.names[0]);
 
     char * prefix = " (aliase(s): ";
     char * suffix = "";
     char * const * name = &debugging_options[i].single.names[1];
     for (; NULL != *name; name++) {
-      lbc_printf("%s'%s'", prefix, *name);
+      lbc_printf(lbc_str("%s'%s'"), prefix, *name);
       prefix = ", ";
       suffix = ")";
     }
-    lbc_printf("%s:\n", suffix);
+    lbc_printf(lbc_str("%s:\n"), suffix);
 
     lbc_printf(
-      "%-*c   %s.\n",
+      lbc_str("%-*c   %s.\n"),
       indent, ' ',
       debugging_options[i].desc
     );
@@ -758,7 +763,7 @@ void printDebuggingMessageRangesListWithDesc(
     if (RANGE != debugging_options[i].type)
       continue;
 
-    lbc_printf("%-*c- '%s':\n", indent, ' ', debugging_options[i].range.name);
-    lbc_printf("%-*c   %s.\n", indent, ' ', debugging_options[i].desc);
+    lbc_printf(lbc_str("%-*c- '%s':\n"), indent, ' ', debugging_options[i].range.name);
+    lbc_printf(lbc_str("%-*c   %s.\n"), indent, ' ', debugging_options[i].desc);
   }
 }

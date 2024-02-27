@@ -28,7 +28,7 @@
 #ifndef __LIBBLU_MUXER__UTIL__ERROR_CODES_H__
 #define __LIBBLU_MUXER__UTIL__ERROR_CODES_H__
 
-#include "macros.h"
+#include "string.h"
 
 #define LIBBLU_ECHO(status, format, ...)                                      \
   echoMessage(status, lbc_str(format), ##__VA_ARGS__)

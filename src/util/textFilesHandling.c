@@ -43,11 +43,7 @@ TxtFileHandlerPtr openTxtFile(
   handler->token = lbc_char('\0');
   handler->tokenAllocatedSize = 0;
 
-#if defined(ARCH_WIN32)
-  handler->inputFile.fd = lbc_fopen(filepath, "r, ccs=UTF-8");
-#else
   handler->inputFile.fd = lbc_fopen(filepath, "r");
-#endif
 
   handler->eof = feof(handler->inputFile.fd);
 

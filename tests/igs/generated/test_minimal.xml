@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<igs version="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="igs.xsd">
+  <parameters>
+    <video framerate="23.976" height="1080" width="1920"/>
+  </parameters>
+  <composition>
+    <composition_descriptor state="EpochStart"/>
+  </composition>
+</igs>

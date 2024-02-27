@@ -56,29 +56,39 @@ LibbluLibraryHandlePtr loadLibbluLibrary(
   const lbc * name
 )
 {
-  HMODULE lib;
-  LibbluLibraryHandlePtr handle;
+  lbc * err_msg = NULL;
 
-  if (NULL == (lib = LoadLibraryW(name))) {
-    DWORD errCode;
-    lbc errMsg[STR_BUFSIZE];
+  /* Convert library name to UTF-16 */
+  wchar_t * wc_name = winUtf8ToWideChar(name);
+  if (NULL == wc_name)
+    return NULL;
 
-    getWindowsError(&errCode, errMsg, STR_BUFSIZE);
-    LIBBLU_ERROR_NRETURN(
+  /* Load the library using Windows API */
+  HMODULE lib = LoadLibraryW(wc_name);
+  free(wc_name);
+
+  if (NULL == lib) {
+    /* Handle error */
+    DWORD err_code;
+    err_msg = getLastWindowsErrorString(&err_code);
+
+    LIBBLU_ERROR_FRETURN(
       "Unable to load library '%" PRI_LBCS "', %" PRI_LBCS " "
       "(winerror: %lu).\n",
       name,
-      errMsg,
-      errCode
+      err_msg,
+      err_code
     );
   }
 
-  if (NULL == (handle = createLibbluLibraryHandle(name, lib)))
+  LibbluLibraryHandlePtr handle = createLibbluLibraryHandle(name, lib);
+  if (NULL == handle)
     goto free_return;
   return handle;
 
 free_return:
   FreeLibrary(lib);
+  free(err_msg);
   return NULL;
 }
 
@@ -98,26 +108,31 @@ void * resolveSymLibbluLibrary(
   const char * name
 )
 {
-  void * sym;
+  lbc * err_msg = NULL;
 
   assert(NULL != handle);
 
-  if (NULL == (sym = GetProcAddress(handle->lib, name))) {
-    DWORD errCode;
-    lbc errMsg[STR_BUFSIZE];
+  void * sym = GetProcAddress(handle->lib, name);
+  if (NULL == sym) {
+    /* Handle error */
+    DWORD err_code;
+    err_msg = getLastWindowsErrorString(&err_code);
 
-    getWindowsError(&errCode, errMsg, STR_BUFSIZE);
-    LIBBLU_ERROR_NRETURN(
+    LIBBLU_ERROR_FRETURN(
       "Unable to resolve symbol '%s' from library '%" PRI_LBCS "', "
       "%" PRI_LBCS " (winerror: %lu).\n",
       name,
       handle->name,
-      errMsg,
-      errCode
+      err_msg,
+      err_code
     );
   }
 
   return sym;
+
+free_return:
+  free(err_msg);
+  return NULL;
 }
 
 #else
@@ -127,7 +142,7 @@ void * resolveSymLibbluLibrary(
 #  include <dlfcn.h>
 
 struct LibbluLibraryHandleStruct {
-  char * name;
+  lbc * name;
   void * lib;
 };
 
@@ -136,19 +151,19 @@ static LibbluLibraryHandlePtr createLibbluLibraryHandle(
   void * lib
 )
 {
-  lbc * nameCopy;
-  LibbluLibraryHandlePtr handle;
-
-  if (NULL == (nameCopy = lbc_strdup(name)))
+  lbc * name_copy = lbc_strdup(name);
+  if (NULL == name_copy)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  handle = (LibbluLibraryHandlePtr) malloc(sizeof(LibbluLibraryHandle));
+  LibbluLibraryHandlePtr handle = (LibbluLibraryHandlePtr) malloc(
+    sizeof(LibbluLibraryHandle)
+  );
   if (NULL == handle) {
-    free(nameCopy);
+    free(name_copy);
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
   }
 
-  handle->name = nameCopy;
+  handle->name = name_copy;
   handle->lib = lib;
 
   return handle;
@@ -172,7 +187,7 @@ LibbluLibraryHandlePtr loadLibbluLibrary(
   void * lib;
   LibbluLibraryHandlePtr handle;
 
-  if (NULL == (lib = dlopen(name, RTLD_LAZY)))
+  if (NULL == (lib = dlopen((char *) name, RTLD_LAZY)))
     LIBBLU_ERROR_NRETURN(
       "Unable to load library '%" PRI_LBCS "', %s.\n",
       name,

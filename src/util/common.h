@@ -5,9 +5,6 @@
  * \version 0.5
  *
  * \brief Common utility functions.
- *
- * \xrefitem references "References" "References list"
- *  [1] https://www.reddit.com/r/C_Programming/comments/irettz/comment/g4zeeh3
  */
 
 #ifndef __LIBBLU_MUXER__UTIL__COMMON_H__
@@ -25,90 +22,20 @@
 
 #include "macros.h"
 #include "errorCodes.h"
-
-#include "../libs/cwalk/include/cwalk.h"
-#if defined(ARCH_WIN32)
-#  include "../libs/cwalk/include/cwalk_wchar.h"
-#endif
+#include "string.h"
 
 #if defined(ARCH_WIN32)
-#  include <windef.h>
+typedef unsigned __LONG32 DWORD;
 
-void getWindowsError(
-  DWORD * err,
-  lbc * buf,
-  size_t size
-);
-
-int lb_init_iconv(
-  void
-);
-
-char * lb_iconv_wchar_to_utf8(
-  const wchar_t * src
-);
-
-wchar_t * lb_iconv_utf8_to_wchar(
-  const unsigned char * src
-);
-
-int lb_close_iconv(
-  void
+lbc * getLastWindowsErrorString(
+  DWORD * err
 );
 
 #endif
 
-static inline uint32_t fnv1aStrHash(
-  const char * key
-)
-{
-  /* 32 bits FNV-1a hash */
-  size_t length, i;
-  uint32_t hash;
-
-  if (NULL == key)
-    return 0;
-
-  length = strlen(key);
-
-  hash = 2166136261u;
-  for (i = 0; i < length; i++) {
-    hash ^= ((uint8_t *) key)[i];
-    hash *= 16777619;
-  }
-
-  return hash;
-}
-
-#if defined(ARCH_WIN32)
-
-static inline uint32_t wfnv1aStrHash(
-  const wchar_t * key
-)
-{
-  /* 32 bits FNV-1a hash */
-  size_t length, i;
-  uint32_t hash;
-
-  if (NULL == key)
-    return 0;
-
-  length = wcslen(key);
-
-  hash = 2166136261u;
-  for (i = 0; i < length; i++) {
-    size_t j;
-
-    for (j = 0; j < sizeof(wchar_t); j++) {
-      hash ^= ((uint8_t *) (key + i))[j];
-      hash *= 16777619;
-    }
-  }
-
-  return hash;
-}
-
-#endif
+uint32_t lbc_fnv1aStrHash(
+  const lbc * str
+);
 
 /** \~english
  * \brief Byte order swap a two bytes word.
@@ -544,157 +471,6 @@ static inline char * lb_str_dup_to_upper(
   return copy;
 }
 
-static inline void lb_strncat(
-  char * s1,
-  const char * s2,
-  size_t size
-)
-{
-  while (*s1 != '\0')
-    s1++;
-
-  while (*s2 != '\0' && 0 < --size)
-    *(s1++) = *(s2++);
-  *s1 = '\0';
-}
-
-int lb_atob(
-  bool * dst,
-  const char * str
-);
-
-#if defined(ARCH_WIN32)
-
-int lb_watob(
-  bool * dst,
-  const wchar_t * str
-);
-
-static inline bool lb_wstr_equal(
-  const wchar_t * str1,
-  const wchar_t * str2
-)
-{
-  return
-    *str1 == *str2
-    && 0 == wcscmp(str1, str2)
-  ;
-}
-
-static inline bool lb_wstrn_equal(
-  const wchar_t * str1,
-  const wchar_t * str2,
-  size_t size
-)
-{
-  return
-    *str1 == *str2
-    && 0 == wcsncmp(str1, str2, size)
-  ;
-}
-
-static inline wchar_t * lb_wstrn_dup(
-  const wchar_t * string,
-  size_t size
-)
-{
-  wchar_t * dup;
-  size_t length;
-
-  length = size + 1;
-  if (NULL == (dup = malloc(sizeof(wchar_t) * length)))
-    return NULL;
-  memcpy(dup, string, sizeof(wchar_t) * size);
-  dup[size] = L'\0';
-
-  return dup;
-}
-
-static inline wchar_t * lb_wstr_dup(
-  const wchar_t * string
-)
-{
-  wchar_t * dup;
-  size_t length;
-
-  length = wcslen(string) + 1;
-  if (NULL == (dup = malloc(sizeof(wchar_t) * length)))
-    return NULL;
-  wcscpy(dup, string);
-
-  return dup;
-}
-
-static inline wchar_t * lb_char_to_wchar(
-  const char * string
-)
-{
-  size_t size;
-  wchar_t * dst;
-
-  size = mbstowcs(NULL, string, 0) + 1;
-  if (NULL == (dst = (wchar_t *) malloc(size * sizeof(wchar_t))))
-    return NULL;
-  mbstowcs(dst, string, size);
-
-  return dst;
-}
-
-static inline void lb_wstrncat(
-  wchar_t * s1,
-  const wchar_t * s2,
-  size_t size
-)
-{
-  while (*s1 != L'\0')
-    s1++;
-
-  while (*s2 != L'\0' && 0 < --size)
-    *(s1++) = *(s2++);
-  *s1 = L'\0';
-}
-
-#else
-#  define lb_str_conv  lb_str_dup
-#endif
-
-#if defined(_GNU_SOURCE)
-#  define lb_vasprintf vasprintf
-#  define lb_asprintf asprintf
-#else
-int lb_vasprintf(
-  char ** string,
-  const char * format,
-  va_list ap
-);
-int lb_asprintf(
-  char ** string,
-  const char * format,
-  ...
-);
-#endif
-
-#if 0
-static inline void lb_cleanup_eol(
-  char * string,
-  size_t size
-)
-{
-  while (size && iscntrl(string[--size]))
-    string[size] = '\0';
-  if (string[size] == '.')
-    string[size] = '\0';
-}
-#endif
-
-#if defined(ARCH_WIN32)
-int lb_wasprintf(
-  wchar_t ** string,
-  const wchar_t * format,
-  ...
-);
-#endif
-
 static inline uint32_t lb_compute_crc32(
   uint8_t * data,
   size_t offset,
@@ -712,27 +488,6 @@ static inline uint32_t lb_compute_crc32(
 
   return crc;
 }
-
-/** \~english
- * \brief
- *
- * \param buf
- * \param size
- * \return int
- *
- * Based on [1].
- */
-int lb_get_cwd(
-  char * buf,
-  size_t size
-);
-
-#if defined(ARCH_WIN32)
-int lb_wget_cwd(
-  wchar_t * buf,
-  size_t size
-);
-#endif
 
 /** \~english
  * \brief Generate a relative filepath from a anchor filepath.
@@ -793,6 +548,7 @@ static inline int lb_waccess_fp(
 
 #endif
 
+#if 0
 static inline void lb_print_data(
   const uint8_t * buf,
   size_t size
@@ -815,5 +571,6 @@ static inline void lb_send_data(
   fwrite(buf, sizeof(uint8_t), size, out);
   fclose(out);
 }
+#endif
 
 #endif

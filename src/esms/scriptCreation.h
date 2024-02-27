@@ -94,7 +94,7 @@ static inline void printStreamDurationEsmsHandler(
   uint64_t pts = esms_hdl->PTS_final - esms_hdl->PTS_reference;
 
   lbc_printf(
-    "Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ":%03" PRIu64 "\n",
+    lbc_str("Stream Duration: %02" PRIu64 ":%02" PRIu64 ":%02" PRIu64 ":%03" PRIu64 "\n"),
     pts / 324000000,
     pts / 5400000 % 60,
     pts / 90000 % 60,

@@ -176,12 +176,12 @@
                         </xs:attribute>
                         <xs:attribute name="user_interface" default="Normal">
                           <xs:annotation>
-                            <xs:documentation>Composition user-interface mode, if set as "Pop-Up", composition is used as a Pop-Up menu. If set as "Normal", the menu is used as a always-on screen menu.</xs:documentation>
+                            <xs:documentation>Composition User Interface Model type. If set as "Normal", the menu is used as a always-on screen menu. If set as "Pop-Up", composition is used as a Pop-Up menu. .</xs:documentation>
                           </xs:annotation>
                           <xs:simpleType>
                             <xs:restriction base="xs:string">
-                              <xs:enumeration value="Pop-Up"/>
                               <xs:enumeration value="Normal"/>
+                              <xs:enumeration value="Pop-Up"/>
                             </xs:restriction>
                           </xs:simpleType>
                         </xs:attribute>

@@ -162,7 +162,7 @@ int addFrameToBuffer(
 static bool _isNamesMatchBufModelBuffer(
   const BufModelBufferPtr buf,
   const BufModelBufferName name,
-  const char * customName,
+  const lbc * customName,
   uint32_t customNameHash
 )
 {
@@ -179,11 +179,11 @@ static bool _isNamesMatchBufModelBuffer(
       );
 
     if (!customNameHash)
-      customNameHash = fnv1aStrHash(customName);
+      customNameHash = lbc_fnv1aStrHash(customName);
 
     return
       buf->header.param.customNameHash == customNameHash
-      && lb_str_equal(buf->header.param.customName, customName)
+      && lbc_equal(buf->header.param.customName, customName)
     ;
   }
 
@@ -842,22 +842,18 @@ static int _addBufferBufModelBuffersList(
 int addFrameToBufferFromList(
   BufModelBuffersListPtr bufList,
   BufModelBufferName name,
-  const char * customBufName,
+  const lbc * customBufName,
   BufModelBufferFrame frame
 )
 {
-  unsigned i;
-  uint32_t customNameHash;
-
   assert(NULL != bufList);
   assert(0 < bufList->nbUsedBuffers);
 
+  uint32_t customNameHash = 0;
   if (NULL != customBufName)
-    customNameHash = fnv1aStrHash(customBufName);
-  else
-    customNameHash = 0;
+    customNameHash = lbc_fnv1aStrHash(customBufName);
 
-  for (i = 0; i < bufList->nbUsedBuffers; i++) {
+  for (unsigned i = 0; i < bufList->nbUsedBuffers; i++) {
     if (_isNamesMatchBufModelBuffer(bufList->buffers[i], name, customBufName, customNameHash)) {
       /* Found buffer */
       return addFrameToBuffer(
@@ -1047,7 +1043,7 @@ static bool areEqualBufModelFilterLblValues(
   case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
     return
       left.stringHash == right.stringHash
-      && !strcmp(left.string, right.string)
+      && !lbc_strcmp(left.string, right.string)
     ;
 
   case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
@@ -1119,7 +1115,7 @@ int setBufModelFilterLblList(
   case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
     for (i = 0; i < valuesNb; i++) {
       array[i] = BUF_MODEL_FILTER_STRING_LABEL_VALUE(
-        ((char **) valuesList)[i]
+        ((lbc **) valuesList)[i]
       );
 
       if (NULL == array[i].string) {
@@ -1668,16 +1664,16 @@ int updateBufModel(
 void printBufModelBuffer(const BufModelBufferPtr buf)
 {
   lbc_printf(
-    "[%s %" PRIu64 " / %" PRIu64 "]",
+    lbc_str("[%s %" PRIu64 " / %" PRIu64 "]"),
     bufferNameBufModelBuffer(buf),
     buf->header.bufferFillingLevel,
     buf->header.param.bufferSize
   );
 
   if (buf->header.type == LEAKING_BUFFER)
-    lbc_printf(" -/-> ");
+    lbc_printf(lbc_str(" -/-> "));
   else
-    lbc_printf(" -|-> ");
+    lbc_printf(lbc_str(" -|-> "));
   printBufModelBufferingChain(buf->header.output);
 }
 
@@ -1687,18 +1683,18 @@ void printBufModelFilterLbl(const BufModelFilterLbl label)
 
   switch (label.type) {
   case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-    lbc_printf("0x%X", label.value.number);
+    lbc_printf(lbc_str("0x%X"), label.value.number);
     break;
 
   case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
-    lbc_printf("%s", label.value.string);
+    lbc_printf(lbc_str("%s"), label.value.string);
     break;
 
   case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
-    lbc_printf("[");
+    lbc_printf(lbc_str("["));
     for (i = 0; i < label.value.listLength; i++) {
       if (0 < i)
-        lbc_printf(", ");
+        lbc_printf(lbc_str(", "));
 
       printBufModelFilterLbl(
         (BufModelFilterLbl) {
@@ -1707,7 +1703,7 @@ void printBufModelFilterLbl(const BufModelFilterLbl label)
         }
       );
     }
-    lbc_printf("]");
+    lbc_printf(lbc_str("]"));
   }
 }
 
@@ -1716,21 +1712,21 @@ void printBufModelFilter(const BufModelFilterPtr filter)
 {
   unsigned i;
 
-  lbc_printf("Filter {\n");
+  lbc_printf(lbc_str("Filter {\n"));
   for (i = 0; i < filter->nbUsedNodes; i++) {
-    lbc_printf(" - ");
+    lbc_printf(lbc_str(" - "));
     printBufModelFilterLbl(filter->labels[i]);
-    lbc_printf(" -> ");
+    lbc_printf(lbc_str(" -> "));
     printBufModelBufferingChain(filter->nodes[i]);
   }
-  lbc_printf("}\n");
+  lbc_printf(lbc_str("}\n"));
 }
 
 void printBufModelBufferingChain(const BufModelNode node)
 {
   switch (node.type) {
   case NODE_VOID:
-    lbc_printf("*void*\n");
+    lbc_printf(lbc_str("*void*\n"));
     break;
 
   case NODE_BUFFER:

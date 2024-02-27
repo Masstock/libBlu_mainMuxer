@@ -435,7 +435,7 @@ static int _peekBitmapsPgsFrame(
   MergingTreeNode * img_merging_tree
 )
 {
-  lb_static_assert(2 == HDMV_MAX_NB_PC_COMPO_OBJ);
+  assert(2 == HDMV_MAX_NB_PC_COMPO_OBJ);
 
   if (NULL == img_merging_tree) {
     // Empty
@@ -1174,7 +1174,7 @@ static PgsFrameSequence * _getOldestCompleteSequence(
   unsigned * nb_complete_seq_ret
 )
 {
-  lb_static_assert(0 < PGS_ASS_MIN_NB_COMPLETED_FRAMES_THRESHOLD);
+  assert(0 < PGS_ASS_MIN_NB_COMPLETED_FRAMES_THRESHOLD);
   assert(NULL != nb_complete_seq_ret);
 
   PgsFrameSequence * oldest_complete_seq = NULL;
@@ -1231,7 +1231,7 @@ static int _generateOutputPgsFrameSequence(
 }
 
 int processPgsGenerator(
-  char * ass_filepath
+  const lbc * ass_filepath
 )
 {
   HdmvVDParameters video_desc = {
@@ -1245,7 +1245,8 @@ int processPgsGenerator(
   _print_font_providers(ass_library);
 
   init(1920, 1080);
-  ASS_Track * track = ass_read_file(ass_library, ass_filepath, NULL);
+  // TODO: Ensure UTF-8 paths for Windows or use ass_read_memory
+  ASS_Track * track = ass_read_file(ass_library, (char *) ass_filepath, NULL);
   if (!track) {
     printf("track init failed!\n");
     return 1;

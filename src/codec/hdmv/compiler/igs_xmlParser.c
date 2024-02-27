@@ -17,20 +17,20 @@
   LIBBLU_HDMV_IGS_COMPL_XML_DEBUG("%-*c"fmt, il, ' ', ##__VA_ARGS__)
 
 #define NB_OBJ(path, ...)                                                     \
-  getNbObjectsFromExprIgsXmlFile(XML_CTX(ctx), path, ##__VA_ARGS__)
-
-#define EXISTS(path, ...)                                                     \
-  (0 < NB_OBJ(path, ##__VA_ARGS__))
+  getNbObjectsFromExprXmlCtx(ctx->xml_ctx, lbc_str(path), ##__VA_ARGS__)
 
 #define GET_OBJ(path, ...)                                                    \
-  getPathObjectFromExprIgsXmlFile(XML_CTX(ctx), path, ##__VA_ARGS__)
+  getPathObjectFromExprXmlCtx(ctx->xml_ctx, lbc_str(path), ##__VA_ARGS__)
+
+#define EXISTS(path, ...)                                                     \
+  existsPathObjectFromExprXmlCtx(ctx->xml_ctx, lbc_str(path), ##__VA_ARGS__)
 
 #define GET_STRING(dst, def, err_instr, path, ...)                            \
   do {                                                                        \
     int _ret;                                                                 \
                                                                               \
-    _ret = getIfExistsStringFromExprIgsXmlFile(                               \
-      XML_CTX(ctx), dst, (xmlChar *) def, path, ##__VA_ARGS__                 \
+    _ret = getIfExistsStringFromExprXmlCtx(                               \
+      ctx->xml_ctx, dst, def, lbc_str(path), ##__VA_ARGS__                    \
     );                                                                        \
     if (_ret < 0)                                                             \
       err_instr;                                                              \
@@ -41,8 +41,8 @@
     int _ret;                                                                 \
     bool _val;                                                                \
                                                                               \
-    _ret = getIfExistsBooleanFromExprIgsXmlFile(                              \
-      XML_CTX(ctx), &_val, def, path, ##__VA_ARGS__                           \
+    _ret = getIfExistsBooleanFromExprXmlCtx(                              \
+      ctx->xml_ctx, &_val, def, lbc_str(path), ##__VA_ARGS__                  \
     );                                                                        \
     if (_ret < 0)                                                             \
       err_instr;                                                              \
@@ -55,8 +55,8 @@
     int _ret;                                                                 \
     float _val;                                                               \
                                                                               \
-    _ret = getIfExistsFloatFromExprIgsXmlFile(                                \
-      XML_CTX(ctx), &_val, def, path, ##__VA_ARGS__                           \
+    _ret = getIfExistsFloatFromExprXmlCtx(                                \
+      ctx->xml_ctx, &_val, def, lbc_str(path), ##__VA_ARGS__                  \
     );                                                                        \
     if (_ret < 0)                                                             \
       err_instr;                                                              \
@@ -69,8 +69,8 @@
     int _ret;                                                                 \
     uint64_t _val;                                                            \
                                                                               \
-    _ret = getIfExistsUint64FromExprIgsXmlFile(                               \
-      XML_CTX(ctx), &_val, def, path, ##__VA_ARGS__                           \
+    _ret = getIfExistsUint64FromExprXmlCtx(                               \
+      ctx->xml_ctx, &_val, def, lbc_str(path), ##__VA_ARGS__                  \
     );                                                                        \
     if (_ret < 0)                                                             \
       err_instr;                                                              \
@@ -88,8 +88,8 @@
     int _ret;                                                                 \
     uint64_t _val;                                                            \
                                                                               \
-    _ret = getIfExistsUint64FromExprIgsXmlFile(                               \
-      XML_CTX(ctx), &_val, def, path, ##__VA_ARGS__                           \
+    _ret = getIfExistsUint64FromExprXmlCtx(                               \
+      ctx->xml_ctx, &_val, def, lbc_str(path), ##__VA_ARGS__                  \
     );                                                                        \
     if (_ret < 0)                                                             \
       err_instr;                                                              \
@@ -112,13 +112,6 @@
   GET_UINTN(64, dst, def, err_msg, err_instr, path, ##__VA_ARGS__)
 
 /* ========================== */
-
-static unsigned _lastParsedLine(
-  const IgsCompilerContext * ctx
-)
-{
-  return ctx->xml_ctx.last_parsed_node_line;
-}
 
 static int _parseParametersUop(
   IgsCompilerContext * ctx,
@@ -266,26 +259,26 @@ static int _parseCommonSettings(
   }
 
   uint64_t uop_mask = 0x0;
-  xmlXPathObjectPtr uop_path_obj = GET_OBJ("/igs/parameters/uop");
+  XmlXPathObjectPtr uop_path_obj = GET_OBJ("/igs/parameters/uop");
 
-  if (XML_PATH_NODE_EXISTS(uop_path_obj, 0)) {
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), uop_path_obj, 0) < 0) {
-      xmlXPathFreeObject(uop_path_obj);
+  if (existsNodeXmlXPathObject(uop_path_obj, 0)) {
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, uop_path_obj, 0) < 0) {
+      destroyXmlXPathObject(uop_path_obj);
       return -1;
     }
 
     if (_parseParametersUop(ctx, &uop_mask) < 0) {
-      xmlXPathFreeObject(uop_path_obj);
+      destroyXmlXPathObject(uop_path_obj);
       return -1;
     }
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
-      xmlXPathFreeObject(uop_path_obj);
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0) {
+      destroyXmlXPathObject(uop_path_obj);
       return -1;
     }
   }
 
-  xmlXPathFreeObject(uop_path_obj);
+  destroyXmlXPathObject(uop_path_obj);
 
   ctx->data.common_uop_mask = uop_mask;
   PDEBUG_PARSE(1, "global common UO_mask: 0x%016" PRIX64 ".\n", uop_mask);
@@ -313,13 +306,13 @@ static int _parseCompositionState(
   HdmvCompositionState * ret
 )
 {
-  xmlChar * string = NULL;
+  lbc * string = NULL;
 
-  static const xmlChar * strings[] = {
-    (xmlChar *) "NormalCase",
-    (xmlChar *) "AcquisitionPoint",
-    (xmlChar *) "EpochStart",
-    (xmlChar *) "EpochContinue"
+  static const lbc * strings[] = {
+    lbc_str("NormalCase"),
+    lbc_str("AcquisitionPoint"),
+    lbc_str("EpochStart"),
+    lbc_str("EpochContinue")
   };
 
   GET_STRING(
@@ -336,7 +329,7 @@ static int _parseCompositionState(
 
   uint8_t composition_state = 0xFF;
   for (size_t i = 0; i < ARRAY_SIZE(strings); i++) {
-    if (xmlStrEqual(strings[i], string)) {
+    if (lbc_equal(strings[i], string)) {
       composition_state = i;
       break;
     }
@@ -351,7 +344,7 @@ static int _parseCompositionState(
   PDEBUG_PARSE(2, "composition_state: %s (%u).\n", string, composition_state);
 
   *ret = composition_state;
-  freeXmlCharPtr(&string);
+  free(string);
   return 0;
 }
 
@@ -377,11 +370,11 @@ static int _parseStreamModel(
   HdmvStreamModel * ret
 )
 {
-  xmlChar * string = NULL;
+  lbc * string = NULL;
 
-  static const xmlChar * strings[] = {
-    (xmlChar *) "Multiplexed",
-    (xmlChar *) "OoM"
+  static const lbc * strings[] = {
+    lbc_str("Multiplexed"),
+    lbc_str("OoM")
   };
 
   GET_STRING(
@@ -393,7 +386,7 @@ static int _parseStreamModel(
 
   uint8_t stream_model = 0xFF;
   for (size_t i = 0; i < ARRAY_SIZE(strings); i++) {
-    if (xmlStrEqual(strings[i], string)) {
+    if (lbc_equal(strings[i], string)) {
       stream_model = i;
       break;
     }
@@ -407,7 +400,7 @@ static int _parseStreamModel(
 
   PDEBUG_PARSE(2, "stream_model: %s (%u).\n", string, stream_model);
   *ret = stream_model;
-  freeXmlCharPtr(&string);
+  free(string);
   return 0;
 }
 
@@ -416,23 +409,23 @@ static int _parseUserInterfaceModel(
   HdmvUserInterfaceModel * ret
 )
 {
-  xmlChar * string = NULL;
+  lbc * string = NULL;
 
-  static const xmlChar * strings[] = {
-    (xmlChar *) "Pop-Up",
-    (xmlChar *) "Normal"
+  static const lbc * strings[] = {
+    lbc_str("Normal"),
+    lbc_str("Pop-Up")
   };
 
   GET_STRING(
     &string,
-    strings[1], // Normal by default
+    strings[0], // Normal by default
     return -1,
     "//parameters/model/@user_interface"
   );
 
   uint8_t user_interface_model = 0xFF;
   for (size_t i = 0; i < ARRAY_SIZE(strings); i++) {
-    if (xmlStrEqual(strings[i], string)) {
+    if (lbc_equal(strings[i], string)) {
       user_interface_model = i;
       break;
     }
@@ -445,7 +438,7 @@ static int _parseUserInterfaceModel(
 
   PDEBUG_PARSE(2, "user_interface: %s (%u).\n", string, user_interface_model);
   *ret = user_interface_model;
-  freeXmlCharPtr(&string);
+  free(string);
   return 0;
 }
 
@@ -560,39 +553,24 @@ static int _parseCompositionParameters(
  *
  * Use relative XPath format, root must be defined before call.
  */
-static int _parseBitmapIgsXmlFile(
+static int _parseBitmapXmlCtx(
   HdmvBitmap * dst,
   IgsCompilerContext * ctx,
   lbc ** img_fp
 )
 {
-  xmlChar * string = NULL;
   lbc * img_path = NULL;
 
   /* Parse all img fields: */
   /* img/@name : */
-  GET_STRING(&string, NULL, goto free_return, "//@name");
-  if (NULL != img_fp) {
-    /* If string == NULL, passthrough */
-    if (NULL == string)
-      *img_fp = NULL;
-    else {
-      if (NULL == (*img_fp = lbc_utf8_convto(string)))
-        LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN("Memory allocation error.\n");
-    }
-  }
-  freeXmlCharPtr(&string);
+  GET_STRING(img_fp, NULL, goto free_return, "//@name");
 
   /* img/@path : */
-  GET_STRING(&string, NULL, goto free_return, "//@path");
-  if (NULL == string)
+  GET_STRING(&img_path, NULL, goto free_return, "//@path");
+  if (NULL == img_path)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(
       "Missing required 'path' argument on 'img'.\n"
     );
-
-  if (NULL == (img_path = lbc_utf8_convto(string)))
-    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN("Memory allocation error.\n");
-  freeXmlCharPtr(&string);
 
   HdmvRectangle cutting_rect = emptyRectangle();
 
@@ -639,7 +617,7 @@ static int _parseBitmapIgsXmlFile(
 
   LIBBLU_HDMV_IGS_COMPL_XML_INFO(
     "Loading picture '%" PRI_LBCS "' (line %u).\n",
-    img_path, _lastParsedLine(ctx)
+    img_path, lastParsedNodeLineXmlCtx(ctx->xml_ctx)
   );
 
   if (openHdmvBitmap(dst, &ctx->img_io_libs, img_path, ctx->conf_hdl) < 0)
@@ -651,12 +629,10 @@ static int _parseBitmapIgsXmlFile(
   }
 
   free(img_path);
-  freeXmlCharPtr(&string);
   return 0;
 
 free_return:
   free(img_path);
-  freeXmlCharPtr(&string);
   return -1;
 }
 
@@ -673,19 +649,13 @@ static int _parseRefImg(
   IgsCompilerContext * ctx
 )
 {
-  xmlChar * string = NULL;
-
   /* Parse all img fields: */
   /* ref_pic/@name : */
-  string = getStringFromExprIgsXmlFile(XML_CTX(ctx), "//@name");
-  if (NULL == string)
+  lbc * name = getStringFromExprXmlCtx(ctx->xml_ctx, lbc_str("//@name"));
+  if (NULL == name)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
       "Missing required 'name' argument on 'img'.\n"
     );
-
-  lbc * name = lbc_utf8_convto(string);
-  if (NULL == name)
-    LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN("Memory allocation error.\n");
 
   const HdmvBitmap * ref_bitmap_ptr = getRefPictureIgsCompilerComposition(
     CUR_COMP(ctx), name
@@ -743,12 +713,9 @@ static int _parseRefImg(
   }
 
   *dst = bitmap;
-
-  freeXmlCharPtr(&string);
   return 0;
 
 free_return:
-  freeXmlCharPtr(&string);
   return -1;
 }
 
@@ -759,7 +726,7 @@ static int _parseReferencePicture(
   PDEBUG(1, "Parsing image...\n");
   HdmvBitmap bitmap;
   lbc * name;
-  if (_parseBitmapIgsXmlFile(&bitmap, ctx, &name) < 0)
+  if (_parseBitmapXmlCtx(&bitmap, ctx, &name) < 0)
     return -1;
 
   if (NULL == name)
@@ -785,29 +752,29 @@ static int _parseReferencePictures(
 )
 {
   /* Picture references : */
-  xmlXPathObjectPtr refimg_path_obj = GET_OBJ("//reference_imgs/img");
-  int nb_refimg = XML_PATH_NODE_NB(refimg_path_obj);
+  XmlXPathObjectPtr refimg_path_obj = GET_OBJ("//reference_imgs/img");
+  int nb_refimg = getNbNodesXmlXPathObject(refimg_path_obj);
   if (0 < nb_refimg)
     PDEBUG_PARSE(1, "reference_imgs:\n");
 
   for (int i = 0; i < nb_refimg; i++) {
     PDEBUG_PARSE(2, "reference_img[%d]:\n", i);
 
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), refimg_path_obj, i) < 0)
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, refimg_path_obj, i) < 0)
       return -1;
 
     if (_parseReferencePicture(ctx) < 0)
       goto free_return;
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0)
       return -1;
   }
 
-  xmlXPathFreeObject(refimg_path_obj);
+  destroyXmlXPathObject(refimg_path_obj);
   return 0;
 
 free_return:
-  xmlXPathFreeObject(refimg_path_obj);
+  destroyXmlXPathObject(refimg_path_obj);
   return -1;
 }
 
@@ -817,27 +784,36 @@ static int _parseButtonStateImg(
   uint16_t * end_object_id_ref
 )
 {
-  xmlXPathObjectPtr img_path_obj = GET_OBJ("//graphic/*");
-  int nb_nodes = XML_PATH_NODE_NB(img_path_obj);
+  XmlXPathObjectPtr img_path_obj = GET_OBJ("//graphic/*");
+
+  unsigned nb_nodes  = getNbNodesXmlXPathObject(img_path_obj);
   unsigned nb_states = 0u;
 
-  for (int j = 0; j < nb_nodes; j++) {
+  for (unsigned node_i = 0; node_i < nb_nodes; node_i++) {
     bool is_ref_pic = false;
-    const char * node_name = (char *) XML_PATH_NODE(img_path_obj, j)->name;
-    if (lb_str_equal(node_name, "ref_pic"))
+
+    XmlNodePtr xml_node = getNodeXmlXPathObject(img_path_obj, node_i);
+    if (NULL == xml_node)
+      return -1;
+
+    const lbc * node_name = getNameXmlNode(xml_node);
+    if (NULL == node_name)
+      return -1;
+
+    if (lbc_equal(node_name, lbc_str("ref_pic")))
       is_ref_pic = false;
-    if (!lb_str_equal(node_name, "img"))
+    if (!lbc_equal(node_name, lbc_str("img")))
       continue; // Unknown/unsupported node
 
-    PDEBUG_PARSE(10, "object[%d] (%s):\n", j, is_ref_pic ? "ref" : "img");
+    PDEBUG_PARSE(10, "object[%d] (%s):\n", node_i, is_ref_pic ? "ref" : "img");
 
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), img_path_obj, j) < 0)
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, img_path_obj, node_i) < 0)
       return -1;
 
     int ret;
     HdmvBitmap bitmap;
     if (!is_ref_pic)
-      ret = _parseBitmapIgsXmlFile(&bitmap, ctx, NULL);
+      ret = _parseBitmapXmlCtx(&bitmap, ctx, NULL);
     else
       ret = _parseRefImg(&bitmap, ctx);
     if (ret < 0)
@@ -856,7 +832,7 @@ static int _parseButtonStateImg(
 
     PDEBUG_PARSE(11, "object_id: 0x%04X.\n", id);
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0)
       return -1;
   }
 
@@ -866,7 +842,7 @@ static int _parseButtonStateImg(
     *end_object_id_ref   = 0xFFFF;
   }
 
-  xmlXPathFreeObject(img_path_obj);
+  destroyXmlXPathObject(img_path_obj);
   return 0;
 }
 
@@ -955,7 +931,7 @@ static int _parseButton(
   );
 
   PDEBUG_PARSE(8, "neighbor_info:\n");
-  if (EXISTS("//neighbor_info")) {
+  if (0 < NB_OBJ("//neighbor_info")) {
     GET_UINT16(
       &btn->neighbor_info.upper_button_id_ref,
       btn->button_id,
@@ -1018,12 +994,12 @@ static int _parseButton(
 
   /* Normal state */
   PDEBUG_PARSE(8, "normal_state_info:\n");
-  xmlXPathObjectPtr nsi_path_obj = GET_OBJ("//normal_state_info");
+  XmlXPathObjectPtr nsi_path_obj = GET_OBJ("//normal_state_info");
   HdmvButtonNormalStateInfoParam * nsi = &btn->normal_state_info;
 
-  if (0 < XML_PATH_NODE_NB(nsi_path_obj)) {
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), nsi_path_obj, 0) < 0) {
-      xmlXPathFreeObject(nsi_path_obj);
+  if (0 < getNbNodesXmlXPathObject(nsi_path_obj)) {
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, nsi_path_obj, 0) < 0) {
+      destroyXmlXPathObject(nsi_path_obj);
       return -1;
     }
 
@@ -1031,15 +1007,15 @@ static int _parseButton(
     uint16_t * start_obj_id_ref = &nsi->start_object_id_ref;
     uint16_t * end_obj_id_ref   = &nsi->end_object_id_ref;
     if (_parseButtonStateImg(ctx, start_obj_id_ref, end_obj_id_ref) < 0) {
-      xmlXPathFreeObject(nsi_path_obj);
+      destroyXmlXPathObject(nsi_path_obj);
       return -1;
     }
 
     GET_BOOL(&nsi->repeat_flag, false, return -1, "//repeat_flag");
     GET_BOOL(&nsi->complete_flag, false, return -1, "//complete_flag");
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
-      xmlXPathFreeObject(nsi_path_obj);
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0) {
+      destroyXmlXPathObject(nsi_path_obj);
       return -1;
     }
   }
@@ -1050,7 +1026,7 @@ static int _parseButton(
     nsi->complete_flag       = false;
   }
 
-  xmlXPathFreeObject(nsi_path_obj);
+  destroyXmlXPathObject(nsi_path_obj);
 
   PDEBUG_PARSE(9, "start_object_id_ref: 0x%04" PRIX16 ".\n", nsi->start_object_id_ref);
   PDEBUG_PARSE(9, "end_object_id_ref:   0x%04" PRIX16 ".\n", nsi->end_object_id_ref);
@@ -1059,12 +1035,12 @@ static int _parseButton(
 
   /* Selected state */
   PDEBUG_PARSE(8, "selected_state_info:\n");
-  xmlXPathObjectPtr ssi_path_obj = GET_OBJ("//selected_state_info");
+  XmlXPathObjectPtr ssi_path_obj = GET_OBJ("//selected_state_info");
   HdmvButtonSelectedStateInfoParam * ssi = &btn->selected_state_info;
 
-  if (0 < XML_PATH_NODE_NB(ssi_path_obj)) {
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), ssi_path_obj, 0) < 0) {
-      xmlXPathFreeObject(ssi_path_obj);
+  if (0 < getNbNodesXmlXPathObject(ssi_path_obj)) {
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, ssi_path_obj, 0) < 0) {
+      destroyXmlXPathObject(ssi_path_obj);
       return -1;
     }
 
@@ -1080,20 +1056,20 @@ static int _parseButton(
     uint16_t * start_obj_id_ref = &ssi->start_object_id_ref;
     uint16_t * end_obj_id_ref   = &ssi->end_object_id_ref;
     if (_parseButtonStateImg(ctx, start_obj_id_ref, end_obj_id_ref) < 0) {
-      xmlXPathFreeObject(ssi_path_obj);
+      destroyXmlXPathObject(ssi_path_obj);
       return -1;
     }
 
     GET_BOOL(&ssi->repeat_flag, false, return -1, "//repeat_flag");
     GET_BOOL(&ssi->complete_flag, false, return -1, "//complete_flag");
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
-      xmlXPathFreeObject(ssi_path_obj);
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0) {
+      destroyXmlXPathObject(ssi_path_obj);
       return -1;
     }
   }
 
-  xmlXPathFreeObject(ssi_path_obj);
+  destroyXmlXPathObject(ssi_path_obj);
 
   PDEBUG_PARSE(9, "state_sound_id_ref:  0x%02" PRIX8 ".\n", ssi->state_sound_id_ref);
   PDEBUG_PARSE(9, "start_object_id_ref: 0x%04" PRIX16 ".\n", ssi->start_object_id_ref);
@@ -1103,12 +1079,12 @@ static int _parseButton(
 
   /* Activated state */
   PDEBUG_PARSE(8, "activated_state_info:\n");
-  xmlXPathObjectPtr asi_path_obj = GET_OBJ("//activated_state_info");
+  XmlXPathObjectPtr asi_path_obj = GET_OBJ("//activated_state_info");
   HdmvButtonActivatedStateInfoParam * asi = &btn->activated_state_info;
 
-  if (0 < XML_PATH_NODE_NB(asi_path_obj)) {
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), asi_path_obj, 0) < 0) {
-      xmlXPathFreeObject(asi_path_obj);
+  if (0 < getNbNodesXmlXPathObject(asi_path_obj)) {
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, asi_path_obj, 0) < 0) {
+      destroyXmlXPathObject(asi_path_obj);
       return -1;
     }
 
@@ -1124,17 +1100,17 @@ static int _parseButton(
     uint16_t * start_obj_id_ref = &asi->start_object_id_ref;
     uint16_t * end_obj_id_ref   = &asi->end_object_id_ref;
     if (_parseButtonStateImg(ctx, start_obj_id_ref, end_obj_id_ref) < 0) {
-      xmlXPathFreeObject(asi_path_obj);
+      destroyXmlXPathObject(asi_path_obj);
       return -1;
     }
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
-      xmlXPathFreeObject(asi_path_obj);
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0) {
+      destroyXmlXPathObject(asi_path_obj);
       return -1;
     }
   }
 
-  xmlXPathFreeObject(asi_path_obj);
+  destroyXmlXPathObject(asi_path_obj);
 
   PDEBUG_PARSE(9, "state_sound_id_ref:  0x%02" PRIX8 ".\n", asi->state_sound_id_ref);
   PDEBUG_PARSE(9, "start_object_id_ref: 0x%04" PRIX16 ".\n", asi->start_object_id_ref);
@@ -1142,8 +1118,8 @@ static int _parseButton(
 
   /* Commands */
   PDEBUG_PARSE(8, "navigation_commands:\n");
-  xmlXPathObjectPtr com_path_obj = GET_OBJ("//commands/command");
-  int nb_nav_com = XML_PATH_NODE_NB(com_path_obj);
+  XmlXPathObjectPtr com_path_obj = GET_OBJ("//commands/command");
+  int nb_nav_com = getNbNodesXmlXPathObject(com_path_obj);
 
   if (HDMV_MAX_NB_BUTTON_NAV_COM < nb_nav_com)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
@@ -1161,8 +1137,8 @@ static int _parseButton(
 
   for (int i = 0; i < nb_nav_com; i++) {
     HdmvNavigationCommand * com = &btn->navigation_commands[i];
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), com_path_obj, i) < 0) {
-      xmlXPathFreeObject(com_path_obj);
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, com_path_obj, i) < 0) {
+      destroyXmlXPathObject(com_path_obj);
       return -1;
     }
 
@@ -1193,13 +1169,13 @@ static int _parseButton(
       "//@source"
     );
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
-      xmlXPathFreeObject(com_path_obj);
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0) {
+      destroyXmlXPathObject(com_path_obj);
       return -1;
     }
   }
 
-  xmlXPathFreeObject(com_path_obj);
+  destroyXmlXPathObject(com_path_obj);
   return 0;
 }
 
@@ -1229,9 +1205,9 @@ static int _parseBog(
   bool def_val_btn_id_ref_pres = (0xFFFF == bog->default_valid_button_id_ref);
   bool auto_def_val_btn_id     = !EXISTS("//default_valid_button");
 
-  xmlXPathObjectPtr btn_path_obj = GET_OBJ("//button");
+  XmlXPathObjectPtr btn_path_obj = GET_OBJ("//button");
   {
-    int nb_btn = XML_PATH_NODE_NB(btn_path_obj);
+    int nb_btn = getNbNodesXmlXPathObject(btn_path_obj);
     if (HDMV_MAX_NB_ICS_BUTTONS < nb_btn)
       LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
         "Number of buttons is invalid (%d, shall be between 0-255).\n",
@@ -1246,14 +1222,14 @@ static int _parseBog(
     PDEBUG_PARSE(7, "None.\n");
     LIBBLU_HDMV_IGS_COMPL_XML_WARNING(
       "BOG at line %u is empty.\n",
-      _lastParsedLine(ctx)
+      lastParsedNodeLineXmlCtx(ctx->xml_ctx)
     );
   }
 
   for (int i = 0; i < bog->number_of_buttons; i++) {
     HdmvButtonParam * btn = &bog->buttons[i];
     /* Set path for relative path accessing: */
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), btn_path_obj, i) < 0)
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, btn_path_obj, i) < 0)
       return -1;
 
     PDEBUG_PARSE(7, "button[%d]:\n", i);
@@ -1281,7 +1257,7 @@ static int _parseBog(
       def_val_btn_id_ref_pres = true;
 
     /* Restore original path */
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0)
       goto free_return;
   }
 
@@ -1293,11 +1269,11 @@ static int _parseBog(
   if (auto_def_val_btn_id && 0 < bog->number_of_buttons)
     bog->default_valid_button_id_ref = bog->buttons[0].button_id;
 
-  xmlXPathFreeObject(btn_path_obj);
+  destroyXmlXPathObject(btn_path_obj);
   return 0;
 
 free_return:
-  xmlXPathFreeObject(btn_path_obj);
+  destroyXmlXPathObject(btn_path_obj);
   return -1;
 }
 
@@ -1315,26 +1291,26 @@ static int _parsePage(
 
   /* page/parameters/uop */
   uint64_t uop_mask = ctx->data.common_uop_mask; // Applying global flags
-  xmlXPathObjectPtr uop_path_obj = GET_OBJ("//parameters/uop");
+  XmlXPathObjectPtr uop_path_obj = GET_OBJ("//parameters/uop");
 
-  if (XML_PATH_NODE_EXISTS(uop_path_obj, 0)) {
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), uop_path_obj, 0) < 0) {
-      xmlXPathFreeObject(uop_path_obj);
+  if (existsNodeXmlXPathObject(uop_path_obj, 0)) {
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, uop_path_obj, 0) < 0) {
+      destroyXmlXPathObject(uop_path_obj);
       return -1;
     }
 
     if (_parseParametersUop(ctx, &uop_mask) < 0) {
-      xmlXPathFreeObject(uop_path_obj);
+      destroyXmlXPathObject(uop_path_obj);
       return -1;
     }
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0) {
-      xmlXPathFreeObject(uop_path_obj);
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0) {
+      destroyXmlXPathObject(uop_path_obj);
       return -1;
     }
   }
 
-  xmlXPathFreeObject(uop_path_obj);
+  destroyXmlXPathObject(uop_path_obj);
 
   page->UO_mask_table = uop_mask;
   PDEBUG_PARSE(3, "uop: 0x%016" PRIX64 ".\n", page->UO_mask_table);
@@ -1401,8 +1377,8 @@ static int _parsePage(
   PDEBUG_PARSE(3, "BOGs (Button Overlap Groups):\n");
 
   /* page/bog */
-  xmlXPathObjectPtr bog_path_obj = GET_OBJ("//bog");
-  int nb_bog = XML_PATH_NODE_NB(bog_path_obj);
+  XmlXPathObjectPtr bog_path_obj = GET_OBJ("//bog");
+  int nb_bog = getNbNodesXmlXPathObject(bog_path_obj);
 
   if (HDMV_MAX_NB_ICS_BOGS < nb_bog)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
@@ -1431,7 +1407,7 @@ static int _parsePage(
     HdmvButtonOverlapGroupParameters * bog = &page->bogs[bog_i];
 
     /* Set path for relative path accessing: */
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), bog_path_obj, bog_i) < 0)
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, bog_path_obj, bog_i) < 0)
       goto free_return;
 
     PDEBUG_PARSE(4, "bog[%d]:\n", bog_i);
@@ -1448,7 +1424,7 @@ static int _parsePage(
     }
 
     /* Restore original path */
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0)
       goto free_return;
   }
 
@@ -1468,11 +1444,11 @@ static int _parsePage(
     page->default_selected_button_id_ref = page->bogs[0].buttons[0].button_id;
   page->palette_id_ref = 0x00; // Apply default palette ID
 
-  xmlXPathFreeObject(bog_path_obj);
+  destroyXmlXPathObject(bog_path_obj);
   return 0;
 
 free_return:
-  xmlXPathFreeObject(bog_path_obj);
+  destroyXmlXPathObject(bog_path_obj);
   return -1;
 }
 
@@ -1481,8 +1457,8 @@ static int _parsePages(
   HdmvICParameters * compo
 )
 {
-  xmlXPathObjectPtr page_path_obj = GET_OBJ("//page");
-  int nb_pages = XML_PATH_NODE_NB(page_path_obj);
+  XmlXPathObjectPtr page_path_obj = GET_OBJ("//page");
+  int nb_pages = getNbNodesXmlXPathObject(page_path_obj);
   if (HDMV_MAX_NB_IC_PAGES < nb_pages)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
       "Number of IGS pages described in input XML file is too large "
@@ -1499,22 +1475,22 @@ static int _parsePages(
   for (int page_i = 0; page_i < nb_pages; page_i++) {
     PDEBUG_PARSE(2, "page[%d]:\n", page_i);
 
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), page_path_obj, page_i) < 0)
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, page_path_obj, page_i) < 0)
       goto free_return;
 
     if (_parsePage(ctx, &compo->pages[page_i], (uint8_t) page_i) < 0)
       LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN("Error happen in page %d.\n", page_i);
 
     /* Restore original path */
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0)
       goto free_return;
   }
 
-  xmlXPathFreeObject(page_path_obj);
+  destroyXmlXPathObject(page_path_obj);
   return 0;
 
 free_return:
-  xmlXPathFreeObject(page_path_obj);
+  destroyXmlXPathObject(page_path_obj);
   return -1;
 }
 
@@ -1551,8 +1527,8 @@ static int _parseCompositions(
   IgsCompilerContext * ctx
 )
 {
-  xmlXPathObjectPtr compo_path_obj = GET_OBJ("/igs/composition");
-  int nb_compo = XML_PATH_NODE_NB(compo_path_obj);
+  XmlXPathObjectPtr compo_path_obj = GET_OBJ("/igs/composition");
+  int nb_compo = getNbNodesXmlXPathObject(compo_path_obj);
 
   if (!nb_compo)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
@@ -1566,7 +1542,7 @@ static int _parseCompositions(
   for (int i = 0; i < nb_compo; i++) {
     PDEBUG_PARSE(0, "composition[%d]:\n", i);
 
-    if (setRootPathFromPathObjectIgsXmlFile(XML_CTX(ctx), compo_path_obj, i) < 0)
+    if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, compo_path_obj, i) < 0)
       goto free_return;
 
     IgsCompilerComposition * compo = &ctx->data.compositions[ctx->data.nb_compositions++];
@@ -1575,15 +1551,15 @@ static int _parseCompositions(
     if (_parseComposition(ctx, compo) < 0)
       goto free_return;
 
-    if (restoreLastRootIgsXmlFile(XML_CTX(ctx)) < 0)
+    if (restoreLastRootXmlCtx(ctx->xml_ctx) < 0)
       goto free_return;
   }
 
-  xmlXPathFreeObject(compo_path_obj);
+  destroyXmlXPathObject(compo_path_obj);
   return 0;
 
 free_return:
-  xmlXPathFreeObject(compo_path_obj);
+  destroyXmlXPathObject(compo_path_obj);
   return -1;
 }
 
@@ -1603,7 +1579,7 @@ int parseIgsXmlFile(
 )
 {
   PDEBUG(0, "Loading input XML file.\n");
-  if (loadIgsXmlFile(XML_CTX(ctx), ctx->xml_filename) < 0)
+  if (loadXmlCtx(ctx->xml_ctx, ctx->xml_filename) < 0)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN("Unable to load IGS XML file.\n");
 
   if (!EXISTS("/igs"))
@@ -1615,14 +1591,15 @@ int parseIgsXmlFile(
   PDEBUG(0, "Parsing input XML file.\n");
   if (_parseFile(ctx) < 0)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_FRETURN(
-      "Error occured line %d.\n", _lastParsedLine(ctx)
+      "Error occured line %u.\n",
+      lastParsedNodeLineXmlCtx(ctx->xml_ctx)
     );
 
   PDEBUG(0, "Releasing input XML file.\n");
-  releaseIgsXmlFile(XML_CTX(ctx));
+  releaseXmlCtx(ctx->xml_ctx);
   return 0;
 
 free_return:
-  releaseIgsXmlFile(XML_CTX(ctx));
+  releaseXmlCtx(ctx->xml_ctx);
   return -1;
 }

@@ -19,7 +19,7 @@
 #include "igs_debug.h"
 
 #define XML_CTX(IgsCompilerContextPtr)                                        \
-  (&(IgsCompilerContextPtr)->xml_ctx)
+  ((IgsCompilerContextPtr)->xml_ctx)
 
 /** \~english
  * \brief Parse context opened IGS XML description file.

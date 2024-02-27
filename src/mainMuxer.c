@@ -47,7 +47,7 @@ static void printProgressBar(
   barSize = floor(percentage / 5);
 
   lbc_printf(
-    "Multiplexing... [%.*s%.*s] %*.*f%%\r",
+    lbc_str("Multiplexing... [%.*s%.*s] %*.*f%%\r"),
     barSize,      "====================",
     20 - barSize, "                    ",
     3, targetedDecima, percentage
@@ -58,18 +58,18 @@ static void printProgressBar(
 static void printBytes(
   size_t bytes
 )
-{
-  double mantissa;
-  size_t nbDiv;
-
+{;
+  static const char * div_suffix[] = {
 #if defined(ARCH_WIN32) /* Windows uses MiB, not MB. */
-  static const char * divSuf[] = {"B", "KiB", "MiB", "GiB", "TiB"};
+    "B", "KiB", "MiB", "GiB", "TiB"
 #else
-  static const char * divSuf[] = {"B", "KB", "MB", "GB", "TB"};
+    "B", "KB", "MB", "GB", "TB"
 #endif
+  };
 
-  mantissa = (double) bytes;
-  for (nbDiv = 0; mantissa > 1000.0 && nbDiv < ARRAY_SIZE(divSuf); nbDiv++) {
+  double mantissa = (double) bytes;
+  size_t nb_div = 0;
+  for (; mantissa > 1000.0 && nb_div < ARRAY_SIZE(div_suffix); nb_div++) {
 #if defined(ARCH_WIN32)
     mantissa /= 1024;
 #else
@@ -77,7 +77,7 @@ static void printBytes(
 #endif
   }
 
-  lbc_printf("%.1f %s", mantissa, divSuf[nbDiv]);
+  lbc_printf(lbc_str("%.1f %s"), mantissa, div_suffix[nb_div]);
 }
 
 int mainMux(
@@ -109,19 +109,21 @@ int mainMux(
   if (padAlignedUnitLibbluMuxingContext(ctx, output) < 0)
     goto free_return;
 
-  lbc_printf("Multiplexing... [====================] 100%% Finished !\n\n");
+  lbc_printf(lbc_str("Multiplexing... [====================] 100%% Finished !\n\n"));
 
   closeBitstreamWriter(output);
 
-  lbc_printf("== Multiplexing summary ===============================================================\n");
-  lbc_printf("Muxed: %u packets (", ctx->nbTsPacketsMuxed);
+  lbc_printf(
+    lbc_str("== Multiplexing summary ===============================================================\n")
+  );
+  lbc_printf(lbc_str("Muxed: %u packets ("), ctx->nbTsPacketsMuxed);
   printBytes(ctx->nbBytesWritten);
-  lbc_printf(", %zu bytes).\n", ctx->nbBytesWritten);
+  lbc_printf(lbc_str(", %zu bytes).\n"), ctx->nbBytesWritten);
 
   unsigned nb_sys_tp = ctx->nbTsPacketsMuxed;
   for (unsigned i = 0; i < nbESLibbluMuxingContext(ctx); i++) {
     lbc_printf(
-      " - 0x%04x : %d packets (%.1f%%);\n",
+      lbc_str(" - 0x%04x : %d packets (%.1f%%);\n"),
       ctx->elementaryStreams[i]->pid,
       ctx->elementaryStreams[i]->packetNb,
       100.f * ctx->elementaryStreams[i]->packetNb / ctx->nbTsPacketsMuxed
@@ -129,11 +131,13 @@ int mainMux(
     nb_sys_tp -= ctx->elementaryStreams[i]->packetNb;
   }
   lbc_printf(
-    " - System packets : %d packets (%.1f%%).\n",
+    lbc_str(" - System packets : %d packets (%.1f%%).\n"),
     nb_sys_tp, 100.f * nb_sys_tp / ctx->nbTsPacketsMuxed
   );
 
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
   destroyLibbluMuxingContext(ctx);
 
   return 0;

@@ -149,7 +149,7 @@ static inline void printContentHdmvContextSegmentTypesCounter(
 )
 {
 #define _G(_i)  getByIdxHdmvContextSegmentTypesCounter(cnt, _i)
-#define _P(_n)  lbc_printf(" - "#_n": %u.\n", _G(HDMV_SEGMENT_TYPE_##_n##_IDX))
+#define _P(_n)  lbc_printf(lbc_str(" - "#_n": %u.\n"), _G(HDMV_SEGMENT_TYPE_##_n##_IDX))
 
   if (HDMV_STREAM_TYPE_IGS == type) {
     _P(ICS);
@@ -167,7 +167,7 @@ static inline void printContentHdmvContextSegmentTypesCounter(
 #undef _G
 
   lbc_printf(
-    " TOTAL: %u.\n",
+    lbc_str(" TOTAL: %u.\n"),
     getTotalHdmvContextSegmentTypesCounter(cnt)
   );
 }
@@ -599,7 +599,7 @@ static inline bool justProvidedPaletteHdmvEpochState(
   uint8_t palette_id
 )
 {
-  lb_static_assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
+  assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
   return (HDMV_DEF_JUST_PROVIDED <= epoch_state->palettes[palette_id].state);
 }
 
@@ -687,7 +687,7 @@ static inline bool justProvidedObjectHdmvEpochState(
   uint16_t object_id
 )
 {
-  lb_static_assert(object_id < HDMV_MAX_NB_OBJ); // Avoid type limited range warning
+  assert(object_id < HDMV_MAX_NB_OBJ); // Avoid type limited range warning
   return (HDMV_DEF_JUST_PROVIDED <= epoch_state->objects[object_id].state);
 }
 

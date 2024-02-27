@@ -4400,18 +4400,25 @@ int analyzeH264(
     return -1;
 #endif
 
-  lbc_printf(" === Parsing finished with success. ===              \n");
+  lbc_printf(
+    lbc_str(" === Parsing finished with success. ===              \n")
+  );
 
   /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
-  lbc_printf("Codec: Video/H.264-AVC, %ux%u%c, ",
+  lbc_printf(
+    lbc_str("== Stream Infos =======================================================================\n")
+  );
+  lbc_printf(
+    lbc_str("Codec: Video/H.264-AVC, %ux%u%c, "),
     handle->sequenceParametersSet.data.FrameWidth,
     handle->sequenceParametersSet.data.FrameHeight,
     (handle->sequenceParametersSet.data.frame_mbs_only_flag ? 'p' : 'i')
   );
-  lbc_printf("%.3f Im/s.\n", handle->curProgParam.frameRate);
+  lbc_printf(lbc_str("%.3f Im/s.\n"), handle->curProgParam.frameRate);
   printStreamDurationEsmsHandler(handle->esms);
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
 
   if (completeH264ParametersHandler(handle, settings) < 0)
     goto free_return;

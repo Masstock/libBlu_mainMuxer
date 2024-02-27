@@ -459,12 +459,12 @@ static int _genEsmsFilename(
 {
   if (0 < nameIncrement)
     return lbc_snprintf(
-      buffer, bufferSize, "%" PRI_LBCS "_%3u.ess",
+      buffer, bufferSize, lbc_str("%s_%3u.ess"),
       streamFilepath, nameIncrement
     );
 
   return lbc_snprintf(
-    buffer, bufferSize, "%" PRI_LBCS ".ess",
+    buffer, bufferSize, lbc_str("%s.ess"),
     streamFilepath
   );
 }
@@ -502,7 +502,7 @@ static int _findValidESScript(
     fpSize = lbc_snprintf(
       scriptFilepath,
       PATH_BUFSIZE,
-      "%" PRI_LBCS,
+      lbc_str("%" PRI_LBCS),
       settings->scriptFilepath
     );
   else

@@ -200,21 +200,18 @@ static int _parseEntryESPropertiesSourceFilesEsms(
     src_filepath_size
   );
 
-  if (!src_filepath_size || PATH_BUFSIZE <= src_filepath_size)
+  if (!src_filepath_size || INT16_MAX == src_filepath_size)
     LIBBLU_ERROR_RETURN(
       "Invalid source filepath size (%" PRIu16 " characters).\n",
       src_filepath_size
     );
 
-  /* [u<8*src_filepath_size> src_filepath] */
-  uint8_t enc_src_filepath[PATH_BUFSIZE];
-  READ_BYTES(esms_bs, src_filepath_size, enc_src_filepath, return -1);
-  enc_src_filepath[src_filepath_size] = 0x00;
+  lbc * src_filepath = calloc(1, src_filepath_size + 1);
+  if (NULL == src_filepath)
+    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
-  /* Convert from UTF-8 to internal char repr. type (if required) */
-  lbc * src_filepath;
-  if (NULL == (src_filepath = lbc_utf8_convto(enc_src_filepath)))
-    return -1;
+  /* [u<8*src_filepath_size> src_filepath] */
+  READ_BYTES(esms_bs, src_filepath_size, src_filepath, return -1);
 
   LIBBLU_SCRIPTR_DEBUG(
     "  Filepath (src_filepath): '%" PRI_LBCS "'.\n",

@@ -1,20 +1,19 @@
 ###############################################################################
 # libBlu mainMuxer Makefile                                                   #
 ###############################################################################
-
 SHELL := /bin/sh
 CC :=  gcc
 LEX := flex
 YACC := bison
 
-CFLAGS := -std=c99 -Wall -Wextra -Winline -Werror -Wpointer-arith
-LDLIBS := -lm
-
-EXEC := mainMuxer
+EXEC    := mainMuxer
 VERSION := 0.5
 
 SRC_PATH = src
 OBJ_PATH = obj
+
+CFLAGS := -std=c99 -Wall -Wextra -Winline -Werror -Wpointer-arith -Werror=vla
+LDLIBS := -lm
 
 ###############################################################################
 # OS dependant                                                                #
@@ -41,7 +40,10 @@ EXTCFLAGS := -DLIBBLU_PROJECT_NAME="\"libBlu Muxer\"" -DLIBBLU_VERSION="\"$(VERS
 ifneq "$(findstring build, $(MAKECMDGOALS))" ""
 EXTCFLAGS += -D NDEBUG -O2 -Werror
 else
-EXTCFLAGS += -g -ggdb -O0
+EXTCFLAGS += -g -ggdb -fno-inline -fno-omit-frame-pointer
+ifneq "$(findstring windows, $(MAKECMDGOALS))" ""
+EXTCFLAGS += -gdwarf-2
+endif
 endif
 
 ifneq "$(findstring leaks, $(MAKECMDGOALS))" ""
@@ -144,7 +146,8 @@ SOURCE_FILES =																\
 	util/errorCodes.o														\
 	util/hashTables.o														\
 	util/libraries.o														\
-	util/textFilesHandling.o
+	util/textFilesHandling.o												\
+	util/string.o
 
 LEXER_FILES =
 PARSER_FILES =

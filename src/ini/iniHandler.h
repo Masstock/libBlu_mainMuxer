@@ -9,15 +9,9 @@ int parseIniFile(
   const lbc * filepath
 );
 
-static inline lbc * lookupIniFile(
+lbc * lookupIniFile(
   const IniFileContext ctx,
   const char * expr
-)
-{
-  return lookupIniFileNode(
-    ctx.tree,
-    expr
-  );
-}
+);
 
 #endif

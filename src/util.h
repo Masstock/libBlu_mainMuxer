@@ -11,8 +11,8 @@
 #define __LIBBLU_MUXER__UTIL_H__
 
 #include "util/bitReader.h"
-#include "util/bitWriter.h"
 #include "util/bitStreamHandling.h"
+#include "util/bitWriter.h"
 #include "util/circularBuffer.h"
 #include "util/common.h"
 #include "util/crcLookupTables.h"
@@ -21,6 +21,7 @@
 #include "util/hashTables.h"
 #include "util/libraries.h"
 #include "util/macros.h"
+#include "util/string.h"
 #include "util/textFilesHandling.h"
 
 #if defined(LIBBLU_CMAKE_USED)

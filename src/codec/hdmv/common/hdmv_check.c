@@ -1814,11 +1814,11 @@ static int _checkParametersStreamConstancyIC(
 
   bool invalid = false;
 
-#define ERROR(format, ...)  \
+#define PRIERROR(format, ...)  \
   do {LIBBLU_HDMV_CK_ERROR(format, ##__VA_ARGS__); invalid = true; } while (0)
 
   if (epoch_ic_param.stream_model != inter_def.stream_model)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, "
       "stream model parameter is different from other compositions "
       "('stream_model' == 0b%x, %s, was 0b%x, %s).\n",
@@ -1829,7 +1829,7 @@ static int _checkParametersStreamConstancyIC(
     );
 
   if (epoch_ic_param.user_interface_model != inter_def.user_interface_model)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, "
       "stream model parameter is different from other compositions "
       "('stream_model' == 0b%x, %s, was 0b%x, %s).\n",
@@ -1839,7 +1839,7 @@ static int _checkParametersStreamConstancyIC(
       HdmvStreamModelStr(epoch_ic_param.stream_model)
     );
 
-#undef ERROR
+#undef PRIERROR
 
   return invalid ? -1 : 0;
 }
@@ -1863,11 +1863,11 @@ static int _checkParametersEpochConstancyIC(
 {
   bool invalid = false;
 
-#define ERROR(format, ...)  \
+#define PRIERROR(format, ...)  \
   do {LIBBLU_HDMV_CK_ERROR(format, ##__VA_ARGS__); invalid = true; } while (0)
 
   if (prev_inter_def.stream_model != inter_def.stream_model)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, "
       "stream model parameter is different from previous composition "
       "('stream_model' == 0b%x, %s, was 0b%x, %s).\n",
@@ -1878,7 +1878,7 @@ static int _checkParametersEpochConstancyIC(
     );
 
   if (prev_inter_def.user_interface_model != inter_def.user_interface_model)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, "
       "stream model parameter is different from previous composition "
       "('stream_model' == 0b%x, %s, was 0b%x, %s).\n",
@@ -1889,7 +1889,7 @@ static int _checkParametersEpochConstancyIC(
     );
 
   if (prev_inter_def.composition_time_out_pts != inter_def.composition_time_out_pts)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, composition time out PTS parameter "
       "is different from previous composition "
       "('composition_time_out_pts' == %" PRId64 ", was %" PRId64 ").\n",
@@ -1898,7 +1898,7 @@ static int _checkParametersEpochConstancyIC(
     );
 
   if (prev_inter_def.selection_time_out_pts != inter_def.selection_time_out_pts)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, selection time out PTS parameter "
       "is different from previous composition "
       "('selection_time_out_pts' == %" PRId64 ", was %" PRId64 ").\n",
@@ -1907,7 +1907,7 @@ static int _checkParametersEpochConstancyIC(
     );
 
   if (prev_inter_def.user_time_out_duration != inter_def.user_time_out_duration)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, user time out duration parameter "
       "is different from previous composition "
       "('user_time_out_duration' == %" PRIu32 ", was %" PRIu32 ").\n",
@@ -1916,7 +1916,7 @@ static int _checkParametersEpochConstancyIC(
     );
 
   if (prev_inter_def.number_of_pages != inter_def.number_of_pages)
-    ERROR(
+    PRIERROR(
       "Invalid Interactive Composition, "
       "number of pages is different from previous composition "
       "('number_of_pages' == %" PRIu8 ", was %" PRIu8 ").\n",
@@ -1924,7 +1924,7 @@ static int _checkParametersEpochConstancyIC(
       prev_inter_def.number_of_pages
     );
 
-#undef ERROR
+#undef PRIERROR
 
   return invalid ? -1 : 0;
 }

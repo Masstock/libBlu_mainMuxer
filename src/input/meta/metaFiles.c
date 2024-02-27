@@ -388,11 +388,7 @@ int parseMetaFile(
 
   LibbluMetaFileTrack * track;
 
-#if defined(ARCH_WIN32)
-  input = lbc_fopen(filepath, "r, ccs=UTF-8");
-#else
   input = lbc_fopen(filepath, "r");
-#endif
   if (NULL == input)
     LIBBLU_ERROR_RETURN(
       "Unable to open file '%" PRI_LBCS "', %s (errno: %d).\n",

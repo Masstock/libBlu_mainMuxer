@@ -168,15 +168,16 @@ static int _initParsingOptionsHdmvContext(
   return 0;
 }
 
-int initHdmvContext(
-  HdmvContext * dst,
+HdmvContext * createHdmvContext(
   LibbluESParsingSettings * settings,
   const lbc * infilepath,
   HdmvStreamType type,
   bool generation_mode
 )
 {
-  assert(NULL != dst);
+  TOC();
+
+  assert(NULL != settings);
 
   if (NULL == infilepath)
     infilepath = settings->esFilepath;
@@ -185,8 +186,15 @@ int initHdmvContext(
     "Creation of the HDMV context for %s stream type.\n",
     HdmvStreamTypeStr(type)
   );
+  LIBBLU_HDMV_COM_DEBUG(
+    " Input file: '%s'.\n",
+    infilepath
+  );
 
-  HdmvContext ctx = {
+  HdmvContext * ctx = malloc(sizeof(HdmvContext));
+  if (NULL == ctx)
+    LIBBLU_HDMV_COM_ERROR_NRETURN("Memory allocation error.\n");
+  *ctx = (HdmvContext) {
     .param = {
       .generation_mode = generation_mode
     },
@@ -194,71 +202,73 @@ int initHdmvContext(
     .epoch.type = type
   };
 
-  if (_initOutputHdmvContext(&ctx.output, settings) < 0)
+  if (_initOutputHdmvContext(&ctx->output, settings) < 0)
     goto free_return;
-  if (_initInputHdmvContext(&ctx.input, ctx.output, infilepath) < 0)
+  if (_initInputHdmvContext(&ctx->input, ctx->output, infilepath) < 0)
     goto free_return;
-  _initSequencesLimit(&ctx);
+  _initSequencesLimit(ctx);
 
   /* Add script header place holder (empty header): */
   LIBBLU_HDMV_COM_DEBUG(" Write script header place-holder.\n");
-  if (writeEsmsHeader(ctx.output.file) < 0)
+  if (writeEsmsHeader(ctx->output.file) < 0)
     goto free_return;
 
   /* Set options: */
   /* 1. Based on presence of IG/PG headers */
-  bool next_byte_seg_hdr = isValidHdmvSegmentType(nextUint8(ctx.input.file));
-  ctx.param.raw_stream_input_mode = next_byte_seg_hdr;
-  ctx.param.force_retiming        = next_byte_seg_hdr;
+  bool next_byte_seg_hdr = isValidHdmvSegmentType(nextUint8(ctx->input.file));
+  ctx->param.raw_stream_input_mode = next_byte_seg_hdr;
+  ctx->param.force_retiming        = next_byte_seg_hdr;
 
   /* 2. Based on configuration file */
-  if (_initParsingOptionsHdmvContext(&ctx.options, settings) < 0)
+  if (_initParsingOptionsHdmvContext(&ctx->options, settings) < 0)
     goto free_return;
 
   /* 3. Based on user input options */
-  ctx.param.force_retiming       |= settings->options.hdmv.force_retiming;
-  ctx.param.initial_delay         = settings->options.hdmv.initial_timestamp;
+  ctx->param.force_retiming       |= settings->options.hdmv.force_retiming;
+  ctx->param.initial_delay         = settings->options.hdmv.initial_timestamp;
 
   LIBBLU_HDMV_COM_DEBUG(
     " Parsing settings summary:\n"
   );
   LIBBLU_HDMV_COM_DEBUG(
     "  - Raw input: %s.\n",
-    BOOL_INFO(ctx.param.raw_stream_input_mode)
+    BOOL_INFO(ctx->param.raw_stream_input_mode)
   );
-  if (ctx.param.raw_stream_input_mode)
+  if (ctx->param.raw_stream_input_mode)
     LIBBLU_HDMV_COM_DEBUG("   -> Expect timecodes values.\n");
   LIBBLU_HDMV_COM_DEBUG(
     "  - Force computation of timing values: %s.\n",
-    BOOL_INFO(ctx.param.force_retiming)
+    BOOL_INFO(ctx->param.force_retiming)
   );
   LIBBLU_HDMV_COM_DEBUG(
     "  - Initial timestamp: %" PRId64 ".\n",
-    ctx.param.initial_delay
+    ctx->param.initial_delay
   );
 
   LIBBLU_HDMV_COM_DEBUG(
     " Done.\n"
   );
 
-  *dst = ctx;
-  return 0;
+  return ctx;
 
 free_return:
-  cleanHdmvContext(ctx);
-  return -1;
+  destroyHdmvContext(ctx);
+  return NULL;
 }
 
-void cleanHdmvContext(
-  HdmvContext ctx
+void destroyHdmvContext(
+  HdmvContext * ctx
 )
 {
-  _cleanOutputHdmvContext(ctx.output);
-  _cleanInputHdmvContext(ctx.input);
-  cleanHdmvTimecodes(ctx.timecodes);
-  cleanHdmvDSState(ctx.ds[0]);
-  cleanHdmvDSState(ctx.ds[1]);
-  cleanHdmvEpochState(ctx.epoch);
+  if (NULL == ctx)
+    return;
+  _cleanOutputHdmvContext(ctx->output);
+  _cleanInputHdmvContext(ctx->input);
+  cleanHdmvTimecodes(ctx->timecodes);
+  cleanHdmvDSState(ctx->ds[0]);
+  cleanHdmvDSState(ctx->ds[1]);
+  cleanHdmvEpochState(ctx->epoch);
+  free(ctx);
 }
 
 int addOriginalFileHdmvContext(

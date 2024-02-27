@@ -10,6 +10,12 @@
 
 #include "igs_parser.h"
 
+#define IGS_COMPILER_FILE_EXT  lbc_str(".xml")
+#define IGS_COMPILER_FILE_EXT_SIZE  4
+
+#define IGS_COMPILER_FILE_MAGIC  "<?xml"
+#define IGS_COMPILER_FILE_MAGIC_SIZE  5
+
 /** \~english
  * \brief Test if filepath finishes with #IGS_COMPILER_FILE_EXT string.
  *
@@ -21,15 +27,12 @@ static bool isIgsCompilerFile_ext(
   const lbc * filepath
 )
 {
-  const lbc * filepathExt;
-  size_t filepathSize;
-
-  filepathSize = lbc_strlen(filepath);
-  if (filepathSize < IGS_COMPILER_FILE_EXT_SIZE)
+  size_t fp_size = lbc_strlen(filepath);
+  if (fp_size < IGS_COMPILER_FILE_EXT_SIZE)
     return false;
-  filepathExt = &filepath[filepathSize - IGS_COMPILER_FILE_EXT_SIZE];
+  const lbc * fp_ext = &filepath[fp_size - IGS_COMPILER_FILE_EXT_SIZE];
 
-  return lbc_equal(filepathExt, IGS_COMPILER_FILE_EXT);
+  return lbc_equal(fp_ext, IGS_COMPILER_FILE_EXT);
 }
 
 /** \~english
@@ -43,14 +46,12 @@ static bool isIgsCompilerFile_magic(
   const lbc * filepath
 )
 {
-  FILE * fd;
-  char magic[IGS_COMPILER_FILE_MAGIC_SIZE];
-  bool ret;
-
-  ret = false;
-  if (NULL == (fd = lbc_fopen(filepath, "rb")))
+  bool ret = false;
+  FILE * fd = lbc_fopen(filepath, "rb");
+  if (NULL == fd)
     goto free_return;
 
+  char magic[IGS_COMPILER_FILE_MAGIC_SIZE];
   if (fread(magic, IGS_COMPILER_FILE_MAGIC_SIZE, 1, fd) <= 0)
     goto free_return;
 
@@ -77,38 +78,32 @@ bool isIgsCompilerFile(
   assert(NULL != filepath);
 
   /* Check by filename extension (and by file header if unsuccessful) */
-  return
-    isIgsCompilerFile_ext(filepath)
-    || isIgsCompilerFile_magic(filepath)
-  ;
+  return isIgsCompilerFile_ext(filepath) || isIgsCompilerFile_magic(filepath);
 }
 
 int analyzeIgs(
   LibbluESParsingSettings * settings
 )
 {
-  HdmvTimecodes timecodes;
+  HdmvTimecodes timecodes = {0};
 
-  lbc * infilepathDup;
-  bool igsCompilerFileMode;
+  bool compiler_mode = isIgsCompilerFile(settings->esFilepath);
+  lbc * es_fp_dup = NULL;
 
-  initHdmvTimecodes(&timecodes);
-
-  igsCompilerFileMode = isIgsCompilerFile(settings->esFilepath);
-  if (igsCompilerFileMode) {
-#if !defined(DISABLE_IGS_COMPILER)
-    int ret;
-
+  if (compiler_mode) {
+#if defined(DISABLE_IGS_COMPILER)
+    LIBBLU_ERROR("Igs Compiler is not available in this program build !\n");
+    return -1;
+#else
     LIBBLU_HDMV_IGS_DEBUG("Processing input file as Igs Compiler file.\n");
 
     if (processIgsCompiler(settings->esFilepath, &timecodes, settings->options.conf_hdl) < 0)
       return -1;
 
-    ret = lbc_asprintf(
-      &infilepathDup,
-      "%" PRI_LBCS "%s",
-      settings->esFilepath,
-      HDMV_IGS_COMPL_OUTPUT_EXT
+    int ret = lbc_asprintf(
+      &es_fp_dup,
+      lbc_str("%" PRI_LBCS HDMV_IGS_COMPL_OUTPUT_EXT),
+      settings->esFilepath
     );
     if (ret < 0)
       LIBBLU_HDMV_IGS_ERROR_RETURN(
@@ -116,68 +111,69 @@ int analyzeIgs(
         strerror(errno),
         errno
       );
-
-#else
-    LIBBLU_ERROR("Igs Compiler is not available in this program build !\n");
-    return -1;
 #endif
   }
   else {
-    if (NULL == (infilepathDup = lbc_strdup(settings->esFilepath)))
+    if (NULL == (es_fp_dup = lbc_strdup(settings->esFilepath)))
       LIBBLU_HDMV_IGS_ERROR_RETURN("Memory allocation error.\n");
   }
 
-  HdmvContext ctx;
-  if (initHdmvContext(&ctx, settings, infilepathDup, HDMV_STREAM_TYPE_IGS, igsCompilerFileMode) < 0)
+  HdmvContext * ctx = createHdmvContext(settings, es_fp_dup, HDMV_STREAM_TYPE_IGS, compiler_mode);
+  if (NULL == ctx)
     goto free_return;
 
-  if (igsCompilerFileMode) {
+  if (compiler_mode) {
     /**
      * Add original XML file to script to target changes.
      * It is not used in script but will be check-summed. If the XML file is
      * updated, the script will be regenerated.
      */
-    if (addOriginalFileHdmvContext(&ctx, settings->esFilepath) < 0)
+    if (addOriginalFileHdmvContext(ctx, settings->esFilepath) < 0)
       goto free_return;
     /* Send timecode values to the HDMV context */
-    if (addTimecodesHdmvContext(&ctx, timecodes) < 0)
+    if (addTimecodesHdmvContext(ctx, timecodes) < 0)
       goto free_return;
   }
 
-  while (!isEofHdmvContext(&ctx)) {
+  while (!isEofHdmvContext(ctx)) {
     /* Progress bar : */
-    printFileParsingProgressionBar(inputHdmvContext(&ctx));
+    printFileParsingProgressionBar(inputHdmvContext(ctx));
 
-    if (parseHdmvSegment(&ctx) < 0)
+    if (parseHdmvSegment(ctx) < 0)
       goto free_return;
   }
 
   /* Process remaining segments: */
-  if (completeCurDSHdmvContext(&ctx) < 0)
+  if (completeCurDSHdmvContext(ctx) < 0)
     return -1;
 
-  lbc_printf(" === Parsing finished with success. ===              \n");
+  lbc_printf(
+    lbc_str(" === Parsing finished with success. ===              \n")
+  );
 
   /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
-  lbc_printf("Codec: HDMV/IGS Menu format.\n");
-  lbc_printf("Number of Display Sets: %u.\n", ctx.nb_DS);
-  lbc_printf("Number of Epochs: %u.\n", ctx.nb_epochs);
-  lbc_printf("Total number of segments per type:\n");
+  lbc_printf(
+    lbc_str("== Stream Infos =======================================================================\n")
+  );
+  lbc_printf(lbc_str("Codec: HDMV/IGS Menu format.\n"));
+  lbc_printf(lbc_str("Number of Display Sets: %u.\n"), ctx->nb_DS);
+  lbc_printf(lbc_str("Number of Epochs: %u.\n"), ctx->nb_epochs);
+  lbc_printf(lbc_str("Total number of segments per type:\n"));
   printContentHdmvContext(ctx);
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
 
-  if (closeHdmvContext(&ctx) < 0)
+  if (closeHdmvContext(ctx) < 0)
     goto free_return;
-  cleanHdmvContext(ctx);
+  destroyHdmvContext(ctx);
   cleanHdmvTimecodes(timecodes);
-  free(infilepathDup);
+  free(es_fp_dup);
   return 0;
 
 free_return:
-  cleanHdmvContext(ctx);
+  destroyHdmvContext(ctx);
   cleanHdmvTimecodes(timecodes);
-  free(infilepathDup);
-
+  free(es_fp_dup);
   return -1;
 }

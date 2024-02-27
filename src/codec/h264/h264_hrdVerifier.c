@@ -24,7 +24,7 @@ static int _outputCpbStatisticsHeader(
   FILE * fd
 )
 {
-  if (lbc_fprintf(fd, "initial time;;duration;fullness;\n") < 0)
+  if (lbc_fprintf(fd, lbc_str("initial time;;duration;fullness;\n")) < 0)
     LIBBLU_H264_HRDV_ERROR_RETURN(
       "Unable to write to CPB statistics file, %s (errno: %d).\n",
       strerror(errno),
@@ -37,7 +37,7 @@ static int _outputDpbStatisticsHeader(
   FILE * fd
 )
 {
-  if (lbc_fprintf(fd, "WIP - Currently used for debug purposes;\n") < 0)
+  if (lbc_fprintf(fd, lbc_str("WIP - Currently used for debug purposes;\n")) < 0)
     LIBBLU_H264_HRDV_ERROR_RETURN(
       "Unable to write to CPB statistics file, %s (errno: %d).\n",
       strerror(errno),
@@ -473,7 +473,7 @@ static int _outputCpbStatistics(
 
   int ret = lbc_fprintf(
     ctx->debug.cpb_fd,
-    "%" PRIu64 ";%" PRI_LBCS ";%" PRId64 ";%" PRIu64 ";\n",
+    lbc_str("%" PRIu64 ";%" PRI_LBCS ";%" PRId64 ";%" PRIu64 ";\n"),
     _uTimeH264HrdVerifierContext(ctx, initial_arrival_time, TIME_EXP),
     initial_arrival_time_str,
     _uTimeH264HrdVerifierContext(ctx, transfer_duration, TIME_EXP),
@@ -835,7 +835,7 @@ static int _outputDpbStatistics(
 
   int ret = lbc_fprintf(
     ctx->debug.dpb_fd,
-    "%u;%" PRIu64 ";%" PRI_LBCS ";",
+    lbc_str("%u;%" PRIu64 ";%" PRI_LBCS ";"),
     au_from_cpb->AU_idx,
     clockTimeTicks,
     clockTimeExpr
@@ -848,11 +848,11 @@ static int _outputDpbStatistics(
 
     assert(NULL != picture);
 
-    if (lbc_fprintf(ctx->debug.dpb_fd, "%u;", picture->AU_idx) < 0)
+    if (lbc_fprintf(ctx->debug.dpb_fd, lbc_str("%u;"), picture->AU_idx) < 0)
       goto free_return;
   }
 
-  if (lbc_fprintf(ctx->debug.dpb_fd, ";\n") < 0)
+  if (lbc_fprintf(ctx->debug.dpb_fd, lbc_str(";\n")) < 0)
     goto free_return;
 
   return 0;

@@ -9,44 +9,41 @@
 #include <string.h>
 #include <unistd.h>
 
+#define LBC_CWALK // Enable cwalk strings extension
 #include "igs_compiler.h"
-
-#define ECHO_DEBUG  LIBBLU_HDMV_IGS_COMPL_DEBUG
 
 static int _getFileWorkingDirectory(
   lbc ** dirPath,
   lbc ** xml_filename,
-  const lbc * xmlFilepath
+  const lbc * xml_filepath
 )
 {
-  enum lbc_cwk_path_style savedStyle;
-  const lbc * pathFilenamePart;
-  size_t pathLen;
-
   /* Set path style to the guessed one */
-  savedStyle = lbc_cwk_path_get_style();
-  lbc_cwk_path_set_style(lbc_cwk_path_guess_style(xmlFilepath));
+  enum cwk_path_style savedStyle = lbc_cwk_path_get_style();
+  lbc_cwk_path_set_style(lbc_cwk_path_guess_style(xml_filepath));
 
   /* Fetch directory: */
-  lbc_cwk_path_get_dirname(xmlFilepath, &pathLen);
-  if (!pathLen)
+  size_t path_len;
+  lbc_cwk_path_get_dirname(xml_filepath, &path_len);
+  if (!path_len)
     LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN(
       "Unable to fetch file directory path needed "
       "for relative path access.\n"
     );
 
-  if (NULL == (*dirPath = lbc_strndup(xmlFilepath, pathLen)))
+  if (NULL == (*dirPath = lbc_strndup(xml_filepath, path_len)))
     LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN("Memory allocation error.\n");
 
   /* Fetch filename: */
-  lbc_cwk_path_get_basename(xmlFilepath, &pathFilenamePart, &pathLen);
-  if (!pathLen)
+  const lbc * path_filename_part;
+  lbc_cwk_path_get_basename(xml_filepath, &path_filename_part, &path_len);
+  if (!path_len)
     LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN(
       "Unable to fetch filename needed "
       "for relative path access.\n"
     );
 
-  if (NULL == (*xml_filename = lbc_strdup(pathFilenamePart)))
+  if (NULL == (*xml_filename = lbc_strdup(path_filename_part)))
     LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN("Memory allocation error.\n");
 
   /* Restore saved path style */
@@ -63,17 +60,25 @@ static int _updateIgsCompilerWorkingDirectory(
   const lbc * xml_filename
 )
 {
+  assert(NULL == ctx->cur_working_dir);
+
   /* Save current working directory */
-  if (lbc_getcwd(ctx->initial_working_dir, PATH_BUFSIZE) < 0)
-    return -1;
-  ECHO_DEBUG("  Saved path: '%" PRI_LBCS "'.\n", ctx->initial_working_dir);
+  lbc * cur_wd = lbc_getcwd(NULL, 0);
+  if (NULL == cur_wd)
+    LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN(
+      "Unable to get working directory: %s (errno: %d).\n",
+      strerror(errno),
+      errno
+    );
+
+  ctx->init_working_dir = cur_wd;
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("  Saved path: '%" PRI_LBCS "'.\n", ctx->init_working_dir);
 
   /* Getting working directory based on input XML filename */
   if (_getFileWorkingDirectory(&ctx->cur_working_dir, &ctx->xml_filename, xml_filename) < 0)
     return -1;
-  ECHO_DEBUG("  New working path: '%" PRI_LBCS "'.\n", ctx->cur_working_dir);
-  ECHO_DEBUG("  XML filename: '%" PRI_LBCS "'.\n", ctx->xml_filename);
-  /* BUG: ctx->xml_filename as 'invalid' read errors, make a proper copy */
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("  New working path: '%" PRI_LBCS "'.\n", ctx->cur_working_dir);
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("  XML filename: '%" PRI_LBCS "'.\n", ctx->xml_filename);
 
   /* Redefinition of working path */
   if (lbc_chdir(ctx->cur_working_dir) < 0)
@@ -92,12 +97,12 @@ static void _resetOriginalDirIgsCompilerContext(
 )
 {
   if (NULL != ctx->cur_working_dir) {
-    if (lbc_chdir(ctx->initial_working_dir) < 0)
+    if (lbc_chdir(ctx->init_working_dir) < 0)
       LIBBLU_WARNING("Unable to retrieve original working path.\n");
     else
-      ECHO_DEBUG(
+      LIBBLU_HDMV_IGS_COMPL_DEBUG(
         " Original working path restored ('%" PRI_LBCS "').\n",
-        ctx->initial_working_dir
+        ctx->init_working_dir
       );
 
     free(ctx->cur_working_dir);
@@ -109,18 +114,20 @@ static void _cleanIgsCompilerContext(
   IgsCompilerContext ctx
 )
 {
-  ECHO_DEBUG("Free IGS Compiler context memory.\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Free IGS Compiler context memory.\n");
 
   cleanHdmvPictureLibraries(ctx.img_io_libs);
-  cleanXmlContext(ctx.xml_ctx);
+  destroyXmlContext(ctx.xml_ctx);
 
   for (unsigned i = 0; i < ctx.data.nb_compositions; i++)
     cleanIgsCompilerComposition(ctx.data.compositions[i]);
 
   _resetOriginalDirIgsCompilerContext(&ctx);
+  free(ctx.init_working_dir);
+  free(ctx.cur_working_dir);
   free(ctx.xml_filename);
 
-  ECHO_DEBUG("Done.\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Done.\n");
 }
 
 static int _initIgsCompilerContext(
@@ -130,28 +137,36 @@ static int _initIgsCompilerContext(
   IniFileContext conf_hdl
 )
 {
-  ECHO_DEBUG("IGS Compiler context initialization.\n");
+  assert(NULL != dst);
+  assert(NULL != xml_filename);
+  assert(NULL != timecodes);
+
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("IGS Compiler context initialization.\n");
   IgsCompilerContext ctx = {
     .conf_hdl  = conf_hdl,
     .timecodes = timecodes
   };
 
-  ECHO_DEBUG(" Initialization of libraries and ressources.\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG(" Initialization of libraries and ressources.\n");
 
   /* Init Picture libraries */
   initHdmvPictureLibraries(&ctx.img_io_libs);
 
+  /* Init the XML context */
+  if (NULL == (ctx.xml_ctx = createXmlContext()))
+    goto free_return;
+
   /* Set working directory to allow file-relative files handling: */
-  ECHO_DEBUG(" Redefinition of working directory.\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG(" Redefinition of working directory.\n");
   if (_updateIgsCompilerWorkingDirectory(&ctx, xml_filename) < 0)
     goto free_return;
 
-  ECHO_DEBUG("Done.\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Done.\n");
   *dst = ctx;
   return 0;
 
 free_return:
-  ECHO_DEBUG("Failed.\n");
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("Failed.\n");
   _cleanIgsCompilerContext(ctx);
   return -1;
 }
@@ -463,7 +478,7 @@ int processIgsCompiler(
 
   /* Create XML output filename */
   lbc * igs_out_filename;
-  int ret = lbc_asprintf(&igs_out_filename, HDMV_IGS_COMPL_OUTPUT_FMT, xml_filepath);
+  int ret = lbc_asprintf(&igs_out_filename, lbc_str(HDMV_IGS_COMPL_OUTPUT_FMT), xml_filepath);
   if (ret < 0)
     LIBBLU_HDMV_IGS_COMPL_ERROR_FRETURN("Memory allocation error.\n");
 

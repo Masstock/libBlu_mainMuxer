@@ -16,7 +16,6 @@
 #ifndef __LIBBLU_MUXER__CODECS__IGS_COMPILER__H__
 #define __LIBBLU_MUXER__CODECS__IGS_COMPILER__H__
 
-#include "../../../libs/cwalk/include/cwalk.h"
 #include "../../../ini/iniData.h"
 
 #include "igs_xmlParser.h"

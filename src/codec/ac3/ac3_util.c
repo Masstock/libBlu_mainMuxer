@@ -499,9 +499,12 @@ static void _printStreamInfos(
 )
 {
   /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: 16bits.\n",
+    lbc_str("== Stream Infos =======================================================================\n")
+  );
+
+  lbc_printf(
+    lbc_str("Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: 16bits.\n"),
     _streamFormatStr(ctx, stream_type),
     AudioFormatCodeStr(ctx->script->prop.audio_format),
     ctx->core.bsi.nbChannels,
@@ -510,11 +513,13 @@ static void _printStreamInfos(
 
   if (ctx->contains_mlp) {
     const MlpInformations * mi = &ctx->mlp.info;
-    lbc_printf("MLP max output bit-depth: %u bits.\n", mi->observed_bit_depth);
+    lbc_printf(lbc_str("MLP max output bit-depth: %u bits.\n"), mi->observed_bit_depth);
   }
 
   printStreamDurationEsmsHandler(ctx->script);
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
 }
 
 int completeAc3Context(

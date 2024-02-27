@@ -72,7 +72,7 @@ void setFunHashTable(
   assert((NULL == key_free_fun) ^ !table->numeric_key);
 
   if (NULL == key_hash_fun && !table->numeric_key)
-    key_hash_fun = (HashTable_keyHashFun) fnv1aStrHash;
+    key_hash_fun = (HashTable_keyHashFun) lbc_fnv1aStrHash;
   if (NULL == key_comp_fun && !table->numeric_key)
     key_comp_fun = (HashTable_keyCompFun) strcmp;
   if (NULL == key_free_fun && !table->numeric_key)

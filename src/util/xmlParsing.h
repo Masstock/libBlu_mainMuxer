@@ -14,79 +14,23 @@
 #define __LIBBLU_MUXER__UTIL__XML_PARSING_H__
 
 #include "common.h"
+#include "macros.h"
 
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/xpath.h>
+/* ### Types : ############################################################# */
 
-/** \~english
- * \brief libXML boolean true macro.
- */
-#define XML_TRUE  1
+typedef struct _XmlCtx *XmlCtxPtr;
+typedef struct _xmlXPathObject *XmlXPathObjectPtr;
+typedef struct _xmlNode *XmlNodePtr;
 
-/** \~english
- * \brief libXML boolean false macro.
- */
-#define XML_FALSE 0
+/* ### Context initialization/destruction : ################################ */
 
-/** \~english
- * \brief Get number of set nodes in given xmlPathObject.
- *
- * If given pointer is NULL, value is zero.
- * Otherwise, value is a positive int.
- */
-#define XML_PATH_NODE_NB(xmlXPathObjectPtr)                                   \
-  ((NULL == (xmlXPathObjectPtr)                                               \
-    && NULL == (xmlXPathObjectPtr)->nodesetval                                \
-   ) ? 0 : (xmlXPathObjectPtr)->nodesetval->nodeNr)
+XmlCtxPtr createXmlContext(
+  void
+);
 
-/** \~english
- * \brief Set boolean true if given set node int idx exists in
- * given xmlPathObject.
- *
- * If given pointer is NULL, does not carry any node or if
- * given index is out of range, value is false.
- * Otherwise, value is true.
- */
-#define XML_PATH_NODE_EXISTS(xmlXPathObjectPtr, idx)                          \
-  (0 <= (idx) && (idx) < XML_PATH_NODE_NB(xmlXPathObjectPtr))
-
-/** \~english
- * \brief Get set node of given int idx from given xmlPathObject.
- *
- * If given node does not exists, value is the NULL pointer.
- * Otherwise, value is a xmlNodePtr.
- */
-#define XML_PATH_NODE(xmlXPathObjectPtr, idx)                                 \
-  (                                                                           \
-    (                                                                         \
-      XML_PATH_NODE_EXISTS(xmlXPathObjectPtr, idx)                            \
-    ) ?                                                                       \
-    (xmlXPathObjectPtr)->nodesetval->nodeTab[(idx)]                           \
-    : NULL                                                                    \
-  )
-
-#define XML_MAX_SAVED_PATHS  16
-
-typedef struct {
-  xmlDocPtr libxml_ctx;
-
-  /* Used when call setRootPathFromPathObjectIgsXmlFile(): */
-  xmlNodePtr saved_nodes_stack[XML_MAX_SAVED_PATHS];
-  unsigned saved_nodes_stack_height;
-
-  unsigned last_parsed_node_line;
-} XmlCtx;
-
-static inline void cleanXmlContext(
-  XmlCtx ctx
-)
-{
-  while (0 < ctx.saved_nodes_stack_height--) {
-    xmlNodePtr node = ctx.saved_nodes_stack[ctx.saved_nodes_stack_height];
-    xmlFreeNode(xmlDocSetRootElement(ctx.libxml_ctx, node));
-  }
-}
+void destroyXmlContext(
+  XmlCtxPtr ctx
+);
 
 /** \~english
  * \brief Loads in given context IGS XML description file.
@@ -95,18 +39,71 @@ static inline void cleanXmlContext(
  * \param filePath Filepath to XML file.
  * \return int A zero value on success, otherwise a negative value.
  */
-int loadIgsXmlFile(
-  XmlCtx * ctx,
+int loadXmlCtx(
+  XmlCtxPtr ctx,
   const lbc * filePath
 );
 
 /** \~english
  * \brief Close and release loaded IGS XML description file.
  *
- * \param ctx Context containing a XML file opened by #loadIgsXmlFile().
+ * \param ctx Context containing a XML file opened by #loadXmlCtx().
  */
-void releaseIgsXmlFile(
-  XmlCtx * ctx
+void releaseXmlCtx(
+  XmlCtxPtr ctx
+);
+
+/* ### Context status : #################################################### */
+
+unsigned lastParsedNodeLineXmlCtx(
+  const XmlCtxPtr ctx
+);
+
+/* ### XML Node : ########################################################## */
+
+const lbc * getNameXmlNode(
+  const XmlNodePtr node
+);
+
+/* ### XML XPath : ######################################################### */
+
+/** \~english
+ * \brief Get number of nodes in given XML XPath object.
+ *
+ * If given pointer is NULL, value is zero.
+ * Otherwise, value is a positive int.
+ */
+unsigned getNbNodesXmlXPathObject(
+  const XmlXPathObjectPtr xpath_obj
+);
+
+/** \~english
+ * \brief Return true if given node exists in given XML XPath object.
+ *
+ * \param xpath_obj XPath object.
+ * \param node_idx Index of the looked node.
+ * \return True if the node exists. False otherwise if the node does not exists
+ * or given object pointer is NULL.
+ */
+static inline bool existsNodeXmlXPathObject(
+  const XmlXPathObjectPtr xpath_obj,
+  unsigned node_idx
+)
+{
+  return (node_idx < getNbNodesXmlXPathObject(xpath_obj));
+}
+
+/** \~english
+ * \brief Get a node from given XML XPath object.
+ *
+ * \param xpath_obj XPath object.
+ * \param node_idx Index of the fetched node.
+ * \return XmlNodePtr Looked XML node on sucess, otherwise a NULL pointer is
+ * returned on error.
+ */
+XmlNodePtr getNodeXmlXPathObject(
+  const XmlXPathObjectPtr xpath_obj,
+  unsigned node_idx
 );
 
 /** \~english
@@ -114,11 +111,11 @@ void releaseIgsXmlFile(
  *
  * \param ctx Context to use.
  * \param path XPath format request.
- * \return xmlXPathObjectPtr PathObject of request (or NULL pointer).
+ * \return XmlXPathObjectPtr PathObject of request (or NULL pointer).
  */
-xmlXPathObjectPtr getPathObjectIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path
+XmlXPathObjectPtr getPathObjectXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path
 );
 
 /** \~english
@@ -128,11 +125,11 @@ xmlXPathObjectPtr getPathObjectIgsXmlFile(
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
- * \return xmlXPathObjectPtr PathObject of request (or NULL pointer).
+ * \return XmlXPathObjectPtr PathObject of request (or NULL pointer).
  */
-xmlXPathObjectPtr getPathObjectFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+XmlXPathObjectPtr getPathObjectFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   va_list args
 );
 
@@ -143,13 +140,25 @@ xmlXPathObjectPtr getPathObjectFromExprVaIgsXmlFile(
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
- * \return xmlXPathObjectPtr PathObject of request (or NULL pointer).
+ * \return XmlXPathObjectPtr PathObject of request (or NULL pointer).
  */
-xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+XmlXPathObjectPtr getPathObjectFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   ...
 );
+
+bool existsPathObjectFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
+  ...
+);
+
+void destroyXmlXPathObject(
+  XmlXPathObjectPtr xpath_obj
+);
+
+/* ### Root definition : ################################################### */
 
 /** \~english
  * \brief Define an intermediate new root of XML path.
@@ -160,25 +169,27 @@ xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
  * \return int A zero value on success, otherwise a negative value.
  *
  * Old root is stored in context and can be retrived by
- * #restoreLastRootIgsXmlFile().
+ * #restoreLastRootXmlCtx().
  * Multiple recursive roots can be used, older ones are stored
  * in a LIFO pile (Last In First Out pile).
  */
-int setRootPathFromPathObjectIgsXmlFile(
-  XmlCtx * ctx,
-  xmlXPathObjectPtr xpath_obj,
+int setRootPathFromPathObjectXmlCtx(
+  XmlCtxPtr ctx,
+  XmlXPathObjectPtr xpath_obj,
   int idx
 );
 
 /** \~english
- * \brief Restore last old #setRootPathFromPathObjectIgsXmlFile() saved root.
+ * \brief Restore last old #setRootPathFromPathObjectXmlCtx() saved root.
  *
  * \param ctx Context to use.
  * \return int A zero value on success, otherwise a negative value.
  */
-int restoreLastRootIgsXmlFile(
-  XmlCtx * ctx
+int restoreLastRootXmlCtx(
+  XmlCtxPtr ctx
 );
+
+/* ### Values parsing : #################################################### */
 
 /** \~english
  * \brief Fetch and return a string from given XPath expression.
@@ -186,13 +197,13 @@ int restoreLastRootIgsXmlFile(
  * \param ctx Context to use.
  * \param path XPath format request.
  * \param idx Path node set index to use.
- * \return xmlChar* String result of request (or NULL pointer).
+ * \return lbc* String result of request (or NULL pointer).
  *
- * Returned pointer must be freed after use using #freeXmlCharPtr().
+ * Returned pointer must be freed after use.
  */
-xmlChar * getStringIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path,
+lbc * getStringXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path,
   int idx
 );
 
@@ -203,13 +214,13 @@ xmlChar * getStringIgsXmlFile(
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param args Additional path arguments pile.
- * \return xmlChar* String result of request (or NULL pointer).
+ * \return lbc* String result of request (or NULL pointer).
  *
- * Returned pointer must be freed after use using #freeXmlCharPtr().
+ * Returned pointer must be freed after use.
  */
-xmlChar * getStringFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+lbc * getStringFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   va_list args
 );
 
@@ -220,13 +231,13 @@ xmlChar * getStringFromExprVaIgsXmlFile(
  * \param ctx Context to use.
  * \param path_format XPath format formatted request.
  * \param ... Additional path formatting arguments.
- * \return xmlChar* String result of request (or NULL pointer).
+ * \return lbc* String result of request (or NULL pointer).
  *
- * Returned pointer must be freed after use using #freeXmlCharPtr().
+ * Returned pointer must be freed after use.
  */
-xmlChar * getStringFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+lbc * getStringFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   ...
 );
 
@@ -237,8 +248,8 @@ xmlChar * getStringFromExprIgsXmlFile(
  *
  * Set pointer to NULL after free.
  */
-void freeXmlCharPtr(
-  xmlChar ** string
+void freelbcPtr(
+  lbc ** string
 );
 
 /** \~english
@@ -249,9 +260,9 @@ void freeXmlCharPtr(
  * \param path XPath format request.
  * \return int Positive or zero on success (or a negative value otherwise).
  */
-int getNbObjectsIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path
+int getNbObjectsXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path
 );
 
 /** \~english
@@ -263,9 +274,9 @@ int getNbObjectsIgsXmlFile(
  * \param args Additional path arguments pile.
  * \return int Positive or zero on success (or a negative value otherwise).
  */
-int getNbObjectsFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+int getNbObjectsFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   va_list args
 );
 
@@ -278,9 +289,9 @@ int getNbObjectsFromExprVaIgsXmlFile(
  * \param ... Additional path formatting arguments.
  * \return int Positive or zero on success (or a negative value otherwise).
  */
-int getNbObjectsFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+int getNbObjectsFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   ...
 );
 
@@ -293,13 +304,13 @@ int getNbObjectsFromExprIgsXmlFile(
  * \param path XPath format request.
  * \return int A zero value on success, otherwise a negative value.
  *
- * String pointer must be freed after use using #freeXmlCharPtr().
+ * String pointer must be freed after use using #freelbcPtr().
  */
-int getIfExistsStringIgsXmlFile(
-  XmlCtx * ctx,
-  xmlChar ** string,
-  const xmlChar * def,
-  const char * path
+int getIfExistsStringXmlCtx(
+  XmlCtxPtr ctx,
+  lbc ** string,
+  const lbc * def,
+  const lbc * path
 );
 
 /** \~english
@@ -313,13 +324,13 @@ int getIfExistsStringIgsXmlFile(
  * \param args Additional path arguments pile.
  * \return int A zero value on success, otherwise a negative value.
  *
- * String pointer must be freed after use using #freeXmlCharPtr().
+ * String pointer must be freed after use using #freelbcPtr().
  */
-int getIfExistsStringFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  xmlChar ** string,
-  const xmlChar * def,
-  const char * path_format,
+int getIfExistsStringFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  lbc ** string,
+  const lbc * def,
+  const lbc * path_format,
   va_list args
 );
 
@@ -334,31 +345,31 @@ int getIfExistsStringFromExprVaIgsXmlFile(
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  *
- * String pointer must be freed after use using #freeXmlCharPtr().
+ * String pointer must be freed after use using #freelbcPtr().
  */
-int getIfExistsStringFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  xmlChar ** string,
-  const xmlChar * def,
-  const char * path_format,
+int getIfExistsStringFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  lbc ** string,
+  const lbc * def,
+  const lbc * path_format,
   ...
 );
 
 /* ### Signed integers : ################################################### */
 
-int getIfExistsInt64FromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsInt64FromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   int64_t * dst,
   int64_t def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
-int getIfExistsInt64FromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsInt64FromExprXmlCtx(
+  XmlCtxPtr ctx,
   int64_t * dst,
   int64_t def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
@@ -371,11 +382,11 @@ int getIfExistsInt64FromExprIgsXmlFile(
  * \param path XPath format request.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsLongFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsLongFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   long * dst,
   long def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
@@ -390,11 +401,11 @@ int getIfExistsLongFromExprVaIgsXmlFile(
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsLongFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsLongFromExprXmlCtx(
+  XmlCtxPtr ctx,
   long * dst,
   long def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
@@ -409,11 +420,11 @@ int getIfExistsLongFromExprIgsXmlFile(
  * \param args Additional path arguments pile.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsIntegerFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsIntegerFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   int * dst,
   int def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
@@ -428,11 +439,11 @@ int getIfExistsIntegerFromExprVaIgsXmlFile(
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsIntegerFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsIntegerFromExprXmlCtx(
+  XmlCtxPtr ctx,
   int * dst,
   int def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
@@ -449,11 +460,11 @@ int getIfExistsIntegerFromExprIgsXmlFile(
  * \param args Additional path arguments pile.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsBooleanFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsBooleanFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   bool * dst,
   bool def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
@@ -468,63 +479,63 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsBooleanFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsBooleanFromExprXmlCtx(
+  XmlCtxPtr ctx,
   bool * dst,
   bool def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
 /* ### Floating point : #################################################### */
 
-int getIfExistsDoubleFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsDoubleFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   double * dst,
   double def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
-int getIfExistsDoubleFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsDoubleFromExprXmlCtx(
+  XmlCtxPtr ctx,
   double * dst,
   double def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
-int getIfExistsFloatFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsFloatFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   float * dst,
   float def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
-int getIfExistsFloatFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsFloatFromExprXmlCtx(
+  XmlCtxPtr ctx,
   float * dst,
   float def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
 /* ### Unsigned integers : ################################################# */
 
-int getIfExistsUint64FromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUint64FromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
-int getIfExistsUint64FromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUint64FromExprXmlCtx(
+  XmlCtxPtr ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 
@@ -538,11 +549,11 @@ int getIfExistsUint64FromExprIgsXmlFile(
  * \param path XPath format request.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsUnsignedFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUnsignedFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   unsigned * dst,
   unsigned def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 );
 
@@ -557,11 +568,11 @@ int getIfExistsUnsignedFromExprVaIgsXmlFile(
  * \param ... Additional path formatting arguments.
  * \return int A zero value on success, otherwise a negative value.
  */
-int getIfExistsUnsignedFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUnsignedFromExprXmlCtx(
+  XmlCtxPtr ctx,
   unsigned * dst,
   unsigned def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 );
 

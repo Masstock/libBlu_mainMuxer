@@ -843,9 +843,11 @@ int analyzeLpcm(
   esms->PTS_final = pts;
 
   /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n",
+    lbc_str("== Stream Infos =======================================================================\n")
+  );
+  lbc_printf(
+    lbc_str("Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %u bits.\n"),
     LibbluStreamCodingTypeStr(esms->prop.coding_type),
     AudioFormatCodeStr(esms->prop.audio_format),
     fmt->common_fields.wChannels,
@@ -853,7 +855,9 @@ int analyzeLpcm(
     valueBitDepthCode(esms->prop.bit_depth)
   );
   printStreamDurationEsmsHandler(esms);
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
 
   if (completePesCuttingScriptEsmsHandler(essOutput, esms) < 0)
     return -1;

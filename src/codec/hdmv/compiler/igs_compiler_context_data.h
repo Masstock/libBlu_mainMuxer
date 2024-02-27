@@ -17,10 +17,10 @@
 typedef struct {
   IniFileContext conf_hdl;
   HdmvPictureLibraries img_io_libs;
-  XmlCtx xml_ctx;
+  XmlCtxPtr xml_ctx;
   HdmvTimecodes * timecodes;
 
-  lbc initial_working_dir[PATH_BUFSIZE];
+  lbc * init_working_dir;
   lbc * cur_working_dir;
   lbc * xml_filename;
 

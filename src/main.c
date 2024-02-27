@@ -34,7 +34,7 @@ static void printHelp(
   void
 )
 {
-#define P(str) lbc_printf(str "\n")
+#define P(str) lbc_printf(lbc_str(str "\n"))
 
   P(" libBlu mainMuxer (temp. name) is an experimental MPEG-2 Transport     ");
   P(" Stream muxer used to multiplex video, audio and other kind of         ");
@@ -393,14 +393,14 @@ static void printHelp(
   P(" ===================================================================== ");
 #undef P
 
-  lbc_printf("\n");
+  lbc_printf(lbc_str("\n"));
 }
 
 static void printDebugOptions(
   void
 )
 {
-#define P(str) lbc_printf(str "\n")
+#define P(str) lbc_printf(lbc_str(str "\n"))
   P(" = Debugging messages categories : =================================== ");
   P(" List of debugging messages categories:                                ");
   printDebuggingMessageCategoriesListWithDesc(3);
@@ -410,8 +410,67 @@ static void printDebugOptions(
   P(" ===================================================================== ");
 #undef P
 
-  lbc_printf("\n");
+  lbc_printf(lbc_str("\n"));
 }
+
+#if defined(ARCH_WIN32)
+/* ### Windows-API specific ################################################ */
+
+static int argc_wchar;
+static LPWSTR * argv_wchar;
+static lbc * optarg_buf;
+
+static void _unloadWin32CommandLineArguments(
+  void
+)
+{
+  LocalFree(argv_wchar);
+  free(optarg_buf);
+}
+
+static const lbc * _getoptarg(
+  void
+)
+{
+  if (0 == argc_wchar) {
+    /* Load Windows API Unicode command line arguments */
+    argv_wchar = CommandLineToArgvW(
+      GetCommandLineW(),
+      &argc_wchar
+    );
+  }
+
+  const LPWSTR woptarg = argv_wchar[optind-1];
+
+  /* Convert string from Windows UTF-16 to UTF-8 */
+  lbc * converted_string = winWideCharToUtf8(woptarg);
+  if (NULL == converted_string)
+    return NULL;
+
+  /* Update optarg buffer */
+  free(optarg_buf);
+  optarg_buf = converted_string;
+
+  return optarg_buf; // Return the buffer
+}
+
+#else
+
+static void _unloadWin32CommandLineArguments(
+  void
+)
+{
+  // Do nothing
+}
+
+static const lbc * _getoptarg(
+  void
+)
+{
+  return (lbc *) optarg;
+}
+
+#endif
 
 #define ERROR_RETURN(format, ...)  \
   __LIBBLU_ERROR_INSTR_(return EXIT_FAILURE, format, ##__VA_ARGS__)
@@ -427,20 +486,6 @@ int main(
   if (NULL == setlocale(LC_NUMERIC, "C"))
     ERROR_RETURN("Unable to set locale.\n");
 
-#if defined(ARCH_WIN32)
-  /* On windows, get the command line version with unicode characters
-  (due to lack of UTF-8). */
-  int argc_wchar;
-  LPWSTR * argv_wchar = CommandLineToArgvW(
-    GetCommandLineW(),
-    &argc_wchar
-  );
-
-  /* Initiate the iconv library used for UTF-8/Windows locale conversions */
-  if (lb_init_iconv() < 0)
-    return -1;
-#endif
-
 #if 0
   CrcParam crc_param = (CrcParam) {
     .length = 8,
@@ -452,7 +497,7 @@ int main(
   exit(0);
 #endif
 
-  lbc_printf(LIBBLU_PROJECT_NAME " " LIBBLU_VERSION " (" PROG_ARCH ")\n\n");
+  lbc_printf(lbc_str(LIBBLU_PROJECT_NAME " " LIBBLU_VERSION " (" PROG_ARCH ")\n\n"));
 
   /* Command line options parsing */
   const lbc * conf_fp   = NULL; // Configuration INI file
@@ -498,12 +543,6 @@ int main(
 
   opterr = 0; // Inhibit getopt error message printing
 
-#if defined(ARCH_WIN32)
-#  define ARG_VAL  argv_wchar[optind-1]
-#else
-#  define ARG_VAL  optarg
-#endif
-
   int opt;
   while (0 <= (opt = getopt_long_only(argc, argv, "", prog_cmd_opts, NULL))) {
     switch (opt) {
@@ -511,7 +550,9 @@ int main(
 #if !defined(DISABLE_INI)
       if (NULL == optarg)
         LIBBLU_ERROR_RETURN("Expect a configuration filename after '-c'.\n");
-      conf_fp = ARG_VAL;
+      conf_fp = _getoptarg();
+      if (NULL == conf_fp)
+        return EXIT_FAILURE;
 #else
       LIBBLU_ERROR_RETURN("Configuration file unsupported in this build.\n");
 #endif
@@ -537,13 +578,17 @@ int main(
     case INPUT:
       if (NULL == optarg)
         LIBBLU_ERROR_RETURN("Expect a META filename after '-i'.\n");
-      input_fp = ARG_VAL;
+      input_fp = _getoptarg();
+      if (NULL == input_fp)
+        return EXIT_FAILURE;
       break;
 
     case OUTPUT:
       if (NULL == optarg)
         LIBBLU_ERROR_RETURN("Expect a output filename after '-o'.\n");
-      output_fp = ARG_VAL;
+      output_fp = _getoptarg();
+      if (NULL == output_fp)
+        return EXIT_FAILURE;
       break;
 
     case PRINT_DEBUG_OPTIONS:
@@ -553,7 +598,11 @@ int main(
     case LOG_FILE:
       if (NULL == optarg)
         LIBBLU_ERROR_RETURN("Expect a log filename after '--log'.\n");
-      if (initDebugLogFile(ARG_VAL) < 0)
+      const lbc * log_filepath = _getoptarg();
+      if (NULL == log_filepath)
+        return EXIT_FAILURE;
+
+      if (initDebugLogFile(log_filepath) < 0)
         return EXIT_FAILURE;
       break;
 
@@ -625,29 +674,25 @@ int main(
     destroyLibbluMuxingContext(ctx);
   }
 
-#if defined(ARCH_WIN32)
-  /* On windows, release the iconv libary handle */
-  if (lb_close_iconv() < 0)
-    goto free_return;
-#endif
-
   clock_t duration = clock() - start;
   lbc_printf(
-    "Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n",
+    lbc_str("Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n"),
     duration, (1.0 * duration) / CLOCKS_PER_SEC, (long) CLOCKS_PER_SEC
   );
 
   /* DO NOT clean muxing settings since these has been managed by mainMux(). */
   cleanIniFileContext(conf_file);
+  _unloadWin32CommandLineArguments();
   return EXIT_SUCCESS;
 
 free_return:
   duration = clock() - start;
   lbc_printf(
-    "Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n",
+    lbc_str("Total execution time: %ld ticks (%.2fs, %ld ticks/s).\n"),
     duration, (1.0 * duration) / CLOCKS_PER_SEC, (long) CLOCKS_PER_SEC
   );
 
   cleanIniFileContext(conf_file);
+  _unloadWin32CommandLineArguments();
   return EXIT_FAILURE;
 }

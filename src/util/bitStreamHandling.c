@@ -11,9 +11,8 @@
 #include "bitStreamHandling.h"
 
 #if defined(ARCH_WIN32)
-#  include <pdh.h>
-#  include <winnt.h>
-#  include <fileapi.h>
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
 #else
 #  include <sys/stat.h>
 #endif
@@ -764,10 +763,10 @@ void crcTableGenerator(
   uint32_t poly   = param.poly;
   const lbc * eol = lbc_str("");
 
-  lbc_printf("{\n");
+  lbc_printf(lbc_str("{\n"));
   for (unsigned byte = 0; byte < 256; byte++) {
     if (!(byte & 0x7))
-      lbc_printf("%s  ", eol);
+      lbc_printf(lbc_str("%s  "), eol);
 
     uint64_t crc = byte;
     for (unsigned bit = 0; bit < length; bit++) {
@@ -781,29 +780,31 @@ void crcTableGenerator(
         crc <<= 1;
     }
 
-    lbc_printf("0x%0*" PRIX64 ", ", length >> 2, crc);
+    lbc_printf(lbc_str("0x%0*" PRIX64 ", "), length >> 2, crc);
     eol = lbc_str("\n");
   }
 
-  lbc_printf("\n}\n");
+  lbc_printf(lbc_str("\n}\n"));
 }
 
 #if defined(ARCH_WIN32)
 
 int getFileSize(
   const lbc * filename,
-  int64_t * size
+  int64_t * size_ret
 )
 {
-  HANDLE file;
-  LARGE_INTEGER st;
-
   assert(NULL != filename);
-  assert(NULL != size);
+  assert(NULL != size_ret);
 
-  /* lbc is wchar_t on WIN32 */
-  file = CreateFileW(
-    filename,
+  /* Convert filename to UTF-16 */
+  wchar_t * wc_filename = winUtf8ToWideChar(filename);
+  if (NULL == wc_filename)
+    return -1;
+
+  /* Create a file handle using Windows API */
+  HANDLE file_handle = CreateFileW(
+    wc_filename,
     GENERIC_READ,
     FILE_SHARE_READ | FILE_SHARE_WRITE,
     NULL,
@@ -811,21 +812,22 @@ int getFileSize(
     FILE_ATTRIBUTE_NORMAL,
     NULL
   );
-  if (file == INVALID_HANDLE_VALUE)
+
+  free(wc_filename); // Not needed anymore
+
+  if (file_handle == INVALID_HANDLE_VALUE)
     return -1;
 
-  if (!GetFileSizeEx(file, &st))
-    goto free_return;
+  /* Use the file handle to get file size */
+  int ret = -1;
+  LARGE_INTEGER st;
+  if (GetFileSizeEx(file_handle, &st)) {
+    *size_ret = (int64_t) st.QuadPart;
+    ret = 0;
+  }
 
-  *size = (int64_t) st.QuadPart;
-
-  CloseHandle(file);
-
-  return 0;
-
-free_return:
-  CloseHandle(file);
-  return -1;
+  CloseHandle(file_handle);
+  return ret;
 }
 
 #else
@@ -841,7 +843,7 @@ int getFileSize(
   assert(NULL != size);
 
   /* lbc is char on Unix */
-  if (stat(filename, &st) == -1)
+  if (stat((char *) filename, &st) == -1)
     LIBBLU_ERROR_RETURN(
       "Unable to get '%" PRI_LBCS "' file stats, %s (errno: %d).\n",
       filename,

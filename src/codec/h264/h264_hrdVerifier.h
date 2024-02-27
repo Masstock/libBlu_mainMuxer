@@ -219,7 +219,7 @@ void echoDebugH264HrdVerifierContext(
 #define ECHO_DEBUG_CPB_HRDV_CTX(ctx, format, ...)                             \
   echoDebugH264HrdVerifierContext(                                            \
     ctx, LIBBLU_DEBUG_H264_HRD_CPB,                                           \
-    "H.264 HRD Verifier CPB: " lbc_str(format), ##__VA_ARGS__                 \
+    lbc_str("H.264 HRD Verifier CPB: " format), ##__VA_ARGS__                 \
   )
 
 #define ECHO_DEBUG_NH_CPB_HRDV_CTX(ctx, format, ...)                          \
@@ -230,7 +230,7 @@ void echoDebugH264HrdVerifierContext(
 #define ECHO_DEBUG_DPB_HRDV_CTX(ctx, format, ...)                             \
   echoDebugH264HrdVerifierContext(                                            \
     ctx, LIBBLU_DEBUG_H264_HRD_DPB,                                           \
-    "H.264 HRD Verifier DPB: " lbc_str(format), ##__VA_ARGS__                 \
+    lbc_str("H.264 HRD Verifier DPB: " format), ##__VA_ARGS__                 \
   )
 
 #define ECHO_DEBUG_NH_DPB_HRDV_CTX(ctx, format, ...)                          \

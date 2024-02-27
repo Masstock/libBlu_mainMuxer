@@ -239,9 +239,11 @@ static void _printStreamInfos(
 )
 {
   /* Display infos : */
-  lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %ubits.\n",
+    lbc_str("== Stream Infos =======================================================================\n")
+  );
+  lbc_printf(
+    lbc_str("Codec: %s, %s (%u channels), Sample rate: %u Hz, Bits per sample: %ubits.\n"),
     LibbluStreamCodingTypeStr(ctx->script->prop.coding_type),
     AudioFormatCodeStr(ctx->script->prop.audio_format),
     _getNbChannels(ctx),
@@ -249,7 +251,9 @@ static void _printStreamInfos(
     valueBitDepthCode(ctx->script->prop.bit_depth)
   );
   printStreamDurationEsmsHandler(ctx->script);
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
 }
 
 int completeDtsContext(

@@ -12,15 +12,71 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 
+#define LBC_VARIADIC
 #include "xmlParsing.h"
 #include "errorCodesVa.h"
 
+/* ### Error returns : ##################################################### */
 
+#define LIBBLU_XML_PREFIX "XML: "
 
-/* ========================== */
+#define LIBBLU_XML_ERROR_RETURN(format, ...)                                  \
+  LIBBLU_ERROR_RETURN(LIBBLU_XML_PREFIX format, ##__VA_ARGS__)
 
-int loadIgsXmlFile(
-  XmlCtx * ctx,
+#define LIBBLU_XML_ERROR_NRETURN(format, ...)                                 \
+  LIBBLU_ERROR_NRETURN(LIBBLU_XML_PREFIX format, ##__VA_ARGS__)
+
+#define LIBBLU_XML_ERROR_FRETURN(format, ...)                                 \
+  LIBBLU_ERROR_FRETURN(LIBBLU_XML_PREFIX format, ##__VA_ARGS__)
+
+/* ### Types : ############################################################# */
+
+#define XML_MAX_SAVED_PATHS  16
+
+struct _XmlCtx {
+  xmlDocPtr libxml_ctx;
+
+  /* Used when call setRootPathFromPathObjectXmlCtx(): */
+  xmlNodePtr saved_nodes_stack[XML_MAX_SAVED_PATHS];
+  unsigned saved_nodes_stack_height;
+
+  unsigned last_parsed_node_line;
+};
+
+static lbc * _xmlCharStringToLbc(
+  const xmlChar * xml_string
+)
+{
+  return lbc_strdup(xml_string);
+}
+
+/* ### Context initialization/destruction : ################################ */
+
+XmlCtxPtr createXmlContext(
+  void
+)
+{
+  return calloc(1, sizeof(struct _XmlCtx));
+}
+
+void destroyXmlContext(
+  XmlCtxPtr ctx
+)
+{
+  if (NULL == ctx)
+    return;
+
+  unsigned stack_height = ctx->saved_nodes_stack_height;
+  while (0 < stack_height--) {
+    xmlNodePtr node = ctx->saved_nodes_stack[stack_height];
+    xmlFreeNode(xmlDocSetRootElement(ctx->libxml_ctx, node));
+  }
+
+  free(ctx);
+}
+
+int loadXmlCtx(
+  XmlCtxPtr ctx,
   const lbc * filepath
 )
 {
@@ -31,23 +87,14 @@ int loadIgsXmlFile(
   if (NULL != ctx->libxml_ctx)
     xmlFreeDoc(ctx->libxml_ctx);
 
-  char * filepath_converted = lbc_convfrom(filepath);
-  if (NULL == filepath_converted)
-    return -1;
+  if (NULL == (ctx->libxml_ctx = xmlReadFile((char *) filepath, NULL, 0)))
+    LIBBLU_XML_ERROR_RETURN("Failed to parse %s.\n", filepath);
 
-  if (NULL == (ctx->libxml_ctx = xmlReadFile(filepath_converted, NULL, 0)))
-    LIBBLU_ERROR_FRETURN("Failed to parse %s.\n", filepath);
-
-  free(filepath_converted);
   return 0;
-
-free_return:
-  free(filepath_converted);
-  return -1;
 }
 
-void releaseIgsXmlFile(
-  XmlCtx * ctx
+void releaseXmlCtx(
+  XmlCtxPtr ctx
 )
 {
   if (NULL != ctx && NULL != ctx->libxml_ctx) {
@@ -57,20 +104,64 @@ void releaseIgsXmlFile(
   }
 }
 
-xmlXPathObjectPtr getPathObjectFromPathObjIgsXmlFile(
-  const xmlXPathObjectPtr path_obj,
-  const char * path
+/* ### Context status : #################################################### */
+
+unsigned lastParsedNodeLineXmlCtx(
+  const XmlCtxPtr ctx
 )
 {
-  xmlNodePtr node = XML_PATH_NODE(path_obj, 0);
+  return ctx->last_parsed_node_line;
+}
+
+/* ### XML Node : ########################################################## */
+
+const lbc * getNameXmlNode(
+  const XmlNodePtr node
+)
+{
+  return node->name;
+}
+
+/* ### XML XPath : ######################################################### */
+
+unsigned getNbNodesXmlXPathObject(
+  const XmlXPathObjectPtr xpath_obj
+)
+{
+  if (NULL == xpath_obj || NULL == xpath_obj->nodesetval)
+    return 0;
+  int nb_nodes = xpath_obj->nodesetval->nodeNr;
+  return (nb_nodes < 0) ? 0u : (unsigned) nb_nodes;
+}
+
+XmlNodePtr getNodeXmlXPathObject(
+  const XmlXPathObjectPtr xpath_obj,
+  unsigned node_idx
+)
+{
+  if (getNbNodesXmlXPathObject(xpath_obj) <= node_idx)
+    LIBBLU_XML_ERROR_NRETURN(
+      "Node %u is out of range of XPath object nodes.\n",
+      node_idx
+    );
+
+  return xpath_obj->nodesetval->nodeTab[node_idx];
+}
+
+XmlXPathObjectPtr getPathObjectFromPathObjXmlCtx(
+  const XmlXPathObjectPtr path_obj,
+  const lbc * path
+)
+{
+  xmlNodePtr node = getNodeXmlXPathObject(path_obj, 0);
   if (NULL == node)
     return NULL;
 
   xmlXPathContextPtr xpath_ctx = NULL;
-  xmlXPathObjectPtr xpath_obj  = NULL;
+  xmlXPathObjectPtr  xpath_obj = NULL;
   if (NULL == (xpath_ctx = xmlXPathNewContext(node->doc)))
     goto free_return;
-  if (NULL == (xpath_obj = xmlXPathEvalExpression((xmlChar *) path, xpath_ctx)))
+  if (NULL == (xpath_obj = xmlXPathEvalExpression(path, xpath_ctx)))
     goto free_return;
 
   if (xmlXPathNodeSetIsEmpty(xpath_obj->nodesetval))
@@ -80,21 +171,21 @@ xmlXPathObjectPtr getPathObjectFromPathObjIgsXmlFile(
   return xpath_obj;
 
 free_return:
-  xmlXPathFreeObject(xpath_obj);
+  destroyXmlXPathObject(xpath_obj);
   xmlXPathFreeContext(xpath_ctx);
   return NULL;
 }
 
-xmlXPathObjectPtr getPathObjectIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path
+XmlXPathObjectPtr getPathObjectXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path
 )
 {
   xmlXPathContextPtr xpath_ctx = NULL;
   xmlXPathObjectPtr xpath_obj  = NULL;
   if (NULL == (xpath_ctx = xmlXPathNewContext(ctx->libxml_ctx)))
     return NULL;
-  if (NULL == (xpath_obj = xmlXPathEvalExpression((xmlChar *) path, xpath_ctx)))
+  if (NULL == (xpath_obj = xmlXPathEvalExpression(path, xpath_ctx)))
     goto free_return;
 
   if (!xmlXPathNodeSetIsEmpty(xpath_obj->nodesetval)) {
@@ -112,44 +203,100 @@ xmlXPathObjectPtr getPathObjectIgsXmlFile(
   return xpath_obj;
 
 free_return:
-  xmlXPathFreeObject(xpath_obj);
+  destroyXmlXPathObject(xpath_obj);
   xmlXPathFreeContext(xpath_ctx);
   return NULL;
 }
 
-xmlXPathObjectPtr getPathObjectFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+bool existsPathObjectXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path
+)
+{
+  xmlXPathContextPtr xpath_ctx = NULL;
+  xmlXPathObjectPtr xpath_obj  = NULL;
+  if (NULL == (xpath_ctx = xmlXPathNewContext(ctx->libxml_ctx)))
+    return NULL;
+  if (NULL == (xpath_obj = xmlXPathEvalExpression(path, xpath_ctx)))
+    goto free_return;
+
+  bool exists = (0 < getNbNodesXmlXPathObject(xpath_obj));
+
+  destroyXmlXPathObject(xpath_obj);
+  xmlXPathFreeContext(xpath_ctx);
+  return exists;
+
+free_return:
+  destroyXmlXPathObject(xpath_obj);
+  xmlXPathFreeContext(xpath_ctx);
+  return NULL;
+}
+
+XmlXPathObjectPtr getPathObjectFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   va_list args
 )
 {
-  char * path = NULL;
-  if (lb_vasprintf(&path, path_format, args) < 0)
+  lbc * path = NULL;
+  if (lbc_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  xmlXPathObjectPtr xpath_obj = getPathObjectIgsXmlFile(ctx, path);
+  xmlXPathObjectPtr xpath_obj = getPathObjectXmlCtx(ctx, path);
   free(path);
 
   return xpath_obj;
 }
 
-xmlXPathObjectPtr getPathObjectFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+XmlXPathObjectPtr getPathObjectFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   ...
 )
 {
   va_list args;
   va_start(args, path_format);
-  xmlXPathObjectPtr xpath_obj = getPathObjectFromExprVaIgsXmlFile(ctx, path_format, args);
-  va_end(args);
 
+  xmlXPathObjectPtr xpath_obj = getPathObjectFromExprVaXmlCtx(ctx, path_format, args);
+
+  va_end(args);
   return xpath_obj;
 }
 
-int setRootPathFromPathObjectIgsXmlFile(
-  XmlCtx * ctx,
-  xmlXPathObjectPtr xpath_obj,
+bool existsPathObjectFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
+  va_list args
+)
+{
+  lbc * path = NULL;
+  if (lbc_vasprintf(&path, path_format, args) < 0)
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+
+  bool exists = existsPathObjectXmlCtx(ctx, path);
+  free(path);
+
+  return exists;
+}
+
+bool existsPathObjectFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
+  ...
+)
+{
+  va_list args;
+  va_start(args, path_format);
+
+  bool exists = existsPathObjectFromExprVaXmlCtx(ctx, path_format, args);
+
+  va_end(args);
+  return exists;
+}
+
+int setRootPathFromPathObjectXmlCtx(
+  XmlCtxPtr ctx,
+  XmlXPathObjectPtr xpath_obj,
   int idx
 )
 {
@@ -164,11 +311,11 @@ int setRootPathFromPathObjectIgsXmlFile(
   if (NULL == xpath_obj)
     LIBBLU_ERROR_RETURN(
       "Unable to set XML root, "
-      "setRootPathFromPathObjectIgsXmlFile() receive "
+      "setRootPathFromPathObjectXmlCtx() receive "
       "a NULL path object.\n"
     );
 
-  if (NULL == (node = XML_PATH_NODE(xpath_obj, idx)))
+  if (NULL == (node = getNodeXmlXPathObject(xpath_obj, idx)))
     LIBBLU_ERROR_RETURN(
       "Unable to set XML root, "
       "given path object does not contain any node.\n"
@@ -184,8 +331,17 @@ int setRootPathFromPathObjectIgsXmlFile(
   return 0;
 }
 
-int restoreLastRootIgsXmlFile(
-  XmlCtx * ctx
+void destroyXmlXPathObject(
+  XmlXPathObjectPtr xpath_obj
+)
+{
+  xmlXPathFreeObject(xpath_obj);
+}
+
+/* ### Root definition : ################################################### */
+
+int restoreLastRootXmlCtx(
+  XmlCtxPtr ctx
 )
 {
   xmlNodePtr restoredNode;
@@ -207,117 +363,107 @@ int restoreLastRootIgsXmlFile(
   return 0;
 }
 
-xmlChar * getStringIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path,
+lbc * getStringXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path,
   int idx
 )
 {
-  xmlXPathObjectPtr phObj;
-  xmlNodePtr node;
-  xmlChar * string;
+  assert(NULL != ctx);
+  assert(NULL != path);
+  assert(0 <= idx);
 
-  if (NULL == (phObj = getPathObjectIgsXmlFile(ctx, path))) {
-    LIBBLU_ERROR_NRETURN(
-      "Error happen during XML nodes parsing.\n"
-    );
-  }
+  xmlXPathObjectPtr xpath_obj = getPathObjectXmlCtx(ctx, path);
+  if (NULL == xpath_obj)
+    LIBBLU_ERROR_NRETURN("Error happen during XML nodes parsing.\n");
 
-  if (NULL == (node = XML_PATH_NODE(phObj, idx))) {
-    xmlXPathFreeObject(phObj);
-    LIBBLU_ERROR_NRETURN(
-      "Unable to fetch an XML node from path '%c'.\n",
+  XmlNodePtr node = getNodeXmlXPathObject(xpath_obj, idx);
+  if (NULL == node)
+    LIBBLU_ERROR_FRETURN(
+      "Unable to fetch an XML node from path '%" PRI_LBCS "'.\n",
       path
     );
-  }
 
-  string = xmlNodeListGetString(ctx->libxml_ctx, node->children, XML_TRUE);
-  xmlXPathFreeObject(phObj);
+  xmlChar * xml_string = xmlNodeListGetString(ctx->libxml_ctx, node->children, 1);
+  if (NULL == xml_string)
+    goto free_return;
+
+  lbc * string = _xmlCharStringToLbc(xml_string);
+
+  destroyXmlXPathObject(xpath_obj);
+  xmlFree(xml_string);
   return string;
+
+free_return:
+  destroyXmlXPathObject(xpath_obj);
+  return NULL;
 }
 
-xmlChar * getStringFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+lbc * getStringFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   va_list args
 )
 {
-  char * path = NULL;
-  xmlChar * string;
+  lbc * path = NULL;
+  if (lbc_vasprintf(&path, path_format, args) < 0)
+    LIBBLU_ERROR_NRETURN("Memory allocation error using lbc_vasprintf().\n");
 
-  if (lb_vasprintf(&path, path_format, args) < 0)
-    LIBBLU_ERROR_NRETURN("Memory allocation error using lb_vasprintf().\n");
+  lbc * string = getStringXmlCtx(ctx, path, 0);
 
-  string = getStringIgsXmlFile(ctx, path, 0);
   free(path);
-
   return string;
 }
 
-xmlChar * getStringFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+lbc * getStringFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   ...
 )
 {
   va_list args;
-  xmlChar * string;
-
   va_start(args, path_format);
-  string = getStringFromExprVaIgsXmlFile(ctx, path_format, args);
-  va_end(args);
 
+  lbc * string = getStringFromExprVaXmlCtx(ctx, path_format, args);
+
+  va_end(args);
   return string;
 }
 
-void freeXmlCharPtr(
-  xmlChar ** string
+int getNbObjectsXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path
 )
 {
-  if (NULL == string)
-    return;
-
-  xmlFree(*string);
-  *string = NULL;
-}
-
-int getNbObjectsIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path
-)
-{
-  xmlXPathObjectPtr phObj;
-  int nbNodes;
-
-  if (NULL == (phObj = getPathObjectIgsXmlFile(ctx, path)))
+  xmlXPathObjectPtr xpath_obj = getPathObjectXmlCtx(ctx, path);
+  if (NULL == xpath_obj)
     return -1;
-  nbNodes = XML_PATH_NODE_NB(phObj);
 
-  xmlXPathFreeObject(phObj);
-  return nbNodes;
+  int nb_nodes = getNbNodesXmlXPathObject(xpath_obj);
+
+  destroyXmlXPathObject(xpath_obj);
+  return nb_nodes;
 }
 
-int getNbObjectsFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+int getNbObjectsFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   va_list args
 )
 {
-  char * path = NULL;
-  int nbNodes;
+  lbc * path = NULL;
+  if (lbc_vasprintf(&path, path_format, args) < 0)
+    LIBBLU_ERROR_RETURN("Memory allocation error using lbc_vasprintf().\n");
 
-  if (lb_vasprintf(&path, path_format, args) < 0)
-    LIBBLU_ERROR_RETURN("Memory allocation error using lb_vasprintf().\n");
-
-  nbNodes = getNbObjectsIgsXmlFile(ctx, path);
+  int nb_nodes = getNbObjectsXmlCtx(ctx, path);
   free(path);
 
-  return nbNodes;
+  return nb_nodes;
 }
 
-int getNbObjectsFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  const char * path_format,
+int getNbObjectsFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  const lbc * path_format,
   ...
 )
 {
@@ -325,68 +471,69 @@ int getNbObjectsFromExprIgsXmlFile(
   int nbNodes;
 
   va_start(args, path_format);
-  nbNodes = getNbObjectsFromExprVaIgsXmlFile(ctx, path_format, args);
+  nbNodes = getNbObjectsFromExprVaXmlCtx(ctx, path_format, args);
   va_end(args);
 
   return nbNodes;
 }
 
-int getIfExistsStringIgsXmlFile(
-  XmlCtx * ctx,
-  xmlChar ** string,
-  const xmlChar * def,
-  const char * path
+int getIfExistsStringXmlCtx(
+  XmlCtxPtr ctx,
+  lbc ** string_ret,
+  const lbc * def,
+  const lbc * path
 )
 {
   xmlXPathObjectPtr phObj;
 
-  *string = NULL;
-  if (NULL == (phObj = getPathObjectIgsXmlFile(ctx, path)))
+  if (NULL == (phObj = getPathObjectXmlCtx(ctx, path)))
     return -1;
+  if (NULL == string_ret)
+    return 0;
 
-  if (0 < XML_PATH_NODE_NB(phObj))
-    *string = getStringIgsXmlFile(ctx, path, 0);
+  if (0 < getNbNodesXmlXPathObject(phObj))
+    *string_ret = getStringXmlCtx(ctx, path, 0);
   else {
     /* Copy default string: */
     if (NULL == def)
-      *string = NULL;
-    else if (NULL == (*string = xmlStrdup(def)))
+      *string_ret = NULL;
+    else if (NULL == (*string_ret = lbc_strdup(def)))
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
   }
 
-  xmlXPathFreeObject(phObj);
+  destroyXmlXPathObject(phObj);
   return 0;
 
 free_return:
-  xmlXPathFreeObject(phObj);
+  destroyXmlXPathObject(phObj);
   return -1;
 }
 
-int getIfExistsStringFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
-  xmlChar ** string,
-  const xmlChar * def,
-  const char * path_format,
+int getIfExistsStringFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
+  lbc ** string,
+  const lbc * def,
+  const lbc * path_format,
   va_list args
 )
 {
-  char * path;
+  lbc * path;
   int ret;
 
-  if (lb_vasprintf(&path, path_format, args) < 0)
-    LIBBLU_ERROR_RETURN("Memory allocation error using lb_vasprintf().\n");
+  if (lbc_vasprintf(&path, path_format, args) < 0)
+    LIBBLU_ERROR_RETURN("Memory allocation error using lbc_vasprintf().\n");
 
-  ret = getIfExistsStringIgsXmlFile(ctx, string, def, path);
+  ret = getIfExistsStringXmlCtx(ctx, string, def, path);
   free(path);
 
   return ret;
 }
 
-int getIfExistsStringFromExprIgsXmlFile(
-  XmlCtx * ctx,
-  xmlChar ** string,
-  const xmlChar * def,
-  const char * path_format,
+int getIfExistsStringFromExprXmlCtx(
+  XmlCtxPtr ctx,
+  lbc ** string,
+  const lbc * def,
+  const lbc * path_format,
   ...
 )
 {
@@ -394,7 +541,7 @@ int getIfExistsStringFromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsStringFromExprVaIgsXmlFile(
+  ret = getIfExistsStringFromExprVaXmlCtx(
     ctx, string, def, path_format, args
   );
   va_end(args);
@@ -404,34 +551,26 @@ int getIfExistsStringFromExprIgsXmlFile(
 
 /* ### Signed integers : ################################################### */
 
-int getIfExistsInt64FromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsInt64FromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   int64_t * dst,
   int64_t def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
-  xmlChar * xmlString;
-  char * string;
-  int ret;
-
-  ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, &xmlString, NULL, path_format, args
-  );
-  if (ret < 0)
+  lbc * string;
+  if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
-
-  string = (char *) xmlString;
 
   if (NULL == string)
     *dst = def; /* Does not exists */
   else {
     long long value;
-    char * end;
+    lbc * end;
 
     errno = 0; /* Clear errno */
-    value = strtoll(string, &end, 0);
+    value = lbc_strtoll(string, &end, 0);
 
     if (EINVAL == errno || '\0' != *end)
       LIBBLU_ERROR_RETURN(
@@ -460,16 +599,15 @@ int getIfExistsInt64FromExprVaIgsXmlFile(
     *dst = value;
   }
 
-  xmlFree(xmlString);
-
-  return ret;
+  xmlFree(string);
+  return 0;
 }
 
-int getIfExistsInt64FromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsInt64FromExprXmlCtx(
+  XmlCtxPtr ctx,
   int64_t * dst,
   int64_t def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -477,24 +615,24 @@ int getIfExistsInt64FromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  ret = getIfExistsInt64FromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
-int getIfExistsLongFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsLongFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   long * dst,
   long def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
   int64_t value;
   int ret;
 
-  ret = getIfExistsInt64FromExprVaIgsXmlFile(ctx, &value, def, path_format, args);
+  ret = getIfExistsInt64FromExprVaXmlCtx(ctx, &value, def, path_format, args);
   if (ret < 0)
     return -1;
 
@@ -510,11 +648,11 @@ int getIfExistsLongFromExprVaIgsXmlFile(
   return ret;
 }
 
-int getIfExistsLongFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsLongFromExprXmlCtx(
+  XmlCtxPtr ctx,
   long * dst,
   long def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -522,22 +660,22 @@ int getIfExistsLongFromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsLongFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  ret = getIfExistsLongFromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
-int getIfExistsIntegerFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsIntegerFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   int * dst,
   int def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
   int64_t value;
-  int ret = getIfExistsInt64FromExprVaIgsXmlFile(
+  int ret = getIfExistsInt64FromExprVaXmlCtx(
     ctx, &value, def, path_format, args
   );
   if (ret < 0)
@@ -555,18 +693,18 @@ int getIfExistsIntegerFromExprVaIgsXmlFile(
   return ret;
 }
 
-int getIfExistsIntegerFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsIntegerFromExprXmlCtx(
+  XmlCtxPtr ctx,
   int * dst,
   int def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
   va_list args;
 
   va_start(args, path_format);
-  int ret = getIfExistsIntegerFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  int ret = getIfExistsIntegerFromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
@@ -574,34 +712,22 @@ int getIfExistsIntegerFromExprIgsXmlFile(
 
 /* ### Boolean value : ##################################################### */
 
-int getIfExistsBooleanFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsBooleanFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   bool * dst,
   bool def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
-  xmlChar * xmlString;
-  char * string;
-  int ret;
-
-  ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, &xmlString, NULL, path_format, args
-  );
-  if (ret < 0)
+  lbc * string;
+  if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
-
-  string = (char *) xmlString;
 
   if (NULL == string)
     *dst = def; /* Does not exists */
   else {
-    if (!xmlStrcmp(xmlString, (xmlChar *) "true"))
-      *dst = true;
-    else if (!xmlStrcmp(xmlString, (xmlChar *) "false"))
-      *dst = false;
-    else {
+    if (lbc_atob(dst, string) < 0)
       LIBBLU_ERROR_RETURN(
         "Unable to parse XML node value '%s' from path '%s' as a boolean "
         "value (expect 'true' or 'false', line: %u).\n",
@@ -609,19 +735,17 @@ int getIfExistsBooleanFromExprVaIgsXmlFile(
         path_format,
         ctx->last_parsed_node_line
       );
-    }
   }
 
   xmlFree(string);
-
   return 0;
 }
 
-int getIfExistsBooleanFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsBooleanFromExprXmlCtx(
+  XmlCtxPtr ctx,
   bool * dst,
   bool def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -629,7 +753,7 @@ int getIfExistsBooleanFromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsBooleanFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  ret = getIfExistsBooleanFromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
@@ -637,34 +761,25 @@ int getIfExistsBooleanFromExprIgsXmlFile(
 
 /* ### Floating point : #################################################### */
 
-int getIfExistsDoubleFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsDoubleFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   double * dst,
   double def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
-  xmlChar * xmlString;
-  char * string;
-  int ret;
-
-  ret = getIfExistsStringFromExprVaIgsXmlFile(
-    ctx, &xmlString, NULL, path_format, args
-  );
-  if (ret < 0)
+  lbc * string;
+  if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
 
-  string = (char *) xmlString;
-
   if (NULL == string)
-    *dst = def; /* Does not exists */
+    *dst = def; // Does not exists
   else {
-    double value;
-    char * end;
+    errno = 0; // Clear errno
 
-    errno = 0; /* Clear errno */
-    value = strtod(string, &end);
+    lbc * end;
+    double value = lbc_strtod(string, &end);
 
     if (EINVAL == errno || '\0' != *end)
       LIBBLU_ERROR_RETURN(
@@ -685,16 +800,15 @@ int getIfExistsDoubleFromExprVaIgsXmlFile(
     *dst = value;
   }
 
-  xmlFree(xmlString);
-
-  return ret;
+  xmlFree(string);
+  return 0;
 }
 
-int getIfExistsDoubleFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsDoubleFromExprXmlCtx(
+  XmlCtxPtr ctx,
   double * dst,
   double def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -702,24 +816,24 @@ int getIfExistsDoubleFromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsDoubleFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  ret = getIfExistsDoubleFromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
-int getIfExistsFloatFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsFloatFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   float * dst,
   float def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
   double value;
   int ret;
 
-  ret = getIfExistsDoubleFromExprVaIgsXmlFile(ctx, &value, def, path_format, args);
+  ret = getIfExistsDoubleFromExprVaXmlCtx(ctx, &value, def, path_format, args);
   if (ret < 0)
     return -1;
 
@@ -728,11 +842,11 @@ int getIfExistsFloatFromExprVaIgsXmlFile(
   return ret;
 }
 
-int getIfExistsFloatFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsFloatFromExprXmlCtx(
+  XmlCtxPtr ctx,
   float * dst,
   float def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -740,7 +854,7 @@ int getIfExistsFloatFromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsFloatFromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  ret = getIfExistsFloatFromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
@@ -748,31 +862,25 @@ int getIfExistsFloatFromExprIgsXmlFile(
 
 /* ### Unsigned integers : ################################################# */
 
-int getIfExistsUint64FromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUint64FromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
-  xmlChar * xmlString;
-  char * string;
-  int ret;
-
-  ret = getIfExistsStringFromExprVaIgsXmlFile(ctx, &xmlString, NULL, path_format, args);
-  if (ret < 0)
+  lbc * string;
+  if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
-
-  string = (char *) xmlString;
 
   if (NULL == string)
     *dst = def; /* Does not exists */
   else {
     unsigned long long value;
-    char * end;
+    lbc * end;
 
-    value = strtoull(string, &end, 0);
+    value = lbc_strtoull(string, &end, 0);
 
     if (NULL == end || '\0' != *end)
       LIBBLU_ERROR_RETURN(
@@ -786,16 +894,15 @@ int getIfExistsUint64FromExprVaIgsXmlFile(
     *dst = value;
   }
 
-  xmlFree(xmlString);
-
-  return ret;
+  xmlFree(string);
+  return 0;
 }
 
-int getIfExistsUint64FromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUint64FromExprXmlCtx(
+  XmlCtxPtr ctx,
   uint64_t * dst,
   uint64_t def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -803,24 +910,24 @@ int getIfExistsUint64FromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsUint64FromExprVaIgsXmlFile(ctx, dst, def, path_format, args);
+  ret = getIfExistsUint64FromExprVaXmlCtx(ctx, dst, def, path_format, args);
   va_end(args);
 
   return ret;
 }
 
-int getIfExistsUnsignedFromExprVaIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUnsignedFromExprVaXmlCtx(
+  XmlCtxPtr ctx,
   unsigned * dst,
   unsigned def,
-  const char * path_format,
+  const lbc * path_format,
   va_list args
 )
 {
   uint64_t value;
   int ret;
 
-  ret = getIfExistsUint64FromExprVaIgsXmlFile(ctx, &value, def, path_format, args);
+  ret = getIfExistsUint64FromExprVaXmlCtx(ctx, &value, def, path_format, args);
   if (ret < 0)
     return -1;
 
@@ -835,11 +942,11 @@ int getIfExistsUnsignedFromExprVaIgsXmlFile(
   return ret;
 }
 
-int getIfExistsUnsignedFromExprIgsXmlFile(
-  XmlCtx * ctx,
+int getIfExistsUnsignedFromExprXmlCtx(
+  XmlCtxPtr ctx,
   unsigned * dst,
   unsigned def,
-  const char * path_format,
+  const lbc * path_format,
   ...
 )
 {
@@ -847,7 +954,7 @@ int getIfExistsUnsignedFromExprIgsXmlFile(
   int ret;
 
   va_start(args, path_format);
-  ret = getIfExistsUnsignedFromExprVaIgsXmlFile(
+  ret = getIfExistsUnsignedFromExprVaXmlCtx(
     ctx, dst, def, path_format, args
   );
   va_end(args);

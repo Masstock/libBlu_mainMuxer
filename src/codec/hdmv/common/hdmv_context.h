@@ -111,16 +111,15 @@ static inline void switchCurDSHdmvContext(
   memset(&ctx->ds[ctx->cur_ds], 0x0, sizeof(HdmvDSState));
 }
 
-int initHdmvContext(
-  HdmvContext * dst,
+HdmvContext * createHdmvContext(
   LibbluESParsingSettings * settings,
   const lbc * infilepath,
   HdmvStreamType type,
   bool generation_mode
 );
 
-void cleanHdmvContext(
-  HdmvContext ctx
+void destroyHdmvContext(
+  HdmvContext * ctx
 );
 
 int addOriginalFileHdmvContext(
@@ -155,12 +154,12 @@ int closeHdmvContext(
 );
 
 static inline void printContentHdmvContext(
-  HdmvContext ctx
+  const HdmvContext * ctx
 )
 {
   printContentHdmvContextSegmentTypesCounter(
-    ctx.global_counters.nb_seg,
-    ctx.epoch.type
+    ctx->global_counters.nb_seg,
+    ctx->epoch.type
   );
 }
 

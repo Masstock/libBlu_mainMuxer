@@ -1333,27 +1333,27 @@ static int _setStreamType(
 }
 
 
-static size_t _encodeUtf8(
-  char ** enc_string_ret,
-  const lbc * string,
-  size_t max_size
-)
-{
-  char * encoded_string;
-  if (NULL == (encoded_string = lbc_convfrom(string)))
-    return 0;
+// static size_t _encodeUtf8(
+//   char ** enc_string_ret,
+//   const lbc * string,
+//   size_t max_size
+// )
+// {
+//   char * encoded_string;
+//   if (NULL == (encoded_string = lbc_convfrom(string)))
+//     return 0;
 
-  size_t enc_string_size;
-  if (max_size < (enc_string_size = strlen(encoded_string)))
-    LIBBLU_ERROR_FRETURN("String UTF-8 conversion size overflow.\n");
+//   size_t enc_string_size;
+//   if (max_size < (enc_string_size = strlen(encoded_string)))
+//     LIBBLU_ERROR_FRETURN("String UTF-8 conversion size overflow.\n");
 
-  *enc_string_ret = encoded_string;
-  return enc_string_size;
+//   *enc_string_ret = encoded_string;
+//   return enc_string_size;
 
-free_return:
-  free(encoded_string);
-  return 0;
-}
+// free_return:
+//   free(encoded_string);
+//   return 0;
+// }
 
 
 static int _writeEsmsEsPropertiesSection(
@@ -1451,15 +1451,10 @@ static int _writeEsmsEsPropertiesSection(
     const EsmsESSourceFilesEntry * entry = &esms_hdl->source_files.entries[i];
     LIBBLU_SCRIPTW_DEBUG(" Source file %u:\n", i);
 
-    /* Write a UTF-8 conversion of filepath */
-    char * fp_enc;
-    size_t fp_enc_size;
-    if (0 == (fp_enc_size = _encodeUtf8(&fp_enc, entry->filepath, UINT16_MAX)))
-      LIBBLU_ERROR_RETURN("Unable to encode source filepath.\n");
+    size_t fp_enc_size = lbc_strlen(entry->filepath);
 
-#define FREE_ENC_RETURN  do {free(fp_enc); return -1;} while (0)
     /* [u16 src_filepath_size] */
-    WRITE(esms_bs, fp_enc_size, 2, FREE_ENC_RETURN);
+    WRITE(esms_bs, fp_enc_size, 2, return -1);
 
     LIBBLU_SCRIPTW_DEBUG(
       "  Filepath size (src_filepath_size): %" PRIu16 " (0x%04" PRIX16 ").\n",
@@ -1468,15 +1463,12 @@ static int _writeEsmsEsPropertiesSection(
     );
 
     /* [u<8*src_filepath_size> src_filepath] */
-    WRITE_ARRAY(esms_bs, (uint8_t *) fp_enc, fp_enc_size, FREE_ENC_RETURN);
+    WRITE_ARRAY(esms_bs, (uint8_t *) entry->filepath, fp_enc_size, return -1);
 
     LIBBLU_SCRIPTW_DEBUG(
       "  Filepath (src_filepath): '%" PRI_LBCS "'.\n",
       entry->filepath
     );
-
-#undef FREE_ENC_RETURN
-    free(fp_enc);
 
     /* [u16 crc_checked_bytes] */
     WRITE(esms_bs, entry->properties.crc_checked_bytes, 2, return -1);

@@ -48,3 +48,14 @@ free_return:
   fclose(fp);
   return -1;
 }
+
+lbc * lookupIniFile(
+  const IniFileContext ctx,
+  const char * expr
+)
+{
+  return lookupIniFileNode(
+    ctx.tree,
+    expr
+  );
+}

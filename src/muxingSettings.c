@@ -30,7 +30,7 @@ static int _readSettingsFromConfigHandle(
   if (NULL != string) {
     uint64_t value;
 
-    if (!lbc_sscanf(string, "%" PRIu64, &value))
+    if (!lbc_sscanf(string, lbc_str("%" PRIu64), &value))
       LIBBLU_ERROR_RETURN(
         "Invalid integer value setting 'timeout' in section "
         "[BufferingModel] of INI file.\n"

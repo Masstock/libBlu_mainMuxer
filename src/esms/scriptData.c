@@ -733,24 +733,17 @@ ESMSFileValidatorRet isAValidESMSFile(
       goto free_return;
     }
 
-    uint8_t * src_filepath_utf8;
-    if (NULL == (src_filepath_utf8 = calloc(src_filepath_size + 1u, 1))) {
+    uint8_t * src_filepath;
+    if (NULL == (src_filepath = calloc(src_filepath_size + 1u, 1))) {
       ret = ESMS_FV_MEMORY_ERROR;
       goto free_return;
     }
 
     /* [u<8*src_filepath_size> src_filepath] */
-    if (!fread(src_filepath_utf8, src_filepath_size, 1, esms_fd)) {
-      free(src_filepath_utf8);
+    if (!fread(src_filepath, src_filepath_size, 1, esms_fd)) {
+      free(src_filepath);
       goto free_return;
     }
-
-    lbc * src_filepath;
-    if (NULL == (src_filepath = lbc_utf8_convto(src_filepath_utf8))) {
-      ret = ESMS_FV_INVALID_SOURCE_FILE;
-      goto free_return;
-    }
-    free(src_filepath_utf8);
 
 #define FRETURN  do {free(src_filepath); goto free_return;} while (0)
     /* [u16 crc_checked_bytes] */

@@ -156,19 +156,22 @@ typedef enum {
  * \brief Return a string representation of #BufferName values.
  *
  * \param name Pre-defined name value.
- * \return const char* String representation.
+ * \return const lbc* String representation.
  */
-static inline const char * predefinedBufferTypesName(
+static inline const lbc * predefinedBufferTypesName(
   BufModelBufferName name
 )
 {
-  static const char * strings[] = {
-    "TB", "B", "MB", "EB"
+  static const lbc * strings[] = {
+    lbc_str("TB"),
+    lbc_str("B"),
+    lbc_str("MB"),
+    lbc_str("EB")
   };
 
   if (name < ARRAY_SIZE(strings))
     return strings[name];
-  return "Unknown";
+  return lbc_str("Unknown");
 }
 
 
@@ -177,7 +180,7 @@ static inline const char * predefinedBufferTypesName(
  */
 typedef struct {
   BufModelBufferName name;          /**< Pre-defined name of the buffer.     */
-  char * customName;        /**< Custom buffer name field (only used if
+  lbc * customName;         /**< Custom buffer name field (only used if
     BufferParameters.name == CUSTOM_BUFFER).                                 */
   uint32_t customNameHash;  /**< Hash of the custom name field.              */
 
@@ -243,9 +246,9 @@ typedef struct BufModelBuffer {
  * \brief Returns buffer name.
  *
  * \param bufferPtr BufferPtr buffer.
- * \return char * buffer name.
+ * \return lbc * buffer name.
  */
-static inline const char * bufferNameBufModelBuffer(
+static inline const lbc * bufferNameBufModelBuffer(
   const BufModelBufferPtr buf
 )
 {
@@ -358,7 +361,7 @@ void destroyBufModelBuffersList(
 int addFrameToBufferFromList(
   BufModelBuffersListPtr bufList,
   BufModelBufferName name,
-  const char * customBufName,
+  const lbc * customBufName,
   BufModelBufferFrame frame
 );
 
@@ -501,7 +504,7 @@ typedef enum {
  * \brief Return a constant string representation of #BufModelFilterLblType.
  *
  * \param type Type to return.
- * \return const char* String representation.
+ * \return const lbc* String representation.
  */
 static inline const char * getBufModelFilterLblTypeString(
   BufModelFilterLblType type
@@ -525,7 +528,7 @@ typedef union BufModelFilterLblValue {
   int number;             /**< Numeric value.
     Used if type == #BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC.                    */
   struct {
-    char * string;        /**< String value chars.
+    lbc * string;        /**< String value chars.
       Used if type == #BUF_MODEL_FILTER_LABEL_TYPE_STRING.                   */
     uint32_t stringHash;  /**< String value hash.
       Used if type == #BUF_MODEL_FILTER_LABEL_TYPE_STRING.                   */
@@ -550,8 +553,8 @@ typedef union BufModelFilterLblValue {
 #define BUF_MODEL_FILTER_STRING_LABEL_VALUE(stringVal)                        \
   (                                                                           \
     (BufModelFilterLblValue) {                                                \
-      .string     = lb_str_dup(stringVal),                                     \
-      .stringHash = fnv1aStrHash(stringVal)                                   \
+      .string     = lbc_strdup(stringVal),                                    \
+      .stringHash = lbc_fnv1aStrHash(stringVal)                               \
     }                                                                         \
   )
 
@@ -618,7 +621,7 @@ typedef struct {
 /** \~english
  * \brief Return a string #BufModelFilterLbl.
  *
- * \param stringVal const char * String value.
+ * \param stringVal const lbc * String value.
  * \return BufModelFilterLbl String label.
  *
  * \note Supplied string is duplicated.
@@ -665,7 +668,7 @@ static inline void cleanBufModelFilterLbl(
  * If specified value type is #BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC, supplied
  * array shall be of type int *, if value type is
  * #BUF_MODEL_FILTER_LABEL_TYPE_STRING, supplied array shall be of type
- * char **. Other types are forbidden.
+ * lbc **. Other types are forbidden.
  */
 int setBufModelFilterLblList(
   BufModelFilterLbl * dst,

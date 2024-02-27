@@ -2496,16 +2496,20 @@ int analyzeH262(
   /* Display infos : */
   h262Infos->PTS_final = (gopPts + pictureHeader.temporal_reference * frameDuration) / 300;
 
-  lbc_printf("== Stream Infos =======================================================================\n");
   lbc_printf(
-    "Codec: Video/MPEG-2, %dx%d%c, %.3f Im/s.\n",
+    lbc_str("== Stream Infos =======================================================================\n")
+  );
+  lbc_printf(
+    lbc_str("Codec: Video/MPEG-2, %dx%d%c, %.3f Im/s.\n"),
     sequenceValues.horizontal_size,
     sequenceValues.vertical_size,
     (sequenceExtension.progressive_sequence ? 'p' : 'i'),
     sequenceValues.frame_rate
   );
   printStreamDurationEsmsHandler(h262Infos);
-  lbc_printf("=======================================================================================\n");
+  lbc_printf(
+    lbc_str("=======================================================================================\n")
+  );
 
   if (completePesCuttingScriptEsmsHandler(essOutput, h262Infos) < 0)
     return -1;

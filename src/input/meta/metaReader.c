@@ -19,17 +19,17 @@ static size_t _parseString(
 
   switch (*expr) {
   case lbc_char('"'):
-    ret = lbc_sscanf(expr, "\"%" PRI_LBCP "[^\"]", dst);
+    ret = lbc_sscanf(expr, lbc_str("\"%" PRI_LBCP "[^\"]"), dst);
     prefixSize = 2;
     break;
 
   case lbc_char('\''):
-    ret = lbc_sscanf(expr, "'%" PRI_LBCP "[^']", dst);
+    ret = lbc_sscanf(expr, lbc_str("'%" PRI_LBCP "[^']"), dst);
     prefixSize = 2;
     break;
 
   default:
-    ret = lbc_sscanf(expr, "%" PRI_LBCS, dst);
+    ret = lbc_sscanf(expr, lbc_str("%" PRI_LBCS), dst);
     prefixSize = 0;
   }
 
@@ -105,7 +105,7 @@ static int _parseOptionsMetaFileStructure(
       break; /* End of line */
 
     /* Option name */
-    if (!lbc_sscanf(rp, " %1024" PRI_LBCP "[^\n\r= ]", name))
+    if (!lbc_sscanf(rp, lbc_str(" %1024" PRI_LBCP "[^\n\r= ]"), name))
       break;
     rp += lbc_strlen(name);
 
@@ -211,7 +211,7 @@ static int _parseTrackMetaFileStructure(
   if (lbc_iscntrl((lbc_int) *rp) || *rp == lbc_char('#'))
     return 0;
 
-  if (!lbc_sscanf(rp, " %" PRI_LBCP "[^,]", codec))
+  if (!lbc_sscanf(rp, lbc_str(" %" PRI_LBCP "[^,]"), codec))
     LIBBLU_ERROR_RETURN("Invalid META file, missing codec name.\n");
   rp += lbc_strlen(codec) + 1;
 

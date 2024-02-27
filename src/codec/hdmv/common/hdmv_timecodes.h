@@ -32,15 +32,6 @@ typedef struct {
   size_t readedValues;     /**< Number of stored values readed.              */
 } HdmvTimecodes;
 
-static inline void initHdmvTimecodes(
-  HdmvTimecodes * dst
-)
-{
-  *dst = (HdmvTimecodes) {
-    0
-  };
-}
-
 /** \~english
  * \brief Release memory allocation done in #HdmvTimecodes structure.
  *

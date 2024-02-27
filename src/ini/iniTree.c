@@ -14,29 +14,26 @@ static IniFileNodePtr createIniFileNode(
   const char * name
 )
 {
-  char * nameCopy;
-  IniFileNodePtr node;
-
+  char * name_copy = NULL;
   if (NULL != name) {
-    if (NULL == (nameCopy = lb_str_dup_to_upper(name)))
+    if (NULL == (name_copy = lb_str_dup_to_upper(name)))
       LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
   }
-  else
-    nameCopy = NULL;
 
-  if (NULL == (node = (IniFileNodePtr) malloc(sizeof(IniFileNode))))
+  IniFileNodePtr node = (IniFileNodePtr) malloc(sizeof(IniFileNode));
+  if (NULL == node)
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
   *node = (IniFileNode) {
     .type = type,
-    .name = nameCopy,
-    .nameSize = ((NULL != nameCopy) ? strlen(nameCopy) : 0)
+    .name = name_copy,
+    .nameSize = ((NULL != name_copy) ? strlen(name_copy) : 0)
   };
 
   return node;
 
 free_return:
-  free(nameCopy);
+  free(name_copy);
   return NULL;
 }
 
@@ -45,20 +42,19 @@ IniFileNodePtr createEntryIniFileNode(
   const char * value
 )
 {
-  IniFileNodePtr node;
-  lbc * valueCopy;
-
-  if (NULL == (valueCopy = lbc_locale_convto(value)))
+  lbc * value_copy = lbc_strdup((lbc *) value);
+  if (NULL == value_copy)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  if (NULL == (node = createIniFileNode(INI_ENTRY, name)))
+  IniFileNodePtr node = createIniFileNode(INI_ENTRY, name);
+  if (NULL == node)
     goto free_return;
-  node->entryValue = valueCopy;
 
+  node->entryValue = value_copy;
   return node;
 
 free_return:
-  free(valueCopy);
+  free(value_copy);
   return NULL;
 }
 
@@ -151,25 +147,24 @@ lbc * lookupIniFileNode(
   const char * expr
 )
 {
-  size_t nameSize;
-
   if (NULL == node)
     return NULL;
 
   if (NULL == node->name)
     return lookupIniFileNode(node->sectionChild, expr);
 
-  if (matchIniFileNode(node, expr, &nameSize)) {
+  size_t name_size;
+  if (matchIniFileNode(node, expr, &name_size)) {
     switch (node->type) {
     case INI_ENTRY:
-      if (expr[nameSize] != '\0')
+      if (expr[name_size] != '\0')
         break;
       return node->entryValue;
 
     case INI_SECTION:
-      if (expr[nameSize] != '.')
+      if (expr[name_size] != '.')
         break;
-      return lookupIniFileNode(node->sectionChild, expr + nameSize + 1);
+      return lookupIniFileNode(node->sectionChild, expr + name_size + 1);
     }
   }
 

@@ -172,7 +172,7 @@ bool fetchPaletteHdmvEpochState(
   bool * has_been_updated_ret
 )
 {
-  lb_static_assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
+  assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
   HdmvEpochStatePalette pal = epoch_state->palettes[palette_id];
   if (HDMV_DEF_NEVER_PROVIDED == pal.state)
     return false; // Never transmitted

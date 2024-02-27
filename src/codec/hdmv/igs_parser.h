@@ -23,55 +23,6 @@
 #  include "compiler/igs_compiler.h"
 #endif
 
-#define IGS_COMPILER_FILE_EXT  lbc_str(".xml")
-#define IGS_COMPILER_FILE_EXT_SIZE  4
-
-#define IGS_COMPILER_FILE_MAGIC  "<?xml"
-#define IGS_COMPILER_FILE_MAGIC_SIZE  5
-
-#define IGS_DEBUG_FORCE_RETIME false
-
-#if 0
-bool isIgsCompilerFile(const lbc * filePath);
-
-uint64_t computeIgsOdsDecodeDuration(
-  HdmvODParameters param
-);
-
-uint64_t computeIgsOdsTransferDuration(
-  HdmvODParameters param,
-  uint64_t decodeDuration
-);
-
-int computeIgsEpochInitializeDuration(
-  uint64_t * res,
-  HdmvVDParameters videoDesc,
-  HdmvSequencePtr odsSequences
-);
-
-int processIgsEpochTimingValues(
-  HdmvSegmentsContextPtr ctx
-);
-
-int processCompleteIgsEpoch(
-  HdmvSegmentsContextPtr ctx
-);
-
-int parseIgsMnuHeader(
-  BitstreamReaderPtr igsInput,
-  HdmvSegmentsContextPtr ctx
-);
-
-bool nextUint8IsIgsSegmentType(
-  BitstreamReaderPtr igsInput
-);
-
-int parseIgsSegment(
-  BitstreamReaderPtr igsInput,
-  HdmvSegmentsContextPtr ctx
-);
-#endif
-
 int analyzeIgs(
   LibbluESParsingSettings * settings
 );

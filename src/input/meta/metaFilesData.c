@@ -92,7 +92,7 @@ static int parseLibbluMetaOptionArg(
     LIBBLU_ERROR_RETURN("No argument expected.\n");
 
   case LBMETA_OPTARG_UINT64:
-    if (!lbc_sscanf(string, "%" SCNu64, &argVal.u64))
+    if (!lbc_sscanf(string, lbc_str("%" SCNu64), &argVal.u64))
       return -1;
     break;
 

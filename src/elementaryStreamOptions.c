@@ -32,7 +32,7 @@ int parseFpsChange(
   float valueFloat;
   HdmvFrameRateCode value;
 
-  if (lbc_sscanf(expr, " %f", &valueFloat) < 1)
+  if (lbc_sscanf(expr, lbc_str(" %f"), &valueFloat) < 1)
     return -1;
   if (0x0 == (value = getHdmvFrameRateCode(valueFloat)))
     return -1;
@@ -50,7 +50,7 @@ int parseArChange(
 
   H264AspectRatioIdcValue idc;
 
-  if (lbc_sscanf(expr, " %u:%u", &x, &y) < 2)
+  if (lbc_sscanf(expr, lbc_str(" %u:%u"), &x, &y) < 2)
     return -1;
   if (!x ^ !y)
     return -1;
@@ -156,7 +156,7 @@ int parseLevelChange(
 {
   unsigned prefix, suffix;
 
-  switch (lbc_sscanf(expr, " %u.%u", &prefix, &suffix)) {
+  switch (lbc_sscanf(expr, lbc_str(" %u.%u"), &prefix, &suffix)) {
   case 1: /* No separator, xx format */
     if (prefix < 10) /* Only one character for one-digit levels (1 => 1.0) */
       prefix *= 10;
