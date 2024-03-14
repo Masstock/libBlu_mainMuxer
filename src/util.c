@@ -21,7 +21,7 @@
 #  include <fcntl.h>
 #endif
 
-const lbc *streamTypeStr(
+const lbc * streamTypeStr(
   StreamType typ
 )
 {

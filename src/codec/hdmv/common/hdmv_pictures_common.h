@@ -152,7 +152,7 @@ static inline size_t getRgbaSizeHdmvPicture(
   return 1ull *pic->infos.width *pic->infos.height;
 }
 
-const uint32_t *getRgbaHdmvPicture(
+const uint32_t * getRgbaHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -167,7 +167,7 @@ const uint32_t *getRgbaHdmvPicture(
  * #getRgbaHdmvPicture()). If this kind of manipulations is required,
  * #getRgbaHdmvPicture() shall be called prior.
  */
-uint32_t *getRgbaHandleHdmvPicture(
+uint32_t * getRgbaHandleHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -180,11 +180,11 @@ static inline size_t getPalSizeHdmvPicture(
   return getRgbaSizeHdmvPicture(pic);
 }
 
-const uint8_t *getPalHdmvPicture(
+const uint8_t * getPalHdmvPicture(
   HdmvPicturePtr pic
 );
 
-uint8_t *getPalHandleHdmvPicture(
+uint8_t * getPalHandleHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -194,11 +194,11 @@ size_t getRleSizeHdmvPicture(
   const HdmvPicturePtr pic
 );
 
-const uint8_t *getRleHdmvPicture(
+const uint8_t * getRleHdmvPicture(
   HdmvPicturePtr pic
 );
 
-uint8_t *getRleHandleHdmvPicture(
+uint8_t * getRleHandleHdmvPicture(
   HdmvPicturePtr pic
 );
 

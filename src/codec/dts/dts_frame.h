@@ -23,7 +23,7 @@ typedef enum {
   DTS_FRM_INNER_EXT_SS_ASSET
 } DtsAUInnerType;
 
-static inline const char *DtsAUInnerTypeStr(
+static inline const char * DtsAUInnerTypeStr(
   DtsAUInnerType type
 )
 {
@@ -49,7 +49,7 @@ typedef enum {
   DTS_AU_REPLACE
 } DtsAUCellTreatment;
 
-static inline const char *DtsAUCellTreatmentStr(
+static inline const char * DtsAUCellTreatmentStr(
   DtsAUCellTreatment treatment
 )
 {

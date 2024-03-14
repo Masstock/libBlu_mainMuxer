@@ -13,7 +13,7 @@ typedef struct MTN {
   HdmvRectangle box;
 } MergingTreeNode;
 
-MergingTreeNode *createMergingTreeNode(
+MergingTreeNode * createMergingTreeNode(
   HdmvRectangle box,
   MergingTreeNode *left,
   MergingTreeNode *right

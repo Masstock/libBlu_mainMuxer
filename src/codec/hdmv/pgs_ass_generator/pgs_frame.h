@@ -52,7 +52,7 @@ typedef struct PF {
   bool non_acquisition_point;
 } PgsFrame;
 
-PgsFrame *createPgsFrame(
+PgsFrame * createPgsFrame(
   void
 );
 
@@ -104,7 +104,7 @@ typedef struct FS {
     fill all of the Epoch windows.                                           */
 } PgsFrameSequence;
 
-PgsFrameSequence *createPgsFrameSequence(
+PgsFrameSequence * createPgsFrameSequence(
   void
 );
 
@@ -116,7 +116,7 @@ int startPgsFrameSequence(
   PgsFrameSequence ** cur_frame_seq
 );
 
-PgsFrame *newFramePgsFrameSequence(
+PgsFrame * newFramePgsFrameSequence(
   PgsFrameSequence *sequence,
   int64_t timestamp
 );

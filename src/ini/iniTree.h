@@ -47,7 +47,7 @@ void attachChildIniFileNode(
   IniFileNodePtr child
 );
 
-lbc *lookupIniFileNode(
+lbc * lookupIniFileNode(
   const IniFileNodePtr node,
   const char *name
 );

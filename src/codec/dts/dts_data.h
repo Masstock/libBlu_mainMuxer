@@ -64,7 +64,7 @@ typedef enum {
   DTSHD_TCFR_RESERVED
 } DtshdTCFrameRate;
 
-static inline const char *DtshdTCFrameRateStr(
+static inline const char * DtshdTCFrameRateStr(
   DtshdTCFrameRate TC_Frame_Rate
 )
 {
@@ -382,7 +382,7 @@ static inline unsigned getNbChDcaCoreAudioChannelAssignCode(
  * \param AMODE
  * \return const char*
  */
-static inline const char *DcaCoreAudioChannelAssignCodeStr(
+static inline const char * DcaCoreAudioChannelAssignCodeStr(
   const DcaCoreAudioChannelAssignCode AMODE
 )
 {
@@ -522,7 +522,7 @@ static inline bool isValidDcaCoreExtendedAudioCodingCode(
   ;
 }
 
-static inline const char *DcaCoreExtendedAudioCodingCodeStr(
+static inline const char * DcaCoreExtendedAudioCodingCodeStr(
   DcaCoreExtendedAudioCodingCode EXT_AUDIO_ID
 )
 {
@@ -550,7 +550,7 @@ typedef enum {
   DCA_LFF_INVALID        = 0x3   /**< Invalid value.                         */
 } DcaCoreLowFrequencyEffectsFlag;
 
-static inline const char *DcaCoreLowFrequencyEffectsFlagStr(
+static inline const char * DcaCoreLowFrequencyEffectsFlagStr(
   DcaCoreLowFrequencyEffectsFlag LFF
 )
 {
@@ -580,7 +580,7 @@ typedef enum {
   DCA_CHIST_FREE_COPY   = 0x3
 } DcaCoreCopyrightHistoryCode;
 
-static inline const char *DcaCoreCopyrightHistoryCodeStr(
+static inline const char * DcaCoreCopyrightHistoryCodeStr(
   DcaCoreCopyrightHistoryCode CHIST
 )
 {
@@ -639,7 +639,7 @@ typedef enum {
   DCA_SUM_ENCODED      = 0x1
 } DcaCoreChPairSumDiffEncodedFlag;
 
-static inline const char *frontChDcaCoreChPairSumDiffEncodedFlagStr(
+static inline const char * frontChDcaCoreChPairSumDiffEncodedFlagStr(
   DcaCoreChPairSumDiffEncodedFlag SUMF
 )
 {
@@ -648,7 +648,7 @@ static inline const char *frontChDcaCoreChPairSumDiffEncodedFlagStr(
   return "Sum/Difference, L=L+R, R=L-R";
 }
 
-static inline const char *surChDcaCoreChPairSumDiffEncodedFlagStr(
+static inline const char * surChDcaCoreChPairSumDiffEncodedFlagStr(
   DcaCoreChPairSumDiffEncodedFlag SUMS
 )
 {
@@ -805,7 +805,7 @@ typedef enum {
   DCA_EXT_SS_MIX_ADJ_LVL_RESERVED              = 0x3
 } DcaExtMixMetadataAdjLevel;
 
-static inline const char *dcaExtMixMetadataAjdLevelStr(
+static inline const char * dcaExtMixMetadataAjdLevelStr(
   DcaExtMixMetadataAdjLevel lvl
 )
 {
@@ -840,7 +840,7 @@ typedef enum {
   DCA_EXT_SS_ASSET_TYPE_DESC_RESERVED                           = 0xF
 } DcaExtAssetTypeDescCode;
 
-static inline const char *dtsExtAssetTypeDescCodeStr(
+static inline const char * dtsExtAssetTypeDescCodeStr(
   const DcaExtAssetTypeDescCode code
 )
 {
@@ -973,7 +973,7 @@ typedef enum {
   DCA_EXT_SS_NOT_APPLICABLE_2        = 0x4,
 } DcaExtRepresentationTypeCode;
 
-static inline const char *dtsExtRepresentationTypeCodeStr(
+static inline const char * dtsExtRepresentationTypeCodeStr(
   const DcaExtRepresentationTypeCode code
 )
 {
@@ -1068,7 +1068,7 @@ typedef enum {
   DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING              = 0x3
 } DcaAudioAssetCodingMode;
 
-static inline const char *dtsAudioAssetCodingModeStr(
+static inline const char * dtsAudioAssetCodingModeStr(
   const DcaAudioAssetCodingMode mode
 )
 {

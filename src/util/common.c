@@ -14,7 +14,7 @@
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 
-lbc *getLastWindowsErrorString(
+lbc * getLastWindowsErrorString(
   DWORD *err_ret
 )
 {

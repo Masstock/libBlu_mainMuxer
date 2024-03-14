@@ -142,7 +142,7 @@ static bool matchIniFileNode(
   return true;
 }
 
-lbc *lookupIniFileNode(
+lbc * lookupIniFileNode(
   const IniFileNodePtr node,
   const char *expr
 )

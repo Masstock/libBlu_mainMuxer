@@ -9,7 +9,7 @@ int parseIniFile(
   const lbc *filepath
 );
 
-lbc *lookupIniFile(
+lbc * lookupIniFile(
   const IniFileContext ctx,
   const char *expr
 );

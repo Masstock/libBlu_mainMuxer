@@ -128,7 +128,7 @@ typedef enum {
   WAVE_FORMAT_EXTENSIBLE  = 0xFFFE
 } WaveFmtFormatTag;
 
-static inline const char *WaveFmtFormatTagStr(
+static inline const char * WaveFmtFormatTagStr(
   WaveFmtFormatTag wFormatTag
 )
 {

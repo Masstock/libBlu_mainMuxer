@@ -397,7 +397,7 @@ int parseDtsXllToPbrBuffer(
   return 0;
 }
 
-LibbluBitReader *initUnpackDtsXllPbr(
+LibbluBitReader * initUnpackDtsXllPbr(
   DtsXllFrameContext *ctx
 )
 {

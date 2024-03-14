@@ -176,7 +176,7 @@ static int _updateRgbaHdmvPicture(
   LIBBLU_ERROR_RETURN("NOT IMPLEMENTED %s %d\n", __FILE__, __LINE__);
 }
 
-const uint32_t *getRgbaHdmvPicture(
+const uint32_t * getRgbaHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -185,7 +185,7 @@ const uint32_t *getRgbaHdmvPicture(
   return pic->rgba;
 }
 
-uint32_t *getRgbaHandleHdmvPicture(
+uint32_t * getRgbaHandleHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -231,7 +231,7 @@ static int _updatePalHdmvPicture(
   return _updatePalFromRgbaHdmvPicture(pic);
 }
 
-const uint8_t *getPalHdmvPicture(
+const uint8_t * getPalHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -249,7 +249,7 @@ const uint8_t *getPalHdmvPicture(
   return pic->pal;
 }
 
-uint8_t *getPalHandleHdmvPicture(
+uint8_t * getPalHandleHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -550,7 +550,7 @@ size_t getRleSizeHdmvPicture(
   return pic->infos.rleUsedSize;
 }
 
-const uint8_t *getRleHdmvPicture(
+const uint8_t * getRleHdmvPicture(
   HdmvPicturePtr pic
 )
 {
@@ -559,7 +559,7 @@ const uint8_t *getRleHdmvPicture(
   return pic->rle;
 }
 
-uint8_t *getRleHandleHdmvPicture(
+uint8_t * getRleHandleHdmvPicture(
   HdmvPicturePtr pic
 )
 {

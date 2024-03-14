@@ -5,7 +5,7 @@
 
 #include "hdmv_paletized_bitmap.h"
 
-// uint8_t *applyRleHdmvPaletizedBitmap(
+// uint8_t * applyRleHdmvPaletizedBitmap(
 //   HdmvPalletizedBitmap
 // );
 

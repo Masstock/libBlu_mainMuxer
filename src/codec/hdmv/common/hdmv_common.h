@@ -80,7 +80,7 @@ static inline hdmv_segtype_idx segmentTypeIndexHdmvContext(
 
 #define SEGMENT_TYPE_IDX_STR_SIZE  4
 
-static inline const char *segmentTypeIndexStr(
+static inline const char * segmentTypeIndexStr(
   hdmv_segtype_idx idx
 )
 {
@@ -307,7 +307,7 @@ static inline uint32_t getRemSizeFragmentHdmvSequence(
   return sequence->fragments_used_len - sequence->fragments_parsed_off;
 }
 
-static inline const uint8_t *getRemDataFragmentHdmvSequence(
+static inline const uint8_t * getRemDataFragmentHdmvSequence(
   HdmvSequencePtr sequence,
   uint32_t *remaining_size_ret
 )

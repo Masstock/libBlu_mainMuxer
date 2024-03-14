@@ -47,7 +47,7 @@ typedef struct {
   uint64_t identifier;  /**< Bytestream randomized identifier.               */
 } BitstreamHandler, *BitstreamWriterPtr, *BitstreamReaderPtr;
 
-static inline CrcContext *crcCtxBitstream(
+static inline CrcContext * crcCtxBitstream(
   BitstreamHandler *bs
 )
 {

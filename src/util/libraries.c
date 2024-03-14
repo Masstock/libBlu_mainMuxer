@@ -103,7 +103,7 @@ void closeLibbluLibrary(
   destroyLibbluLibraryHandle(handle);
 }
 
-void *resolveSymLibbluLibrary(
+void * resolveSymLibbluLibrary(
   LibbluLibraryHandlePtr handle,
   const char *name
 )
@@ -214,7 +214,7 @@ void closeLibbluLibrary(
   destroyLibbluLibraryHandle(handle);
 }
 
-void *resolveSymLibbluLibrary(
+void * resolveSymLibbluLibrary(
   LibbluLibraryHandlePtr handle,
   const char *name
 )

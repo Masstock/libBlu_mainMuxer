@@ -100,7 +100,7 @@ int addPaletteIgsCompilerComposition(
 
 /* ###### Get Entry : ###################################################### */
 
-static inline const HdmvBitmap *getRefPictureIgsCompilerComposition(
+static inline const HdmvBitmap * getRefPictureIgsCompilerComposition(
   IgsCompilerComposition *compo,
   const lbc *name
 )

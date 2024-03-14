@@ -56,7 +56,7 @@ static inline int addHdmvPicturesIndexer(
 
 /* ###### Get Entry : ###################################################### */
 
-static inline HdmvBitmap *getHdmvPicturesIndexer(
+static inline HdmvBitmap * getHdmvPicturesIndexer(
   HdmvPicturesIndexer *indexer,
   const lbc *name
 )

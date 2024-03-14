@@ -86,14 +86,14 @@ typedef struct {
   unsigned nb_epochs;
 } HdmvContext;
 
-static inline HdmvDSState *getPrevDSHdmvContext(
+static inline HdmvDSState * getPrevDSHdmvContext(
   HdmvContext *ctx
 )
 {
   return &ctx->ds[ctx->cur_ds ^ 1];
 }
 
-static inline HdmvDSState *getCurDSHdmvContext(
+static inline HdmvDSState * getCurDSHdmvContext(
   HdmvContext *ctx
 )
 {
@@ -111,7 +111,7 @@ static inline void switchCurDSHdmvContext(
   memset(&ctx->ds[ctx->cur_ds], 0x0, sizeof(HdmvDSState));
 }
 
-HdmvContext *createHdmvContext(
+HdmvContext * createHdmvContext(
   LibbluESParsingSettings *settings,
   const lbc *infilepath,
   HdmvStreamType type,

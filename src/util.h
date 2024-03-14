@@ -135,7 +135,7 @@ typedef enum {
   TYPE_ERROR = 0xFF
 } StreamType;
 
-const lbc *streamTypeStr(
+const lbc * streamTypeStr(
   StreamType typ
 );
 

@@ -934,7 +934,7 @@ typedef struct {
 #define MLP_SYNCWORD                                                          \
   ((uint32_t) (MLP_SYNCWORD_PREFIX << 8) | MLP_SYNCWORD_SUFFIX)
 
-static inline char *MlpFormatSyncStr(
+static inline char * MlpFormatSyncStr(
   uint32_t format_sync
 )
 {
@@ -974,7 +974,7 @@ static inline unsigned sampleRateMlpAudioSamplingFrequency(
   return 0;
 }
 
-static inline const char *MlpAudioSamplingFrequencyStr(
+static inline const char * MlpAudioSamplingFrequencyStr(
   MlpAudioSamplingFrequency audio_sampling_frequency
 )
 {
@@ -1210,7 +1210,7 @@ typedef enum {
   MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING
 } MlpExtraChannelMeaningContent;
 
-static inline const char *MlpExtraChannelMeaningContentStr(
+static inline const char * MlpExtraChannelMeaningContentStr(
   MlpExtraChannelMeaningContent type
 )
 {
@@ -1268,7 +1268,7 @@ typedef enum {
   MLP_EXT_SS_INFO_16CH_PRES_SS_0_1_2_3  = 0x3
 } MlpExtendedSubstreamInfo;
 
-static inline const char *MlpExtendedSubstreamInfoStr(
+static inline const char * MlpExtendedSubstreamInfoStr(
   MlpExtendedSubstreamInfo extended_substream_info,
   bool b16ch_presentation_present
 )
@@ -1566,7 +1566,7 @@ typedef enum {
   MLP_HUFFCB_TABLE_2  = 0x3
 } MlpHuffmanCodebook;
 
-static inline const char *MlpHuffmanCodebookStr(
+static inline const char * MlpHuffmanCodebookStr(
   MlpHuffmanCodebook huffman_codebook
 )
 {

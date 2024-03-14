@@ -153,7 +153,7 @@ int parseDtsXllToPbrBuffer(
   uint32_t asset_size
 );
 
-LibbluBitReader *initUnpackDtsXllPbr(
+LibbluBitReader * initUnpackDtsXllPbr(
   DtsXllFrameContext *ctx
 );
 

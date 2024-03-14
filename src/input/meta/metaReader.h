@@ -15,7 +15,7 @@ typedef enum {
   LBMETA_DISCOPT
 } LibbluMetaFileType;
 
-inline static const char *LibbluMetaFileTypeStr(
+inline static const char * LibbluMetaFileTypeStr(
   LibbluMetaFileType file_type
 )
 {
@@ -38,7 +38,7 @@ typedef struct LibbluMetaFileOption {
   lbc *arg;
 } LibbluMetaFileOption;
 
-LibbluMetaFileOption *createLibbluMetaFileOption(
+LibbluMetaFileOption * createLibbluMetaFileOption(
   const lbc *name,
   const lbc *arg
 );
@@ -58,7 +58,7 @@ typedef struct LibbluMetaFileTrack {
   LibbluMetaFileOption *options;
 } LibbluMetaFileTrack;
 
-LibbluMetaFileTrack *createLibbluMetaFileTrack(
+LibbluMetaFileTrack * createLibbluMetaFileTrack(
   const lbc *codec,
   const lbc *filepath
 );
@@ -75,7 +75,7 @@ typedef enum {
 
 #define LBMETA_NB_SECTIONS  1
 
-inline static const char *LibbluMetaFileSectionTypeStr(
+inline static const char * LibbluMetaFileSectionTypeStr(
   LibbluMetaFileSectionType section_type
 )
 {

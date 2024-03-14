@@ -32,7 +32,7 @@
 
 /* ### ESMS ES Source Files : ############################################## */
 
-static lbc *checkAndDupFilepathEsmsESSourceFiles(
+static lbc * checkAndDupFilepathEsmsESSourceFiles(
   const lbc *filepath
 )
 {
@@ -567,7 +567,7 @@ int checkDirectoryMagic(
   return 0;
 }
 
-const char *ESMSValidatorErrorStr(
+const char * ESMSValidatorErrorStr(
   const ESMSFileValidatorRet code
 )
 {

@@ -26,7 +26,7 @@ typedef enum {
   HDMV_PAL_CM_BT_2020
 } HdmvPaletteColorMatrix;
 
-static inline const char *HdmvPaletteColorMatrixStr(
+static inline const char * HdmvPaletteColorMatrixStr(
   HdmvPaletteColorMatrix matrix
 )
 {

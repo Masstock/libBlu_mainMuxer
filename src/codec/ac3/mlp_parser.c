@@ -1243,7 +1243,7 @@ typedef enum {
   MLP_IIR
 } MlpFilterType;
 
-static const char *MlpFilterTypeStr(
+static const char * MlpFilterTypeStr(
   MlpFilterType filter_type
 )
 {

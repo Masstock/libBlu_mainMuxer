@@ -36,7 +36,7 @@ typedef enum {
   HDMV_STREAM_TYPE_PGS  = 0x1
 } HdmvStreamType;
 
-static inline const char *HdmvStreamTypeStr(
+static inline const char * HdmvStreamTypeStr(
   HdmvStreamType type
 )
 {
@@ -176,7 +176,7 @@ typedef enum {
   HDMV_SEGMENT_TYPE_END   = 0x80
 } HdmvSegmentType;
 
-static inline const char *HdmvSegmentTypeStr(
+static inline const char * HdmvSegmentTypeStr(
   HdmvSegmentType type
 )
 {
@@ -315,7 +315,7 @@ typedef enum {
   HDMV_COMPO_STATE_EPOCH_CONTINUE     = 0x3,
 } HdmvCompositionState;
 
-static inline const char *HdmvCompositionStateStr(
+static inline const char * HdmvCompositionStateStr(
   HdmvCompositionState composition_state
 )
 {
@@ -1319,7 +1319,7 @@ typedef enum {
   HDMV_STREAM_MODEL_OOM          = 0x1   /**< Solely constitute the AV clip. */
 } HdmvStreamModel;
 
-static inline const char *HdmvStreamModelStr(
+static inline const char * HdmvStreamModelStr(
   HdmvStreamModel stream_model
 )
 {
@@ -1338,7 +1338,7 @@ typedef enum {
   HDMV_UI_MODEL_POP_UP  = 0x1   /**< Pop-Up menu interface type.             */
 } HdmvUserInterfaceModel;
 
-static inline const char *HdmvUserInterfaceModelStr(
+static inline const char * HdmvUserInterfaceModelStr(
   HdmvUserInterfaceModel user_interface_model
 )
 {
@@ -1737,7 +1737,7 @@ typedef enum {
   ODS_IN_EFFECT_PAGE0
 } HdmvODSUsage;
 
-static inline const char *HdmvODSUsageStr(
+static inline const char * HdmvODSUsageStr(
   HdmvODSUsage usage
 )
 {

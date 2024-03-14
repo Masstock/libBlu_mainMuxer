@@ -225,7 +225,7 @@ static void * _getHashTable(
   return NULL; // Not found
 }
 
-void *getHashTable(
+void * getHashTable(
   Hashtable *table,
   const void *entry_key
 )
@@ -238,7 +238,7 @@ void *getHashTable(
   );
 }
 
-void *getNumHashTable(
+void * getNumHashTable(
   Hashtable *table,
   uint32_t entry_key
 )

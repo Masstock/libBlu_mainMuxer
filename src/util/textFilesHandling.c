@@ -297,7 +297,7 @@ static int getNextToken(
   return 0;
 }
 
-const lbc *readTxtFile(
+const lbc * readTxtFile(
   TxtFileHandlerPtr handler
 )
 {
@@ -306,7 +306,7 @@ const lbc *readTxtFile(
   return handler->token;
 }
 
-const lbc *lastReadedTxtFile(
+const lbc * lastReadedTxtFile(
   TxtFileHandlerPtr handler
 )
 {

@@ -115,7 +115,7 @@ unsigned lastParsedNodeLineXmlCtx(
 
 /* ### XML Node : ########################################################## */
 
-const lbc *getNameXmlNode(
+const lbc * getNameXmlNode(
   const XmlNodePtr node
 )
 {
@@ -363,7 +363,7 @@ int restoreLastRootXmlCtx(
   return 0;
 }
 
-lbc *getStringXmlCtx(
+lbc * getStringXmlCtx(
   XmlCtxPtr ctx,
   const lbc *path,
   int idx
@@ -399,7 +399,7 @@ free_return:
   return NULL;
 }
 
-lbc *getStringFromExprVaXmlCtx(
+lbc * getStringFromExprVaXmlCtx(
   XmlCtxPtr ctx,
   const lbc *path_format,
   va_list args
@@ -415,7 +415,7 @@ lbc *getStringFromExprVaXmlCtx(
   return string;
 }
 
-lbc *getStringFromExprXmlCtx(
+lbc * getStringFromExprXmlCtx(
   XmlCtxPtr ctx,
   const lbc *path_format,
   ...

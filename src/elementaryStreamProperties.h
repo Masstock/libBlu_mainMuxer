@@ -94,7 +94,7 @@ typedef enum {
   HDMV_VIDEO_FORMAT_2160P  = 0x8
 } HdmvVideoFormat;
 
-static inline const char *HdmvVideoFormatStr(
+static inline const char * HdmvVideoFormatStr(
   HdmvVideoFormat video_format
 )
 {
@@ -135,7 +135,7 @@ typedef enum {
   FRAME_RATE_CODE_59940  = 0x07   /**< 59.940 (60000/1001)                   */
 } HdmvFrameRateCode;
 
-static inline const char *HdmvFrameRateCodeStr(
+static inline const char * HdmvFrameRateCodeStr(
   HdmvFrameRateCode frame_rate_code
 )
 {
@@ -254,7 +254,7 @@ typedef enum {
   AUDIO_FORMAT_STEREO_MULTI_CHANNEL  = 0xC
 } AudioFormatCode;
 
-static inline const char *AudioFormatCodeStr(
+static inline const char * AudioFormatCodeStr(
   const AudioFormatCode code
 )
 {

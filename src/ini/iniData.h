@@ -8,7 +8,7 @@ typedef struct {
   void *empty;
 } IniFileContext;
 
-static inline lbc *lookupIniFile(
+static inline lbc * lookupIniFile(
   const IniFileContext ctx,
   const char *expr
 )

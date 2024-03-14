@@ -168,7 +168,7 @@ static int _initParsingOptionsHdmvContext(
   return 0;
 }
 
-HdmvContext *createHdmvContext(
+HdmvContext * createHdmvContext(
   LibbluESParsingSettings *settings,
   const lbc *infilepath,
   HdmvStreamType type,

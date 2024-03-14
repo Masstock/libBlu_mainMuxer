@@ -64,7 +64,7 @@ typedef struct {
  * \note #LibbluESSettings 'pid' and 'options' members are
  * initialized to 0.
  */
-static inline LibbluESSettings *initLibbluESSettings(
+static inline LibbluESSettings * initLibbluESSettings(
   LibbluESSettings *dst
 )
 {

@@ -27,7 +27,7 @@
 #if defined(ARCH_WIN32)
 typedef unsigned __LONG32 DWORD;
 
-lbc *getLastWindowsErrorString(
+lbc * getLastWindowsErrorString(
   DWORD *err
 );
 

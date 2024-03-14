@@ -107,7 +107,7 @@ static inline void cleanLibbluMuxingSettings(
  * settings is returned. Otherwise, if the limit of ES as been reached, a NULL
  * pointer is returned.
  */
-static inline LibbluESSettings *getNewESLibbluMuxingSettings(
+static inline LibbluESSettings * getNewESLibbluMuxingSettings(
   LibbluMuxingSettings *settings
 )
 {

@@ -49,7 +49,7 @@ free_return:
   return -1;
 }
 
-lbc *lookupIniFile(
+lbc * lookupIniFile(
   const IniFileContext ctx,
   const char *expr
 )

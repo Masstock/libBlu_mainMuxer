@@ -6,14 +6,14 @@
 
 #include "pgs_frame.h"
 
-PgsFrame *createPgsFrame(
+PgsFrame * createPgsFrame(
   void
 )
 {
   return calloc(1, sizeof(PgsFrame));
 }
 
-PgsFrameSequence *createPgsFrameSequence(
+PgsFrameSequence * createPgsFrameSequence(
   void
 )
 {
@@ -51,7 +51,7 @@ int startPgsFrameSequence(
   return 0;
 }
 
-PgsFrame *newFramePgsFrameSequence(
+PgsFrame * newFramePgsFrameSequence(
   PgsFrameSequence *sequence,
   int64_t timestamp
 )

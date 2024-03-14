@@ -52,7 +52,7 @@ int compressRleHdmvObject(
   uint16_t *longuest_compressed_line_ret
 );
 
-static inline uint8_t *getOrCompressRleHdmvObject(
+static inline uint8_t * getOrCompressRleHdmvObject(
   HdmvObject *obj,
   unsigned *longuest_compressed_line_size_ret,
   uint16_t *longuest_compressed_line_ret
@@ -65,7 +65,7 @@ static inline uint8_t *getOrCompressRleHdmvObject(
   return obj->rle;
 }
 
-static inline uint8_t *getRleHdmvObject(
+static inline uint8_t * getRleHdmvObject(
   const HdmvObject *obj
 )
 {

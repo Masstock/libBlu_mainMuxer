@@ -252,7 +252,7 @@ typedef enum {
   ESMS_DIRECTORY_ID_ES_DATA_BLK_DEF  = 0x04
 } ESMSDirectoryId;
 
-static inline const char *ESMSDirectoryIdStr(
+static inline const char * ESMSDirectoryIdStr(
   ESMSDirectoryId dir_ID
 )
 {
@@ -346,7 +346,7 @@ typedef enum {
   ESMS_ADD_DATA_BLOCK     /**< Add bytes from a script data section.         */
 } EsmsCommandType;
 
-static inline const char *EsmsCommandTypeStr(
+static inline const char * EsmsCommandTypeStr(
   EsmsCommandType type
 )
 {
@@ -379,7 +379,7 @@ typedef enum {
   INSERTION_MODE_INSERT     = 0x1
 } EsmsDataInsertionMode;
 
-static inline const char *EsmsDataInsertionModeStr(
+static inline const char * EsmsDataInsertionModeStr(
   EsmsDataInsertionMode mode
 )
 {
@@ -755,7 +755,7 @@ typedef enum {
   ESMS_FV_OK                   =  0   /**< Script is valid.                  */
 } ESMSFileValidatorRet;
 
-const char *ESMSValidatorErrorStr(
+const char * ESMSValidatorErrorStr(
   const ESMSFileValidatorRet code
 );
 

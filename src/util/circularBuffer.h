@@ -42,7 +42,7 @@ typedef struct {
  *
  * Created object must be passed to #destroyCircularBuffer() after use.
  */
-CircularBuffer *createCircularBuffer(
+CircularBuffer * createCircularBuffer(
   void
 );
 
@@ -82,7 +82,7 @@ static inline void cleanCircularBuffer(
  * If buffer is full, its size is growed. If buffer is too big or if a memory
  * allocation occurs, an error is returned.
  */
-void *newEntryCircularBuffer(
+void * newEntryCircularBuffer(
   CircularBuffer *buf,
   size_t slot_size
 );
@@ -103,7 +103,7 @@ static inline bool isEmptyCircularBuffer(
   return 0 == buf->used_size;
 }
 
-static inline void *getCircularBuffer(
+static inline void * getCircularBuffer(
   const CircularBuffer *buf,
   size_t index
 )
@@ -131,7 +131,7 @@ static inline void *getCircularBuffer(
  * Calls to #newEntryCircularBuffer() might invalidate previously returned
  * pointers.
  */
-static inline void *popCircularBuffer(
+static inline void * popCircularBuffer(
   CircularBuffer *buf
 )
 {

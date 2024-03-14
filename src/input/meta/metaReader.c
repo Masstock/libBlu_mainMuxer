@@ -27,7 +27,7 @@ static bool _isEndOfLine(
 static int _parseString(
   lbc *string,
   unsigned string_buf_size,
-  const lbc ** rp,
+  const lbc **rp,
   const lbc *prefix
 )
 {
@@ -64,7 +64,7 @@ static int _parseString(
 
 /* ### META File option : ################################################## */
 
-LibbluMetaFileOption *createLibbluMetaFileOption(
+LibbluMetaFileOption * createLibbluMetaFileOption(
   const lbc *name,
   const lbc *arg
 )
@@ -157,7 +157,7 @@ static int _parseOptionsMetaFileStructure(
 
 /* ### META File track : ################################################### */
 
-LibbluMetaFileTrack *createLibbluMetaFileTrack(
+LibbluMetaFileTrack * createLibbluMetaFileTrack(
   const lbc *codec,
   const lbc *filepath
 )

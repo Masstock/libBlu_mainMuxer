@@ -35,7 +35,7 @@ static inline size_t offsetLibbluBitWriter(
   return br->offset;
 }
 
-static inline const uint8_t *accessLibbluBitWriter(
+static inline const uint8_t * accessLibbluBitWriter(
   const LibbluBitWriter *br
 )
 {

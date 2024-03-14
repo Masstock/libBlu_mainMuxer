@@ -23,7 +23,7 @@ static inline void initLibbluBitReader(
   };
 }
 
-static inline const uint8_t *accessLibbluBitReader(
+static inline const uint8_t * accessLibbluBitReader(
   const LibbluBitReader *br
 )
 {

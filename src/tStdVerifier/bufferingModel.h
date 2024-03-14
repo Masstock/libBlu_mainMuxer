@@ -159,7 +159,7 @@ typedef enum {
  * \param name Pre-defined name value.
  * \return const lbc* String representation.
  */
-static inline const lbc *predefinedBufferTypesName(
+static inline const lbc * predefinedBufferTypesName(
   BufModelBufferName name
 )
 {
@@ -249,7 +249,7 @@ typedef struct BufModelBuffer {
  * \param bufferPtr BufferPtr buffer.
  * \return lbc *buffer name.
  */
-static inline const lbc *bufferNameBufModelBuffer(
+static inline const lbc * bufferNameBufModelBuffer(
   const BufModelBufferPtr buf
 )
 {
@@ -507,7 +507,7 @@ typedef enum {
  * \param type Type to return.
  * \return const lbc* String representation.
  */
-static inline const char *getBufModelFilterLblTypeString(
+static inline const char * getBufModelFilterLblTypeString(
   BufModelFilterLblType type
 )
 {

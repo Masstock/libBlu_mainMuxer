@@ -19,11 +19,11 @@ void closeTxtFile(
   TxtFileHandlerPtr handler
 );
 
-const lbc *readTxtFile(
+const lbc * readTxtFile(
   TxtFileHandlerPtr handler
 );
 
-const lbc *lastReadedTxtFile(
+const lbc * lastReadedTxtFile(
   TxtFileHandlerPtr handler
 );
 

@@ -3,7 +3,7 @@
 
 #include "pgs_merging_tree.h"
 
-MergingTreeNode *createMergingTreeNode(
+MergingTreeNode * createMergingTreeNode(
   HdmvRectangle box,
   MergingTreeNode *left,
   MergingTreeNode *right

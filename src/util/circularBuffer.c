@@ -8,7 +8,7 @@
 
 #include "circularBuffer.h"
 
-CircularBuffer *createCircularBuffer(
+CircularBuffer * createCircularBuffer(
   void
 )
 {
@@ -18,7 +18,7 @@ CircularBuffer *createCircularBuffer(
   return buf;
 }
 
-void *newEntryCircularBuffer(
+void * newEntryCircularBuffer(
   CircularBuffer *buf,
   size_t slot_size
 )

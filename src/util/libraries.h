@@ -27,7 +27,7 @@ void closeLibbluLibrary(
   LibbluLibraryHandlePtr handle
 );
 
-void *resolveSymLibbluLibrary(
+void * resolveSymLibbluLibrary(
   LibbluLibraryHandlePtr handle,
   const char *name
 );
