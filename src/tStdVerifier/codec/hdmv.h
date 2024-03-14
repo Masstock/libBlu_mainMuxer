@@ -40,8 +40,8 @@
 #define BDAV_STD_HDMV_CDBS 1048576
 
 int createHdmvBufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 );

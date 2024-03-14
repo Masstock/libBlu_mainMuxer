@@ -94,7 +94,7 @@ static inline void cleanDtshdFileHandler(
  * Usage exemple:
  * \code{.c}
  * BitstreamReaderPtr file; // Input DTS-HD file
- * DtshdFileHandler * handle; // DTS-HD file handle
+ * DtshdFileHandler *handle; // DTS-HD file handle
  * int ret; // Return value
  *
  * while (!isEof(file)) {
@@ -109,7 +109,7 @@ static inline void cleanDtshdFileHandler(
  */
 int decodeDtshdFileChunk(
   BitstreamReaderPtr bs,
-  DtshdFileHandler * handle
+  DtshdFileHandler *handle
 );
 
 #endif

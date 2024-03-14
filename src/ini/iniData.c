@@ -9,15 +9,15 @@
 #include "iniData.h"
 
 int loadSourceIniFileContext(
-  IniFileContext * dst,
-  FILE * input_fd
+  IniFileContext *dst,
+  FILE *input_fd
 )
 {
   // char ** sourceCode;
   // size_t allocatedLines;
   // size_t usedLines;
 
-  // char * lineBuf = NULL;
+  // char *lineBuf = NULL;
   // size_t allocatedLineBuf = 0;
 
   // fpos_t originalOffset;
@@ -33,7 +33,7 @@ int loadSourceIniFileContext(
   char ** ini_lines = NULL;
   size_t allocated_ini_lines = 0, used_ini_lines = 0;
 
-  char * line_buf = NULL;
+  char *line_buf = NULL;
   size_t allocated_line_buf = 0;
 
   do {
@@ -46,7 +46,7 @@ int loadSourceIniFileContext(
       if (lb_mul_overflow_size_t(new_size, sizeof(char *)))
         LIBBLU_ERROR_FRETURN("Too many lines in input INI file, overflow.\n")
 
-      char ** new_array = realloc(ini_lines, new_size * sizeof(char *));
+      char ** new_array = realloc(ini_lines, new_size *sizeof(char *));
       if (NULL == new_array)
         LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
@@ -65,7 +65,7 @@ int loadSourceIniFileContext(
         if (new_size <= used_line_buf)
           LIBBLU_ERROR_FRETURN("Too many characters in INI file, overflow.\n");
 
-        char * new_array = realloc(line_buf, new_size);
+        char *new_array = realloc(line_buf, new_size);
         if (NULL == new_array)
           LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
@@ -94,7 +94,7 @@ int loadSourceIniFileContext(
 
     } while (allocated_line_buf <= used_line_buf);
 
-    char * line = lb_str_dup(line_buf);
+    char *line = lb_str_dup(line_buf);
     if (NULL == line)
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 

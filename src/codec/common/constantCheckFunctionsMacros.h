@@ -33,8 +33,8 @@
  *
  * ...
  * // In function body:
- * Test * first;
- * Test * second;
+ * Test *first;
+ * Test *second;
  *
  * bool result = CHECK(
  *   EQUAL(->infosPresent)

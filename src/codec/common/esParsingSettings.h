@@ -15,8 +15,8 @@
 #include "../../util.h"
 
 typedef struct {
-  const lbc * esFilepath;
-  const lbc * scriptFilepath;
+  const lbc *esFilepath;
+  const lbc *scriptFilepath;
 
   /* uint64_t flags; */
   bool askForRestart;
@@ -25,9 +25,9 @@ typedef struct {
 } LibbluESParsingSettings;
 
 static inline void initLibbluESParsingSettings(
-  LibbluESParsingSettings * dst,
-  const lbc * esFilepath,
-  const lbc * scriptFilepath,
+  LibbluESParsingSettings *dst,
+  const lbc *esFilepath,
+  const lbc *scriptFilepath,
   LibbluESSettingsOptions options
 )
 {
@@ -41,7 +41,7 @@ static inline void initLibbluESParsingSettings(
 }
 
 static inline bool doRestartLibbluESParsingSettings(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   bool doRestart;

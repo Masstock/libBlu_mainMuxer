@@ -28,8 +28,8 @@
 #include "../common/hdmv_palette_gen.h"
 
 int processIgsCompiler(
-  const lbc * xml_filepath,
-  HdmvTimecodes * timecodes,
+  const lbc *xml_filepath,
+  HdmvTimecodes *timecodes,
   IniFileContext conf_hdl
 );
 

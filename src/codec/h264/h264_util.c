@@ -38,7 +38,7 @@ void updateH264ProfileLimits(
   bool applyBdavConstraints
 )
 {
-  H264ConstraintsParam * constraintsParam;
+  H264ConstraintsParam *constraintsParam;
 
   assert(NULL != param);
 
@@ -198,7 +198,7 @@ void updateH264ProfileLimits(
 
 static int initInputFileH264ParametersHandle(
   H264ParametersHandlerPtr handle,
-  const LibbluESParsingSettings * settings
+  const LibbluESParsingSettings *settings
 )
 {
   return initH264NalDeserializerContext(&handle->file, settings->esFilepath);
@@ -206,7 +206,7 @@ static int initInputFileH264ParametersHandle(
 
 static int initOutputFileH264ParametersHandle(
   H264ParametersHandlerPtr handle,
-  const LibbluESParsingSettings * settings
+  const LibbluESParsingSettings *settings
 )
 {
   assert(NULL != handle);
@@ -227,7 +227,7 @@ static int initOutputFileH264ParametersHandle(
 }
 
 H264ParametersHandlerPtr initH264ParametersHandler(
-  const LibbluESParsingSettings * settings
+  const LibbluESParsingSettings *settings
 )
 {
   H264ParametersHandlerPtr handle;
@@ -245,9 +245,9 @@ H264ParametersHandlerPtr initH264ParametersHandler(
 
   handle->curProgParam = (H264CurrentProgressParam) {
     .useVuiUpdate =
-      0x00 != settings->options.fpsChange
-      || isUsedLibbluAspectRatioMod(settings->options.arChange)
-      || 0x00 != settings->options.levelChange
+      0x00 != settings->options.fps_mod
+      || isUsedLibbluAspectRatioMod(settings->options.ar_mod)
+      || 0x00 != settings->options.level_mod
   };
 
   if (initInputFileH264ParametersHandle(handle, settings) < 0)
@@ -281,7 +281,7 @@ void resetH264ParametersHandler(
 
 int completeH264ParametersHandler(
   H264ParametersHandlerPtr handle,
-  const LibbluESParsingSettings * settings
+  const LibbluESParsingSettings *settings
 )
 {
   if (completePesCuttingScriptEsmsHandler(handle->esmsFile, handle->esms) < 0)
@@ -318,11 +318,11 @@ void destroyH264ParametersHandler(
 
 int updatePPSH264Parameters(
   H264ParametersHandlerPtr handle,
-  const H264PicParametersSetParameters * param,
+  const H264PicParametersSetParameters *param,
   unsigned id
 )
 {
-  H264PicParametersSetParameters * newPps;
+  H264PicParametersSetParameters *newPps;
 
   assert(NULL != handle);
   assert(id < H264_MAX_PPS);
@@ -458,9 +458,9 @@ H264AUNalUnitPtr createNewNalCell(
     if (lb_mul_overflow_size_t(newSize, sizeof(H264AUNalUnit)))
       LIBBLU_H264_ERROR_NRETURN("Nb AU allocated NALUs overflow.\n");
 
-    H264AUNalUnit * newList = (H264AUNalUnit *) realloc(
+    H264AUNalUnit *newList = (H264AUNalUnit *) realloc(
       handle->curProgParam.curAccessUnit.nalus,
-      newSize * sizeof(H264AUNalUnit)
+      newSize *sizeof(H264AUNalUnit)
     );
     if (NULL == newList)
       LIBBLU_H264_ERROR_NRETURN("Memory allocation error.\n");
@@ -501,7 +501,7 @@ int replaceCurNalCell(
   H264AUNalUnitReplacementData newParam
 )
 {
-  H264AUNalUnit * nalUnit;
+  H264AUNalUnit *nalUnit;
 
   assert(NULL != handle);
 
@@ -533,7 +533,7 @@ int addNalCellToAccessUnit(
 {
   assert(NULL != handle);
 
-  H264AUNalUnit * nalUnit = _retrieveCurrentNalCell(handle);
+  H264AUNalUnit *nalUnit = _retrieveCurrentNalCell(handle);
   nalUnit->length = tellPos(handle->file.inputFile) - nalUnit->startOffset;
 
   handle->curProgParam.lstNaluType = getNalUnitType(handle);
@@ -627,7 +627,7 @@ int writeH264NalByteArrayBit(
 
     if (baHandler->endPointer <= baHandler->writingPointer + 1) {
       /* Need realloc */
-      uint8_t * newArray;
+      uint8_t *newArray;
       size_t newSize;
 
       newSize = GROW_ALLOCATION(baHandler->allocatedSize, 1024);

@@ -6,8 +6,8 @@
 /* ### HDMV Segments building utilities : ################################## */
 
 int initHdmvBuilderContext(
-  HdmvBuilderContext * dst,
-  const lbc * out_filepath
+  HdmvBuilderContext *dst,
+  const lbc *out_filepath
 )
 {
   assert(NULL != dst);
@@ -18,12 +18,12 @@ int initHdmvBuilderContext(
     out_filepath
   );
 
-  lbc * out_fp_copy = lbc_strdup(out_filepath);
+  lbc *out_fp_copy = lbc_strdup(out_filepath);
   if (NULL == out_fp_copy)
     LIBBLU_HDMV_SEGBUILD_ERROR_RETURN("Memory allocation error.\n");
 
   LIBBLU_HDMV_SEGBUILD_DEBUG("Opening output file.\n");
-  FILE * output_fd = lbc_fopen(out_filepath, "wb");
+  FILE *output_fd = lbc_fopen(out_filepath, "wb");
   if (NULL == output_fd)
     LIBBLU_HDMV_SEGBUILD_ERROR_RETURN(
       "Unable to open output file '%" PRI_LBCS "', %s (errno: %d).\n",
@@ -75,7 +75,7 @@ int cleanHdmvBuilderContext(
  * is done.
  */
 static int _reqBufSizeCtx(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   uint32_t req_size
 )
 {
@@ -90,7 +90,7 @@ static int _reqBufSizeCtx(
   if (new_size <= builder_ctx->allocated_size)
     return 0; // Nothing to do, allocation is big enough
 
-  uint8_t * new_data = (uint8_t *) realloc(builder_ctx->data, new_size);
+  uint8_t *new_data = (uint8_t *) realloc(builder_ctx->data, new_size);
   if (NULL == new_data)
     LIBBLU_HDMV_SEGBUILD_ERROR_RETURN("Memory allocation error.\n");
 
@@ -101,7 +101,7 @@ static int _reqBufSizeCtx(
 }
 
 static uint32_t _remBufSizeCtx(
-  const HdmvBuilderContext * builder_ctx
+  const HdmvBuilderContext *builder_ctx
 )
 {
   return builder_ctx->allocated_size - builder_ctx->used_size;
@@ -120,8 +120,8 @@ static uint32_t _remBufSizeCtx(
  * space.
  */
 int _writeBytesCtx(
-  HdmvBuilderContext * builder_ctx,
-  uint8_t * data,
+  HdmvBuilderContext *builder_ctx,
+  uint8_t *data,
   uint32_t size
 )
 {
@@ -137,7 +137,7 @@ int _writeBytesCtx(
 }
 
 static int _writeCtxBufferOnOutput(
-  HdmvBuilderContext * builder_ctx
+  HdmvBuilderContext *builder_ctx
 )
 {
   if (!builder_ctx->used_size)
@@ -157,7 +157,7 @@ static int _writeCtxBufferOnOutput(
 /* ### HDMV segments : ##################################################### */
 
 static int _writeSegmentHeader(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   HdmvSegmentDescriptor seg_desc
 )
 {
@@ -187,7 +187,7 @@ static int _writeSegmentHeader(
 }
 
 static int _writeVideoDescriptor(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvVDParameters video_descriptor
 )
 {
@@ -213,7 +213,7 @@ static int _writeVideoDescriptor(
 }
 
 static int _writeCompositionDescriptor(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvCDParameters composition_descriptor
 )
 {
@@ -235,7 +235,7 @@ static int _writeCompositionDescriptor(
 }
 
 static int _writeSequenceDescriptor(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   bool first_in_sequence,
   bool last_in_sequence
 )
@@ -268,7 +268,7 @@ static inline uint32_t _computeSizePaletteEntries(
 
 static uint8_t * _buildPaletteDefinitionEntries(
   const HdmvPalette palette,
-  uint32_t * size_ret
+  uint32_t *size_ret
 )
 {
   if (HDMV_MAX_NB_PDS_ENTRIES < palette.nb_entries)
@@ -286,7 +286,7 @@ static uint8_t * _buildPaletteDefinitionEntries(
     return 0; /* Empty palette */
   }
 
-  uint8_t * arr = (uint8_t *) malloc(exp_len);
+  uint8_t *arr = (uint8_t *) malloc(exp_len);
   if (NULL == arr)
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN("Memory allocation error.\n");
   uint32_t off = 0;
@@ -331,7 +331,7 @@ free_return:
 }
 
 static int _writePaletteDescriptor(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   uint8_t palette_id,
   uint8_t palette_version_number
 )
@@ -353,7 +353,7 @@ static int _writePaletteDescriptor(
 }
 
 static inline uint32_t _computeSizePDS(
-  const HdmvPalette * palettes_arr,
+  const HdmvPalette *palettes_arr,
   unsigned nb_palettes
 )
 {
@@ -372,12 +372,12 @@ static inline uint32_t _computeSizePDS(
 }
 
 static int _writePDSegments(
-  HdmvBuilderContext * builder_ctx,
-  const HdmvPalette * palettes,
+  HdmvBuilderContext *builder_ctx,
+  const HdmvPalette *palettes,
   const unsigned nb_palettes
 )
 {
-  uint8_t * pal_data = NULL;
+  uint8_t *pal_data = NULL;
 
   assert(NULL != builder_ctx);
 
@@ -427,8 +427,8 @@ free_return:
 /* ###### Object Definition Segment (0x15) : ############################### */
 
 static uint8_t * _buildObjectData(
-  const HdmvObject * object,
-  uint32_t * size_ret
+  const HdmvObject *object,
+  uint32_t *size_ret
 )
 {
   assert(HDMV_OD_MIN_SIZE <= object->pal_bitmap.width);
@@ -437,7 +437,7 @@ static uint8_t * _buildObjectData(
   uint16_t width  = object->pal_bitmap.width;
   uint16_t height = object->pal_bitmap.height;
 
-  const uint8_t * rle_data = getRleHdmvObject(object);
+  const uint8_t *rle_data = getRleHdmvObject(object);
   if (NULL == rle_data)
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN("RLE data must be generated before calling builder.\n");
   uint32_t rle_size = object->rle_size;
@@ -450,7 +450,7 @@ static uint8_t * _buildObjectData(
 
   uint32_t exp_size = computeSizeHdmvObjectData(param);
 
-  uint8_t * arr = (uint8_t *) malloc(exp_size);
+  uint8_t *arr = (uint8_t *) malloc(exp_size);
   if (NULL == arr)
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN("Memory allocation error.\n");
   uint32_t off = 0;
@@ -488,7 +488,7 @@ free_return:
 }
 
 static int _writeObjectDefinitionSegHeader(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   HdmvODescParameters object_descriptor
 )
 {
@@ -530,7 +530,7 @@ static int _writeObjectDefinitionSegHeader(
   (HDMV_MAX_SIZE_SEGMENT_PAYLOAD - HDMV_SIZE_OD_SEGMENT_HEADER)
 
 static uint32_t _computeSizeObjectDefinitionSegments(
-  const HdmvObject * objects,
+  const HdmvObject *objects,
   unsigned nb_objects
 )
 {
@@ -538,7 +538,7 @@ static uint32_t _computeSizeObjectDefinitionSegments(
 
   uint32_t size = 0;
   for (unsigned i = 0; i < nb_objects; i++) {
-    const HdmvObject * obj = &objects[i];
+    const HdmvObject *obj = &objects[i];
 
     HdmvODParameters obj_param = {
       .object_data_length = obj->rle_size + 4u
@@ -548,7 +548,7 @@ static uint32_t _computeSizeObjectDefinitionSegments(
     uint32_t nb_seg      = objdef_size / HDMV_MAX_SIZE_OBJECT_DEFINITION_FRAGMENT;
     uint32_t extra_pl    = objdef_size % HDMV_MAX_SIZE_OBJECT_DEFINITION_FRAGMENT;
 
-    size += nb_seg * HDMV_MAX_SIZE_SEGMENT;
+    size += nb_seg *HDMV_MAX_SIZE_SEGMENT;
     if (0 < extra_pl)
       size += (
         HDMV_SIZE_OD_SEGMENT_HEADER
@@ -561,8 +561,8 @@ static uint32_t _computeSizeObjectDefinitionSegments(
 }
 
 static int _writeODSegments(
-  HdmvBuilderContext * builder_ctx,
-  const HdmvObject * objects,
+  HdmvBuilderContext *builder_ctx,
+  const HdmvObject *objects,
   const unsigned nb_objects
 )
 {
@@ -589,14 +589,14 @@ static int _writeODSegments(
     "  Writing segments...\n"
   );
 
-  uint8_t * obj_data = NULL;
+  uint8_t *obj_data = NULL;
   for (unsigned obj_i = 0; obj_i < nb_objects; obj_i++) {
     const HdmvObject obj = objects[obj_i];
 
     uint32_t obj_size;
     if (NULL == (obj_data = _buildObjectData(&obj, &obj_size)))
       return -1;
-    uint8_t * obj_frag_data = obj_data;
+    uint8_t *obj_frag_data = obj_data;
 
     /* Build fragments while data remaining */
     bool fst_in_seq = true;
@@ -643,7 +643,7 @@ free_return:
 /* ###### Presentation Composition Segment (0x16) : ######################## */
 
 static int _writePresentationCompositionHeader(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvPCParameters presentation_composition
 )
 {
@@ -667,7 +667,7 @@ static int _writePresentationCompositionHeader(
 }
 
 static int _writeCompositionObject(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvCOParameters composition_object
 )
 {
@@ -731,7 +731,7 @@ static inline uint32_t _computeSizePCS(
 }
 
 static int _writePCSegment(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvVDParameters video_descriptor,
   const HdmvCDParameters composition_descriptor,
   const HdmvPCParameters presentation_composition
@@ -780,7 +780,7 @@ static int _writePCSegment(
 /* ###### Window Definition Segment (0x17) : ############################### */
 
 static int _writeWDHeader(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvWDParameters window_definition
 )
 {
@@ -798,7 +798,7 @@ static int _writeWDHeader(
 }
 
 static int _writeWindowInfo(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvWindowInfoParameters window_info
 )
 {
@@ -842,7 +842,7 @@ static inline uint32_t _computeSizeWDS(
 }
 
 static int _writeWDSegment(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvWDParameters window_definition
 )
 {
@@ -882,7 +882,7 @@ static int _writeWDSegment(
 
 static uint32_t _appendButtonNeighborInfo(
   const HdmvButtonNeighborInfoParam neighbor_info,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -907,7 +907,7 @@ static uint32_t _appendButtonNeighborInfo(
 
 static uint32_t _appendButtonNormalStateInfo(
   const HdmvButtonNormalStateInfoParam normal_state_info,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -931,7 +931,7 @@ static uint32_t _appendButtonNormalStateInfo(
 
 static uint32_t _appendButtonSelectedStateInfo(
   const HdmvButtonSelectedStateInfoParam selected_state_info,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -958,7 +958,7 @@ static uint32_t _appendButtonSelectedStateInfo(
 
 static uint32_t _appendButtonActivatedStateInfo(
   const HdmvButtonActivatedStateInfoParam activated_state_info,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -978,7 +978,7 @@ static uint32_t _appendButtonActivatedStateInfo(
 
 static uint32_t _appendNavigationCommand(
   const HdmvNavigationCommand navigation_command,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -1005,7 +1005,7 @@ static uint32_t _appendNavigationCommand(
 
 static uint32_t _appendButton(
   const HdmvButtonParam button,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -1057,7 +1057,7 @@ static uint32_t _appendButton(
 
 static uint32_t _appendButtonOverlapGroup(
   const HdmvButtonOverlapGroupParameters bog,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -1079,7 +1079,7 @@ static uint32_t _appendButtonOverlapGroup(
 
 static uint32_t _appendEffectSequence(
   const HdmvEffectSequenceParameters effect_sequence,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -1174,7 +1174,7 @@ static uint32_t _appendEffectSequence(
 
 static uint32_t _appendPage(
   const HdmvPageParameters page,
-  uint8_t * arr,
+  uint8_t *arr,
   uint32_t off
 )
 {
@@ -1230,14 +1230,14 @@ static uint32_t _appendPage(
 
 static uint8_t * _buildInteractiveComposition(
   const HdmvICParameters interactive_composition,
-  uint32_t * ic_data_length_ret
+  uint32_t *ic_data_length_ret
 )
 {
   uint32_t ic_data_exp_len = computeSizeHdmvInteractiveComposition(
     interactive_composition
   );
 
-  uint8_t * arr = (uint8_t *) malloc(ic_data_exp_len);
+  uint8_t *arr = (uint8_t *) malloc(ic_data_exp_len);
   if (NULL == arr)
     LIBBLU_HDMV_SEGBUILD_ERROR_NRETURN("Memory allocation error.\n");
   uint32_t off = 0;
@@ -1357,7 +1357,7 @@ static uint32_t _computeSizeHdmvICSegments(
     % HDMV_MAX_SIZE_INTERACTIVE_COMPOSITION_FRAGMENT
   ;
 
-  uint32_t segments_size = nb_seg * HDMV_MAX_SIZE_SEGMENT;
+  uint32_t segments_size = nb_seg *HDMV_MAX_SIZE_SEGMENT;
 
   if (0 < extra_payload_length) {
     segments_size += (
@@ -1371,7 +1371,7 @@ static uint32_t _computeSizeHdmvICSegments(
 }
 
 static int _writeICSegments(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvVDParameters video_descriptor,
   const HdmvCDParameters composition_descriptor,
   const HdmvICParameters interactive_composition
@@ -1380,7 +1380,7 @@ static int _writeICSegments(
   assert(NULL != builder_ctx);
 
   uint32_t compo_size;
-  uint8_t * ic_compo_data = _buildInteractiveComposition(
+  uint8_t *ic_compo_data = _buildInteractiveComposition(
     interactive_composition,
     &compo_size
   );
@@ -1399,7 +1399,7 @@ static int _writeICSegments(
 
   /* Build fragments while data remaining */
   bool first_in_seq = true;
-  uint8_t * ic_compo_frag_ptr = ic_compo_data;
+  uint8_t *ic_compo_frag_ptr = ic_compo_data;
 
   while (0 < compo_size) {
     uint16_t frag_length = MIN(
@@ -1447,7 +1447,7 @@ free_return:
 /* ###### End Segment (0x80) : ############################################# */
 
 static int _writeENDSegment(
-  HdmvBuilderContext * builder_ctx
+  HdmvBuilderContext *builder_ctx
 )
 {
   if (_reqBufSizeCtx(builder_ctx, HDMV_SIZE_SEGMENT_HEADER) < 0)
@@ -1464,7 +1464,7 @@ static int _writeENDSegment(
 /* ### Entry point : ####################################################### */
 
 int buildIGSDisplaySet(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvBuilderIGSDSData ds_data
 )
 {
@@ -1481,14 +1481,14 @@ int buildIGSDisplaySet(
 
     /* Palette Definition Segments */
     LIBBLU_HDMV_SEGBUILD_DEBUG(" Building Palette Definition Segments...\n");
-    const HdmvPalette * pal = ds_data.palettes;
+    const HdmvPalette *pal = ds_data.palettes;
     const unsigned nb_pal   = ds_data.nb_palettes;
     if (_writePDSegments(builder_ctx, pal, nb_pal) < 0)
       goto free_return;
 
     /* Object Definition Segments */
     LIBBLU_HDMV_SEGBUILD_DEBUG(" Building Object Definition Segments...\n");
-    const HdmvObject * obj = ds_data.objects;
+    const HdmvObject *obj = ds_data.objects;
     unsigned nb_obj        = ds_data.nb_objects;
     if (_writeODSegments(builder_ctx, obj, nb_obj) < 0)
       goto free_return;
@@ -1512,7 +1512,7 @@ free_return:
 }
 
 int buildPGSDisplaySet(
-  HdmvBuilderContext * builder_ctx,
+  HdmvBuilderContext *builder_ctx,
   const HdmvBuilderPGSDSData ds_data
 )
 {
@@ -1537,14 +1537,14 @@ int buildPGSDisplaySet(
 
     /* Palette Definition Segments */
     LIBBLU_HDMV_SEGBUILD_DEBUG(" Building Palette Definition Segments...\n");
-    const HdmvPalette * pal = ds_data.palettes;
+    const HdmvPalette *pal = ds_data.palettes;
     const unsigned nb_pal   = ds_data.nb_palettes;
     if (_writePDSegments(builder_ctx, pal, nb_pal) < 0)
       goto free_return;
 
     /* Object Definition Segments */
     LIBBLU_HDMV_SEGBUILD_DEBUG(" Building Object Definition Segments...\n");
-    const HdmvObject * obj = ds_data.objects;
+    const HdmvObject *obj = ds_data.objects;
     unsigned nb_obj        = ds_data.nb_objects;
     if (_writeODSegments(builder_ctx, obj, nb_obj) < 0)
       goto free_return;

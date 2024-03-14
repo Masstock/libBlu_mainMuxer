@@ -43,7 +43,7 @@ static TPHeaderParameters _prepareESTransportPacketMainHeader(
   assert(0 < rem_data);
   assert(TYPE_ES == stream->type);
 
-  const LibbluESProperties * es_prop = &stream->es.prop;
+  const LibbluESProperties *es_prop = &stream->es.prop;
   bool transport_priority = (
     (
       es_prop->coding_type == STREAM_CODING_TYPE_AC3
@@ -64,7 +64,7 @@ static TPHeaderParameters _prepareESTransportPacketMainHeader(
     .transport_priority = transport_priority,
     .pid = stream->pid,
     .adaptation_field_control = (adapt_fd_pres << 1) | pl_presence,
-    .continuity_counter = stream->packetNb & 0xF
+    .continuity_counter = stream->nb_transport_packets & 0xF
   };
 }
 
@@ -96,7 +96,7 @@ static TPHeaderParameters _prepareSysTransportPacketMainHeader(
     .payload_unit_start_indicator = is_pl_start && (TYPE_NULL != stream->type),
     .pid = stream->pid,
     .adaptation_field_control = (adapt_field_pres << 1) | pl_pres,
-    .continuity_counter = (pl_pres) ? stream->packetNb & 0xF : 0
+    .continuity_counter = (pl_pres) ? stream->nb_transport_packets & 0xF : 0
   };
 }
 
@@ -166,9 +166,9 @@ TPHeaderParameters prepareTPHeader(
 }
 
 static uint8_t _insertAdaptationField(
-  uint8_t * tp,
+  uint8_t *tp,
   uint8_t offset,
-  const AdaptationFieldParameters * param
+  const AdaptationFieldParameters *param
 )
 {
   /* [u8 adaptation_field_length] */
@@ -266,7 +266,7 @@ static uint8_t _insertAdaptationField(
     }
 
     if (param->adaptation_field_extension_flag) {
-      const AdaptationFieldExtensionParameters * ext =
+      const AdaptationFieldExtensionParameters *ext =
         &param->adaptation_field_extension
       ;
 
@@ -357,9 +357,9 @@ static uint8_t _insertAdaptationField(
 }
 
 static uint8_t _insertPacketHeader(
-  uint8_t * tp,
+  uint8_t *tp,
   uint8_t offset,
-  const TPHeaderParameters * param
+  const TPHeaderParameters *param
 )
 {
   /* [v8 sync_byte] // 0x47 */
@@ -401,14 +401,14 @@ static uint8_t _insertPacketHeader(
 }
 
 static uint8_t _insertPayload(
-  uint8_t * tp,
+  uint8_t *tp,
   uint8_t offset,
   LibbluStreamPtr stream,
   uint8_t pl_size
 )
 {
   if (isESLibbluStream(stream)) {
-    LibbluESPesPacketData * pes_packet = &stream->es.current_pes_packet.data;
+    LibbluESPesPacketData *pes_packet = &stream->es.current_pes_packet.data;
 
     assert(pl_size <= pes_packet->size - pes_packet->offset);
 
@@ -416,7 +416,7 @@ static uint8_t _insertPayload(
     pes_packet->offset += pl_size;
   }
   else {
-    LibbluSystemStream * sys = &stream->sys;
+    LibbluSystemStream *sys = &stream->sys;
 
     assert(pl_size <= sys->table_data_length - sys->table_data_offset);
 
@@ -437,9 +437,9 @@ static uint8_t _insertPayload(
 int writeTransportPacket(
   BitstreamWriterPtr output,
   LibbluStreamPtr stream,
-  const TPHeaderParameters * tp_header,
-  uint8_t * tp_header_size_ret,
-  uint8_t * tp_payload_size_ret
+  const TPHeaderParameters *tp_header,
+  uint8_t *tp_header_size_ret,
+  uint8_t *tp_payload_size_ret
 )
 {
   uint8_t tp_data[TP_SIZE];
@@ -484,6 +484,6 @@ int writeTransportPacket(
   if (NULL != tp_payload_size_ret)
     *tp_payload_size_ret = payload_size;
 
-  stream->packetNb++;
+  stream->nb_transport_packets++;
   return 0;
 }

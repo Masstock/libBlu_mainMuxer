@@ -5,7 +5,7 @@
 #include "bitWriter.h"
 
 int increaseAllocLibbluBitWriter(
-  LibbluBitWriter * br,
+  LibbluBitWriter *br,
   size_t required_size
 )
 {
@@ -17,7 +17,7 @@ int increaseAllocLibbluBitWriter(
       LIBBLU_ERROR_RETURN("Bit writer size overflow.\n");
   } while (new_size < required_size);
 
-  uint8_t * new_array = realloc(br->buf, new_size);
+  uint8_t *new_array = realloc(br->buf, new_size);
   if (NULL == new_array)
     LIBBLU_ERROR_RETURN("Bit writer memory allocation error.\n");
   memset(&new_array[br->size], 0, new_size - br->size);

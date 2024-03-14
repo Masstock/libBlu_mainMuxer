@@ -13,28 +13,28 @@ static int _updateBufModelBuffer(
   BufModelOptions options,
   BufModelBufferPtr buf,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context
 );
 
 static int _updateBufModelFilter(
   BufModelOptions options,
   BufModelFilterPtr filter,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context
 );
 
 /** \~english
  * \brief Update buffering model from given node.
  *
- * \param rootNode Buffering model node.
+ * \param root_node Buffering model node.
  * \param timestamp Current update timestamp.
- * \param inputData Optionnal input data in bits.
- * \param fillingBitrate Input data filling bitrate.
- * \param streamContext Input data stream context.
+ * \param input_data Optionnal input data in bits.
+ * \param filling_bitrate Input data filling bitrate.
+ * \param stream_context Input data stream context.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
@@ -42,15 +42,15 @@ static int _updateBufModelNode(
   BufModelOptions options,
   BufModelNode node,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context
 )
 {
   switch (node.type) {
   case NODE_VOID:
-    if (0 < inputData)
-      LIBBLU_DEBUG_COM("Discarding %zu bytes.\n", inputData);
+    if (0 < input_data)
+      LIBBLU_DEBUG_COM("Discarding %zu bytes.\n", input_data);
     break;
 
   case NODE_BUFFER:
@@ -58,9 +58,9 @@ static int _updateBufModelNode(
       options,
       node.linkedElement.buffer,
       timestamp,
-      inputData,
-      fillingBitrate,
-      streamContext
+      input_data,
+      filling_bitrate,
+      stream_context
     );
 
   case NODE_FILTER:
@@ -68,9 +68,9 @@ static int _updateBufModelNode(
       options,
       node.linkedElement.filter,
       timestamp,
-      inputData,
-      fillingBitrate,
-      streamContext
+      input_data,
+      filling_bitrate,
+      stream_context
     );
   }
 
@@ -131,19 +131,17 @@ int addFrameToBuffer(
   BufModelBufferFrame frame
 )
 {
-  BufModelBufferFrame * newFrame;
-
   if (NULL == buf)
     LIBBLU_ERROR_RETURN("NULL pointer buffer on addFrameToBuffer().\n");
 
-  newFrame = (BufModelBufferFrame *) newEntryCircularBuffer(
-    ((BufModelLeakingBufferPtr) buf)->header.storedFrames,
+  BufModelBufferFrame *new_frame = (BufModelBufferFrame *) newEntryCircularBuffer(
+    ((BufModelLeakingBufferPtr) buf)->header.stored_frames,
     sizeof(BufModelBufferFrame)
   );
-  if (NULL == newFrame)
+  if (NULL == new_frame)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
-  *newFrame = frame;
+  *new_frame = frame;
   return 1;
 }
 
@@ -152,18 +150,18 @@ int addFrameToBuffer(
  *
  * \param buf Buffer to test.
  * \param name Pre-defined buffer name.
- * \param customName Custom buffer name string if name value is set to
+ * \param custom_name Custom buffer name string if name value is set to
  * #CUSTOM_BUFFER value (otherwise shall be NULL).
- * \param customNameHash Optionnal custom buffer name hash value (if set to
- * 0, the value is computed if required from customName).
- * \return true The buffer name matches name and/or customName.
+ * \param custom_name_hash Optionnal custom buffer name hash value (if set to
+ * 0, the value is computed if required from custom_name).
+ * \return true The buffer name matches name and/or custom_name.
  * \return false The buffer name does not matches.
  */
 static bool _isNamesMatchBufModelBuffer(
   const BufModelBufferPtr buf,
   const BufModelBufferName name,
-  const lbc * customName,
-  uint32_t customNameHash
+  const lbc *custom_name,
+  uint32_t custom_name_hash
 )
 {
   assert(NULL != buf);
@@ -172,18 +170,18 @@ static bool _isNamesMatchBufModelBuffer(
     return false;
 
   if (buf->header.param.name == CUSTOM_BUFFER) {
-    if (NULL == customName)
+    if (NULL == custom_name)
       LIBBLU_ERROR_EXIT(
         "Unexpected NULL buffer name string as "
         "_isNamesMatchBufModelBuffer() argument.\n"
       );
 
-    if (!customNameHash)
-      customNameHash = lbc_fnv1aStrHash(customName);
+    if (!custom_name_hash)
+      custom_name_hash = lbc_fnv1aStrHash(custom_name);
 
     return
-      buf->header.param.customNameHash == customNameHash
-      && lbc_equal(buf->header.param.customName, customName)
+      buf->header.param.custom_name_hash == custom_name_hash
+      && lbc_equal(buf->header.param.custom_name, custom_name)
     ;
   }
 
@@ -193,44 +191,43 @@ static bool _isNamesMatchBufModelBuffer(
 static void _computeBufferDataInput(
   BufModelBufferPtr buf,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  size_t * resultInputBandwidth,
-  size_t * resultBufferPendingData
+  size_t input_data,
+  uint64_t filling_bitrate,
+  size_t *result_input_bandwidth_ret,
+  size_t *result_buffer_pending_data_ret
 )
 {
-  uint64_t elapsedTime;
-  size_t bufferInputData, inputDataBandwidth;
+  assert(buf->header.last_update <= timestamp);
 
-  assert(buf->header.lastUpdate <= timestamp);
-  elapsedTime = timestamp - buf->header.lastUpdate;
+  uint64_t elapsed_time = timestamp - buf->header.last_update;
 
   /* LIBBLU_DEBUG_COM(
     "Compute data input from buffer %s with %" PRIu64 " ticks elapsed.\n",
-    bufferNameBufModelBuffer(buf), elapsedTime
+    bufferNameBufModelBuffer(buf), elapsed_time
   ); */
 
-  bufferInputData = buf->header.bufferInputData;
+  size_t buffer_input_data = buf->header.buffer_input_data;
 
   /* Insert data in buffer */
-  if (buf->header.param.instantFilling) {
-    inputDataBandwidth = bufferInputData + inputData;
-    bufferInputData = 0;
+  size_t input_data_bandwidth = 0;
+  if (buf->header.param.instant_filling) {
+    input_data_bandwidth = buffer_input_data + input_data;
+    buffer_input_data = 0;
   }
   else {
-    bufferInputData += inputData;
+    buffer_input_data += input_data;
 
-    inputDataBandwidth = MIN(
-      bufferInputData,
-      elapsedTime * fillingBitrate
+    input_data_bandwidth = MIN(
+      buffer_input_data,
+      elapsed_time *filling_bitrate
     );
-    bufferInputData -= inputDataBandwidth;
+    buffer_input_data -= input_data_bandwidth;
   }
 
-  if (NULL != resultInputBandwidth)
-    *resultInputBandwidth = inputDataBandwidth;
-  if (NULL != resultBufferPendingData)
-    *resultBufferPendingData = bufferInputData;
+  if (NULL != result_input_bandwidth_ret)
+    *result_input_bandwidth_ret = input_data_bandwidth;
+  if (NULL != result_buffer_pending_data_ret)
+    *result_buffer_pending_data_ret = buffer_input_data;
 }
 
 /** \~english
@@ -244,15 +241,15 @@ static void _computeBufferDataInput(
  */
 static size_t _computeLeakingBufferDataBandwidth(
   BufModelLeakingBufferPtr buf,
-  size_t bufFillingLevel,
+  size_t buf_filling_level,
   uint64_t timestamp
 )
 {
   assert(NULL != buf);
 
   return MIN(
-    bufFillingLevel,
-    ceil((timestamp - buf->header.lastUpdate) * buf->removalBitrate)
+    buf_filling_level,
+    ceil((timestamp - buf->header.last_update) * buf->removal_br)
   );
 }
 
@@ -272,62 +269,55 @@ static size_t _computeRemovalBufferDataBandwidth(
   uint64_t timestamp
 )
 {
-  size_t dataLength, nbFrames, frameIdx;
-  BufModelBufferFrame * frame;
-
-  dataLength = 0;
-  nbFrames = nbEntriesCircularBuffer(buf->header.storedFrames);
-  for (frameIdx = 0; frameIdx < nbFrames; frameIdx++) {
-    frame = (BufModelBufferFrame *) getCircularBuffer(
-      buf->header.storedFrames, frameIdx
+  size_t data_length = 0;
+  size_t nb_frames = nbEntriesCircularBuffer(buf->header.stored_frames);
+  for (size_t frame_idx = 0; frame_idx < nb_frames; frame_idx++) {
+    BufModelBufferFrame *frame = (BufModelBufferFrame *) getCircularBuffer(
+      buf->header.stored_frames, frame_idx
     );
     if (NULL == frame)
       LIBBLU_ERROR_RETURN(
         "Unable to extract frame, broken circular buffer.\n"
       );
 
-    if (frame->removalTimestamp <= timestamp)
-      dataLength += frame->headerSize + frame->dataSize;
+    if (frame->removal_timestamp <= timestamp)
+      data_length += frame->header_size + frame->data_size;
     else
       break; /* Unreached timestamp, no more frames. */
 
     LIBBLU_T_STD_VERIF_TEST_DEBUG(
       "%zu) %zu/%zu - %zu bits.\n",
-      frameIdx, frame->removalTimestamp, timestamp, frame->dataSize
+      frame_idx, frame->removal_timestamp, timestamp, frame->data_size
     );
   }
-  if (0 < dataLength)
-    LIBBLU_T_STD_VERIF_TEST_DEBUG("=> %zu bits.\n", dataLength);
+  if (0 < data_length)
+    LIBBLU_T_STD_VERIF_TEST_DEBUG("=> %zu bits.\n", data_length);
 
-  return dataLength;
+  return data_length;
 }
 
 static int _computeBufferDataOutput(
   BufModelOptions options,
   BufModelBufferPtr buf,
   uint64_t timestamp,
-  size_t fillingLevel,
-  uint64_t fillingBitrate,
-  void * streamContext,
-  size_t * resultOutputBandwidth
+  size_t filling_level,
+  uint64_t filling_bitrate,
+  void *stream_context,
+  size_t *output_bandwidth_ret
 )
 {
-  size_t dataBandwidth, outputBufferFillingLevel;
-  BufModelBufferPtr outputBuf;
-
-  int ret = 0;
-
+  size_t data_bandwidth = 0;
   switch (buf->header.type) {
   case LEAKING_BUFFER:
-    dataBandwidth = _computeLeakingBufferDataBandwidth(
+    data_bandwidth = _computeLeakingBufferDataBandwidth(
       (BufModelLeakingBufferPtr) buf,
-      fillingLevel,
+      filling_level,
       timestamp
     );
     break;
 
   case TIME_REMOVAL_BUFFER:
-    dataBandwidth = _computeRemovalBufferDataBandwidth(
+    data_bandwidth = _computeRemovalBufferDataBandwidth(
       (BufModelRemovalBufferPtr) buf,
       timestamp
     );
@@ -339,10 +329,12 @@ static int _computeBufferDataOutput(
     );
   }
 
-  if (buf->header.param.dontOverflowOutput) {
+  if (buf->header.param.dont_overflow_output) {
     /* Update now output buffer */
+    size_t output_buffer_filling_level = 0;
+
     if (isVoidBufModelNode(buf->header.output))
-      outputBufferFillingLevel = dataBandwidth;
+      output_buffer_filling_level = data_bandwidth;
     else {
       if (!isBufferBufModelNode(buf->header.output))
         LIBBLU_ERROR_RETURN(
@@ -351,70 +343,70 @@ static int _computeBufferDataOutput(
           bufferNameBufModelBuffer(buf), buf->header.output.type
         );
 
-      ret = _updateBufModelNode(
+      int ret = _updateBufModelNode(
         options,
         buf->header.output,
         timestamp,
         0,
-        fillingBitrate,
-        streamContext
+        filling_bitrate,
+        stream_context
       );
       if (ret < 0)
         return -1;
+      assert(0 == ret);
 
-      outputBuf = buf->header.output.linkedElement.buffer;
+      BufModelBufferPtr output_buf = buf->header.output.linkedElement.buffer;
 
-      outputBufferFillingLevel =
-        outputBuf->header.param.bufferSize
-        - outputBuf->header.bufferFillingLevel
-      ;
+      output_buffer_filling_level = (
+        output_buf->header.param.buffer_size
+        - output_buf->header.buffer_filling_level
+      );
     }
 
-    dataBandwidth = MIN(
-      dataBandwidth,
-      outputBufferFillingLevel
+    data_bandwidth = MIN(
+      data_bandwidth,
+      output_buffer_filling_level
     );
   }
 
-  if (NULL != resultOutputBandwidth)
-    *resultOutputBandwidth = dataBandwidth;
+  if (NULL != output_bandwidth_ret)
+    *output_bandwidth_ret = data_bandwidth;
 
-  return ret;
+  return 0;
 }
 
 static uint64_t _computeLeakingBufferDelayForBufferDataOutput(
   BufModelLeakingBufferPtr buf,
-  size_t requestedOutput
+  size_t requested_output
 )
 {
   assert(NULL != buf);
 
-  return requestedOutput / buf->removalBitrate;
+  return requested_output / buf->removal_br;
 }
 
 static uint64_t _computeRemovalBufferDelayForBufferDataOutput(
   BufModelRemovalBufferPtr buf,
-  size_t requestedOutput,
+  size_t requested_output,
   uint64_t timestamp
 )
 {
-  BufModelBufferFrame * frame;
   uint64_t delay = 0;
 
-  size_t nbFrames = nbEntriesCircularBuffer(buf->header.storedFrames);
-  for (size_t frameIdx = 0; frameIdx < nbFrames; frameIdx++) {
-    frame = (BufModelBufferFrame *) getCircularBuffer(
-      buf->header.storedFrames, frameIdx
+  size_t nb_frames = nbEntriesCircularBuffer(buf->header.stored_frames);
+  for (size_t frame_idx = 0; frame_idx < nb_frames; frame_idx++) {
+    BufModelBufferFrame *frame = (BufModelBufferFrame *) getCircularBuffer(
+      buf->header.stored_frames, frame_idx
     );
     if (NULL == frame)
       LIBBLU_ERROR_RETURN(
         "Unable to extract frame, broken circular buffer.\n"
       );
 
-    if (!requestedOutput)
+    if (!requested_output)
       break;
-    delay = frame->removalTimestamp - timestamp;
-    requestedOutput -= MIN(requestedOutput, frame->dataSize);
+    delay = frame->removal_timestamp - timestamp;
+    requested_output -= MIN(requested_output, frame->data_size);
   }
 
   return delay;
@@ -422,7 +414,7 @@ static uint64_t _computeRemovalBufferDelayForBufferDataOutput(
 
 static uint64_t _computeDelayForBufferDataOutput(
   BufModelBufferPtr buf,
-  size_t requestedOutput,
+  size_t requested_output,
   uint64_t timestamp
 )
 {
@@ -430,13 +422,13 @@ static uint64_t _computeDelayForBufferDataOutput(
   case LEAKING_BUFFER:
     return _computeLeakingBufferDelayForBufferDataOutput(
       (BufModelLeakingBufferPtr) buf,
-      requestedOutput
+      requested_output
     );
 
   case TIME_REMOVAL_BUFFER:
     return _computeRemovalBufferDelayForBufferDataOutput(
       (BufModelRemovalBufferPtr) buf,
-      requestedOutput,
+      requested_output,
       timestamp
     );
 
@@ -451,11 +443,11 @@ static bool _checkBufModelNode(
   BufModelOptions options,
   BufModelNode node,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext,
-  size_t totalInputData,
-  uint64_t * delay
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context,
+  size_t total_input_data,
+  uint64_t *delay
 );
 
 /** \~english
@@ -465,9 +457,9 @@ static bool _checkBufModelNode(
  *
  * \param buf Updated buffer.
  * \param timestamp Current updating timestamp.
- * \param inputData Input data amount in bits.
- * \param fillingBitrate Input data filling bitrate in bits per second.
- * \param streamContext Input data source stream context.
+ * \param input_data Input data amount in bits.
+ * \param filling_bitrate Input data filling bitrate in bits per second.
+ * \param stream_context Input data source stream context.
  * \return true Input data can fill given buffer without error.
  * \return false Input data cannot fill given buffer, leading buffer overflow
  * or other error.
@@ -476,118 +468,116 @@ static bool _checkBufModelBuffer(
   BufModelOptions options,
   BufModelBufferPtr buf,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext,
-  size_t totalInputData,
-  uint64_t * delay
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context,
+  size_t total_input_data,
+  uint64_t *delay
 )
 {
-  size_t fillingLevel, inputDataBandwidth, outputDataBandwidth;
-  bool outputCheck, notFullBuffer;
-  int ret;
-
+  size_t input_data_bandwidth;
   _computeBufferDataInput(
     buf,
     timestamp,
-    inputData,
-    fillingBitrate,
-    &inputDataBandwidth,
+    input_data,
+    filling_bitrate,
+    &input_data_bandwidth,
     NULL
   );
 
-  fillingLevel = buf->header.bufferFillingLevel + inputDataBandwidth;
+  size_t filling_level = buf->header.buffer_filling_level + input_data_bandwidth;
 
   /* Compute how many time elapsed since last update and current packet
   transfer finish. */
-  ret = _computeBufferDataOutput(
+  size_t output_data_bandwidth;
+  int ret = _computeBufferDataOutput(
     options,
     buf,
     timestamp,
-    fillingLevel,
-    fillingBitrate,
-    streamContext,
-    &outputDataBandwidth
+    filling_level,
+    filling_bitrate,
+    stream_context,
+    &output_data_bandwidth
   );
   if (ret < 0)
     return true;
 
-  /* assert(outputDataBandwidth <= fillingLevel); */
-  outputCheck = _checkBufModelNode(
+  /* assert(output_data_bandwidth <= filling_level); */
+  bool output_check = _checkBufModelNode(
     options,
     buf->header.output,
     timestamp,
-    outputDataBandwidth,
-    fillingBitrate,
-    streamContext,
-    totalInputData,
+    output_data_bandwidth,
+    filling_bitrate,
+    stream_context,
+    total_input_data,
     delay
   );
-  if (!outputCheck)
+  if (!output_check)
     return false;
 
-  notFullBuffer = (
-    fillingLevel < outputDataBandwidth
-    || (fillingLevel - outputDataBandwidth) <= buf->header.param.bufferSize
+  bool not_full_buffer = (
+    filling_level < output_data_bandwidth
+    || (filling_level - output_data_bandwidth) <= buf->header.param.buffer_size
   );
 
-  if (!notFullBuffer) {
+  if (!not_full_buffer) {
     LIBBLU_T_STD_VERIF_TEST_DEBUG(
       "Full buffer (%zu - %zu = %zu < %zu bits).\n",
-      fillingLevel,
-      outputDataBandwidth,
-      fillingLevel - outputDataBandwidth,
-      buf->header.param.bufferSize
+      filling_level,
+      output_data_bandwidth,
+      filling_level - output_data_bandwidth,
+      buf->header.param.buffer_size
     );
 
-    if (!buf->header.param.instantFilling) {
+    if (!buf->header.param.instant_filling) {
       /** Speed trick:
        * Compute delay to empty whole buffer rather than only required space
        * for heading buffers.
        */
       *delay = _computeDelayForBufferDataOutput(
         buf,
-        fillingLevel,
+        filling_level,
         timestamp
       );
     }
     else
-      *delay = _computeDelayForBufferDataOutput(buf, totalInputData, timestamp);
+      *delay = _computeDelayForBufferDataOutput(buf, total_input_data, timestamp);
   }
 
-  return notFullBuffer;
+  return not_full_buffer;
 }
 
 static int _signalUnderflow(
   BufModelOptions options,
-  size_t bufferFillingLevel,
+  size_t buffer_filling_level,
   size_t bufferOutput,
   uint64_t timestamp
 )
 {
-  static uint64_t lastWarningTimestamp;
+  static uint64_t last_warning_timestamp;
 
-  if (options.abortOnUnderflow)
+  if (options.abort_on_underflow)
     LIBBLU_ERROR_RETURN(
       "Buffer underflow (%zu < %zu) at STC %" PRIu64 " ticks @ 27MHz "
       "(~%" PRIu64 " ticks @ 90kHz).\n",
-      bufferFillingLevel,
+      buffer_filling_level,
       bufferOutput,
       timestamp,
       timestamp / 300
     );
 
-  if (lastWarningTimestamp + options.underflowWarnTimeout < timestamp)
+  if (last_warning_timestamp + options.underflow_warn_timeout < timestamp)
     LIBBLU_WARNING(
       "Buffer underflow (%zu < %zu) at STC %" PRIu64 " ticks @ 27MHz "
       "(~%" PRIu64 " ticks @ 90kHz).\n",
-      bufferFillingLevel,
+      buffer_filling_level,
       bufferOutput,
       timestamp,
       timestamp / 300
     );
 
-  lastWarningTimestamp = timestamp;
+  last_warning_timestamp = timestamp;
   return 0;
 }
 
@@ -597,9 +587,9 @@ static int _signalUnderflow(
  * \param options Buffer model options.
  * \param buf Buffer to update.
  * \param timestamp Current updating timestamp.
- * \param inputData Optionnal input data amount in bits.
- * \param fillingBitrate Input data filling bitrate in bits per second.
- * \param streamContext Input data source stream context.
+ * \param input_data Optionnal input data amount in bits.
+ * \param filling_bitrate Input data filling bitrate in bits per second.
+ * \param stream_context Input data source stream context.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
@@ -607,158 +597,153 @@ static int _updateBufModelBuffer(
   BufModelOptions options,
   BufModelBufferPtr buf,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context
 )
 {
-  int ret;
+  assert(buf->header.last_update <= timestamp);
 
-  size_t inputPendingData, dataBandwidth;
-  size_t removedData, emitedData;
-  size_t frameIdx;
-
-  assert(buf->header.lastUpdate <= timestamp);
-
+  size_t data_bandwidth, input_pending_data;
   _computeBufferDataInput(
     buf,
     timestamp,
-    inputData,
-    fillingBitrate,
-    &dataBandwidth,
-    &inputPendingData
+    input_data,
+    filling_bitrate,
+    &data_bandwidth,
+    &input_pending_data
   );
 
   /* LIBBLU_DEBUG_COM(
     "%zu bytes enter %s (remain %zu bytes pending).\n",
-    dataBandwidth,
+    data_bandwidth,
     bufferNameBufModelBuffer(buf),
-    inputPendingData
+    input_pending_data
   ); */
 
-  buf->header.bufferFillingLevel += dataBandwidth;
-  buf->header.bufferInputData = inputPendingData;
+  buf->header.buffer_filling_level += data_bandwidth;
+  buf->header.buffer_input_data = input_pending_data;
 
   /* Compute how many time elapsed since last update and current packet
   transfer finish. */
-  ret = _computeBufferDataOutput(
+  int ret = _computeBufferDataOutput(
     options,
     buf,
     timestamp,
-    buf->header.bufferFillingLevel,
-    fillingBitrate,
-    streamContext,
-    &dataBandwidth
+    buf->header.buffer_filling_level,
+    filling_bitrate,
+    stream_context,
+    &data_bandwidth
   );
   if (ret < 0)
     return -1;
 
   /* Check if output data is greater than buffer occupancy. */
-  if (buf->header.bufferFillingLevel < dataBandwidth) {
-    size_t bufFillingLevel = buf->header.bufferFillingLevel;
+  if (buf->header.buffer_filling_level < data_bandwidth) {
+    size_t buf_filling_level = buf->header.buffer_filling_level;
 
-    if (_signalUnderflow(options, bufFillingLevel, dataBandwidth, timestamp) < 0)
+    if (_signalUnderflow(options, buf_filling_level, data_bandwidth, timestamp) < 0)
       return -1;
-    // dataBandwidth = bufFillingLevel; // TODO: Might be more accurate without.
+    // data_bandwidth = buf_filling_level; // TODO: Might be more accurate without.
   }
 
   /* Remove ouput data bandwidth */
-  buf->header.bufferFillingLevel -= MIN(
-    buf->header.bufferFillingLevel,
-    dataBandwidth
+  buf->header.buffer_filling_level -= MIN(
+    buf->header.buffer_filling_level,
+    data_bandwidth
   );
 
   /* LIBBLU_DEBUG_COM(
     "%zu bytes removed from %s.\n",
-    dataBandwidth, bufferNameBufModelBuffer(buf)
+    data_bandwidth, bufferNameBufModelBuffer(buf)
   ); */
 
   /* Check if buffer occupancy after update is greater than its size. */
-  if (buf->header.param.bufferSize < buf->header.bufferFillingLevel) {
+  if (buf->header.param.buffer_size < buf->header.buffer_filling_level) {
     /* buf Overflow, this shall never happen */
     LIBBLU_ERROR_RETURN(
       "Buffer overflow happen in %s (%zu < %zu).\n",
       bufferNameBufModelBuffer(buf),
-      buf->header.param.bufferSize,
-      buf->header.bufferFillingLevel
+      buf->header.param.buffer_size,
+      buf->header.buffer_filling_level
     );
   }
 
   /* Set update time */
-  buf->header.lastUpdate = timestamp;
+  buf->header.last_update = timestamp;
 
   /* Remove bandwidth from buffer stored frames */
   /* And compute emited data to following buffer */
-  emitedData = 0;
+  size_t emitted_data = 0;
 
-  for (frameIdx = 0; 0 < dataBandwidth; frameIdx++) {
-    BufModelBufferFrame * frame = (BufModelBufferFrame *) getCircularBuffer(
-      buf->header.storedFrames,
-      frameIdx
+  for (size_t frame_idx = 0; 0 < data_bandwidth; frame_idx++) {
+    BufModelBufferFrame *frame = (BufModelBufferFrame *) getCircularBuffer(
+      buf->header.stored_frames,
+      frame_idx
     );
     if (NULL == frame)
       LIBBLU_ERROR_RETURN(
         "Unexpected data in buffer %s, "
-        "buf->bufferFillingLevel shall be lower or equal to "
-        "the sum of all frames headerSize + removedData (extra %zu bytes).\n",
+        "buf->buffer_filling_level shall be lower or equal to "
+        "the sum of all frames header_size + removed_data (extra %zu bytes).\n",
         bufferNameBufModelBuffer(buf),
-        dataBandwidth
+        data_bandwidth
       );
 
-    removedData = MIN(frame->headerSize, dataBandwidth);
-    frame->headerSize = frame->headerSize - removedData;
-    dataBandwidth -= removedData;
+    size_t removed_data = MIN(frame->header_size, data_bandwidth);
+    frame->header_size = frame->header_size - removed_data;
+    data_bandwidth -= removed_data;
 
-    removedData = MIN(frame->dataSize, dataBandwidth);
-    frame->dataSize = frame->dataSize - removedData;
-    emitedData += (0 < frame->outputDataSize) ?
-      frame->outputDataSize : removedData
+    removed_data = MIN(frame->data_size, data_bandwidth);
+    frame->data_size = frame->data_size - removed_data;
+    emitted_data += (0 < frame->output_data_size) ?
+      frame->output_data_size : removed_data
     ;
-    dataBandwidth -= removedData;
+    data_bandwidth -= removed_data;
   }
 
   /* Transfer data to output buffer and update it */
   if (!isVoidBufModelNode(buf->header.output)) {
     /* LIBBLU_DEBUG_COM(
       "Emit %zu bytes from %s.\n",
-      emitedData, bufferNameBufModelBuffer(buf)
+      emitted_data, bufferNameBufModelBuffer(buf)
     ); */
 
     ret = _updateBufModelNode(
       options,
       buf->header.output,
       timestamp,
-      emitedData,
-      fillingBitrate,
-      streamContext
+      emitted_data,
+      filling_bitrate,
+      stream_context
     );
     if (ret < 0)
       return -1;
   }
-  else if (0 < emitedData) {
+  else if (0 < emitted_data) {
     /* Otherwise, no output buffer, data is discarted */
     /* LIBBLU_DEBUG_COM(
       "Discard %zu bytes at output of %s.\n",
-      emitedData, bufferNameBufModelBuffer(buf)
+      emitted_data, bufferNameBufModelBuffer(buf)
     ); */
   }
 
   /* Delete empty useless frames */
   for (
-    frameIdx = 0;
-    frameIdx < nbEntriesCircularBuffer(buf->header.storedFrames);
-    frameIdx++
+    size_t frame_idx = 0;
+    frame_idx < nbEntriesCircularBuffer(buf->header.stored_frames);
+    frame_idx++
   ) {
-    BufModelBufferFrame * frame = (BufModelBufferFrame *) getCircularBuffer(
-      buf->header.storedFrames,
-      frameIdx
+    BufModelBufferFrame *frame = (BufModelBufferFrame *) getCircularBuffer(
+      buf->header.stored_frames,
+      frame_idx
     );
     if (NULL == frame)
       LIBBLU_ERROR_RETURN("No frame to get, broken circular buffer.\n");
 
-    if (!frame->headerSize && !frame->dataSize) {
+    if (!frame->header_size && !frame->data_size) {
       /* Frame header and payload has already been fully transfered */
-      if (NULL == popCircularBuffer(buf->header.storedFrames))
+      if (NULL == popCircularBuffer(buf->header.stored_frames))
         LIBBLU_ERROR_RETURN("Unable to pop, broken circular buffer.\n");
     }
     else
@@ -772,9 +757,9 @@ BufModelBuffersListPtr createBufModelBuffersList(
   void
 )
 {
-  BufModelBuffersListPtr list;
-
-  list = (BufModelBuffersListPtr) malloc(sizeof(BufModelBuffersList));
+  BufModelBuffersListPtr list = (BufModelBuffersListPtr) malloc(
+    sizeof(BufModelBuffersList)
+  );
   if (NULL == list)
     return NULL;
   *list = (BufModelBuffersList) {0};
@@ -806,35 +791,32 @@ static int _addBufferBufModelBuffersList(
   BufModelBufferPtr buf
 )
 {
-  BufModelBufferPtr * newArray;
-  unsigned newLength;
-
   assert(NULL != list);
   assert(NULL != buf);
 
-  if (list->nbAllocatedBuffers <= list->nbUsedBuffers) {
+  if (list->nb_allocated_buffers <= list->nb_used_buffers) {
     /* Need realloc */
-    newLength = GROW_BUF_MODEL_BUFFERS_LIST_LENGTH(
-      list->nbAllocatedBuffers
+    unsigned new_length = GROW_BUF_MODEL_BUFFERS_LIST_LENGTH(
+      list->nb_allocated_buffers
     );
 
-    if (lb_mul_overflow_size_t(newLength, sizeof(BufModelBufferPtr)))
+    if (lb_mul_overflow_size_t(new_length, sizeof(BufModelBufferPtr)))
       LIBBLU_ERROR_RETURN(
         "Buffers list array length value overflow, array is too big.\n"
       );
 
-    newArray = (BufModelBufferPtr *) realloc(
+    BufModelBufferPtr *new_array = (BufModelBufferPtr *) realloc(
       list->buffers,
-      newLength * sizeof(BufModelBufferPtr)
+      new_length *sizeof(BufModelBufferPtr)
     );
-    if (NULL == newArray)
+    if (NULL == new_array)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
-    list->buffers = newArray;
-    list->nbAllocatedBuffers = newLength;
+    list->buffers = new_array;
+    list->nb_allocated_buffers = new_length;
   }
 
-  list->buffers[list->nbUsedBuffers++] = buf;
+  list->buffers[list->nb_used_buffers++] = buf;
 
   return 0;
 }
@@ -842,19 +824,26 @@ static int _addBufferBufModelBuffersList(
 int addFrameToBufferFromList(
   BufModelBuffersListPtr bufList,
   BufModelBufferName name,
-  const lbc * customBufName,
+  const lbc *custom_buf_name,
   BufModelBufferFrame frame
 )
 {
   assert(NULL != bufList);
-  assert(0 < bufList->nbUsedBuffers);
+  assert(0 < bufList->nb_used_buffers);
 
-  uint32_t customNameHash = 0;
-  if (NULL != customBufName)
-    customNameHash = lbc_fnv1aStrHash(customBufName);
+  uint32_t custom_name_hash = 0;
+  if (NULL != custom_buf_name)
+    custom_name_hash = lbc_fnv1aStrHash(custom_buf_name);
 
-  for (unsigned i = 0; i < bufList->nbUsedBuffers; i++) {
-    if (_isNamesMatchBufModelBuffer(bufList->buffers[i], name, customBufName, customNameHash)) {
+  for (unsigned i = 0; i < bufList->nb_used_buffers; i++) {
+    if (
+      _isNamesMatchBufModelBuffer(
+        bufList->buffers[i],
+        name,
+        custom_buf_name,
+        custom_name_hash
+      )
+    ) {
       /* Found buffer */
       return addFrameToBuffer(
         bufList->buffers[i],
@@ -873,8 +862,8 @@ int addFrameToBufferFromList(
  * \brief Create a buffer using leaking output method.
  *
  * \param param Buffer parameters.
- * \param initialTimestamp Initial zero timestamp value.
- * \param removalBitrate Buffer output leaking bitrate in bits per second.
+ * \param initial_timestamp Initial zero timestamp value.
+ * \param removal_br Buffer output leaking bitrate in bits per second.
  * \return BufferPtr On success, created object is returned. Otherwise a
  * NULL pointer is returned.
  *
@@ -883,16 +872,18 @@ int addFrameToBufferFromList(
  */
 static BufModelBufferPtr _createLeakingBuffer(
   BufModelBufferParameters param,
-  uint64_t initialTimestamp,
-  uint64_t removalBitrate
+  uint64_t initial_timestamp,
+  uint64_t removal_br
 )
 {
-  BufModelLeakingBufferPtr buf;
-  if (NULL == (buf = (BufModelLeakingBufferPtr) malloc(sizeof(BufModelLeakingBuffer))))
+  BufModelLeakingBufferPtr buf = (BufModelLeakingBufferPtr) malloc(
+    sizeof(BufModelLeakingBuffer)
+  );
+  if (NULL == buf)
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-  CircularBuffer * frmBuf;
-  if (NULL == (frmBuf = createCircularBuffer()))
+  CircularBuffer *frame_buffer = createCircularBuffer();
+  if (NULL == frame_buffer)
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
   *buf = (BufModelLeakingBuffer) {
@@ -900,11 +891,11 @@ static BufModelBufferPtr _createLeakingBuffer(
       .type = LEAKING_BUFFER,
       .param = param,
       .output = newVoidBufModelNode(),
-      .lastUpdate = initialTimestamp,
-      .storedFrames = frmBuf
+      .last_update = initial_timestamp,
+      .stored_frames = frame_buffer
     },
-    .removalBitratePerSec = removalBitrate,
-    .removalBitrate = (double) removalBitrate / MAIN_CLOCK_27MHZ
+    .removal_br_per_sec = removal_br,
+    .removal_br = (double) removal_br / MAIN_CLOCK_27MHZ
   };
 
   return (BufModelBufferPtr) buf;
@@ -918,8 +909,8 @@ free_return:
  * \brief Create a buffer using leaking output method.
  *
  * \param param Buffer parameters.
- * \param initialTimestamp Initial zero timestamp value.
- * \param removalBitrate Buffer output leaking bitrate in bits per second.
+ * \param initial_timestamp Initial zero timestamp value.
+ * \param removal_br Buffer output leaking bitrate in bits per second.
  * \return BufferPtr On success, created object is returned. Otherwise a
  * NULL pointer is returned.
  *
@@ -928,17 +919,15 @@ free_return:
  */
 int createLeakingBufferNode(
   BufModelBuffersListPtr list,
-  BufModelNode * node,
+  BufModelNode *node,
   BufModelBufferParameters param,
-  uint64_t initialTimestamp,
-  uint64_t removalBitrate
+  uint64_t initial_timestamp,
+  uint64_t removal_br
 )
 {
-  BufModelBufferPtr buf;
-
   assert(NULL != node);
 
-  buf = _createLeakingBuffer(param, initialTimestamp, removalBitrate);
+  BufModelBufferPtr buf = _createLeakingBuffer(param, initial_timestamp, removal_br);
   if (NULL == buf)
     return -1;
 
@@ -955,7 +944,7 @@ int createLeakingBufferNode(
  * \brief Create a buffer using removal timestamps output method.
  *
  * \param param Buffer parameters.
- * \param initialTimestamp Initial zero timestamp value.
+ * \param initial_timestamp Initial zero timestamp value.
  * \return BufferPtr On success, created object is returned. Otherwise a
  * NULL pointer is returned.
  *
@@ -964,15 +953,16 @@ int createLeakingBufferNode(
  */
 static BufModelBufferPtr createRemovalBuffer(
   BufModelBufferParameters param,
-  uint64_t initialTimestamp
+  uint64_t initial_timestamp
 )
 {
-  BufModelRemovalBufferPtr buf;
-  CircularBuffer * frmBuf;
-
-  if (NULL == (buf = (BufModelRemovalBufferPtr) malloc(sizeof(BufModelRemovalBuffer))))
+  BufModelRemovalBufferPtr buf = (BufModelRemovalBufferPtr) malloc(
+    sizeof(BufModelRemovalBuffer)
+  );
+  if (NULL == buf)
     goto free_return; /* Memory allocation error */
-  if (NULL == (frmBuf = createCircularBuffer()))
+  CircularBuffer *frame_buffer = createCircularBuffer();
+  if (NULL == frame_buffer)
     goto free_return; /* Memory allocation error */
 
   *buf = (BufModelRemovalBuffer) {
@@ -980,8 +970,8 @@ static BufModelBufferPtr createRemovalBuffer(
       .type = TIME_REMOVAL_BUFFER,
       .param = param,
       .output = newVoidBufModelNode(),
-      .lastUpdate = initialTimestamp,
-      .storedFrames = frmBuf
+      .last_update = initial_timestamp,
+      .stored_frames = frame_buffer
     }
   };
 
@@ -994,16 +984,14 @@ free_return:
 
 int createRemovalBufferNode(
   BufModelBuffersListPtr list,
-  BufModelNode * node,
+  BufModelNode *node,
   BufModelBufferParameters param,
-  uint64_t initialTimestamp
+  uint64_t initial_timestamp
 )
 {
-  BufModelBufferPtr buf;
-
   assert(NULL != node);
 
-  buf = createRemovalBuffer(param, initialTimestamp);
+  BufModelBufferPtr buf = createRemovalBuffer(param, initial_timestamp);
   if (NULL == buf)
     return -1;
 
@@ -1042,7 +1030,7 @@ static bool areEqualBufModelFilterLblValues(
 
   case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
     return
-      left.stringHash == right.stringHash
+      left.string_hash == right.string_hash
       && !lbc_strcmp(left.string, right.string)
     ;
 
@@ -1064,12 +1052,10 @@ static bool _isInListBufModelFilterLblValue(
   BufModelFilterLblValue value
 )
 {
-  unsigned i;
-
-  for (i = 0; i < list.listLength; i++) {
+  for (unsigned i = 0; i < list.list_length; i++) {
     if (
       areEqualBufModelFilterLblValues(
-        list.list[i], value, list.listItemsType
+        list.list[i], value, list.list_item_type
       )
     )
       return true;
@@ -1079,49 +1065,46 @@ static bool _isInListBufModelFilterLblValue(
 }
 
 int setBufModelFilterLblList(
-  BufModelFilterLbl * dst,
-  BufModelFilterLblType valuesType,
-  const void * valuesList,
-  const unsigned valuesNb
+  BufModelFilterLbl *dst,
+  BufModelFilterLblType values_type,
+  const void *values_list,
+  const unsigned values_nb
 )
 {
-  unsigned i;
-  BufModelFilterLblValue * array;
-
   /* Check parameters */
   if (NULL == dst)
     LIBBLU_ERROR_RETURN("NULL pointer filter label list destination.\n");
-  if (NULL == valuesList)
+  if (NULL == values_list)
     LIBBLU_ERROR_RETURN("NULL pointer filter label list source values.\n");
-  if (!valuesNb)
+  if (!values_nb)
     LIBBLU_ERROR_RETURN("Zero-sized list label.\n");
 
   /* Allocate values array */
-  array = (BufModelFilterLblValue *) malloc(
-    valuesNb * sizeof(BufModelFilterLblValue)
+  BufModelFilterLblValue *array = (BufModelFilterLblValue *) malloc(
+    values_nb *sizeof(BufModelFilterLblValue)
   );
   if (NULL == array)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
   /* Build values array */
-  switch (valuesType) {
+  switch (values_type) {
   case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
-    for (i = 0; i < valuesNb; i++)
+    for (unsigned i = 0; i < values_nb; i++)
       array[i] = BUF_MODEL_FILTER_NUMERIC_LABEL_VALUE(
-        ((int *) valuesList)[i]
+        ((int *) values_list)[i]
       );
     break;
 
   case BUF_MODEL_FILTER_LABEL_TYPE_STRING:
-    for (i = 0; i < valuesNb; i++) {
+    for (unsigned i = 0; i < values_nb; i++) {
       array[i] = BUF_MODEL_FILTER_STRING_LABEL_VALUE(
-        ((lbc **) valuesList)[i]
+        ((lbc **) values_list)[i]
       );
 
       if (NULL == array[i].string) {
         /* Release already allocated memory */
         while (i--)
-          cleanBufModelFilterLblValue(array[i], valuesType);
+          cleanBufModelFilterLblValue(array[i], values_type);
         LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
       }
     }
@@ -1131,14 +1114,14 @@ int setBufModelFilterLblList(
     LIBBLU_ERROR_FRETURN(
       "Unexpected list label values type '%s', "
       "expect numeric or string value type.",
-      getBufModelFilterLblTypeString(valuesType)
+      getBufModelFilterLblTypeString(values_type)
     );
   }
 
   *dst = BUF_MODEL_FILTER_LIST_LABEL(
-    valuesType,
+    values_type,
     array,
-    valuesNb
+    values_nb
   );
 
   return 0;
@@ -1161,21 +1144,18 @@ bool _areEqualBufModelFilterLbls(
   BufModelFilterLbl right
 )
 {
-  bool ret;
-  unsigned i;
-
   if (left.type == BUF_MODEL_FILTER_LABEL_TYPE_LIST) {
     if (
-      left.value.listItemsType != right.type
+      left.value.list_item_type != right.type
       && (
         right.type != BUF_MODEL_FILTER_LABEL_TYPE_LIST
-        || left.value.listItemsType != right.value.listItemsType
+        || left.value.list_item_type != right.value.list_item_type
       )
     )
       return false;
 
-    for (i = 0; i < left.value.listLength; i++) {
-      ret = areEqualBufModelFilterLblValues(
+    for (unsigned i = 0; i < left.value.list_length; i++) {
+      bool ret = areEqualBufModelFilterLblValues(
         right.value, left.value.list[i], right.type
       );
       if (ret)
@@ -1198,7 +1178,7 @@ bool _areEqualBufModelFilterLbls(
  * \brief Create a buffering model filter.
  *
  * \param fun Stream context filtering function pointer.
- * \param labelsType Type of filter nodes attached labels.
+ * \param labels_type Type of filter nodes attached labels.
  * \return BufModelFilterPtr On success, created object is returned. Otherwise
  * a NULL pointer is returned.
  *
@@ -1208,27 +1188,26 @@ bool _areEqualBufModelFilterLbls(
  */
 BufModelFilterPtr _createBufModelFilter(
   BufModelFilterDecisionFun fun,
-  BufModelFilterLblType labelsType
+  BufModelFilterLblType labels_type
 )
 {
-  BufModelFilterPtr filter;
-
   if (NULL == fun)
     LIBBLU_ERROR_NRETURN(
       "_createBufModelFilter() receive NULL decision function pointer.\n"
     );
 
-  if (labelsType == BUF_MODEL_FILTER_LABEL_TYPE_LIST)
+  if (labels_type == BUF_MODEL_FILTER_LABEL_TYPE_LIST)
     LIBBLU_ERROR_NRETURN(
       "_createBufModelFilter() labels type cannot be list, "
       "use list content type.\n"
     );
 
-  if (NULL == (filter = (BufModelFilterPtr) malloc(sizeof(BufModelFilter))))
+  BufModelFilterPtr filter = (BufModelFilterPtr) malloc(sizeof(BufModelFilter));
+  if (NULL == filter)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
   *filter = (BufModelFilter) {
-    .labelsType = labelsType,
+    .labels_type = labels_type,
     .apply = fun
   };
 
@@ -1236,16 +1215,15 @@ BufModelFilterPtr _createBufModelFilter(
 }
 
 int createBufModelFilterNode(
-  BufModelNode * node,
+  BufModelNode *node,
   BufModelFilterDecisionFun fun,
-  BufModelFilterLblType labelsType
+  BufModelFilterLblType labels_type
 )
 {
-  BufModelFilterPtr filter;
-
   assert(NULL != node);
 
-  if (NULL == (filter = _createBufModelFilter(fun, labelsType)))
+  BufModelFilterPtr filter = _createBufModelFilter(fun, labels_type);
+  if (NULL == filter)
     return -1;
 
   node->type = NODE_FILTER;
@@ -1258,15 +1236,14 @@ void destroyBufModelFilter(
   BufModelFilterPtr filter
 )
 {
-  unsigned i;
-
   if (NULL == filter)
     return;
 
-  for (i = 0; i < filter->nbUsedNodes; i++) {
+  for (unsigned i = 0; i < filter->nb_used_nodes; i++) {
     cleanBufModelNode(filter->nodes[i]);
     cleanBufModelFilterLbl(filter->labels[i]);
   }
+
   free(filter->nodes);
   free(filter->labels);
   free(filter);
@@ -1290,12 +1267,6 @@ static int _addNodeToBufModelFilter(
   BufModelFilterLbl label
 )
 {
-  unsigned i;
-
-  BufModelNode * newArrayNodes;
-  BufModelFilterLbl * newArrayLabels;
-  unsigned newLength;
-
   assert(NULL != filter);
 
   if (isLinkedBufModelNode(node))
@@ -1306,75 +1277,77 @@ static int _addNodeToBufModelFilter(
   setLinkedBufModelNode(node);
 
   if (
-    filter->labelsType != label.type
+    filter->labels_type != label.type
     && (
       label.type != BUF_MODEL_FILTER_LABEL_TYPE_LIST
-      || filter->labelsType != label.value.listItemsType
+      || filter->labels_type != label.value.list_item_type
     )
-  )
+  ) {
     LIBBLU_ERROR_RETURN(
       "New filter node label type mismatch with buffer one (%s <> %s).\n",
       getBufModelFilterLblTypeString(label.type),
-      getBufModelFilterLblTypeString(filter->labelsType)
+      getBufModelFilterLblTypeString(filter->labels_type)
     );
+  }
 
-  if (filter->nbAllocatedNodes <= filter->nbUsedNodes) {
+  if (filter->nb_allocated_nodes <= filter->nb_used_nodes) {
     /* Need realloc */
-    newLength = GROW_BUF_MODEL_FILTER_LENGTH(
-      filter->nbAllocatedNodes
+    unsigned new_length = GROW_BUF_MODEL_FILTER_LENGTH(
+      filter->nb_allocated_nodes
     );
 
-    if (lb_mul_overflow_size_t(newLength, sizeof(BufModelFilterLbl)))
+    if (lb_mul_overflow_size_t(new_length, sizeof(BufModelFilterLbl)))
       LIBBLU_ERROR_RETURN(
         "Buffering model filter output nodes overflow. "
         "Too many defined output.\n"
       );
 
-    newArrayNodes = (BufModelNode *) realloc(
+    BufModelNode *new_array_nodes = (BufModelNode *) realloc(
       filter->nodes,
-      newLength * sizeof(BufModelNode)
+      new_length *sizeof(BufModelNode)
     );
-    if (NULL == newArrayNodes)
+    if (NULL == new_array_nodes)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
-    newArrayLabels = (BufModelFilterLbl *) realloc(
+    BufModelFilterLbl *new_array_labels = (BufModelFilterLbl *) realloc(
       filter->labels,
-      newLength * sizeof(BufModelFilterLbl)
+      new_length *sizeof(BufModelFilterLbl)
     );
-    if (NULL == newArrayLabels) {
-      free(newArrayLabels);
+    if (NULL == new_array_labels) {
+      free(new_array_labels);
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
     }
 
-    filter->nodes = newArrayNodes;
-    filter->labels = newArrayLabels;
-    filter->nbAllocatedNodes = newLength;
+    filter->nodes  = new_array_nodes;
+    filter->labels = new_array_labels;
+    filter->nb_allocated_nodes = new_length;
   }
 
   /* Check for label duplicates */
-  for (i = 0; i < filter->nbUsedNodes; i++) {
+  for (unsigned i = 0; i < filter->nb_used_nodes; i++) {
     if (_areEqualBufModelFilterLbls(filter->labels[i], label))
       LIBBLU_ERROR_RETURN(
         "Buffering model filter duplicate labels.\n"
       );
   }
 
-  filter->labels[filter->nbUsedNodes] = label;
-  filter->nodes[filter->nbUsedNodes++] = node;
+  unsigned node_index = filter->nb_used_nodes++;
+  filter->labels[node_index] = label;
+  filter->nodes[node_index]  = node;
 
   return 0;
 }
 
 int addNodeToBufModelFilterNode(
-  BufModelNode filterNode,
+  BufModelNode filter_node,
   BufModelNode node,
   BufModelFilterLbl label
 )
 {
-  assert(isFilterBufModelNode(filterNode));
+  assert(isFilterBufModelNode(filter_node));
 
   return _addNodeToBufModelFilter(
-    filterNode.linkedElement.filter,
+    filter_node.linkedElement.filter,
     node,
     label
   );
@@ -1385,9 +1358,9 @@ int addNodeToBufModelFilterNode(
  *
  * \param filter Buffering model filter to update.
  * \param timestamp Current update timestamp.
- * \param inputData Optionnal input data in bits.
- * \param fillingBitrate Input data filling bitrate.
- * \param streamContext Input data stream context.
+ * \param input_data Optionnal input data in bits.
+ * \param filling_bitrate Input data filling bitrate.
+ * \param stream_context Input data stream context.
  * \return true Input data can fill given buffering model without error.
  * \return false Input data cannot fill given buffering model, leading buffer
  * overflow or other error.
@@ -1396,61 +1369,51 @@ static bool _checkBufModelFilter(
   BufModelOptions options,
   BufModelFilterPtr filter,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext,
-  size_t totalInputData,
-  uint64_t * delay
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context,
+  size_t total_input_data,
+  uint64_t *delay
 )
 {
-  unsigned destIndex;
-
-#if BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES
-  bool ret;
-  unsigned i;
-
-  BufModelNode * nodes;
-  unsigned nbUsedNodes;
-#endif
-
   assert(NULL != filter);
   assert(NULL != filter->apply);
 
-  if (0 < inputData) {
-    if (filter->apply(filter, &destIndex, streamContext) < 0)
+  unsigned dest_index = filter->nb_used_nodes;
+
+  if (0 < input_data) {
+    if (filter->apply(filter, &dest_index, stream_context) < 0)
       LIBBLU_ERROR_BRETURN(
         "Buffering model filter apply() method returns error.\n"
       );
 
-    if (filter->nbUsedNodes <= destIndex)
+    if (filter->nb_used_nodes <= dest_index)
       LIBBLU_ERROR_BRETURN(
         "Buffering model filter method returns destination index %u out of "
         "filter destination array of length %u.\n",
-        destIndex,
-        filter->nbUsedNodes
+        dest_index,
+        filter->nb_used_nodes
       );
   }
+#if !defined(BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES)
   else
-#if BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES
-    destIndex = filter->nbUsedNodes; /* Set impossible index */
-#else
     return true; /* No data to transmit, useless decision. */
 #endif
 
 #if BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES
-  nbUsedNodes = filter->nbUsedNodes;
-  nodes = filter->nodes;
+  unsigned nb_used_nodes = filter->nb_used_nodes;
+  BufModelNode *nodes = filter->nodes;
 
-  for (i = 0; i < nbUsedNodes; i++) {
-    /* Only transmit inputData to destination node */
-    ret = _checkBufModelNode(
+  for (unsigned i = 0; i < nb_used_nodes; i++) {
+    /* Only transmit input_data to destination node */
+    bool ret = _checkBufModelNode(
       options,
       nodes[i],
       timestamp,
-      (i == destIndex) ? inputData : 0,
-      fillingBitrate,
-      streamContext,
-      totalInputData,
+      (i == dest_index) ? input_data : 0,
+      filling_bitrate,
+      stream_context,
+      total_input_data,
       delay
     );
 
@@ -1462,12 +1425,12 @@ static bool _checkBufModelFilter(
 #else
   return _checkBufModelNode(
     options,
-    filter->nodes[destIndex],
+    filter->nodes[dest_index],
     timestamp,
-    inputData,
-    fillingBitrate,
-    streamContext,
-    totalInputData,
+    input_data,
+    filling_bitrate,
+    stream_context,
+    total_input_data,
     delay
   );
 #endif
@@ -1478,9 +1441,9 @@ static bool _checkBufModelFilter(
  *
  * \param filter Buffering model filter to update.
  * \param timestamp Current update timestamp.
- * \param inputData Optionnal input data in bits.
- * \param fillingBitrate Input data filling bitrate.
- * \param streamContext Input data stream context.
+ * \param input_data Optionnal input data in bits.
+ * \param filling_bitrate Input data filling bitrate.
+ * \param stream_context Input data stream context.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
@@ -1488,9 +1451,9 @@ static int _updateBufModelFilter(
   BufModelOptions options,
   BufModelFilterPtr filter,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context
 )
 {
   unsigned destIndex;
@@ -1499,47 +1462,47 @@ static int _updateBufModelFilter(
   int ret;
   unsigned i;
 
-  BufModelNode * nodes;
-  unsigned nbUsedNodes;
+  BufModelNode *nodes;
+  unsigned nb_used_nodes;
 #endif
 
   assert(NULL != filter);
   assert(NULL != filter->apply);
 
-  if (0 < inputData) {
-    if (filter->apply(filter, &destIndex, streamContext) < 0)
+  if (0 < input_data) {
+    if (filter->apply(filter, &destIndex, stream_context) < 0)
       LIBBLU_ERROR_RETURN(
         "Buffering model filter apply() method returns error.\n"
       );
 
-    if (filter->nbUsedNodes <= destIndex)
+    if (filter->nb_used_nodes <= destIndex)
       LIBBLU_ERROR_RETURN(
         "Buffering model filter method returns destination index %u out of "
         "filter destination array of length %u.\n",
         destIndex,
-        filter->nbUsedNodes
+        filter->nb_used_nodes
       );
   }
   else {
 #if BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES
-    destIndex = filter->nbUsedNodes; /* Set impossible index */
+    destIndex = filter->nb_used_nodes; /* Set impossible index */
 #else
     return 0; /* No data to transmit, useless decision. */
 #endif
   }
 
 #if BUF_MODEL_UPDATE_FILTER_DEFAULT_NODES
-  nbUsedNodes = filter->nbUsedNodes;
+  nb_used_nodes = filter->nb_used_nodes;
   nodes = filter->nodes;
 
-  for (i = 0; i < nbUsedNodes; i++) {
-    /* Only transmit inputData to destination node */
+  for (i = 0; i < nb_used_nodes; i++) {
+    /* Only transmit input_data to destination node */
     ret = _updateBufModelNode(
       nodes[i],
       timestamp,
-      (i == destIndex) ? inputData : 0,
-      fillingBitrate,
-      streamContext
+      (i == destIndex) ? input_data : 0,
+      filling_bitrate,
+      stream_context
     );
 
     if (ret < 0)
@@ -1552,9 +1515,9 @@ static int _updateBufModelFilter(
     options,
     filter->nodes[destIndex],
     timestamp,
-    inputData,
-    fillingBitrate,
-    streamContext
+    input_data,
+    filling_bitrate,
+    stream_context
   );
 #endif
 }
@@ -1563,11 +1526,11 @@ static int _updateBufModelFilter(
  * \brief Check if input data can fill given buffering model from given node
  * without error.
  *
- * \param rootNode Buffering model node.
+ * \param root_node Buffering model node.
  * \param timestamp Current updating timestamp.
- * \param inputData Input data amount in bits.
- * \param fillingBitrate Input data filling bitrate in bits per second.
- * \param streamContext Input data source stream context.
+ * \param input_data Input data amount in bits.
+ * \param filling_bitrate Input data filling bitrate in bits per second.
+ * \param stream_context Input data source stream context.
  * \return true Input data can fill given buffering model without error.
  * \return false Input data cannot fill given buffering model, leading buffer
  * overflow or other error.
@@ -1576,11 +1539,11 @@ static bool _checkBufModelNode(
   BufModelOptions options,
   BufModelNode node,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext,
-  size_t totalInputData,
-  uint64_t * delay
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context,
+  size_t total_input_data,
+  uint64_t *delay
 )
 {
   switch (node.type) {
@@ -1592,10 +1555,10 @@ static bool _checkBufModelNode(
       options,
       node.linkedElement.buffer,
       timestamp,
-      inputData,
-      fillingBitrate,
-      streamContext,
-      totalInputData,
+      input_data,
+      filling_bitrate,
+      stream_context,
+      total_input_data,
       delay
     );
 
@@ -1604,10 +1567,10 @@ static bool _checkBufModelNode(
       options,
       node.linkedElement.filter,
       timestamp,
-      inputData,
-      fillingBitrate,
-      streamContext,
-      totalInputData,
+      input_data,
+      filling_bitrate,
+      stream_context,
+      total_input_data,
       delay
     );
   }
@@ -1617,57 +1580,59 @@ static bool _checkBufModelNode(
 
 int checkBufModel(
   BufModelOptions options,
-  BufModelNode rootNode,
+  BufModelNode root_node,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext,
-  uint64_t * delay
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context,
+  uint64_t *delay
 )
 {
   return _checkBufModelNode(
     options,
-    rootNode,
+    root_node,
     timestamp,
-    inputData,
-    fillingBitrate,
-    streamContext,
-    inputData,
+    input_data,
+    filling_bitrate,
+    stream_context,
+    input_data,
     delay
   );
 }
 
 int updateBufModel(
   BufModelOptions options,
-  BufModelNode rootNode,
+  BufModelNode root_node,
   uint64_t timestamp,
-  size_t inputData,
-  uint64_t fillingBitrate,
-  void * streamContext
+  size_t input_data,
+  uint64_t filling_bitrate,
+  void *stream_context
 )
 {
   LIBBLU_DEBUG_COM(
     "Updating buffering chain at %" PRIu64 " with %zu bytes.\n",
-    timestamp, inputData
+    timestamp, input_data
   );
 
   return _updateBufModelNode(
     options,
-    rootNode,
+    root_node,
     timestamp,
-    inputData,
-    fillingBitrate,
-    streamContext
+    input_data,
+    filling_bitrate,
+    stream_context
   );
 }
 
-void printBufModelBuffer(const BufModelBufferPtr buf)
+void printBufModelBuffer(
+  const BufModelBufferPtr buf
+)
 {
   lbc_printf(
     lbc_str("[%s %" PRIu64 " / %" PRIu64 "]"),
     bufferNameBufModelBuffer(buf),
-    buf->header.bufferFillingLevel,
-    buf->header.param.bufferSize
+    buf->header.buffer_filling_level,
+    buf->header.param.buffer_size
   );
 
   if (buf->header.type == LEAKING_BUFFER)
@@ -1677,10 +1642,10 @@ void printBufModelBuffer(const BufModelBufferPtr buf)
   printBufModelBufferingChain(buf->header.output);
 }
 
-void printBufModelFilterLbl(const BufModelFilterLbl label)
+void printBufModelFilterLbl(
+  const BufModelFilterLbl label
+)
 {
-  unsigned i;
-
   switch (label.type) {
   case BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC:
     lbc_printf(lbc_str("0x%X"), label.value.number);
@@ -1692,13 +1657,13 @@ void printBufModelFilterLbl(const BufModelFilterLbl label)
 
   case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
     lbc_printf(lbc_str("["));
-    for (i = 0; i < label.value.listLength; i++) {
+    for (unsigned i = 0; i < label.value.list_length; i++) {
       if (0 < i)
         lbc_printf(lbc_str(", "));
 
       printBufModelFilterLbl(
         (BufModelFilterLbl) {
-          .type = label.value.listItemsType,
+          .type = label.value.list_item_type,
           .value = label.value.list[i]
         }
       );
@@ -1710,10 +1675,8 @@ void printBufModelFilterLbl(const BufModelFilterLbl label)
 
 void printBufModelFilter(const BufModelFilterPtr filter)
 {
-  unsigned i;
-
   lbc_printf(lbc_str("Filter {\n"));
-  for (i = 0; i < filter->nbUsedNodes; i++) {
+  for (unsigned i = 0; i < filter->nb_used_nodes; i++) {
     lbc_printf(lbc_str(" - "));
     printBufModelFilterLbl(filter->labels[i]);
     lbc_printf(lbc_str(" -> "));
@@ -1743,37 +1706,35 @@ void printBufModelBufferingChain(const BufModelNode node)
 
 int main(void)
 {
-  BufModelBuffersListPtr bufList;
-  BufModelBufferParameters bufParam;
   BufModelNode node = newVoidBufModelNode();
-  BufModelBufferFrame frameParam;
 
-  bufParam = (BufModelBufferParameters) {
+  const BufModelBufferParameters buf_param = {
     .name = TRANSPORT_BUFFER,
-    .instantFilling = false,
-    .dontOverflowOutput = false,
-    .bufferSize = 512*8
+    .instant_filling = false,
+    .dont_overflow_output = false,
+    .buffer_size = 512*8
   };
 
-  frameParam = (BufModelBufferFrame) {
-    .headerSize = 0,
-    .dataSize = 188 * 8,
-    .outputDataSize = 0,
-    .doNotRemove = false
+  const BufModelBufferFrame frame_param = {
+    .header_size = 0,
+    .data_size = 188 * 8,
+    .output_data_size = 0,
+    .do_not_remove = false
   };
 
-  if (NULL == (bufList = createBufModelBuffersList()))
+  BufModelBuffersListPtr bufList = createBufModelBuffersList();
+  if (NULL == bufList)
     return -1;
 
-  if (createLeakingBufferNode(bufList, &node, bufParam, 0, 1000000) < 0)
+  if (createLeakingBufferNode(bufList, &node, buf_param, 0, 1000000) < 0)
     return -1;
-  if (addFrameToBufferFromList(bufList, TRANSPORT_BUFFER, NULL, frameParam) < 0)
+  if (addFrameToBufferFromList(bufList, TRANSPORT_BUFFER, NULL, frame_param) < 0)
     return -1;
 
-  if (updateBufModel(node, 0, 188 * 8, 48000000, NULL) < 0)
-    return -1;
-  if (updateBufModel(node, 846, 0, 48000000, NULL) < 0)
-    return -1;
+  // if (updateBufModel(node, 0, 188 * 8, 48000000, NULL) < 0)
+  //   return -1;
+  // if (updateBufModel(node, 846, 0, 48000000, NULL) < 0)
+  //   return -1;
 
   printBufModelBufferingChain(node);
 

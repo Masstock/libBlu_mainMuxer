@@ -16,7 +16,7 @@ static void _buildMlp6ChPresChAssignStr(
   uint8_t u6ch_presentation_channel_assignment
 )
 {
-  static const char * channels[] = {
+  static const char *channels[] = {
     "L, R",
     "C",
     "LFE",
@@ -24,7 +24,7 @@ static void _buildMlp6ChPresChAssignStr(
     "Tfl, Tfr"
   };
 
-  char * sep = "";
+  char *sep = "";
   for (unsigned i = 0; i < 5; i++) {
     if (u6ch_presentation_channel_assignment & (1 << i)) {
       lb_str_cat(&dst, sep);
@@ -42,7 +42,7 @@ static void _buildMlp8ChPresChAssignStr(
   bool alternateSyntax
 )
 {
-  static const char * channels[] = {
+  static const char *channels[] = {
     "L, R",
     "C",
     "LFE",
@@ -58,7 +58,7 @@ static void _buildMlp8ChPresChAssignStr(
     "LFE2"
   };
 
-  char * sep = "";
+  char *sep = "";
   for (unsigned i = 0; i < ((alternateSyntax) ? 4 : 13); i++) {
     if (u8ch_presentation_channel_assignment & (1 << i)) {
       lb_str_cat(&dst, sep);
@@ -73,9 +73,9 @@ static void _buildMlp8ChPresChAssignStr(
 }
 
 static int _checkMlpMajorSyncFormatInfo(
-  const MlpMajorSyncFormatInfo * fi,
-  const MlpMajorSyncFlags * flags,
-  MlpInformations * info
+  const MlpMajorSyncFormatInfo *fi,
+  const MlpMajorSyncFlags *flags,
+  MlpInformations *info
 )
 {
 
@@ -276,7 +276,7 @@ static int _checkMlpMajorSyncFormatInfo(
 }
 
 static int _checkMlpSubstreamInfo(
-  const MlpSubstreamInfo * si
+  const MlpSubstreamInfo *si
 )
 {
   LIBBLU_MLP_DEBUG_PARSING_MS(
@@ -328,7 +328,7 @@ static int _checkMlpSubstreamInfo(
 }
 
 static int _checkMlpSubstreamInfoCombination(
-  const MlpSubstreamInfo * si,
+  const MlpSubstreamInfo *si,
   MlpExtendedSubstreamInfo esi
 )
 {
@@ -364,7 +364,7 @@ static int _checkMlpSubstreamInfoCombination(
 }
 
 static int _checkMlp16ChChannelMeaning(
-  const Mlp16ChChannelMeaning * cm
+  const Mlp16ChChannelMeaning *cm
 )
 {
 
@@ -419,7 +419,7 @@ static int _checkMlp16ChChannelMeaning(
 }
 
 static int _checkMlpExtraChannelMeaningData(
-  const MlpExtraChannelMeaningData * ecmd
+  const MlpExtraChannelMeaningData *ecmd
 )
 {
 
@@ -454,7 +454,7 @@ static int _checkMlpExtraChannelMeaningData(
 }
 
 static int _checkMlpChannelMeaning(
-  const MlpChannelMeaning * cm
+  const MlpChannelMeaning *cm
 )
 {
 
@@ -583,8 +583,8 @@ static int _checkMlpChannelMeaning(
 }
 
 static int _checkMlpMajorSyncInfo(
-  const MlpMajorSyncInfoParameters * msi,
-  MlpInformations * info
+  const MlpMajorSyncInfoParameters *msi,
+  MlpInformations *info
 )
 {
 
@@ -647,7 +647,7 @@ static int _checkMlpMajorSyncInfo(
     );
   }
 
-  info->peak_data_rate = (msi->peak_data_rate * info->sampling_frequency) >> 4;
+  info->peak_data_rate = (msi->peak_data_rate *info->sampling_frequency) >> 4;
 
   LIBBLU_MLP_DEBUG_PARSING_MS(
     "    -> %u bps, %u kbps.\n",
@@ -706,8 +706,8 @@ static int _checkMlpMajorSyncInfo(
 
 
 int checkMlpSyncHeader(
-  const MlpSyncHeaderParameters * sync,
-  MlpInformations * info,
+  const MlpSyncHeaderParameters *sync,
+  MlpInformations *info,
   bool firstAU
 )
 {
@@ -761,8 +761,8 @@ int checkMlpSyncHeader(
  * value is returned.
  */
 int checkAndComputeSSSizesMlpSubstreamDirectory(
-  MlpSubstreamDirectoryEntry * directory,
-  const MlpMajorSyncInfoParameters * msi,
+  MlpSubstreamDirectoryEntry *directory,
+  const MlpMajorSyncInfoParameters *msi,
   unsigned au_ss_length,
   bool is_major_sync
 )
@@ -770,7 +770,7 @@ int checkAndComputeSSSizesMlpSubstreamDirectory(
 
   unsigned substream_start = 0;
   for (unsigned i = 0; i < msi->substreams; i++) {
-    MlpSubstreamDirectoryEntry * entry = &directory[i];
+    MlpSubstreamDirectoryEntry *entry = &directory[i];
 
     LIBBLU_MLP_DEBUG_PARSING_HDR("   Substream %u entry:\n", i);
     LIBBLU_MLP_DEBUG_PARSING_HDR(

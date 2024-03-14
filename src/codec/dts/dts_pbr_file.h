@@ -20,8 +20,8 @@
 #define DTS_PBR_FILE_DEFAULT_NB_ENTRIES 512
 
 int initPbrFileHandler(
-  const lbc * dtspbr_filename,
-  const DtshdFileHandler * dtshd
+  const lbc *dtspbr_filename,
+  const DtshdFileHandler *dtshd
 );
 
 void releasePbrFileHandler(
@@ -34,11 +34,11 @@ bool isInitPbrFileHandler(
 
 int getMaxSizePbrFileHandler(
   unsigned timestamp,
-  unsigned * frame_size
+  unsigned *frame_size
 );
 
 int getAvgSizePbrFileHandler(
-  uint32_t * avg_size
+  uint32_t *avg_size
 );
 
 #endif

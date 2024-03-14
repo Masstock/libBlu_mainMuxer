@@ -14,7 +14,7 @@
 #include "pgs_error.h"
 
 int processPgsGenerator(
-  const lbc * ass_filepath
+  const lbc *ass_filepath
 );
 
 #endif

@@ -5,12 +5,12 @@
 #if defined(DISABLE_INI)
 
 typedef struct {
-  void * empty;
+  void *empty;
 } IniFileContext;
 
-static inline lbc * lookupIniFile(
+static inline lbc *lookupIniFile(
   const IniFileContext ctx,
-  const char * expr
+  const char *expr
 )
 {
   (void) ctx;
@@ -60,8 +60,8 @@ static inline void cleanIniFileContext(
 #define INI_DEFAULT_LEN_SOURCE_CODE_LINE 512
 
 int loadSourceIniFileContext(
-  IniFileContext * dst,
-  FILE * inputFile
+  IniFileContext *dst,
+  FILE *inputFile
 );
 
 #endif

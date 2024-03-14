@@ -9,8 +9,8 @@
 #include "hdmv_libpng.h"
 
 int loadHdmvLibpngHandle(
-  HdmvLibpngHandle * handle,
-  const lbc * path
+  HdmvLibpngHandle *handle,
+  const lbc *path
 )
 {
   assert(!isLoadedHdmvLibpngHandle(handle));
@@ -53,8 +53,8 @@ int loadHdmvLibpngHandle(
 /* ### Picture handling : ################################################## */
 
 int initHdmvLibpngPictureInfos(
-  const HdmvLibpngHandle * libpng,
-  HdmvLibpngPictureInfos * dst
+  const HdmvLibpngHandle *libpng,
+  HdmvLibpngPictureInfos *dst
 )
 {
   HdmvLibpngPictureInfos infos = {0};
@@ -96,11 +96,11 @@ free_return:
   )
 
 static int _readIHDRPngHdmvPicture(
-  const HdmvLibpngHandle * libpng,
-  HdmvLibpngPictureInfos * png
+  const HdmvLibpngHandle *libpng,
+  HdmvLibpngPictureInfos *png
 )
 {
-  HdmvLibpngPictureProp * prop = &png->prop;
+  HdmvLibpngPictureProp *prop = &png->prop;
 
   png_uint_32 ret = libpng->png_get_IHDR(
     png->reader,
@@ -118,8 +118,8 @@ static int _readIHDRPngHdmvPicture(
 }
 
 static int _readInfosPngHdmvPicture(
-  const HdmvLibpngHandle * libpng,
-  HdmvLibpngPictureInfos * png_pi
+  const HdmvLibpngHandle *libpng,
+  HdmvLibpngPictureInfos *png_pi
 )
 {
   /* libpng informations parsing. */
@@ -144,8 +144,8 @@ static int _readInfosPngHdmvPicture(
 }
 
 static void _setReadingSettingsPng(
-  const HdmvLibpngHandle * libpng,
-  HdmvLibpngPictureInfos * png_pi
+  const HdmvLibpngHandle *libpng,
+  HdmvLibpngPictureInfos *png_pi
 )
 {
   if (png_pi->prop.color_type == PNG_COLOR_TYPE_PALETTE)
@@ -179,10 +179,10 @@ static void _setReadingSettingsPng(
 }
 
 static int _initReadingPng(
-  const HdmvLibpngHandle * libpng,
-  HdmvLibpngPictureInfos * png_pi,
-  const lbc * filepath,
-  FILE * file
+  const HdmvLibpngHandle *libpng,
+  HdmvLibpngPictureInfos *png_pi,
+  const lbc *filepath,
+  FILE *file
 )
 {
   /* Init libpng I/O to the file handle. */
@@ -202,20 +202,20 @@ static int _initReadingPng(
 }
 
 static int _readRowsPng(
-  HdmvBitmap * dst,
-  const HdmvLibpngHandle * libpng,
+  HdmvBitmap *dst,
+  const HdmvLibpngHandle *libpng,
   HdmvLibpngPictureInfos png_pi
 )
 {
   uint16_t height = dst->height, width = dst->width;
-  uint32_t * rgba = dst->rgba;
+  uint32_t *rgba = dst->rgba;
 
-  png_byte ** rows = (png_byte **) malloc(height * sizeof(png_byte *));
+  png_byte ** rows = (png_byte **) malloc(height *sizeof(png_byte *));
   if (NULL == rows)
     LIBBLU_HDMV_LIBPNG_ERROR_RETURN("Memory allocation error.\n");
 
   for (unsigned i = 0; i < height; i++)
-    rows[i] = (png_byte *) &rgba[i * width];
+    rows[i] = (png_byte *) &rgba[i *width];
 
   libpng->png_read_image(png_pi.reader, rows);
   free(rows);
@@ -224,8 +224,8 @@ static int _readRowsPng(
 }
 
 static int _readPng(
-  HdmvBitmap * dst,
-  const HdmvLibpngHandle * libpng,
+  HdmvBitmap *dst,
+  const HdmvLibpngHandle *libpng,
   HdmvLibpngPictureInfos png_pi
 )
 {
@@ -251,10 +251,10 @@ free_return:
 }
 
 int openPngHdmvBitmap(
-  HdmvBitmap * dst,
-  const HdmvLibpngHandle * libpng,
-  const lbc * filepath,
-  FILE * fd
+  HdmvBitmap *dst,
+  const HdmvLibpngHandle *libpng,
+  const lbc *filepath,
+  FILE *fd
 )
 {
   if (!isLoadedHdmvLibpngHandle(libpng))

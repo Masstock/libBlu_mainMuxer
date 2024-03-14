@@ -8,7 +8,7 @@
 
 int createSystemBufferingChainBdavStd(
   BufModelBuffersListPtr bufList,
-  BufModelNode * root,
+  BufModelNode *root,
   uint64_t initialTimestamp,
   uint64_t transportRate
 )
@@ -20,15 +20,15 @@ int createSystemBufferingChainBdavStd(
 
   tbParam = (BufModelBufferParameters) {
     .name = TRANSPORT_BUFFER,
-    .instantFilling = false,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_SYSTEM_TBS * 8
+    .instant_filling = false,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_SYSTEM_TBS * 8
   };
   bParam = (BufModelBufferParameters) {
     .name = MAIN_BUFFER,
-    .instantFilling = true,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_SYSTEM_BS * 8
+    .instant_filling = true,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_SYSTEM_BS * 8
   };
 
   /* Create TB */

@@ -18,14 +18,14 @@ typedef struct {
   IniFileContext conf_hdl;
   HdmvPictureLibraries img_io_libs;
   XmlCtxPtr xml_ctx;
-  HdmvTimecodes * timecodes;
+  HdmvTimecodes *timecodes;
 
-  lbc * init_working_dir;
-  lbc * cur_working_dir;
-  lbc * xml_filename;
+  lbc *init_working_dir;
+  lbc *cur_working_dir;
+  lbc *xml_filename;
 
   IgsCompilerData data;
-  IgsCompilerSegment * seg;
+  IgsCompilerSegment *seg;
 } IgsCompilerContext;
 
 #endif

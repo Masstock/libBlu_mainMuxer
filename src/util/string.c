@@ -22,7 +22,7 @@
 #  include <wchar.h>
 
 static void _winInterpretLastError(
-  const char * context_name
+  const char *context_name
 )
 {
 #define PRINT_ERROR(e)  fprintf(stderr, "[ERROR] %s: Windows API Error : '%s'.\n", context_name, e)
@@ -45,8 +45,8 @@ static void _winInterpretLastError(
 #undef PRINT_ERROR
 }
 
-wchar_t * winUtf8ToWideChar(
-  const lbc * string
+wchar_t *winUtf8ToWideChar(
+  const lbc *string
 )
 {
   assert(NULL != string);
@@ -57,7 +57,7 @@ wchar_t * winUtf8ToWideChar(
     return NULL;
   }
 
-  wchar_t * wc_string = calloc(size, sizeof(wchar_t));
+  wchar_t *wc_string = calloc(size, sizeof(wchar_t));
   if (NULL == wc_string)
     return NULL;
 
@@ -71,8 +71,8 @@ wchar_t * winUtf8ToWideChar(
   return wc_string;
 }
 
-lbc * winWideCharToUtf8(
-  const wchar_t * string
+lbc *winWideCharToUtf8(
+  const wchar_t *string
 )
 {
   assert(NULL != string);
@@ -83,7 +83,7 @@ lbc * winWideCharToUtf8(
     return NULL;
   }
 
-  lbc * utf8_string = calloc(size, sizeof(lbc));
+  lbc *utf8_string = calloc(size, sizeof(lbc));
   if (NULL == utf8_string)
     return NULL;
 
@@ -110,7 +110,7 @@ double lbc_strtod(
 }
 
 float lbc_strtof(
-  const lbc * restrict nptr,
+  const lbc *restrict nptr,
   lbc ** restrict endptr
 )
 {
@@ -126,7 +126,7 @@ long double lbc_strtold(
 }
 
 unsigned long lbc_strtoul(
-  const lbc * restrict nptr,
+  const lbc *restrict nptr,
   lbc ** restrict endptr,
   int base
 )
@@ -166,9 +166,9 @@ long long int lbc_strtoll(
 #if defined(ARCH_UNIX)
 /* Unix systems implementation */
 
-FILE * lbc_fopen(
-  const lbc * restrict pathname,
-  const char * restrict mode
+FILE *lbc_fopen(
+  const lbc *restrict pathname,
+  const char *restrict mode
 )
 {
   return fopen((char *) pathname, mode);
@@ -177,17 +177,17 @@ FILE * lbc_fopen(
 #elif defined(ARCH_WIN32)
 /* Windows API implementation */
 
-FILE * lbc_fopen(
-  const lbc * restrict pathname,
-  const char * restrict mode
+FILE *lbc_fopen(
+  const lbc *restrict pathname,
+  const char *restrict mode
 )
 {
-  wchar_t * wc_pathname = winUtf8ToWideChar(pathname);
-  wchar_t * wc_mode     = winUtf8ToWideChar((unsigned char *) mode);
+  wchar_t *wc_pathname = winUtf8ToWideChar(pathname);
+  wchar_t *wc_mode     = winUtf8ToWideChar((unsigned char *) mode);
   if (NULL == wc_pathname || NULL == wc_mode)
     return NULL;
 
-  FILE * fd = _wfopen(wc_pathname, wc_mode);
+  FILE *fd = _wfopen(wc_pathname, wc_mode);
 
   free(wc_pathname);
   free(wc_mode);
@@ -286,7 +286,7 @@ lbc *lbc_fgets(
   }
 
   /* Read input file as wide char */
-  wchar_t * wc_string = malloc(size * sizeof(wchar_t));
+  wchar_t *wc_string = malloc(size *sizeof(wchar_t));
   if (NULL == wc_string)
     return NULL;
 
@@ -296,7 +296,7 @@ lbc *lbc_fgets(
   }
 
   /* Convert readed string to UTF-8 */
-  lbc * utf8_string = winWideCharToUtf8(wc_string);
+  lbc *utf8_string = winWideCharToUtf8(wc_string);
   if (NULL == utf8_string) {
     free(wc_string);
     return NULL;
@@ -435,7 +435,7 @@ int lbc_vprintf(
   va_list ap
 )
 {
-  wchar_t * wc_format = winUtf8ToWideChar(format);
+  wchar_t *wc_format = winUtf8ToWideChar(format);
   if (NULL == wc_format)
     return -1;
 
@@ -452,7 +452,7 @@ int lbc_vfprintf(
   va_list ap
 )
 {
-  wchar_t * wc_format = winUtf8ToWideChar(format);
+  wchar_t *wc_format = winUtf8ToWideChar(format);
   if (NULL == wc_format)
     return -1;
 
@@ -475,13 +475,13 @@ int lbc_vsnprintf(
     return -1;
   }
 
-  wchar_t * wc_format = winUtf8ToWideChar(format);
+  wchar_t *wc_format = winUtf8ToWideChar(format);
   if (NULL == wc_format)
     return -1;
 
   fprintf(stderr, "wc_format=%p\n", wc_format);
 
-  wchar_t * wc_buffer = NULL;
+  wchar_t *wc_buffer = NULL;
   int ret;
 
   if (0 < size) {
@@ -492,7 +492,7 @@ int lbc_vsnprintf(
 
     if (0 <= ret && NULL != str) {
       /* Convert back to UTF-8 */
-      lbc * utf8_string = winWideCharToUtf8(wc_buffer);
+      lbc *utf8_string = winWideCharToUtf8(wc_buffer);
       if (NULL == utf8_string)
         return -1;
       fprintf(stderr, "utf8_string=%p\n", utf8_string);
@@ -518,7 +518,7 @@ int lbc_vscanf(
   va_list ap
 )
 {
-  wchar_t * wc_format = winUtf8ToWideChar(format);
+  wchar_t *wc_format = winUtf8ToWideChar(format);
   if (NULL == wc_format)
     return -1;
 
@@ -535,8 +535,8 @@ int lbc_vsscanf(
   va_list ap
 )
 {
-  wchar_t * wc_str    = winUtf8ToWideChar(str);
-  wchar_t * wc_format = winUtf8ToWideChar(format);
+  wchar_t *wc_str    = winUtf8ToWideChar(str);
+  wchar_t *wc_format = winUtf8ToWideChar(format);
   if (NULL == wc_str || NULL == wc_format)
     return -1;
 
@@ -554,7 +554,7 @@ int lbc_vfscanf(
   va_list ap
 )
 {
-  wchar_t * wc_format = winUtf8ToWideChar(format);
+  wchar_t *wc_format = winUtf8ToWideChar(format);
   if (NULL == wc_format)
     return -1;
 
@@ -572,7 +572,7 @@ int lbc_vfscanf(
 /* ### <string.h> ########################################################## */
 
 size_t lbc_strlen(
-  const lbc * str
+  const lbc *str
 )
 {
   return strlen(
@@ -581,8 +581,8 @@ size_t lbc_strlen(
 }
 
 int lbc_strcmp(
-  const lbc * str1,
-  const lbc * str2
+  const lbc *str1,
+  const lbc *str2
 )
 {
   return strcmp(
@@ -592,8 +592,8 @@ int lbc_strcmp(
 }
 
 int lbc_strncmp(
-  const lbc * str1,
-  const lbc * str2,
+  const lbc *str1,
+  const lbc *str2,
   size_t size
 )
 {
@@ -604,9 +604,9 @@ int lbc_strncmp(
   );
 }
 
-lbc * lbc_strcpy(
-  lbc * restrict dst,
-  const lbc * restrict src
+lbc *lbc_strcpy(
+  lbc *restrict dst,
+  const lbc *restrict src
 )
 {
   return (lbc *) strcpy(
@@ -615,9 +615,9 @@ lbc * lbc_strcpy(
   );
 }
 
-lbc * lbc_strncpy(
-  lbc * restrict dst,
-  const lbc * restrict src,
+lbc *lbc_strncpy(
+  lbc *restrict dst,
+  const lbc *restrict src,
   size_t size
 )
 {
@@ -629,8 +629,8 @@ lbc * lbc_strncpy(
 }
 
 void lbc_strncat(
-  lbc * s1,
-  const lbc * s2,
+  lbc *s1,
+  const lbc *s2,
   size_t size
 )
 {
@@ -642,8 +642,8 @@ void lbc_strncat(
   *s1 = '\0';
 }
 
-lbc * lbc_strdup(
-  const lbc * str
+lbc *lbc_strdup(
+  const lbc *str
 )
 {
   if (NULL == str)
@@ -651,7 +651,7 @@ lbc * lbc_strdup(
 
   size_t size = 1 + lbc_strlen(str);
 
-  lbc * dup = malloc(size);
+  lbc *dup = malloc(size);
   if (NULL == dup)
     return NULL;
   memcpy(dup, str, size);
@@ -659,15 +659,15 @@ lbc * lbc_strdup(
   return dup;
 }
 
-lbc * lbc_strndup(
-  const lbc * str,
+lbc *lbc_strndup(
+  const lbc *str,
   size_t size
 )
 {
   if (NULL == str || !size)
     return NULL;
 
-  lbc * dup = calloc(size + 1, sizeof(lbc));
+  lbc *dup = calloc(size + 1, sizeof(lbc));
   if (NULL == dup)
     return NULL;
   lbc_strncpy(dup, str, size);
@@ -1008,8 +1008,8 @@ enum cwk_path_style lbc_cwk_path_get_style(
 /* ### other ############################################################### */
 
 bool lbc_equal(
-  const lbc * str1,
-  const lbc * str2
+  const lbc *str1,
+  const lbc *str2
 )
 {
   assert(NULL != str1);
@@ -1025,8 +1025,8 @@ bool lbc_equal(
 }
 
 bool lbc_equaln(
-  const lbc * str1,
-  const lbc * str2,
+  const lbc *str1,
+  const lbc *str2,
   size_t size
 )
 {
@@ -1044,18 +1044,18 @@ bool lbc_equaln(
 }
 
 int lbc_atob(
-  bool * dst,
-  const lbc * str
+  bool *dst,
+  const lbc *str
 )
 {
-  static const lbc * true_strings[] = {
+  static const lbc *true_strings[] = {
     lbc_str("1"),
     lbc_str("true"),
     lbc_str("True"),
     lbc_str("TRUE")
   };
 
-  static const lbc * false_strings[] = {
+  static const lbc *false_strings[] = {
     lbc_str("0"),
     lbc_str("false"),
     lbc_str("False"),
@@ -1080,11 +1080,11 @@ int lbc_atob(
 }
 
 int lbc_access_fp(
-  const lbc * filepath,
-  const char * mode
+  const lbc *filepath,
+  const char *mode
 )
 {
-  FILE * fd = lbc_fopen(filepath, mode);
+  FILE *fd = lbc_fopen(filepath, mode);
   if (NULL == fd)
     return -1;
   return fclose(fd);
@@ -1092,7 +1092,7 @@ int lbc_access_fp(
 
 int lbc_asprintf(
   lbc ** string,
-  const lbc * format,
+  const lbc *format,
   ...
 )
 {
@@ -1107,11 +1107,11 @@ int lbc_asprintf(
 
 int lbc_vasprintf(
   lbc ** string,
-  const lbc * format,
+  const lbc *format,
   va_list ap
 )
 {
-  lbc * res = NULL;
+  lbc *res = NULL;
 
   va_list ap_copy;
   va_copy(ap_copy, ap);
@@ -1137,14 +1137,14 @@ int lbc_vasprintf(
 /* Posix implementation */
 
 int lbc_chdir(
-  const lbc * path
+  const lbc *path
 )
 {
   return chdir((char *) path);
 }
 
-lbc * lbc_getcwd(
-  lbc * buf,
+lbc *lbc_getcwd(
+  lbc *buf,
   size_t size
 )
 {
@@ -1153,11 +1153,11 @@ lbc * lbc_getcwd(
     return NULL;
   }
 
-  char * cur_wd = getcwd((char *) buf, size);
+  char *cur_wd = getcwd((char *) buf, size);
 
   if (NULL == cur_wd && NULL == buf && (errno == ERANGE || errno == EINVAL)) {
     /* Implementation not handling self-allocation extension */
-    char * cwd_buf = NULL;
+    char *cwd_buf = NULL;
     size_t cwd_buf_size = 1024;
 
     long path_max = pathconf(".", _PC_PATH_MAX);
@@ -1183,10 +1183,10 @@ lbc * lbc_getcwd(
 /* Windows API implementation */
 
 int lbc_chdir(
-  const lbc * path
+  const lbc *path
 )
 {
-  wchar_t * wc_path = winUtf8ToWideChar(path);
+  wchar_t *wc_path = winUtf8ToWideChar(path);
   if (NULL == wc_path)
     return -1;
 
@@ -1197,8 +1197,8 @@ int lbc_chdir(
   return ret;
 }
 
-lbc * lbc_getcwd(
-  lbc * buf,
+lbc *lbc_getcwd(
+  lbc *buf,
   size_t size
 )
 {
@@ -1207,18 +1207,18 @@ lbc * lbc_getcwd(
     return NULL;
   }
 
-  wchar_t * wc_buf = NULL;
+  wchar_t *wc_buf = NULL;
   if (NULL != buf) {
-    wc_buf = malloc(size * sizeof(wchar_t));
+    wc_buf = malloc(size *sizeof(wchar_t));
     if (NULL == wc_buf)
       return NULL;
   }
 
-  wchar_t * ret = _wgetcwd(wc_buf, size);
+  wchar_t *ret = _wgetcwd(wc_buf, size);
   if (NULL == ret)
     return NULL;
 
-  lbc * utf8_buf = winWideCharToUtf8(ret);
+  lbc *utf8_buf = winWideCharToUtf8(ret);
   if (NULL == utf8_buf)
     return NULL;
   free(ret);

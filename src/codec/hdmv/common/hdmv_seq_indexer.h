@@ -11,7 +11,7 @@
 typedef Hashtable HdmvSeqIndexer;
 
 void initHdmvSeqIndexer(
-  HdmvSeqIndexer * dst
+  HdmvSeqIndexer *dst
 );
 
 static inline void cleanHdmvSeqIndexer(
@@ -22,26 +22,26 @@ static inline void cleanHdmvSeqIndexer(
 }
 
 HdmvSequencePtr getHdmvSeqIndexer(
-  HdmvSeqIndexer * seq_indexer,
+  HdmvSeqIndexer *seq_indexer,
   uint32_t id
 );
 
 int putHdmvSeqIndexer(
-  HdmvSeqIndexer * seq_indexer,
+  HdmvSeqIndexer *seq_indexer,
   uint32_t id,
   HdmvSequencePtr sequence
 );
 
 int putODSSeqIndexer(
-  HdmvSeqIndexer * seq_indexer,
+  HdmvSeqIndexer *seq_indexer,
   uint16_t object_id,
   HdmvSequencePtr sequence
 );
 
 int getODSSeqIndexer(
-  HdmvSeqIndexer * indexer,
+  HdmvSeqIndexer *indexer,
   uint16_t object_id,
-  HdmvSequencePtr * seq_ret
+  HdmvSequencePtr *seq_ret
 );
 
 #endif

@@ -16,13 +16,13 @@
 #include "../common/constantCheckFunctionsMacros.h"
 
 int checkDcaCoreSSCompliance(
-  const DcaCoreSSFrameParameters * frame,
-  DtsDcaCoreSSWarningFlags * warn_flags
+  const DcaCoreSSFrameParameters *frame,
+  DtsDcaCoreSSWarningFlags *warn_flags
 );
 
 bool constantDcaCoreSS(
-  const DcaCoreSSFrameParameters * first,
-  const DcaCoreSSFrameParameters * second
+  const DcaCoreSSFrameParameters *first,
+  const DcaCoreSSFrameParameters *second
 );
 
 /** \~english
@@ -36,15 +36,15 @@ bool constantDcaCoreSS(
  * Apply rules from ETSI TS 102 114 V.1.6.1 E.4
  */
 int checkDcaCoreSSChangeCompliance(
-  const DcaCoreSSFrameParameters * old,
-  const DcaCoreSSFrameParameters * cur,
-  DtsDcaCoreSSWarningFlags * warn_flags
+  const DcaCoreSSFrameParameters *old,
+  const DcaCoreSSFrameParameters *cur,
+  DtsDcaCoreSSWarningFlags *warn_flags
 );
 
 int checkDcaExtSSHeaderCompliance(
-  const DcaExtSSHeaderParameters * param,
+  const DcaExtSSHeaderParameters *param,
   bool is_sec_stream,
-  DtsDcaExtSSWarningFlags * warn_flags
+  DtsDcaExtSSWarningFlags *warn_flags
 );
 
 #endif

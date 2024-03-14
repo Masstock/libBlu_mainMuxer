@@ -23,7 +23,7 @@
 #include "codec/hdmv/pgs_parser.h"
 
 LibbluStreamCodingType guessESStreamCodingType(
-  const lbc * filepath
+  const lbc *filepath
 );
 
 /* ### ES Format Utilities : ############################################### */
@@ -39,14 +39,14 @@ typedef struct {
 } LibbluESFormatUtilities;
 
 int initLibbluESFormatUtilities(
-  LibbluESFormatUtilities * dst,
+  LibbluESFormatUtilities *dst,
   LibbluStreamCodingType codingType
 );
 
 int generateScriptES(
   LibbluESFormatUtilities utilities,
-  const lbc * esFilepath,
-  const lbc * outputScriptFilepath,
+  const lbc *esFilepath,
+  const lbc *outputScriptFilepath,
   LibbluESSettingsOptions options
 );
 

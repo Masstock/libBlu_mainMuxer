@@ -12,7 +12,7 @@ typedef enum {
   WAVE_DATA = 0x61746164
 } WaveRIFFChunkId;
 
-static inline const char * WaveRIFFChunkIdStr(
+static inline const char *WaveRIFFChunkIdStr(
   WaveRIFFChunkId ckID
 )
 {
@@ -38,7 +38,7 @@ typedef enum {
   RIFF_WAVE_FORM = 0x45564157
 } RiffFormType;
 
-static inline const char * RiffFormTypeStr(
+static inline const char *RiffFormTypeStr(
   RiffFormType formType
 )
 {

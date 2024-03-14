@@ -15,9 +15,9 @@ typedef struct {
 } IntRgba;
 
 static unsigned _findNearestColorPalette(
-  const HdmvPalette * pal,
+  const HdmvPalette *pal,
   uint32_t rgba,
-  IntRgba * quand_error_ret
+  IntRgba *quand_error_ret
 )
 {
 #if GET_MAX_DIST
@@ -54,10 +54,10 @@ static unsigned _findNearestColorPalette(
     uint16_t dist_a = ABS((int16_t) s_a - p_a);
 
     int32_t dist_rgba =
-      (dist_r * dist_r)
-      + (dist_g * dist_g)
-      + (dist_b * dist_b)
-      + (dist_a * dist_a)
+      (dist_r *dist_r)
+      + (dist_g *dist_g)
+      + (dist_b *dist_b)
+      + (dist_a *dist_a)
     ;
 
 #if GET_MAX_DIST
@@ -93,15 +93,15 @@ static unsigned _findNearestColorPalette(
 }
 
 static void _computeCoeffFloydSteinberg(
-  IntRgba * res,
+  IntRgba *res,
   float div,
   IntRgba quand_error
 )
 {
-  res->r = (int) nearbyintf(div * quand_error.r);
-  res->g = (int) nearbyintf(div * quand_error.g);
-  res->b = (int) nearbyintf(div * quand_error.b);
-  res->a = (int) nearbyintf(div * quand_error.a);
+  res->r = (int) nearbyintf(div *quand_error.r);
+  res->g = (int) nearbyintf(div *quand_error.g);
+  res->b = (int) nearbyintf(div *quand_error.b);
+  res->a = (int) nearbyintf(div *quand_error.a);
 }
 
 static uint32_t _applyCoeffErrorFloydSteinberg(
@@ -118,14 +118,14 @@ static uint32_t _applyCoeffErrorFloydSteinberg(
 }
 
 void _applyFloydSteinberg(
-  uint32_t * rgba,
+  uint32_t *rgba,
   uint16_t x,
   uint16_t y,
   uint16_t stride,
   IntRgba quant_error
 )
 {
-  uint32_t * px;
+  uint32_t *px;
   IntRgba coeff;
 
   /* (x+1, y) 7/16 */
@@ -150,9 +150,9 @@ void _applyFloydSteinberg(
 }
 
 static int _applyPaletteNoDithering(
-  HdmvPalletizedBitmap * dst,
+  HdmvPalletizedBitmap *dst,
   const HdmvBitmap src,
-  const HdmvPalette * pal
+  const HdmvPalette *pal
 )
 {
   LIBBLU_HDMV_PIC_DEBUG("  Using no dithering.\n");
@@ -163,8 +163,8 @@ static int _applyPaletteNoDithering(
   uint16_t stride = src.width;
   for (uint16_t j = 0; j < src.height; j++) {
     for (uint16_t i = 0; i < src.width; i++) {
-      dst->data[j * stride + i] = _findNearestColorPalette(
-        pal, src.rgba[j * stride + i], NULL
+      dst->data[j *stride + i] = _findNearestColorPalette(
+        pal, src.rgba[j *stride + i], NULL
       );
     }
   }
@@ -173,9 +173,9 @@ static int _applyPaletteNoDithering(
 }
 
 static int _applyPaletteFloydSteinberg(
-  HdmvPalletizedBitmap * dst,
+  HdmvPalletizedBitmap *dst,
   const HdmvBitmap src,
-  const HdmvPalette * pal
+  const HdmvPalette *pal
 )
 {
   LIBBLU_HDMV_PIC_DEBUG("  Using Floyd-Steinberg dithering.\n");
@@ -191,8 +191,8 @@ static int _applyPaletteFloydSteinberg(
   for (uint16_t j = 0; j < src_copy.height-1; j++) {
     for (uint16_t i = 1; i < src_copy.width-1; i++) {
       IntRgba quant_err;
-      dst->data[j * stride + i] = _findNearestColorPalette(
-        pal, src_copy.rgba[j * stride + i], &quant_err
+      dst->data[j *stride + i] = _findNearestColorPalette(
+        pal, src_copy.rgba[j *stride + i], &quant_err
       );
 
       _applyFloydSteinberg(src_copy.rgba, i, j, stride, quant_err);
@@ -200,8 +200,8 @@ static int _applyPaletteFloydSteinberg(
   }
 
   for (uint16_t j = 0; j < src_copy.height; j++) {
-    dst->data[j * stride] = _findNearestColorPalette(
-      pal, src_copy.rgba[j * stride], NULL
+    dst->data[j *stride] = _findNearestColorPalette(
+      pal, src_copy.rgba[j *stride], NULL
     );
     dst->data[(j + 1) * stride - 1] = _findNearestColorPalette(
       pal, src_copy.rgba[(j + 1) * stride - 1], NULL
@@ -219,9 +219,9 @@ static int _applyPaletteFloydSteinberg(
 }
 
 static int _applyPalette(
-  HdmvPalletizedBitmap * dst,
+  HdmvPalletizedBitmap *dst,
   const HdmvBitmap src,
-  const HdmvPalette * pal,
+  const HdmvPalette *pal,
   HdmvColorDitheringMethod dither_method
 )
 {
@@ -251,9 +251,9 @@ static int _applyPalette(
 }
 
 int getPalletizedHdmvBitmap(
-  HdmvPalletizedBitmap * result,
+  HdmvPalletizedBitmap *result,
   const HdmvBitmap src_bitmap,
-  const HdmvPalette * palette,
+  const HdmvPalette *palette,
   HdmvColorDitheringMethod dither_method
 )
 {
@@ -265,7 +265,7 @@ int getPalletizedHdmvBitmap(
     .height = src_bitmap.height
   };
 
-  pal_bm.data = (uint8_t *) malloc(pal_bm.width * pal_bm.height);
+  pal_bm.data = (uint8_t *) malloc(pal_bm.width *pal_bm.height);
   if (NULL == pal_bm.data)
     LIBBLU_HDMV_PAL_ERROR_RETURN("Memory allocation error.\n");
 

@@ -114,8 +114,8 @@
 /* ========================== */
 
 static int _parseParametersUop(
-  IgsCompilerContext * ctx,
-  uint64_t * mask_ret_ref
+  IgsCompilerContext *ctx,
+  uint64_t *mask_ret_ref
 )
 {
   uint64_t mask;
@@ -175,12 +175,12 @@ free_return:
 }
 
 static int _parseCommonSettings(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 )
 {
   PDEBUG_PARSE(0, "common settings:\n");
 
-  HdmvVDParameters * cm_vd = &ctx->data.common_video_desc;
+  HdmvVDParameters *cm_vd = &ctx->data.common_video_desc;
 
   /* video/@width : */ {
     unsigned value;
@@ -287,12 +287,12 @@ static int _parseCommonSettings(
 }
 
 static int _parseVideoDescriptor(
-  IgsCompilerContext * ctx,
-  HdmvVDParameters * param
+  IgsCompilerContext *ctx,
+  HdmvVDParameters *param
 )
 {
   /* Copy global settings */
-  HdmvVDParameters * vd = &ctx->data.common_video_desc;
+  HdmvVDParameters *vd = &ctx->data.common_video_desc;
   param->video_width = vd->video_width;
   param->video_height = vd->video_height;
   param->frame_rate = vd->frame_rate;
@@ -302,13 +302,13 @@ static int _parseVideoDescriptor(
 }
 
 static int _parseCompositionState(
-  IgsCompilerContext * ctx,
-  HdmvCompositionState * ret
+  IgsCompilerContext *ctx,
+  HdmvCompositionState *ret
 )
 {
-  lbc * string = NULL;
+  lbc *string = NULL;
 
-  static const lbc * strings[] = {
+  static const lbc *strings[] = {
     lbc_str("NormalCase"),
     lbc_str("AcquisitionPoint"),
     lbc_str("EpochStart"),
@@ -349,8 +349,8 @@ static int _parseCompositionState(
 }
 
 static int _parseCompositionDesc(
-  IgsCompilerContext * ctx,
-  HdmvCDParameters * param
+  IgsCompilerContext *ctx,
+  HdmvCDParameters *param
 )
 {
   PDEBUG_PARSE(1, "composition_descriptor:\n");
@@ -366,13 +366,13 @@ static int _parseCompositionDesc(
 }
 
 static int _parseStreamModel(
-  IgsCompilerContext * ctx,
-  HdmvStreamModel * ret
+  IgsCompilerContext *ctx,
+  HdmvStreamModel *ret
 )
 {
-  lbc * string = NULL;
+  lbc *string = NULL;
 
-  static const lbc * strings[] = {
+  static const lbc *strings[] = {
     lbc_str("Multiplexed"),
     lbc_str("OoM")
   };
@@ -405,13 +405,13 @@ static int _parseStreamModel(
 }
 
 static int _parseUserInterfaceModel(
-  IgsCompilerContext * ctx,
-  HdmvUserInterfaceModel * ret
+  IgsCompilerContext *ctx,
+  HdmvUserInterfaceModel *ret
 )
 {
-  lbc * string = NULL;
+  lbc *string = NULL;
 
-  static const lbc * strings[] = {
+  static const lbc *strings[] = {
     lbc_str("Normal"),
     lbc_str("Pop-Up")
   };
@@ -443,8 +443,8 @@ static int _parseUserInterfaceModel(
 }
 
 static int _parseCompositionTimeOutPts(
-  IgsCompilerContext * ctx,
-  int64_t * ret
+  IgsCompilerContext *ctx,
+  int64_t *ret
 )
 {
   uint64_t composition_time_out_pts;
@@ -469,8 +469,8 @@ static int _parseCompositionTimeOutPts(
 }
 
 static int _parseSelectionTimeOutPts(
-  IgsCompilerContext * ctx,
-  int64_t * ret
+  IgsCompilerContext *ctx,
+  int64_t *ret
 )
 {
   uint64_t selection_time_out_pts;
@@ -495,8 +495,8 @@ static int _parseSelectionTimeOutPts(
 }
 
 static int _parseUserTimeOutDuration(
-  IgsCompilerContext * ctx,
-  uint32_t * ret
+  IgsCompilerContext *ctx,
+  uint32_t *ret
 )
 {
   uint32_t user_time_out_duration;
@@ -521,8 +521,8 @@ static int _parseUserTimeOutDuration(
 }
 
 static int _parseCompositionParameters(
-  IgsCompilerContext * ctx,
-  HdmvICParameters * param
+  IgsCompilerContext *ctx,
+  HdmvICParameters *param
 )
 {
   param->interactive_composition_length = 0x0; /* Set default */
@@ -554,12 +554,12 @@ static int _parseCompositionParameters(
  * Use relative XPath format, root must be defined before call.
  */
 static int _parseBitmapXmlCtx(
-  HdmvBitmap * dst,
-  IgsCompilerContext * ctx,
+  HdmvBitmap *dst,
+  IgsCompilerContext *ctx,
   lbc ** img_fp
 )
 {
-  lbc * img_path = NULL;
+  lbc *img_path = NULL;
 
   /* Parse all img fields: */
   /* img/@name : */
@@ -645,19 +645,19 @@ free_return:
  * Use relative XPath format, root must be defined before call.
  */
 static int _parseRefImg(
-  HdmvBitmap * dst,
-  IgsCompilerContext * ctx
+  HdmvBitmap *dst,
+  IgsCompilerContext *ctx
 )
 {
   /* Parse all img fields: */
   /* ref_pic/@name : */
-  lbc * name = getStringFromExprXmlCtx(ctx->xml_ctx, lbc_str("//@name"));
+  lbc *name = getStringFromExprXmlCtx(ctx->xml_ctx, lbc_str("//@name"));
   if (NULL == name)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR_RETURN(
       "Missing required 'name' argument on 'img'.\n"
     );
 
-  const HdmvBitmap * ref_bitmap_ptr = getRefPictureIgsCompilerComposition(
+  const HdmvBitmap *ref_bitmap_ptr = getRefPictureIgsCompilerComposition(
     CUR_COMP(ctx), name
   );
   if (NULL == ref_bitmap_ptr)
@@ -720,12 +720,12 @@ free_return:
 }
 
 static int _parseReferencePicture(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 )
 {
   PDEBUG(1, "Parsing image...\n");
   HdmvBitmap bitmap;
-  lbc * name;
+  lbc *name;
   if (_parseBitmapXmlCtx(&bitmap, ctx, &name) < 0)
     return -1;
 
@@ -748,7 +748,7 @@ free_return:
 }
 
 static int _parseReferencePictures(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 )
 {
   /* Picture references : */
@@ -779,9 +779,9 @@ free_return:
 }
 
 static int _parseButtonStateImg(
-  IgsCompilerContext * ctx,
-  uint16_t * start_object_id_ref,
-  uint16_t * end_object_id_ref
+  IgsCompilerContext *ctx,
+  uint16_t *start_object_id_ref,
+  uint16_t *end_object_id_ref
 )
 {
   XmlXPathObjectPtr img_path_obj = GET_OBJ("//graphic/*");
@@ -796,7 +796,7 @@ static int _parseButtonStateImg(
     if (NULL == xml_node)
       return -1;
 
-    const lbc * node_name = getNameXmlNode(xml_node);
+    const lbc *node_name = getNameXmlNode(xml_node);
     if (NULL == node_name)
       return -1;
 
@@ -847,9 +847,9 @@ static int _parseButtonStateImg(
 }
 
 static int _parseButton(
-  IgsCompilerContext * ctx,
-  HdmvButtonParam * btn,
-  uint16_t * next_button_id_ref,
+  IgsCompilerContext *ctx,
+  HdmvButtonParam *btn,
+  uint16_t *next_button_id_ref,
   bool used_button_id_ref[static HDMV_MAX_NB_BUTTONS]
 )
 {
@@ -995,7 +995,7 @@ static int _parseButton(
   /* Normal state */
   PDEBUG_PARSE(8, "normal_state_info:\n");
   XmlXPathObjectPtr nsi_path_obj = GET_OBJ("//normal_state_info");
-  HdmvButtonNormalStateInfoParam * nsi = &btn->normal_state_info;
+  HdmvButtonNormalStateInfoParam *nsi = &btn->normal_state_info;
 
   if (0 < getNbNodesXmlXPathObject(nsi_path_obj)) {
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, nsi_path_obj, 0) < 0) {
@@ -1004,8 +1004,8 @@ static int _parseButton(
     }
 
     PDEBUG_PARSE(9, "objects:\n");
-    uint16_t * start_obj_id_ref = &nsi->start_object_id_ref;
-    uint16_t * end_obj_id_ref   = &nsi->end_object_id_ref;
+    uint16_t *start_obj_id_ref = &nsi->start_object_id_ref;
+    uint16_t *end_obj_id_ref   = &nsi->end_object_id_ref;
     if (_parseButtonStateImg(ctx, start_obj_id_ref, end_obj_id_ref) < 0) {
       destroyXmlXPathObject(nsi_path_obj);
       return -1;
@@ -1036,7 +1036,7 @@ static int _parseButton(
   /* Selected state */
   PDEBUG_PARSE(8, "selected_state_info:\n");
   XmlXPathObjectPtr ssi_path_obj = GET_OBJ("//selected_state_info");
-  HdmvButtonSelectedStateInfoParam * ssi = &btn->selected_state_info;
+  HdmvButtonSelectedStateInfoParam *ssi = &btn->selected_state_info;
 
   if (0 < getNbNodesXmlXPathObject(ssi_path_obj)) {
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, ssi_path_obj, 0) < 0) {
@@ -1053,8 +1053,8 @@ static int _parseButton(
     );
 
     PDEBUG_PARSE(9, "objects:\n");
-    uint16_t * start_obj_id_ref = &ssi->start_object_id_ref;
-    uint16_t * end_obj_id_ref   = &ssi->end_object_id_ref;
+    uint16_t *start_obj_id_ref = &ssi->start_object_id_ref;
+    uint16_t *end_obj_id_ref   = &ssi->end_object_id_ref;
     if (_parseButtonStateImg(ctx, start_obj_id_ref, end_obj_id_ref) < 0) {
       destroyXmlXPathObject(ssi_path_obj);
       return -1;
@@ -1080,7 +1080,7 @@ static int _parseButton(
   /* Activated state */
   PDEBUG_PARSE(8, "activated_state_info:\n");
   XmlXPathObjectPtr asi_path_obj = GET_OBJ("//activated_state_info");
-  HdmvButtonActivatedStateInfoParam * asi = &btn->activated_state_info;
+  HdmvButtonActivatedStateInfoParam *asi = &btn->activated_state_info;
 
   if (0 < getNbNodesXmlXPathObject(asi_path_obj)) {
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, asi_path_obj, 0) < 0) {
@@ -1097,8 +1097,8 @@ static int _parseButton(
     );
 
     PDEBUG_PARSE(9, "objects:\n");
-    uint16_t * start_obj_id_ref = &asi->start_object_id_ref;
-    uint16_t * end_obj_id_ref   = &asi->end_object_id_ref;
+    uint16_t *start_obj_id_ref = &asi->start_object_id_ref;
+    uint16_t *end_obj_id_ref   = &asi->end_object_id_ref;
     if (_parseButtonStateImg(ctx, start_obj_id_ref, end_obj_id_ref) < 0) {
       destroyXmlXPathObject(asi_path_obj);
       return -1;
@@ -1136,7 +1136,7 @@ static int _parseButton(
     return -1;
 
   for (int i = 0; i < nb_nav_com; i++) {
-    HdmvNavigationCommand * com = &btn->navigation_commands[i];
+    HdmvNavigationCommand *com = &btn->navigation_commands[i];
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, com_path_obj, i) < 0) {
       destroyXmlXPathObject(com_path_obj);
       return -1;
@@ -1180,9 +1180,9 @@ static int _parseButton(
 }
 
 static int _parseBog(
-  IgsCompilerContext * ctx,
-  HdmvButtonOverlapGroupParameters * bog,
-  uint16_t * next_button_id_ref,
+  IgsCompilerContext *ctx,
+  HdmvButtonOverlapGroupParameters *bog,
+  uint16_t *next_button_id_ref,
   bool used_btn_id_ref[static HDMV_MAX_NB_BUTTONS],
   uint8_t used_btn_num_sel_val_ref[static HDMV_MAX_BUTTON_NUMERIC_SELECT_VALUE],
   uint8_t bog_idx
@@ -1227,7 +1227,7 @@ static int _parseBog(
   }
 
   for (int i = 0; i < bog->number_of_buttons; i++) {
-    HdmvButtonParam * btn = &bog->buttons[i];
+    HdmvButtonParam *btn = &bog->buttons[i];
     /* Set path for relative path accessing: */
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, btn_path_obj, i) < 0)
       return -1;
@@ -1278,8 +1278,8 @@ free_return:
 }
 
 static int _parsePage(
-  IgsCompilerContext * ctx,
-  HdmvPageParameters * page,
+  IgsCompilerContext *ctx,
+  HdmvPageParameters *page,
   uint8_t page_idx
 )
 {
@@ -1404,7 +1404,7 @@ static int _parsePage(
   uint16_t button_id = 0x0000;
 
   for (int bog_i = 0; bog_i < nb_bog; bog_i++) {
-    HdmvButtonOverlapGroupParameters * bog = &page->bogs[bog_i];
+    HdmvButtonOverlapGroupParameters *bog = &page->bogs[bog_i];
 
     /* Set path for relative path accessing: */
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, bog_path_obj, bog_i) < 0)
@@ -1453,8 +1453,8 @@ free_return:
 }
 
 static int _parsePages(
-  IgsCompilerContext * ctx,
-  HdmvICParameters * compo
+  IgsCompilerContext *ctx,
+  HdmvICParameters *compo
 )
 {
   XmlXPathObjectPtr page_path_obj = GET_OBJ("//page");
@@ -1495,8 +1495,8 @@ free_return:
 }
 
 static int _parseComposition(
-  IgsCompilerContext * ctx,
-  IgsCompilerComposition * compo
+  IgsCompilerContext *ctx,
+  IgsCompilerComposition *compo
 )
 {
   /* Presentation timecode */
@@ -1524,7 +1524,7 @@ static int _parseComposition(
 }
 
 static int _parseCompositions(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 )
 {
   XmlXPathObjectPtr compo_path_obj = GET_OBJ("/igs/composition");
@@ -1545,7 +1545,7 @@ static int _parseCompositions(
     if (setRootPathFromPathObjectXmlCtx(ctx->xml_ctx, compo_path_obj, i) < 0)
       goto free_return;
 
-    IgsCompilerComposition * compo = &ctx->data.compositions[ctx->data.nb_compositions++];
+    IgsCompilerComposition *compo = &ctx->data.compositions[ctx->data.nb_compositions++];
     memset(compo, 0, sizeof(IgsCompilerComposition));
 
     if (_parseComposition(ctx, compo) < 0)
@@ -1564,7 +1564,7 @@ free_return:
 }
 
 static int _parseFile(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 )
 {
   if (_parseCommonSettings(ctx) < 0)
@@ -1575,7 +1575,7 @@ static int _parseFile(
 }
 
 int parseIgsXmlFile(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 )
 {
   PDEBUG(0, "Loading input XML file.\n");

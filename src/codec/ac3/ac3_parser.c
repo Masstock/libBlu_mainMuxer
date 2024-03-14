@@ -11,7 +11,7 @@
 
 
 static int _parseAc3CoreSyncFrame(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
 
@@ -56,14 +56,14 @@ static int _parseAc3CoreSyncFrame(
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
-  ctx->core.pts += SUB_CLOCK_90KHZ * AC3_SAMPLES_PER_FRAME / 48000;
+  ctx->core.pts += SUB_CLOCK_90KHZ *AC3_SAMPLES_PER_FRAME / 48000;
   ctx->core.nb_frames++;
   return 0;
 }
 
 
 static int _parseEac3SyncFrame(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
   LIBBLU_AC3_DEBUG(
@@ -103,17 +103,17 @@ static int _parseEac3SyncFrame(
   if (completeFrameAc3Context(ctx) < 0)
     return -1;
 
-  ctx->eac3.pts += MAIN_CLOCK_27MHZ * AC3_SAMPLES_PER_FRAME / 48000;
+  ctx->eac3.pts += MAIN_CLOCK_27MHZ *AC3_SAMPLES_PER_FRAME / 48000;
   ctx->eac3.nb_frames++;
   return 0;
 }
 
 
 static int _parseMlpSyncFrame(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
-  MlpParsingContext * mlp = &ctx->mlp;
+  MlpParsingContext *mlp = &ctx->mlp;
   int64_t au_offset = ctx->cur_au.start_offset;
 
   LIBBLU_AC3_DEBUG(
@@ -124,7 +124,7 @@ static int _parseMlpSyncFrame(
   if (mlp->terminator_reached) {
     LIBBLU_MLP_WARNING("Unexpected Access Unit, previous one indicated end-of-stream.\n");
 
-    MlpMajorSyncInfoParameters * msi = &mlp->mlp_sync_header.major_sync_info;
+    MlpMajorSyncInfoParameters *msi = &mlp->mlp_sync_header.major_sync_info;
     for (unsigned i = 0; i < msi->substreams; i++) {
       mlp->substreams[i].restart_header_seen = false;
       mlp->substreams[i].terminator_reached  = false;
@@ -167,7 +167,7 @@ static int _parseMlpSyncFrame(
     if (checkMlpSyncHeader(&mlp_sync_header, &mlp->info, true) < 0)
       return -1;
 
-    // TODO: Check compliance (only if !ctx.extractCore)
+    // TODO: Check compliance (only if !ctx.extract_core)
 
     if (MLP_MAX_NB_SS < mlp_sync_header.major_sync_info.substreams) {
       LIBBLU_ERROR_RETURN("Unsupported number of substreams.\n"); // TODO
@@ -231,7 +231,7 @@ static int _parseMlpSyncFrame(
 
 
 static int _parseNextFrame(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
   switch (initNextFrameAc3Context(ctx)) {
@@ -249,7 +249,7 @@ static int _parseNextFrame(
 
 
 int analyzeAc3(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   Ac3Context ctx;

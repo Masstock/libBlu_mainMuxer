@@ -36,7 +36,7 @@
 #include "dts_data.h"
 
 int analyzeDts(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

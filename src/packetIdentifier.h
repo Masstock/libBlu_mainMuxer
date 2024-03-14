@@ -25,7 +25,7 @@ typedef struct {
 } LibbluNumberOfESTypes;
 
 void setBDAVStdLibbluNumberOfESTypes(
-  LibbluNumberOfESTypes * dst
+  LibbluNumberOfESTypes *dst
 );
 
 typedef enum {
@@ -81,7 +81,7 @@ static inline bool isPCRCarryingAllowedPIDValue(
 }
 
 typedef struct LibbluRegisteredPIDValuesEntry {
-  struct LibbluRegisteredPIDValuesEntry * nextEntry;
+  struct LibbluRegisteredPIDValuesEntry *nextEntry;
   uint16_t pid;
 } LibbluRegisteredPIDValuesEntry, *LibbluRegisteredPIDValuesEntryPtr;
 
@@ -101,7 +101,7 @@ static inline void cleanLibbluRegisteredPIDValues(
 }
 
 int insertLibbluRegisteredPIDValues(
-  LibbluRegisteredPIDValues * set,
+  LibbluRegisteredPIDValues *set,
   uint16_t pid
 );
 
@@ -114,7 +114,7 @@ typedef struct {
 } LibbluPIDValues;
 
 static inline void initLibbluPIDValues(
-  LibbluPIDValues * dst,
+  LibbluPIDValues *dst,
   void (*limits_init_fun) (LibbluNumberOfESTypes *)
 )
 {

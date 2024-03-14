@@ -7,7 +7,7 @@
 #include "dtcpSettings.h"
 
 void setHdmvLibbluDtcpSettings(
-  LibbluDtcpSettings * dst,
+  LibbluDtcpSettings *dst,
   bool retentionMoveMode,
   LibbluDtcpRetentionStateValue retentionState,
   bool epn,
@@ -33,7 +33,7 @@ void setHdmvLibbluDtcpSettings(
 }
 
 void setHdmvDefaultUnencryptedLibbluDtcpSettings(
-  LibbluDtcpSettings * dst
+  LibbluDtcpSettings *dst
 )
 {
   setHdmvLibbluDtcpSettings(
@@ -41,8 +41,8 @@ void setHdmvDefaultUnencryptedLibbluDtcpSettings(
     0x1,
     LIBBLU_DTCP_RET_STATE_90_MINUTES,
     0x1,
-    /* LIBBLU_DTCP_CCI_COPY_FREE, */ LIBBLU_DTCP_CCI_COPY_NEVER,
-    /* 0x0, */ 0x1,
+    LIBBLU_DTCP_CCI_COPY_NEVER,
+    0x1,
     0x1,
     LIBBLU_DTCP_APS_COPY_FREE
   );

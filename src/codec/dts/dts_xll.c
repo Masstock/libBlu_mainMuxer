@@ -24,8 +24,8 @@
   } while (0)
 
 static int _checkHeaderCrc(
-  LibbluBitReader * br,
-  const DtsXllCommonHeader * ch
+  LibbluBitReader *br,
+  const DtsXllCommonHeader *ch
 )
 {
   CrcContext crc_ctx;
@@ -39,8 +39,8 @@ static int _checkHeaderCrc(
 }
 
 static int _parseXllCommonHeader(
-  LibbluBitReader * br,
-  DtsXllCommonHeader * param
+  LibbluBitReader *br,
+  DtsXllCommonHeader *param
 )
 {
 
@@ -147,8 +147,8 @@ static int _parseXllCommonHeader(
 }
 
 static int _parseXllChannelSetSubHeader(
-  LibbluBitReader * br,
-  DtsXllChannelSetSubHeader * param
+  LibbluBitReader *br,
+  DtsXllChannelSetSubHeader *param
 )
 {
 
@@ -177,8 +177,8 @@ static int _parseXllChannelSetSubHeader(
 }
 
 int decodeDtsXllFrame(
-  DtsXllFrameContext * ctx,
-  DcaXllFrameSFPosition * pbrFramePosition
+  DtsXllFrameContext *ctx,
+  DcaXllFrameSFPosition *pbrFramePosition
 )
 {
   int ret;
@@ -186,7 +186,7 @@ int decodeDtsXllFrame(
   DtsXllFrameParameters frame;
   unsigned chSet;
 
-  LibbluBitReader * br = initUnpackDtsXllPbr(ctx);
+  LibbluBitReader *br = initUnpackDtsXllPbr(ctx);
 
   LIBBLU_DTS_DEBUG_XLL(
     " === DTS Lossless Extension (XLL) Frame %u ===\n",
@@ -244,9 +244,9 @@ int decodeDtsXllFrame(
 
 int parseDtsXllFrame(
   BitstreamReaderPtr bs,
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   uint32_t asset_length,
-  const DcaAudioAssetDescDecNDParameters * asset_decnav
+  const DcaAudioAssetDescDecNDParameters *asset_decnav
 )
 {
   DcaAudioAssetExSSXllParameters asset_xll = asset_decnav->coding_components.ExSSXLL;

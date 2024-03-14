@@ -17,7 +17,7 @@
 /* ### HDMV Pictures list : ################################################ */
 
 typedef struct {
-  HdmvBitmap * bitmaps;
+  HdmvBitmap *bitmaps;
   unsigned nb_allocated_bitmaps;
   unsigned nb_bitmaps;
 } HdmvBitmapList;
@@ -43,7 +43,7 @@ static inline unsigned nbPicsHdmvBitmapList(
 /* ###### Operations : ##################################################### */
 
 static inline void flushHdmvBitmapList(
-  HdmvBitmapList * list
+  HdmvBitmapList *list
 )
 {
   list->nb_bitmaps = 0;
@@ -52,15 +52,15 @@ static inline void flushHdmvBitmapList(
 /* ###### Add Entry : ###################################################### */
 
 int addHdmvBitmapList(
-  HdmvBitmapList * dst,
+  HdmvBitmapList *dst,
   HdmvBitmap pic
 );
 
 /* ###### Get Entry : ###################################################### */
 
 static inline int getHdmvBitmapList(
-  HdmvBitmapList * list,
-  HdmvBitmap * dst,
+  HdmvBitmapList *list,
+  HdmvBitmap *dst,
   unsigned index
 )
 {
@@ -76,7 +76,7 @@ static inline int getHdmvBitmapList(
 }
 
 static inline int getRefHdmvBitmapList(
-  HdmvBitmapList * list,
+  HdmvBitmapList *list,
   HdmvBitmap ** dst,
   unsigned index
 )
@@ -93,9 +93,9 @@ static inline int getRefHdmvBitmapList(
 }
 
 static inline bool iterateHdmvBitmapList(
-  HdmvBitmapList * list,
-  HdmvBitmap * dst,
-  unsigned * index
+  HdmvBitmapList *list,
+  HdmvBitmap *dst,
+  unsigned *index
 )
 {
   assert(NULL != index);
@@ -108,7 +108,7 @@ static inline bool iterateHdmvBitmapList(
 }
 
 void sortByUsageHdmvBitmapList(
-  HdmvBitmapList * list
+  HdmvBitmapList *list
 );
 
 #endif

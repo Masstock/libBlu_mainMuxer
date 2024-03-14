@@ -9,8 +9,8 @@
 /* ### ES Pes Packet Properties : ########################################## */
 
 int prepareLibbluESPesPacketProperties(
-  LibbluESPesPacketProperties * dst,
-  EsmsPesPacket * esms_pes,
+  LibbluESPesPacketProperties *dst,
+  EsmsPesPacket *esms_pes,
   uint64_t initial_STC,
   uint64_t PTS_reference
 )
@@ -18,33 +18,33 @@ int prepareLibbluESPesPacketProperties(
   assert(NULL != dst);
   assert(NULL != esms_pes);
 
-  uint64_t zero = 300ull * PTS_reference;
+  uint64_t zero = 300ull *PTS_reference;
 
-  dst->extensionFrame = false;
+  dst->extension_frame = false;
   if (ES_AUDIO == esms_pes->prop.type)
-    dst->extensionFrame = esms_pes->prop.prefix.audio.extension_frame;
+    dst->extension_frame = esms_pes->prop.prefix.audio.extension_frame;
 
-  dst->dtsPresent = esms_pes->prop.dts_present;
-  dst->extDataPresent = esms_pes->prop.ext_data_present;
+  dst->dts_present = esms_pes->prop.dts_present;
+  dst->extension_data_pres = esms_pes->prop.ext_data_present;
 
-  dst->pts = (300ull * esms_pes->pts) + initial_STC;
+  dst->pts = (300ull *esms_pes->pts) + initial_STC;
   if (dst->pts < zero)
     LIBBLU_ERROR_RETURN("Negative Presentation Time Stamp on a PES header.\n");
   dst->pts -= zero;
 
-  dst->dts = (300ull * esms_pes->dts) + initial_STC;
+  dst->dts = (300ull *esms_pes->dts) + initial_STC;
   if (dst->dts < zero)
     LIBBLU_ERROR_RETURN("Negative Decoding Time Stamp on a PES header.\n");
   dst->dts -= zero;
 
-  dst->extData = esms_pes->ext_data;
-  dst->payloadSize = esms_pes->size;
+  dst->extension_data = esms_pes->ext_data;
+  dst->payload_size = esms_pes->size;
 
   return 0;
 }
 
 int preparePesHeaderCommon(
-  PesPacketHeaderParam * dst,
+  PesPacketHeaderParam *dst,
   LibbluESPesPacketProperties prop,
   LibbluStreamCodingType codingType
 )
@@ -103,7 +103,7 @@ int preparePesHeaderCommon(
       case STREAM_CODING_TYPE_AVC: /* H.264/AVC */
       case STREAM_CODING_TYPE_IG: /* IGS */
       case STREAM_CODING_TYPE_PG: /* IGS */
-        dst->dtsFlag = prop.dtsPresent;
+        dst->dtsFlag = prop.dts_present;
         break;
       default:
         dst->dtsFlag = 0x0;
@@ -233,7 +233,7 @@ int preparePesHeaderCommon(
           case STREAM_CODING_TYPE_DTS: /* DTS */
             dst->extParam.streamIdExtension = 0x71; break;
           case STREAM_CODING_TYPE_TRUEHD: /* MLP (Dolby TrueHD) */
-            if (prop.extensionFrame)
+            if (prop.extension_frame)
               dst->extParam.streamIdExtension = 0x72;
             else
               dst->extParam.streamIdExtension = 0x76;
@@ -241,7 +241,7 @@ int preparePesHeaderCommon(
           case STREAM_CODING_TYPE_EAC3: /* E-AC-3 (Dolby Digital Plus) */
           case STREAM_CODING_TYPE_HDHR: /* DTS-HDHR (High Resolution) */
           case STREAM_CODING_TYPE_HDMA: /* DTS-HDMA (Master Audio) */
-            if (prop.extensionFrame)
+            if (prop.extension_frame)
               dst->extParam.streamIdExtension = 0x72;
             else
               dst->extParam.streamIdExtension = 0x71;
@@ -285,119 +285,10 @@ int preparePesHeaderCommon(
   return 0;
 }
 
-/* ### ES Pes Packet Properties Node : ##################################### */
-
-#if 0
-
-LibbluESPesPacketPropertiesNodePtr createLibbluESPesPacketPropertiesNode(
-  void
-)
-{
-  LibbluESPesPacketPropertiesNodePtr node;
-
-  node = (LibbluESPesPacketPropertiesNodePtr) malloc(
-    sizeof(LibbluESPesPacketPropertiesNode)
-  );
-  if (NULL == node)
-    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  node->next = NULL;
-  node->size = 0;
-
-  return node;
-}
-
-void destroyLibbluESPesPacketPropertiesNode(
-  LibbluESPesPacketPropertiesNodePtr node,
-  bool recursive
-)
-{
-  if (NULL == node)
-    return;
-
-  if (recursive)
-    destroyLibbluESPesPacketPropertiesNode(node->next, true);
-
-  destroyEsmsCommandNode(node->commands, true);
-  free(node);
-}
-
-LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
-  EsmsPesPacketNodePtr scriptNode,
-  uint64_t refPcr,
-  uint64_t PTS_reference,
-  LibbluPesPacketHeaderPrep_fun preparePesHeader,
-  LibbluStreamCodingType codingType
-)
-{
-  LibbluESPesPacketPropertiesNodePtr node;
-  EsmsCommandNodePtr commands;
-
-  if (NULL == (node = createLibbluESPesPacketPropertiesNode()))
-    return NULL;
-
-
-
-  if (NULL == (commands = claimCommandsEsmsPesPacketNode(scriptNode)))
-    LIBBLU_ERROR_FRETURN("Script node does not contain any command.\n");
-  node->commands = commands;
-
-  node->size = node->prop.headerSize + node->prop.payloadSize;
-
-  return node;
-
-free_return:
-  destroyLibbluESPesPacketPropertiesNode(node, false);
-  return NULL;
-}
-
-static void sub_averageSizeLibbluESPesPacketPropertiesNode(
-  const LibbluESPesPacketPropertiesNodePtr node,
-  unsigned remSamples,
-  size_t * result,
-  size_t * usedSamples
-)
-{
-  if (NULL == node)
-    return;
-
-  *result += node->size;
-  *usedSamples += 1;
-  return sub_averageSizeLibbluESPesPacketPropertiesNode(
-    node->next,
-    remSamples - 1,
-    result,
-    usedSamples
-  );
-}
-
-size_t averageSizeLibbluESPesPacketPropertiesNode(
-  const LibbluESPesPacketPropertiesNodePtr root,
-  unsigned maxNbSamples
-)
-{
-  size_t usedSamples, sumValue;
-
-  sumValue = 0;
-  usedSamples = 0;
-  sub_averageSizeLibbluESPesPacketPropertiesNode(
-    root,
-    maxNbSamples,
-    &sumValue,
-    &usedSamples
-  );
-
-  if (!usedSamples)
-    return 0;
-  return DIV_ROUND_UP(sumValue, usedSamples);
-}
-
-#endif
-
 /* ### ES Pes Packet Data : ################################################ */
 
 int allocateLibbluESPesPacketData(
-  LibbluESPesPacketData * dst,
+  LibbluESPesPacketData *dst,
   uint32_t size
 )
 {
@@ -413,7 +304,7 @@ int allocateLibbluESPesPacketData(
     if (!new_size)
       LIBBLU_ERROR_RETURN("PES packet allocation size overflow.\n");
 
-    uint8_t * new_data = realloc(dst->data, new_size);
+    uint8_t *new_data = realloc(dst->data, new_size);
     if (NULL == new_data)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 

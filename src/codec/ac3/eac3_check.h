@@ -8,17 +8,17 @@
 #include "ac3_error.h"
 
 int checkEac3BitStreamInfoCompliance(
-  const Eac3BitStreamInfoParameters * bsi
+  const Eac3BitStreamInfoParameters *bsi
 );
 
 int checkChangeEac3BitStreamInfoCompliance(
-  const Eac3BitStreamInfoParameters * old_bsi,
-  const Eac3BitStreamInfoParameters * new_bsi
+  const Eac3BitStreamInfoParameters *old_bsi,
+  const Eac3BitStreamInfoParameters *new_bsi
 );
 
 // static bool _constantEac3BitStreamInfoCheck(
-//   const Eac3BitStreamInfoParameters * first,
-//   const Eac3BitStreamInfoParameters * second
+//   const Eac3BitStreamInfoParameters *first,
+//   const Eac3BitStreamInfoParameters *second
 // )
 // {
 //   return CHECK(

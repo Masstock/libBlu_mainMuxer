@@ -33,8 +33,6 @@
 #define PROG_INFOS  "libBlu Muxer Exp. 0.5"
 #define PROG_CONF_FILENAME  lbc_str("settings.ini")
 
-#define MAX_NB_STREAMS  32
-
 #define PAT_DELAY  (90 * 27000ull)
 #define PMT_DELAY  (90 * 27000ull)
 #define SIT_DELAY  (900 * 27000ull)
@@ -137,7 +135,7 @@ typedef enum {
   TYPE_ERROR = 0xFF
 } StreamType;
 
-const lbc * streamTypeStr(
+const lbc *streamTypeStr(
   StreamType typ
 );
 
@@ -185,7 +183,7 @@ typedef enum {
  * terminating null-character)
  */
 int str_time(
-  lbc * buf,
+  lbc *buf,
   size_t buf_size,
   str_time_format format_mode,
   uint64_t clock_value

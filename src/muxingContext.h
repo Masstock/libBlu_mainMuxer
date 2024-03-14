@@ -33,34 +33,37 @@
 #define USE_AVERAGE_PES_SIZE false
 
 typedef struct {
-  LibbluMuxingSettings settings;  /**< Context associated settings.          */
+  const LibbluMuxingSettings *settings_ptr;  /**< Context associated
+    settings reference.                                                      */
 
-  LibbluPIDValues pidValues;
-  LibbluStreamPtr elementaryStreams[LIBBLU_MAX_NB_STREAMS];
-  LibbluESFormatUtilities elementaryStreamsUtilities[LIBBLU_MAX_NB_STREAMS];
+  LibbluPIDValues PID_values;
 
-  double currentStc;           /**< Current System Time Clock value,
+  LibbluStreamPtr *elementary_streams;
+  LibbluESFormatUtilities *elementary_streams_utilities;
+  unsigned nb_elementary_streams;
+
+  double current_STC;       /**< Current System Time Clock value,
     in #MAIN_CLOCK_27MHZ ticks.                                              */
-  uint64_t currentStcTs;       /**< Current System Time Clock Timestamp,
-    floor(#currentStc) derivated.                                            */
+  uint64_t current_STC_TS;  /**< Current System Time Clock Timestamp,
+    floor(#current_STC) derivated.                                            */
 
   struct {
-    bool carriedByES;
+    bool carried_by_ES;
 
-    uint16_t esCarryingPID;
-    bool injectionRequired;  /**< PCR injection is required on next TS
+    uint16_t carrying_ES_PID;
+    bool injection_required;  /**< PCR injection is required on next TS
     packet with settings specified PID. Only used if PCR is carried on ES
     TS packets                                                               */
-  } pcrParam;
+  } PCR_param;
 
   /* Timing heaps: */
-  StreamHeapPtr systemStreamsHeap;      /**< System streams timing heap.    */
-  StreamHeapPtr elementaryStreamsHeap;  /**< ES timing heap.                */
+  StreamHeapPtr sys_stream_heap;      /**< System streams timing heap.    */
+  StreamHeapPtr elm_stream_heap;  /**< ES timing heap.                */
 
   /* System packets: */
   PatParameters pat_param;
-  PmtParameters pmtParam;
-  SitParameters sitParam;
+  PmtParameters pmt_param;
+  SitParameters sit_param;
 
   LibbluStreamPtr pat;
   LibbluStreamPtr pmt;
@@ -69,33 +72,34 @@ typedef struct {
   LibbluStreamPtr null;
 
   /* Used for computation parameters: */
-  double byteStcDuration;  /**< In MAIN_CLOCK_27MHZ ticks
+  double byte_STC_dur;  /**< In MAIN_CLOCK_27MHZ ticks
     (= MAIN_CLOCK_27MHZ * 8 / MuxingSettings.muxRate).                       */
-  double tpStcDuration;    /**< TS packet transmission duration,
-    (= 188 * byteStcDuration). It is the time required for one TP to be
+  double tp_SRC_dur;    /**< TS packet transmission duration,
+    (= 188 * byte_STC_dur). It is the time required for one TP to be
     transmitted at mux-rate in MAIN_CLOCK_27MHZ ticks.                       */
-  uint64_t tpStcDuration_floor;  /**< floor(tpStcDuration) */
-  uint64_t tpStcDuration_ceil;  /**< floor(tpStcDuration) */
+  uint64_t tp_STC_dur_floor;  /**< floor(tp_SRC_dur) */
+  uint64_t tp_STC_dur_ceil;  /**< floor(tp_SRC_dur) */
 
-  uint64_t initial_STC; /* Referential initial STC value in #MAIN_CLOCK_27MHZ ticks. */
-  uint64_t stdBufDelay;  /**< STD buffering delay, virtual time between
+  uint64_t initial_STC;    /* Referential initial STC value in
+    #MAIN_CLOCK_27MHZ ticks.                                                 */
+  uint64_t STD_buf_delay;  /**< STD buffering delay, virtual time between
     muxer and demuxer STCs. Initial STC value can be retrived with formula
-    'initial_STC' - 'stdBufDelay' */
+    'initial_STC' - 'STD_buf_delay'.                                         */
 
   /* Progression */
-  unsigned nbTsPacketsMuxed;  /**< Number of transport packets muxed.        */
-  size_t nbBytesWritten;
-  double progress;            /**< Progression state between 0 and 1.        */
+  unsigned nb_tp_muxed;     /**< Number of transport packets muxed.          */
+  size_t nb_bytes_written;
+  double progress;          /**< Progression state between 0 and 1.          */
 
-  BufModelNode tStdModel;
-  BufModelBuffersListPtr tStdSystemBuffersList;
-} LibbluMuxingContext, *LibbluMuxingContextPtr;
+  BufModelNode t_STD_model;
+  BufModelBuffersListPtr t_STD_sys_buffers_list;
+} LibbluMuxingContext;
 
 /** \~english
  * \brief Create and initiate a muxer context.
  *
  * \param settings Multiplex settings.
- * \return LibbluMuxingContextPtr Upon successfull allocation and
+ * \return LibbluMuxingContext *Upon successfull allocation and
  * initialization, a pointer to the created object is returned. Otherwise,
  * a NULL pointer is returned.
  *
@@ -106,29 +110,36 @@ typedef struct {
  * Scripts (ESMS) associated to each ES are parsed. If a ES does not have a
  * suitable script, this last one is generated.
  */
-LibbluMuxingContextPtr createLibbluMuxingContext(
-  LibbluMuxingSettings settings
+int initLibbluMuxingContext(
+  LibbluMuxingContext *dst,
+  const LibbluMuxingSettings *settings_ptr
 );
 
-void destroyLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx
-);
-
-/** \~english
- * \brief Return the number of registered Elementary Streams in the supplied
- * muxer context.
- *
- * \param ctx Muxer working context.
- * \return unsigned The number of Elementary Streams used. In normal operation,
- * this value is between 1 (contexts with zero ES are not forbidden but lead to
- * instant completion and shall not considered as a normal operation state)
- * and #LIBBLU_MAX_NB_STREAMS.
- */
-static inline unsigned nbESLibbluMuxingContext(
-  const LibbluMuxingContextPtr ctx
+static inline void cleanLibbluMuxingContext(
+  LibbluMuxingContext ctx
 )
 {
-  return ctx->settings.nbInputStreams;
+  cleanLibbluPIDValues(ctx.PID_values);
+  for (unsigned i = 0; i < ctx.nb_elementary_streams; i++)
+    destroyLibbluStream(ctx.elementary_streams[i]);
+  free(ctx.elementary_streams);
+  free(ctx.elementary_streams_utilities);
+
+  destroyStreamHeap(ctx.sys_stream_heap);
+  destroyStreamHeap(ctx.elm_stream_heap);
+
+  cleanPatParameters(ctx.pat_param);
+  cleanPmtParameters(ctx.pmt_param);
+  cleanSitParameters(ctx.sit_param);
+
+  destroyLibbluStream(ctx.pat);
+  destroyLibbluStream(ctx.pmt);
+  destroyLibbluStream(ctx.sit);
+  destroyLibbluStream(ctx.pcr);
+  destroyLibbluStream(ctx.null);
+
+  destroyBufModel(ctx.t_STD_model);
+  destroyBufModelBuffersList(ctx.t_STD_sys_buffers_list);
 }
 
 /** \~english
@@ -141,10 +152,10 @@ static inline unsigned nbESLibbluMuxingContext(
  * completed.
  */
 static inline bool dataRemainingLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx
+  LibbluMuxingContext ctx
 )
 {
-  return (0 < ctx->elementaryStreamsHeap->usedSize);
+  return (0 < ctx.elm_stream_heap->usedSize);
 }
 
 /** \~english
@@ -163,7 +174,7 @@ static inline bool dataRemainingLibbluMuxingContext(
  * and is not considered as an error.
  */
 int muxNextPacketLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx,
+  LibbluMuxingContext *ctx,
   BitstreamWriterPtr output
 );
 
@@ -177,7 +188,7 @@ int muxNextPacketLibbluMuxingContext(
  * value is returned.
  */
 int padAlignedUnitLibbluMuxingContext(
-  LibbluMuxingContextPtr ctx,
+  LibbluMuxingContext *ctx,
   BitstreamWriterPtr output
 );
 

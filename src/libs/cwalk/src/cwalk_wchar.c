@@ -60,7 +60,7 @@ static size_t cwkw_path_output_sized(wchar_t *buffer, size_t buffer_size,
   // always append a '\0', this way we are guaranteed to have a valid string at
   // all times.
   if (amount_written > 0) {
-    memmove(&buffer[position], str, amount_written * sizeof(wchar_t));
+    memmove(&buffer[position], str, amount_written *sizeof(wchar_t));
   }
 
   // Return the theoretical length which would have been written when everything

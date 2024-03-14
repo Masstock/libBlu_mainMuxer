@@ -8,7 +8,7 @@
 #include "elementaryStreamProperties.h"
 
 int initLibbluESFmtSpecProp(
-  LibbluESFmtProp * dst,
+  LibbluESFmtProp *dst,
   LibbluESFmtSpecPropType type
 )
 {
@@ -17,12 +17,11 @@ int initLibbluESFmtSpecProp(
   assert(NULL != dst);
 
   if (type != FMT_SPEC_INFOS_NONE) {
-    size_t propSize;
-
-    if (0 == (propSize = sizeofLibbluESFmtSpecPropType(type)))
+    size_t prop_size = sizeofLibbluESFmtSpecPropType(type);
+    if (0 == prop_size)
       LIBBLU_ERROR_RETURN("Unknown ES Format properties type %u.\n", type);
 
-    if (NULL == (prop.shared_ptr = malloc(propSize)))
+    if (NULL == (prop.shared_ptr = malloc(prop_size)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
   }
 

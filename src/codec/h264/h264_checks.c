@@ -937,7 +937,7 @@ static int _checkH264VuiParametersCompliance(
   );
 
   if (vui.bitstream_restriction_flag) {
-    const H264VuiVideoSeqBsRestrParameters * restrParam =
+    const H264VuiVideoSeqBsRestrParameters *restrParam =
       &vui.bistream_restrictions
     ;
 
@@ -1545,7 +1545,7 @@ int checkH264SequenceParametersSetCompliance(
 
   /* Equation A.3.1.h) */
   MaxDpbFrames = MIN(
-    MaxDpbMbs / (param.PicWidthInMbs * param.FrameHeightInMbs),
+    MaxDpbMbs / (param.PicWidthInMbs *param.FrameHeightInMbs),
     16
   );
 
@@ -1631,7 +1631,7 @@ int checkH264SequenceParametersSetCompliance(
   LIBBLU_H264_DEBUG_SPS(
     "   => PicSizeInMapUnits "
     "(Picture size in slice group map units): %u map units.\n",
-    param.PicWidthInMbs * param.PicHeightInMapUnits
+    param.PicWidthInMbs *param.PicHeightInMapUnits
   );
 
   LIBBLU_H264_DEBUG_SPS(
@@ -1695,15 +1695,15 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   /* Constraint Rec. ITU-T H.264 A.3.1.e) / A.3.2.c) */
-  if (MaxFS < param.PicWidthInMbs * param.FrameHeightInMbs) {
+  if (MaxFS < param.PicWidthInMbs *param.FrameHeightInMbs) {
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
       "Rec. ITU-T H.264 %s constraint is not satisfied "
-      "(MaxFS = %u < PicWidthInMbs * FrameHeightInMbs = %u "
+      "(MaxFS = %u < PicWidthInMbs *FrameHeightInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 ") "
       "leading a violation of bitstream profile/level conformance.\n",
       isHighScalableMultiviewH264ProfileIdcValue(param.profile_idc) ? "A.3.2.c)" : "A.3.1.e)",
       MaxFS,
-      param.PicWidthInMbs * param.FrameHeightInMbs,
+      param.PicWidthInMbs *param.FrameHeightInMbs,
       param.level_idc / 10, param.level_idc % 10
     );
   }
@@ -1777,25 +1777,25 @@ int checkH264SequenceParametersSetCompliance(
   if (param.frame_cropping_flag) {
     LIBBLU_H264_DEBUG_SPS(
       "   -> Left (frame_crop_left_offset): %u pixels (0x%X).\n",
-      param.frame_crop_offset.left * param.CropUnitX,
+      param.frame_crop_offset.left *param.CropUnitX,
       param.frame_crop_offset.left
     );
 
     LIBBLU_H264_DEBUG_SPS(
       "   -> Right (frame_crop_right_offset): %u pixels (0x%X).\n",
-      param.frame_crop_offset.right * param.CropUnitX,
+      param.frame_crop_offset.right *param.CropUnitX,
       param.frame_crop_offset.right
     );
 
     LIBBLU_H264_DEBUG_SPS(
       "   -> Top (frame_crop_top_offset): %u pixels (0x%X).\n",
-      param.frame_crop_offset.top * param.CropUnitY,
+      param.frame_crop_offset.top *param.CropUnitY,
       param.frame_crop_offset.top
     );
 
     LIBBLU_H264_DEBUG_SPS(
       "   -> Bottom (frame_crop_bottom_offset): %u pixels (0x%X).\n",
-      param.frame_crop_offset.bottom * param.CropUnitY,
+      param.frame_crop_offset.bottom *param.CropUnitY,
       param.frame_crop_offset.bottom
     );
 
@@ -1904,7 +1904,7 @@ int checkH264SpsBitstreamCompliance(
       param.vui_parameters.FrameRate
     );
 
-  if (options.secondaryStream)
+  if (options.secondary)
     ret = checkSecVideoConfiguration(
       param.FrameWidth,
       param.FrameHeight,
@@ -2109,7 +2109,7 @@ bool constantH264SequenceParametersSetCheck(
         0 == memcmp(
           &first.offset_for_ref_frame,
           &second.offset_for_ref_frame,
-          first.num_ref_frames_in_pic_order_cnt_cycle * sizeof(int)
+          first.num_ref_frames_in_pic_order_cnt_cycle *sizeof(int)
         )
       )
     END_COND
@@ -2160,7 +2160,7 @@ int checkH264SequenceParametersSetChangeCompliance(
         0 == memcmp(
           &first.offset_for_ref_frame,
           &second.offset_for_ref_frame,
-          first.num_ref_frames_in_pic_order_cnt_cycle * sizeof(int)
+          first.num_ref_frames_in_pic_order_cnt_cycle *sizeof(int)
         )
       )
     END_COND
@@ -2544,12 +2544,12 @@ int checkH264SeiBufferingPeriodCompliance(
   double maxDelay;
   unsigned SchedSelIdx;
 
-  const H264VuiParameters * vuiParam;
+  const H264VuiParameters *vuiParam;
 
   int type;
   bool present;
-  const H264HrdParameters * hrdParam;
-  const H264SeiBufferingPeriodSchedSel * hrdBufPerd;
+  const H264HrdParameters *hrdParam;
+  const H264SeiBufferingPeriodSchedSel *hrdBufPerd;
 
   assert(NULL != handle);
 
@@ -2674,7 +2674,7 @@ bool constantH264SeiBufferingPeriodCheck(
 {
   int ret;
 
-  const H264VuiParameters * vuiParam;
+  const H264VuiParameters *vuiParam;
 
   assert(NULL != handle);
   assert(
@@ -2717,7 +2717,7 @@ int checkH264SeiBufferingPeriodChangeCompliance(
 {
   unsigned SchedSelIdx;
 
-  H264VuiParameters * vuiParam;
+  H264VuiParameters *vuiParam;
 
   LIBBLU_H264_DEBUG_SEI(
     "  ### Change detected in Buffering Period SEI message parameters, "
@@ -2779,7 +2779,7 @@ int checkH264SeiPicTimingCompliance(
 {
   unsigned i;
 
-  H264VuiParameters * vuiParam;
+  H264VuiParameters *vuiParam;
 
   assert(NULL != handle);
 
@@ -3294,7 +3294,7 @@ static int _checkH264DecRefPicMarkingCompliance(
         // Suppress compiler non-initalization warning.
 
       for (i = 0; i < param.nbMemMngmntCtrlOp; i++) {
-        const H264MemMngmntCtrlOpBlk * opBlk = &param.MemMngmntCtrlOp[i];
+        const H264MemMngmntCtrlOpBlk *opBlk = &param.MemMngmntCtrlOp[i];
 
         LIBBLU_H264_DEBUG_SLICE("    - Instruction %u:\n");
 
@@ -3376,8 +3376,8 @@ int checkH264SliceHeaderCompliance(
 
   assert(NULL != handle);
 
-  H264VuiParameters * vuiParam;
-  H264PicParametersSetParameters * ppsParam;
+  H264VuiParameters *vuiParam;
+  H264PicParametersSetParameters *ppsParam;
 
   H264PrimaryPictureType allowedSliceTypes;
 
@@ -3457,8 +3457,8 @@ int checkH264SliceHeaderCompliance(
     if (!handle->sei.bufferingPeriodGopValid) {
       if (
         !handle->sei.bufferingPeriodValid
-        && !options.discardSei
-        && !options.forceRebuildSei
+        && !options.discard_sei
+        && !options.force_rebuild_sei
       ) {
 #if 0
         LIBBLU_ERROR(

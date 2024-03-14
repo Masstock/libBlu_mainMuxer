@@ -73,7 +73,7 @@ typedef struct {
  *     - vn  : reserved
  */
 static inline uint8_t computeSizeAdaptationFieldExtensionParameters(
-  const AdaptationFieldExtensionParameters * param
+  const AdaptationFieldExtensionParameters *param
 )
 {
   uint8_t size = 2;
@@ -95,10 +95,10 @@ static inline uint8_t computeSizeAdaptationFieldExtensionParameters(
 
 static inline uint64_t computePcrFieldValue(
   double pcr,
-  double byteStcDuration
+  double byte_STC_dur
 )
 {
-  return (uint64_t) (pcr + TP_PCR_FIELD_OFF * byteStcDuration);
+  return (uint64_t) (pcr + TP_PCR_FIELD_OFF *byte_STC_dur);
 }
 
 typedef struct {
@@ -124,7 +124,7 @@ typedef struct {
 
   /* if (transport_private_data_flag) */
   uint8_t transport_private_data_length;
-  uint8_t * private_data;
+  uint8_t *private_data;
 
   /* if (adaptation_field_extension_flag) */
   AdaptationFieldExtensionParameters adaptation_field_extension;
@@ -169,7 +169,7 @@ typedef struct {
  *    - vn  : stuffing_byte // param->nb_stuffing_bytes
  */
 static inline uint8_t computeSizeAdaptationField(
-  const AdaptationFieldParameters * param
+  const AdaptationFieldParameters *param
 )
 {
   if (param->write_only_length)
@@ -192,7 +192,7 @@ static inline uint8_t computeSizeAdaptationField(
 }
 
 static inline uint8_t computeRequiredSizeAdaptationField(
-  const AdaptationFieldParameters * param
+  const AdaptationFieldParameters *param
 )
 {
   bool adapt_field_used = (
@@ -226,21 +226,21 @@ typedef struct {
 } TPHeaderParameters;
 
 static inline bool adaptationFieldPresenceTPHeader(
-  const TPHeaderParameters * header
+  const TPHeaderParameters *header
 )
 {
   return header->adaptation_field_control & 0x2;
 }
 
 static inline bool payloadPresenceTPHeader(
-  const TPHeaderParameters * header
+  const TPHeaderParameters *header
 )
 {
   return header->adaptation_field_control & 0x1;
 }
 
 static inline uint8_t computeSizeTPHeader(
-  const TPHeaderParameters * header
+  const TPHeaderParameters *header
 )
 {
   if (!adaptationFieldPresenceTPHeader(header))
@@ -259,9 +259,9 @@ TPHeaderParameters prepareTPHeader(
 int writeTransportPacket(
   BitstreamWriterPtr output,
   LibbluStreamPtr stream,
-  const TPHeaderParameters * tp_header,
-  uint8_t * tp_header_size_ret,
-  uint8_t * tp_payload_size_ret
+  const TPHeaderParameters *tp_header,
+  uint8_t *tp_header_size_ret,
+  uint8_t *tp_payload_size_ret
 );
 
 #endif

@@ -47,10 +47,10 @@ typedef struct {
  *
  */
 typedef union {
-  void * shared_ptr;                  /**< Shared pointer for manipulations. */
-  LibbluESAc3SpecProperties * ac3;    /**< AC-3 audio and
+  void *shared_ptr;                  /**< Shared pointer for manipulations. */
+  LibbluESAc3SpecProperties *ac3;    /**< AC-3 audio and
     derived.                                                                 */
-  LibbluESH264SpecProperties * h264;  /**< H.264 video.                      */
+  LibbluESH264SpecProperties *h264;  /**< H.264 video.                      */
 } LibbluESFmtProp;
 
 /** \~english
@@ -79,7 +79,7 @@ static inline size_t sizeofLibbluESFmtSpecPropType(
 }
 
 int initLibbluESFmtSpecProp(
-  LibbluESFmtProp * dst,
+  LibbluESFmtProp *dst,
   LibbluESFmtSpecPropType type
 );
 
@@ -94,11 +94,11 @@ typedef enum {
   HDMV_VIDEO_FORMAT_2160P  = 0x8
 } HdmvVideoFormat;
 
-static inline const char * HdmvVideoFormatStr(
+static inline const char *HdmvVideoFormatStr(
   HdmvVideoFormat video_format
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "reserved",
     "480i",
     "576i",
@@ -135,11 +135,11 @@ typedef enum {
   FRAME_RATE_CODE_59940  = 0x07   /**< 59.940 (60000/1001)                   */
 } HdmvFrameRateCode;
 
-static inline const char * HdmvFrameRateCodeStr(
+static inline const char *HdmvFrameRateCodeStr(
   HdmvFrameRateCode frame_rate_code
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "unspecified",
     "23.976 (24000/1001)",
     "24",
@@ -254,7 +254,7 @@ typedef enum {
   AUDIO_FORMAT_STEREO_MULTI_CHANNEL  = 0xC
 } AudioFormatCode;
 
-static inline const char * AudioFormatCodeStr(
+static inline const char *AudioFormatCodeStr(
   const AudioFormatCode code
 )
 {

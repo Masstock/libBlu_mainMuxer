@@ -7,15 +7,15 @@
 #include "hdmv_seq_indexer.h"
 
 uint32_t hashToUint32(
-  const void * key
+  const void *key
 )
 {
   return (uint32_t) ((uintptr_t) key);
 }
 
 int compKeys(
-  const void * left,
-  const void * right
+  const void *left,
+  const void *right
 )
 {
   if (left < right)
@@ -26,7 +26,7 @@ int compKeys(
 }
 
 void initHdmvSeqIndexer(
-  HdmvSeqIndexer * dst
+  HdmvSeqIndexer *dst
 )
 {
   *dst = newNumHashtable();
@@ -34,7 +34,7 @@ void initHdmvSeqIndexer(
 }
 
 HdmvSequencePtr getHdmvSeqIndexer(
-  HdmvSeqIndexer * seq_indexer,
+  HdmvSeqIndexer *seq_indexer,
   uint32_t id
 )
 {
@@ -45,7 +45,7 @@ HdmvSequencePtr getHdmvSeqIndexer(
 }
 
 int putHdmvSeqIndexer(
-  HdmvSeqIndexer * seq_indexer,
+  HdmvSeqIndexer *seq_indexer,
   uint32_t id,
   HdmvSequencePtr sequence
 )
@@ -58,7 +58,7 @@ int putHdmvSeqIndexer(
 }
 
 int putODSSeqIndexer(
-  HdmvSeqIndexer * seq_indexer,
+  HdmvSeqIndexer *seq_indexer,
   uint16_t object_id,
   HdmvSequencePtr sequence
 )
@@ -71,9 +71,9 @@ int putODSSeqIndexer(
 }
 
 int getODSSeqIndexer(
-  HdmvSeqIndexer * indexer,
+  HdmvSeqIndexer *indexer,
   uint16_t object_id,
-  HdmvSequencePtr * seq_ret
+  HdmvSequencePtr *seq_ret
 )
 {
   assert(0xFFFF != object_id);

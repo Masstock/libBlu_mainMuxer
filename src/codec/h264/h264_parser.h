@@ -79,7 +79,7 @@ int decodeH264EndOfSequence(
 );
 
 int analyzeH264(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

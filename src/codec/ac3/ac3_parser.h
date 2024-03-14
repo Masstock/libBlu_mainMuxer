@@ -96,7 +96,7 @@ typedef struct {
 #endif
 
 int analyzeAc3(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

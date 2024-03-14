@@ -65,7 +65,7 @@ int writeEsmsHeader(
   /** Reserved paddding
    * [u8 flags_byte] [u8 nb_directory] [v<7*ESMS_MAX_ALLOWED_DIR> reserved]
    */
-  size_t pad_size = ESMS_DIRECTORY_IDX_LENGTH * ESMS_MAX_ALLOWED_DIR + 2;
+  size_t pad_size = ESMS_DIRECTORY_IDX_LENGTH *ESMS_MAX_ALLOWED_DIR + 2;
   for (size_t i = 0; i < pad_size; i++)
     WRITE(esms_bs, 0x00, 1, return -1);
 
@@ -112,7 +112,7 @@ EsmsHandlerPtr createEsmsHandler(
 
   /* If (FMT_SPEC_INFOS_NONE != fmt_prop_type), allocate the required space. */
   if (0 < fmt_prop_alloc_size) {
-    void * fmt_prop_ptr = malloc(fmt_prop_alloc_size);
+    void *fmt_prop_ptr = malloc(fmt_prop_alloc_size);
     if (NULL == fmt_prop_ptr)
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
     esms_hdl->fmt_prop.shared_ptr = fmt_prop_ptr;
@@ -140,7 +140,7 @@ static int _appendDirEsms(
   int64_t dir_offset
 )
 {
-  EsmsFileDirectories * dirs = &esms_hdl->directories;
+  EsmsFileDirectories *dirs = &esms_hdl->directories;
 
   LIBBLU_SCRIPTWO_DEBUG(
     "Appending directory '%s' (dir_ID = %u) at dir_offset = 0x%" PRIX64 ".\n",
@@ -176,10 +176,10 @@ static int _appendDirEsms(
 
 int appendSourceFileWithCrcEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const lbc * filename,
+  const lbc *filename,
   uint16_t crc_checked_bytes,
   uint32_t crc,
-  uint8_t * src_file_idx
+  uint8_t *src_file_idx
 )
 {
   assert(NULL != esms_hdl);
@@ -217,8 +217,8 @@ int appendSourceFileWithCrcEsmsHandler(
 
 int appendSourceFileEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const lbc * filepath,
-  uint8_t * src_file_idx
+  const lbc *filepath,
+  uint8_t *src_file_idx
 )
 {
   BitstreamReaderPtr input;
@@ -252,15 +252,15 @@ free_return:
 
 int appendDataBlockEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const uint8_t * data_block,
+  const uint8_t *data_block,
   uint32_t data_block_size,
-  unsigned * data_block_id
+  unsigned *data_block_id
 )
 {
   assert(NULL != esms_hdl);
   assert((0 == data_block_size) ^ (NULL != data_block));
 
-  uint8_t * data_block_copy = NULL;
+  uint8_t *data_block_copy = NULL;
   if (0 < data_block_size) {
     if (NULL == (data_block_copy = (uint8_t *) malloc(data_block_size)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
@@ -283,7 +283,7 @@ free_return:
 
 int updateDataBlockEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const uint8_t * data_block,
+  const uint8_t *data_block,
   uint32_t data_block_size,
   unsigned data_block_idx
 )
@@ -291,7 +291,7 @@ int updateDataBlockEsmsHandler(
   assert(NULL != esms_hdl);
   assert((0 == data_block_size) ^ (NULL != data_block));
 
-  uint8_t * data_block_copy = NULL;
+  uint8_t *data_block_copy = NULL;
   if (0 < data_block_size) {
     if (NULL == (data_block_copy = (uint8_t *) malloc(data_block_size)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
@@ -324,7 +324,7 @@ static int _initEsmsPesPacket(
 {
   assert(NULL != esms_hdl);
 
-  EsmsCommandsPipeline * pipeline = &esms_hdl->commands_pipeline;
+  EsmsCommandsPipeline *pipeline = &esms_hdl->commands_pipeline;
 
   if (pipeline->initialized_frame)
     LIBBLU_ERROR_RETURN("Attempt to double initialize ESMS PES frame.\n");
@@ -430,7 +430,7 @@ int setExtensionDataPesPacketEsmsHandler(
   EsmsPesPacketExtData data
 )
 {
-  EsmsCommandsPipeline * pipeline = &esms_hdl->commands_pipeline;
+  EsmsCommandsPipeline *pipeline = &esms_hdl->commands_pipeline;
 
   if (!_isEsmsPesPacketExtensionDataSupported(esms_hdl))
     LIBBLU_ERROR_RETURN(
@@ -458,7 +458,7 @@ static EsmsCommand * _newCommand(
   EsmsHandlerPtr esms_hdl
 )
 {
-  EsmsPesPacket * cur_frame = &esms_hdl->commands_pipeline.cur_frame;
+  EsmsPesPacket *cur_frame = &esms_hdl->commands_pipeline.cur_frame;
 
   if (ESMS_MAX_SUPPORTED_COMMANDS_NB <= cur_frame->nb_commands)
     LIBBLU_ERROR_NRETURN("Too many scripting commands in ESMS PES frame.\n");
@@ -471,19 +471,19 @@ int appendAddDataCommandEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   uint32_t insert_offset,
   EsmsDataInsertionMode insert_mode,
-  const uint8_t * data,
+  const uint8_t *data,
   uint16_t data_size
 )
 {
   if (INT16_MAX - 5 < data_size)
     LIBBLU_ERROR_RETURN("Add data command size limit exceeded.\n");
 
-  uint8_t * new_data;
+  uint8_t *new_data;
   if (NULL == (new_data = (uint8_t *) malloc(data_size)))
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
   memcpy(new_data, data, data_size);
 
-  EsmsCommand * com;
+  EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl))) {
     free(new_data);
     return -1;
@@ -520,7 +520,7 @@ int appendChangeByteOrderCommandEsmsHandler(
     );
   }
 
-  EsmsCommand * com;
+  EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
 
@@ -551,7 +551,7 @@ int appendAddPesPayloadCommandEsmsHandler(
   if (esms_hdl->source_files.nb_source_files <= src_file_id)
     LIBBLU_ERROR_RETURN("Unknown source file index %u.\n", src_file_id);
 
-  EsmsCommand * com;
+  EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
 
@@ -580,7 +580,7 @@ int appendPaddingDataCommandEsmsHandler(
   assert(NULL != esms_hdl);
   assert(0 < size);
 
-  EsmsCommand * com;
+  EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
 
@@ -610,7 +610,7 @@ int appendAddDataBlockCommandEsmsHandler(
   if (esms_hdl->data_blocks.nb_data_blocks <= data_block_id)
     LIBBLU_ERROR_RETURN("Unknown data block id %u.\n", data_block_id);
 
-  EsmsCommand * com;
+  EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
 
@@ -656,7 +656,7 @@ static int _writeEsmsPesCuttingHeader(
 
 static int _writeEsmsPesPacketH264ExtData(
   BitstreamWriterPtr esms_bs,
-  const EsmsPesPacketH264ExtData * p
+  const EsmsPesPacketH264ExtData *p
 )
 {
   bool large_tf = (p->cpb_removal_time >> 32) || (p->dpb_output_time >> 32);
@@ -734,7 +734,7 @@ static int _writeEsmsPesPacketExtensionData(
 
 static int _writeEsmsAddDataCommand(
   BitstreamWriterPtr esms_bs,
-  const EsmsAddDataCommand * com
+  const EsmsAddDataCommand *com
 )
 {
   /* [u16 command_size] */
@@ -779,7 +779,7 @@ static int _writeEsmsAddDataCommand(
 
 static int _writeEsmsChangeByteOrderCommand(
   BitstreamWriterPtr esms_bs,
-  const EsmsChangeByteOrderCommand * com
+  const EsmsChangeByteOrderCommand *com
 )
 {
   /* [u16 command_size] */
@@ -825,7 +825,7 @@ static int _writeEsmsChangeByteOrderCommand(
 
 static int _writeEsmsAddPesPayloadCommand(
   BitstreamWriterPtr esms_bs,
-  const EsmsAddPesPayloadCommand * com
+  const EsmsAddPesPayloadCommand *com
 )
 {
   bool src_offset_ext_present = com->src_offset >> 32;
@@ -918,7 +918,7 @@ static int _writeEsmsAddPesPayloadCommand(
 
 static int _writeEsmsAddPaddingDataCommand(
   BitstreamWriterPtr esms_bs,
-  const EsmsAddPaddingCommand * com
+  const EsmsAddPaddingCommand *com
 )
 {
   /* [u16 command_size] */
@@ -973,7 +973,7 @@ static int _writeEsmsAddPaddingDataCommand(
 
 static int _writeEsmsAddDataBlockCommand(
   BitstreamWriterPtr esms_bs,
-  const EsmsAddDataBlockCommand * com
+  const EsmsAddDataBlockCommand *com
 )
 {
   /* [u16 command_size] */
@@ -1019,7 +1019,7 @@ static int _writeEsmsAddDataBlockCommand(
 
 static int _writeEsmsCommand(
   BitstreamWriterPtr esms_bs,
-  const EsmsCommand * com
+  const EsmsCommand *com
 )
 {
 
@@ -1033,7 +1033,7 @@ static int _writeEsmsCommand(
   );
 
   /* [u16 command_size] [vn command()] */
-  const EsmsCommandData * cd = &com->data;
+  const EsmsCommandData *cd = &com->data;
   switch (com->type) {
   case ESMS_ADD_DATA:
     return _writeEsmsAddDataCommand(esms_bs, &cd->add_data);
@@ -1074,30 +1074,30 @@ static uint32_t _computeInsertSize(
  * \return uint32_t Size of the PES frame in bytes.
  */
 static uint32_t _computePesPacketSize(
-  const EsmsPesPacket * pes,
-  const EsmsDataBlocks * data_blks
+  const EsmsPesPacket *pes,
+  const EsmsDataBlocks *data_blks
 )
 {
   uint64_t size = 0;
 
   for (unsigned i = 0; i < pes->nb_commands; i++) {
-    const EsmsCommand * com = &pes->commands[i];
+    const EsmsCommand *com = &pes->commands[i];
 
   switch (com->type) {
     case ESMS_ADD_DATA:
-      const EsmsAddDataCommand * ad_c = &com->data.add_data;
+      const EsmsAddDataCommand *ad_c = &com->data.add_data;
       size = _computeInsertSize(
         size, ad_c->insert_offset, ad_c->data_size, ad_c->insert_mode
       );
       break;
 
     case ESMS_ADD_PAYLOAD_DATA:
-      const EsmsAddPesPayloadCommand * app_c = &com->data.add_pes_payload;
+      const EsmsAddPesPayloadCommand *app_c = &com->data.add_pes_payload;
       size = MAX(size, app_c->insert_offset + app_c->size);
       break;
 
     case ESMS_ADD_PADDING_DATA:
-      const EsmsAddPaddingCommand * ap_c = &com->data.add_padding;
+      const EsmsAddPaddingCommand *ap_c = &com->data.add_padding;
       size = MAX(size, ap_c->insert_offset + ap_c->size);
       break;
 
@@ -1105,8 +1105,8 @@ static uint32_t _computePesPacketSize(
       break;
 
     case ESMS_ADD_DATA_BLOCK:
-      const EsmsAddDataBlockCommand * adb_c = &com->data.add_data_block;
-      const EsmsDataBlockEntry * dbe = &data_blks->entries[adb_c->data_block_id];
+      const EsmsAddDataBlockCommand *adb_c = &com->data.add_data_block;
+      const EsmsDataBlockEntry *dbe = &data_blks->entries[adb_c->data_block_id];
       size = _computeInsertSize(
         size, adb_c->insert_offset, dbe->data_block_size, adb_c->insert_mode
       );
@@ -1120,7 +1120,7 @@ static uint32_t _computePesPacketSize(
 
 static int _setPesPacketProperties(
   const EsmsHandlerPtr esms_hdl,
-  EsmsPesPacket * pes
+  EsmsPesPacket *pes
 )
 {
   /* Compute and set size : */
@@ -1139,15 +1139,15 @@ static int _setPesPacketProperties(
 }
 
 static uint16_t _getPesPacketPropWord(
-  const EsmsPesPacket * pes_packet
+  const EsmsPesPacket *pes_packet
 )
 {
-  const EsmsPesPacketProp * pes_packet_prop = &pes_packet->prop;
+  const EsmsPesPacketProp *pes_packet_prop = &pes_packet->prop;
   uint16_t prefix = 0x00;
 
   switch (pes_packet_prop->type) {
   case ES_VIDEO:
-    const EsmsPesPacketPropVideo * vprop = &pes_packet_prop->prefix.video;
+    const EsmsPesPacketPropVideo *vprop = &pes_packet_prop->prefix.video;
 
     /* [u2 picture_type] [v5 reserved] [v1 '0' marker_bit] */
     prefix = vprop->picture_type << 6;
@@ -1159,7 +1159,7 @@ static uint16_t _getPesPacketPropWord(
     break;
 
   case ES_AUDIO:
-    const EsmsPesPacketPropAudio * aprop = &pes_packet_prop->prefix.audio;
+    const EsmsPesPacketPropAudio *aprop = &pes_packet_prop->prefix.audio;
 
     /* [b1 extension_frame] [v6 reserved] [v1 '0' marker_bit] */
     prefix = aprop->extension_frame << 7;
@@ -1223,7 +1223,7 @@ int writePesPacketEsmsHandler(
   assert(NULL != esms_bs);
   assert(NULL != esms_hdl);
 
-  EsmsCommandsPipeline * pipeline = &esms_hdl->commands_pipeline;
+  EsmsCommandsPipeline *pipeline = &esms_hdl->commands_pipeline;
   if (!pipeline->initialized_frame)
     LIBBLU_ERROR_RETURN("Attempt to write uninitialized ESMS PES frame.\n");
 
@@ -1232,10 +1232,10 @@ int writePesPacketEsmsHandler(
       return -1;
   }
 
-  EsmsPesPacket * pes_packet = &pipeline->cur_frame;
+  EsmsPesPacket *pes_packet = &pipeline->cur_frame;
   if (_setPesPacketProperties(esms_hdl, pes_packet) < 0)
     return -1;
-  EsmsPesPacketProp * pes_packet_prop = &pes_packet->prop;
+  EsmsPesPacketProp *pes_packet_prop = &pes_packet->prop;
 
   LIBBLU_SCRIPTW_DEBUG(
     "  Script frame (0x%016" PRIX64 "):\n",
@@ -1304,7 +1304,7 @@ int writePesPacketEsmsHandler(
 
   /* Writing modification esms_hdl commands : */
   for (unsigned i = 0; i < pes_packet->nb_commands; i++) {
-    EsmsCommand * com = &pes_packet->commands[i];
+    EsmsCommand *com = &pes_packet->commands[i];
     LIBBLU_SCRIPTW_DEBUG("    Command %u:\n", i);
 
     if (_writeEsmsCommand(esms_bs, com) < 0)
@@ -1335,11 +1335,11 @@ static int _setStreamType(
 
 // static size_t _encodeUtf8(
 //   char ** enc_string_ret,
-//   const lbc * string,
+//   const lbc *string,
 //   size_t max_size
 // )
 // {
-//   char * encoded_string;
+//   char *encoded_string;
 //   if (NULL == (encoded_string = lbc_convfrom(string)))
 //     return 0;
 
@@ -1448,7 +1448,7 @@ static int _writeEsmsEsPropertiesSection(
   );
 
   for (unsigned i = 0; i < esms_hdl->source_files.nb_source_files; i++) {
-    const EsmsESSourceFilesEntry * entry = &esms_hdl->source_files.entries[i];
+    const EsmsESSourceFilesEntry *entry = &esms_hdl->source_files.entries[i];
     LIBBLU_SCRIPTW_DEBUG(" Source file %u:\n", i);
 
     size_t fp_enc_size = lbc_strlen(entry->filepath);
@@ -1496,7 +1496,7 @@ static int _writeEsmsEsPropertiesSection(
 
 static int _writeH264FmtSpecificInfos(
   BitstreamWriterPtr esms_bs,
-  const LibbluESH264SpecProperties * prop
+  const LibbluESH264SpecProperties *prop
 )
 {
 
@@ -1537,7 +1537,7 @@ static int _writeEsmsVideoSpecParam(
   EsmsHandlerPtr esms_hdl
 )
 {
-  const LibbluESProperties * prop = &esms_hdl->prop;
+  const LibbluESProperties *prop = &esms_hdl->prop;
 
   /* [v64 CSPMVIDO_magic] */
   WRITE(esms_bs, ES_CODEC_SPEC_PARAM_HEADER_VIDEO_MAGIC, 8, return -1);
@@ -1600,7 +1600,7 @@ static int _writeEsmsVideoSpecParam(
 
 static int _writeAc3FmtSpecificInfos(
   BitstreamWriterPtr esms_bs,
-  const LibbluESAc3SpecProperties * param
+  const LibbluESAc3SpecProperties *param
 )
 {
 
@@ -1659,7 +1659,7 @@ static int _writeEsmsAudioSpecParam(
   EsmsHandlerPtr esms_hdl
 )
 {
-  const LibbluESProperties * prop = &esms_hdl->prop;
+  const LibbluESProperties *prop = &esms_hdl->prop;
 
   /* [v64 CSPMAUDO_magic] */
   WRITE(esms_bs, ES_CODEC_SPEC_PARAM_HEADER_AUDIO_MAGIC, 8, return -1);
@@ -1722,7 +1722,7 @@ static int _writeEsmsEsCodecSpecParametersSection(
   EsmsHandlerPtr esms_hdl
 )
 {
-  const LibbluESProperties * prop = &esms_hdl->prop;
+  const LibbluESProperties *prop = &esms_hdl->prop;
 
   assert(NULL != esms_bs);
   assert(NULL != esms_hdl);
@@ -1775,7 +1775,7 @@ static int _writeEsmsDataBlocksDefSection(
   EsmsHandlerPtr esms_hdl
 )
 {
-  const EsmsDataBlocks * db = &esms_hdl->data_blocks;
+  const EsmsDataBlocks *db = &esms_hdl->data_blocks;
 
   LIBBLU_SCRIPTW_DEBUG(
     "Data Blocks Definition section:\n"
@@ -1800,7 +1800,7 @@ static int _writeEsmsDataBlocksDefSection(
   );
 
   for (unsigned i = 0; i < db->nb_data_blocks; i++) {
-    const EsmsDataBlockEntry * entry = &db->entries[i];
+    const EsmsDataBlockEntry *entry = &db->entries[i];
     LIBBLU_SCRIPTW_DEBUG(" Data block definition %u:\n", i);
 
     /* [u32 data_block_size[i]] */
@@ -1866,8 +1866,8 @@ int completePesCuttingScriptEsmsHandler(
 
 
 static int _writeESMSDirectories(
-  FILE * esms_fd,
-  const EsmsFileDirectories * dirs
+  FILE *esms_fd,
+  const EsmsFileDirectories *dirs
 )
 {
 
@@ -1882,7 +1882,7 @@ static int _writeESMSDirectories(
   );
 
   for (uint8_t dir_idx = 0; dir_idx < dirs->nb_used_entries; dir_idx++) {
-    const EsmsFileDirectory * dir = &dirs->entries[dir_idx];
+    const EsmsFileDirectory *dir = &dirs->entries[dir_idx];
     LIBBLU_SCRIPTW_DEBUG(" Directory %u:\n", dir_idx);
 
     /* [u8 dir_ID] */
@@ -1908,7 +1908,7 @@ static int _writeESMSDirectories(
 
 
 int updateEsmsFile(
-  const lbc * esms_filepath,
+  const lbc *esms_filepath,
   const EsmsHandlerPtr esms_hdl
 )
 {
@@ -1917,7 +1917,7 @@ int updateEsmsFile(
 
   /* Open ESMS file in update mode (overwrite previous content) */
   LIBBLU_SCRIPTWO_DEBUG(" Opening ESMS file in update mode.\n");
-  FILE * esms_fd = lbc_fopen(esms_filepath, "rb+");
+  FILE *esms_fd = lbc_fopen(esms_filepath, "rb+");
   if (NULL == esms_fd)
     LIBBLU_ERROR_RETURN(
       "Unable to update ESMS Header: File opening error, %s (errno: %d).\n",

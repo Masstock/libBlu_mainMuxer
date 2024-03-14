@@ -14,7 +14,7 @@ typedef enum {
 } HdmvColorDitheringMethod;
 
 typedef struct {
-  uint8_t * data;
+  uint8_t *data;
   uint16_t width;
   uint16_t height;
 } HdmvPalletizedBitmap;
@@ -27,9 +27,9 @@ static inline void cleanHdmvPaletizedBitmap(
 }
 
 int getPalletizedHdmvBitmap(
-  HdmvPalletizedBitmap * result,
+  HdmvPalletizedBitmap *result,
   const HdmvBitmap src_bitmap,
-  const HdmvPalette * palette,
+  const HdmvPalette *palette,
   HdmvColorDitheringMethod dither_method
 );
 

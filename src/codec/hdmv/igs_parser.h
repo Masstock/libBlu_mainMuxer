@@ -24,7 +24,7 @@
 #endif
 
 int analyzeIgs(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

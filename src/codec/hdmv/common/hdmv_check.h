@@ -9,19 +9,19 @@
 #include "hdmv_seq_indexer.h"
 
 int checkAndUpdateHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state,
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state,
   int64_t pres_time
 );
 
 int checkObjectsBufferingHdmvEpochState(
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 );
 
 int checkDuplicatedDSHdmvDSState(
-  const HdmvDSState * prev_ds_state,
-  HdmvDSState * cur_ds_state,
-  HdmvEpochState * epoch_state
+  const HdmvDSState *prev_ds_state,
+  HdmvDSState *cur_ds_state,
+  HdmvEpochState *epoch_state
 );
 
 #endif

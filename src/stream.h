@@ -27,8 +27,8 @@ typedef struct {
 
   uint16_t pid;  /**< Stream associated PID.                                 */
 
-  uint32_t packetNb;  /**< Pending number of emited TS packets counter. Used
-    for continuity_counter field in transport packets.                       */
+  uint32_t nb_transport_packets;  /**< Pending number of emitted Transport
+    Packets counter. Used for continuity_counter field in TP header.         */
 } LibbluStream, *LibbluStreamPtr;
 
 LibbluStreamPtr createLibbluStream(
@@ -48,8 +48,8 @@ static inline bool isESLibbluStream(
 }
 
 int requestESPIDLibbluStream(
-  LibbluPIDValues * values,
-  uint16_t * pid,
+  LibbluPIDValues *values,
+  uint16_t *pid,
   LibbluStreamPtr stream
 );
 

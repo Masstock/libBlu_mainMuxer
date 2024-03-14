@@ -239,7 +239,7 @@ typedef enum {
 } LibbluStatus;
 
 int enableDebugStatusString(
-  const char * string
+  const char *string
 );
 
 bool isDebugEnabledLibbbluStatus(
@@ -251,7 +251,7 @@ bool isEnabledLibbbluStatus(
 );
 
 int initDebugLogFile(
-  const lbc * log_filepath
+  const lbc *log_filepath
 );
 
 int closeDebugLogFile(
@@ -259,15 +259,15 @@ int closeDebugLogFile(
 );
 
 void echoMessageFd(
-  FILE * fd,
+  FILE *fd,
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   ...
 );
 
 void echoMessage(
   const LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   ...
 );
 

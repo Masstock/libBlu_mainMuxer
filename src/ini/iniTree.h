@@ -12,25 +12,25 @@ typedef enum {
 } IniFileNodeType;
 
 typedef struct IniFileNode {
-  struct IniFileNode * sibling;
+  struct IniFileNode *sibling;
 
-  char * name;
+  char *name;
   size_t nameSize;
 
   IniFileNodeType type;
   union {
-    lbc * entryValue;
-    struct IniFileNode * sectionChild;
+    lbc *entryValue;
+    struct IniFileNode *sectionChild;
   };
 } IniFileNode, *IniFileNodePtr;
 
 IniFileNodePtr createEntryIniFileNode(
-  const char * name,
-  const char * value
+  const char *name,
+  const char *value
 );
 
 IniFileNodePtr createSectionIniFileNode(
-  const char * name
+  const char *name
 );
 
 void destroyIniFileNode(
@@ -47,9 +47,9 @@ void attachChildIniFileNode(
   IniFileNodePtr child
 );
 
-lbc * lookupIniFileNode(
+lbc *lookupIniFileNode(
   const IniFileNodePtr node,
-  const char * name
+  const char *name
 );
 
 void printIniFileNode(

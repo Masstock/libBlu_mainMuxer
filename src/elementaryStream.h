@@ -26,19 +26,19 @@
  *
  */
 typedef struct {
-  lbc * filepath;               /**< Main ES absolute filepath. This value
+  lbc *es_filepath;         /**< Main ES absolute filepath. This value
     can't be NULL.                                                           */
-  lbc * scriptFilepath;         /**< Linked ESMS absolute filepath. If this
+  lbc *es_script_filepath;  /**< Linked ESMS absolute filepath. If this
     value is NULL, the program will use a valid filename. If path pointed
     script is invalid or incompatible (or force rebuild is active). A new
     script will be generated from supplied main ES filepath.                 */
 
-  LibbluStreamCodingType codingType;  /**< Expected stream coding type. If
+  LibbluStreamCodingType coding_type;  /**< Expected stream coding type. If
     equal to a negative value, the program will try to guess file type.      */
-  uint16_t pid;                 /**< Requested PID value. If equal to 0, the
-    program will select the best matching PID value.
-    \note Some PID values are reserved and can't be used (see H.222
-    standard).                                                               */
+
+  uint16_t pid;  /**< Requested PID value. If equal to 0x0000, the
+    the best matching PID value will be picked. Not all values are allowed
+    as some are reserved.                                                    */
 
   LibbluESSettingsOptions options;  /**< ES options.                         */
 } LibbluESSettings;
@@ -64,14 +64,14 @@ typedef struct {
  * \note #LibbluESSettings 'pid' and 'options' members are
  * initialized to 0.
  */
-static inline LibbluESSettings * initLibbluESSettings(
-  LibbluESSettings * dst
+static inline LibbluESSettings *initLibbluESSettings(
+  LibbluESSettings *dst
 )
 {
   assert(NULL != dst);
 
   *dst = (LibbluESSettings) {
-    .codingType = -1
+    .coding_type = -1
   };
 
   return dst;
@@ -81,26 +81,26 @@ static inline void cleanLibbluESSettings(
   LibbluESSettings settings
 )
 {
-  free(settings.filepath);
-  free(settings.scriptFilepath);
-  free(settings.options.pbrFilepath);
+  free(settings.es_filepath);
+  free(settings.es_script_filepath);
+  free(settings.options.pbr_filepath);
 }
 
 /* ### ES settings definition : ############################################ */
 
 int setFpsChangeLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr
+  LibbluESSettings *dst,
+  const lbc *expr
 );
 
 int setArChangeLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr
+  LibbluESSettings *dst,
+  const lbc *expr
 );
 
 int setLevelChangeLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr
+  LibbluESSettings *dst,
+  const lbc *expr
 );
 
 #define LIBBLU_MIN_HDMV_INIT_TIMESTAMP  0
@@ -108,7 +108,7 @@ int setLevelChangeLibbluESSettings(
 #define LIBBLU_MAX_HDMV_INIT_TIMESTAMP  0x7FFFFFFF
 
 int setHdmvInitialTimestampLibbluESSettings(
-  LibbluESSettings * dst,
+  LibbluESSettings *dst,
   uint64_t value
 );
 
@@ -122,27 +122,27 @@ int setHdmvInitialTimestampLibbluESSettings(
  * value is returned.
  */
 int setMainESFilepathLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * filepath,
-  const lbc * anchorFilepath
+  LibbluESSettings *dst,
+  const lbc *filepath,
+  const lbc *anchorFilepath
 );
 
 int setScriptFilepathLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * filepath,
-  const lbc * anchorFilepath
+  LibbluESSettings *dst,
+  const lbc *filepath,
+  const lbc *anchorFilepath
 );
 
 static inline void setExpectedCodingTypeLibbluESSettings(
-  LibbluESSettings * dst,
+  LibbluESSettings *dst,
   LibbluStreamCodingType codingType
 )
 {
-  dst->codingType = codingType;
+  dst->coding_type = codingType;
 }
 
 static inline void setRequestedPIDLibbluESSettings(
-  LibbluESSettings * dst,
+  LibbluESSettings *dst,
   uint16_t pid
 )
 {
@@ -154,34 +154,29 @@ static inline void setRequestedPIDLibbluESSettings(
  *
  */
 typedef struct {
-  LibbluESSettings * settings_ref;  /**< Pointer to ES settings.   */
-  LibbluESProperties prop;      /**< ES properties.            */
-  LibbluESFmtProp fmt_prop;  /**<
-    ES format specific properties.                                           */
+  const LibbluESSettings *settings_ref;  /**< Pointer to ES settings.       */
+  lbc *script_filepath;
+
+  LibbluESProperties prop;   /**< ES properties.                             */
+  LibbluESFmtProp fmt_prop;  /**< ES format specific properties.             */
 
   /* Timing information */
-  uint64_t PTS_reference;  /**< Referential 'zero' timestamp in 90kHz clock ticks. */
-  uint64_t PTS_final;      /**< Last PTS in 90kHz clock ticks. */
-  uint64_t startPts;
+  uint64_t PTS_reference;  /**< Referential 'zero' timestamp in 90kHz clock
+    ticks.                                                                   */
+  uint64_t PTS_final;      /**< Last PTS in 90kHz clock ticks.               */
 
-  BufModelBuffersListPtr lnkdBufList;         /**< ES linked buffering model
+  BufModelBuffersListPtr lnkd_tstd_buf_list;  /**< ES linked buffering model
     buffers list.                                                            */
 
-  /* Script related */
-  BitstreamReaderPtr scriptFile;
-  EsmsESSourceFiles sourceFiles;
-  EsmsDataBlocks scriptDataSections;
-  EsmsCommandParsingData commands_data_parsing;
+  struct {
+    BitstreamReaderPtr bs_handle;
+    EsmsESSourceFiles es_source_files;
+    EsmsDataBlocks data_sections;
+    EsmsCommandParsingData commands_data_parsing;
 
-#if 0
-  /* Input stream files */
-  lbc * streamFilesfilenames[ESMS_MAX_ALLOWED_DIR];
-  BitstreamReaderPtr streamFilesHandles[ESMS_MAX_ALLOWED_DIR];
-  unsigned nbStreamFiles;
-#endif
-
-  /* PES packets */
-  CircularBuffer pesPacketsScriptsQueue_; // type: EsmsPesPacket
+    CircularBuffer pes_packets_queue; // type: EsmsPesPacket
+    bool end_reached;
+  } script;
 
   struct {
     PesPacketHeaderParam header;
@@ -191,13 +186,6 @@ typedef struct {
     uint64_t dts;
     bool extension_frame;
   } current_pes_packet;
-
-  /* Progression related */
-  bool parsedProperties;
-  bool initializedPesCutting;
-  bool endOfScriptReached;
-
-  unsigned nbPesPacketsMuxed;
 } LibbluES;
 
 #define LIBBLU_ES_MIN_BUF_PES_SCRIPT_PACKETS  50
@@ -209,27 +197,28 @@ static inline void cleanLibbluES(
   LibbluES es
 )
 {
+  free(es.script_filepath);
   free(es.fmt_prop.shared_ptr);
-  destroyBufModelBuffersList(es.lnkdBufList);
-  closeBitstreamReader(es.scriptFile);
-  cleanEsmsESSourceFiles(es.sourceFiles);
-  cleanEsmsDataBlocks(es.scriptDataSections);
-  cleanEsmsCommandParsingData(es.commands_data_parsing);
+  destroyBufModelBuffersList(es.lnkd_tstd_buf_list);
+  closeBitstreamReader(es.script.bs_handle);
+  cleanEsmsESSourceFiles(es.script.es_source_files);
+  cleanEsmsDataBlocks(es.script.data_sections);
+  cleanEsmsCommandParsingData(es.script.commands_data_parsing);
 
   // Flush circular buffer:
-  EsmsPesPacket * esms_pes_packet;
-  while (NULL != (esms_pes_packet = popCircularBuffer(&es.pesPacketsScriptsQueue_))) {
+  EsmsPesPacket *esms_pes_packet;
+  while (NULL != (esms_pes_packet = popCircularBuffer(&es.script.pes_packets_queue))) {
     cleanEsmsPesPacketPtr(esms_pes_packet);
   }
-  cleanCircularBuffer(es.pesPacketsScriptsQueue_);
+  cleanCircularBuffer(es.script.pes_packets_queue);
 
   cleanLibbluESPesPacketData(es.current_pes_packet.data);
 }
 
 int prepareLibbluES(
-  LibbluES * es,
-  LibbluESFormatUtilities * esAssociatedUtilities,
-  bool forceRebuild
+  LibbluES *es,
+  LibbluESFormatUtilities *es_utilities_ret,
+  bool force_script_build
 );
 
 /** \~english
@@ -239,7 +228,7 @@ int prepareLibbluES(
  * \return size_t Number of remaining bytes in the ES current PES packet.
  */
 static inline size_t remainingPesDataLibbluES(
-  const LibbluES * es
+  const LibbluES *es
 )
 {
   return
@@ -248,20 +237,6 @@ static inline size_t remainingPesDataLibbluES(
   ;
 }
 
-#if 0
-
-static inline bool endOfPesPacketsScriptsQueueLibbluES(
-  LibbluES es
-)
-{
-  return
-    isEndReachedESPesCuttingEsms(es.scriptFile)
-    && (0 == nbEntriesCircularBuffer(&es.pesPacketsScriptsQueue_))
-  ;
-}
-
-#endif
-
 static inline bool isPayloadUnitStartLibbluES(
   LibbluES es
 )
@@ -269,23 +244,8 @@ static inline bool isPayloadUnitStartLibbluES(
   return (0 == es.current_pes_packet.data.offset);
 }
 
-// size_t averageSizePesPacketLibbluES(
-//   const LibbluES * es,
-//   unsigned maxNbSamples
-// );
-
-#if 0
-
-int buildPesPacketDataLibbluES(
-  const LibbluES * es,
-  LibbluESPesPacketData * dst,
-  const LibbluESPesPacketPropertiesNodePtr node
-);
-
-#endif
-
 int buildNextPesPacketLibbluES(
-  LibbluES * es,
+  LibbluES *es,
   uint16_t pid,
   uint64_t refPcr,
   LibbluPesPacketHeaderPrep_fun preparePesHeader

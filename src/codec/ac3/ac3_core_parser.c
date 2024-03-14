@@ -37,7 +37,7 @@
 
 int parseAc3SyncInfo(
   BitstreamReaderPtr bs,
-  Ac3SyncInfoParameters * syncinfo
+  Ac3SyncInfoParameters *syncinfo
 )
 {
   /* For (bsid <= 0x8) syntax */
@@ -76,8 +76,8 @@ int parseAc3SyncInfo(
 
 
 int parseAc3Addbsi(
-  LibbluBitReader * br,
-  Ac3Addbsi * addbsi
+  LibbluBitReader *br,
+  Ac3Addbsi *addbsi
 )
 {
 
@@ -112,8 +112,8 @@ int parseAc3Addbsi(
 
 
 int parseAc3BitStreamInfo(
-  LibbluBitReader * br,
-  Ac3BitStreamInfoParameters * bsi
+  LibbluBitReader *br,
+  Ac3BitStreamInfoParameters *bsi
 )
 {
   /* For (bsid <= 0x8) syntax */

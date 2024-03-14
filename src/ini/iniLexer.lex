@@ -52,8 +52,8 @@ int charno = 1;
 %%
 
 int yyerror(
-  IniFileContext * ctx,
-  char * format,
+  IniFileContext *ctx,
+  char *format,
   ...
 )
 {

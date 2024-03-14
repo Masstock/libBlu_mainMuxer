@@ -18,7 +18,7 @@
 /* ### ESMS ES Properties section : ######################################## */
 
 static inline int seekESPropertiesEsms(
-  const lbc * scriptFilename,
+  const lbc *scriptFilename,
   BitstreamReaderPtr scriptHandle
 )
 {
@@ -31,14 +31,14 @@ static inline int seekESPropertiesEsms(
 
 int parseESPropertiesHeaderEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESProperties * dst,
-  uint64_t * PTS_reference_ret,
-  uint64_t * PTS_final_ret
+  LibbluESProperties *dst,
+  uint64_t *PTS_reference_ret,
+  uint64_t *PTS_final_ret
 );
 
 int parseESPropertiesSourceFilesEsms(
   BitstreamReaderPtr esms_bs,
-  EsmsESSourceFiles * dst
+  EsmsESSourceFiles *dst
 );
 
 /* ### ESMS ES Format Properties section : ################################# */
@@ -51,7 +51,7 @@ static inline bool isConcernedESFmtPropertiesEsms(
 }
 
 static inline int seekESFmtPropertiesEsms(
-  const lbc * scriptFilename,
+  const lbc *scriptFilename,
   BitstreamReaderPtr scriptHandle
 )
 {
@@ -64,14 +64,14 @@ static inline int seekESFmtPropertiesEsms(
 
 int parseESFmtPropertiesEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESProperties * dst,
-  LibbluESFmtProp * fmtSpecDst
+  LibbluESProperties *dst,
+  LibbluESFmtProp *fmtSpecDst
 );
 
 /* ### ESMS ES Data Blocks Definition section : ############################ */
 
 static inline int isPresentESDataBlocksDefinitionEsms(
-  const lbc * scriptFilename
+  const lbc *scriptFilename
 )
 {
   return isPresentDirectory(
@@ -81,7 +81,7 @@ static inline int isPresentESDataBlocksDefinitionEsms(
 }
 
 static inline int seekESDataBlocksDefinitionEsms(
-  const lbc * scriptFilename,
+  const lbc *scriptFilename,
   BitstreamReaderPtr scriptHandle
 )
 {
@@ -94,13 +94,13 @@ static inline int seekESDataBlocksDefinitionEsms(
 
 int parseESDataBlocksDefinitionEsms(
   BitstreamReaderPtr esms_bs,
-  EsmsDataBlocks * dst
+  EsmsDataBlocks *dst
 );
 
 /* ### ESMS ES PES Cutting section : ####################################### */
 
 static inline int seekESPesCuttingEsms(
-  const lbc * scriptFilename,
+  const lbc *scriptFilename,
   BitstreamReaderPtr scriptHandle
 )
 {
@@ -114,7 +114,7 @@ static inline int seekESPesCuttingEsms(
 /* ###### ESMS PES Cutting commands data parsing structure : ############### */
 
 typedef struct {
-  uint8_t * command_data;
+  uint8_t *command_data;
   uint16_t command_data_alloc_size;
   uint16_t command_size;
 } EsmsCommandParsingData;
@@ -129,7 +129,7 @@ static inline void cleanEsmsCommandParsingData(
 /* ######################################################################### */
 
 int seekESPesCuttingEsms(
-  const lbc * scriptFilename,
+  const lbc *scriptFilename,
   BitstreamReaderPtr scriptHandle
 );
 
@@ -142,11 +142,11 @@ static inline bool isEndReachedESPesCuttingEsms(
 }
 
 int parseFrameNodeESPesCuttingEsms(
-  EsmsPesPacket * dst,
+  EsmsPesPacket *dst,
   BitstreamReaderPtr esms_bs,
   LibbluESType type,
   LibbluStreamCodingType coding_type,
-  EsmsCommandParsingData * command_data
+  EsmsCommandParsingData *command_data
 );
 
 #endif

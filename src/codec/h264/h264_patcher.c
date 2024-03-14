@@ -28,7 +28,7 @@ int buildH264RbspTrailingBits(
 
 int buildH264ScalingList(
   H264NalByteArrayHandlerPtr nal,
-  uint8_t * inputScalingList,
+  uint8_t *inputScalingList,
   unsigned scalingListLength
 )
 {
@@ -48,7 +48,7 @@ int buildH264ScalingList(
     58, 59, 52, 45, 38, 31, 39, 46,
     53, 60, 61, 54, 47, 55, 62, 63
   };
-  const unsigned short * zzScanningOrderMatrix;
+  const unsigned short *zzScanningOrderMatrix;
 
   assert(NULL != inputScalingList);
   assert(scalingListLength == 16 || scalingListLength == 64);
@@ -89,10 +89,10 @@ int buildH264ScalingList(
 
 int buildH264HrdParameters(
   H264NalByteArrayHandlerPtr nal,
-  H264HrdParameters * param
+  H264HrdParameters *param
 )
 {
-  H264SchedSel * schedSel; /* Alias for readability */
+  H264SchedSel *schedSel; /* Alias for readability */
   unsigned SchedSelIdx;
 
   assert(NULL != nal);
@@ -148,7 +148,7 @@ int buildH264HrdParameters(
 size_t appendH264SequenceParametersSet(
   H264ParametersHandlerPtr handle,
   size_t insertingOffset,
-  H264SPSDataParameters * param
+  H264SPSDataParameters *param
 )
 {
   int ret;
@@ -159,8 +159,8 @@ size_t appendH264SequenceParametersSet(
   H264NalHeaderParameters spsNalParam;
   H264NalByteArrayHandlerPtr spsNal;
 
-  H264VuiParameters * vuiParam;
-  H264VuiColourDescriptionParameters * colourDesc;
+  H264VuiParameters *vuiParam;
+  H264VuiColourDescriptionParameters *colourDesc;
 
   bool constantSps;
 
@@ -568,7 +568,7 @@ size_t appendH264SequenceParametersSet(
 
 #if !DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION
   if (!isDataBlocksNbLimitReachedEsmsHandler(handle->esms)) {
-    H264ModifiedNalUnit * modNalUnit;
+    H264ModifiedNalUnit *modNalUnit;
 
     handle->modNalLst.sequenceParametersSets =
       (H264ModifiedNalUnit *) realloc(
@@ -651,13 +651,13 @@ free_return:
 }
 
 int rebuildH264SPSNalVuiParameters(
-  H264SPSDataParameters * spsParam,
+  H264SPSDataParameters *spsParam,
   H264ParametersHandlerPtr handle,
   const LibbluESSettingsOptions options
 )
 {
-  H264VuiParameters * vuiParam;
-  H264VuiColourDescriptionParameters * colourDesc;
+  H264VuiParameters *vuiParam;
+  H264VuiColourDescriptionParameters *colourDesc;
 
   assert(NULL != spsParam);
   assert(NULL != handle);
@@ -698,7 +698,7 @@ int rebuildH264SPSNalVuiParameters(
   }
 
   if (handle->curProgParam.useVuiUpdate) {
-    switch (options.fpsChange) {
+    switch (options.fps_mod) {
     case 0x0: /* No change */
       break;
 
@@ -738,18 +738,18 @@ int rebuildH264SPSNalVuiParameters(
       );
     }
 
-    if (isUsedLibbluAspectRatioMod(options.arChange)) {
+    if (isUsedLibbluAspectRatioMod(options.ar_mod)) {
       /* vuiParam->aspect_ratio_info_present_flag = true; */
-      vuiParam->aspect_ratio_idc = options.arChange.idc;
-      if (options.arChange.idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
-        vuiParam->sar_width = options.arChange.x;
-        vuiParam->sar_height = options.arChange.y;
+      vuiParam->aspect_ratio_idc = options.ar_mod.idc;
+      if (options.ar_mod.idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
+        vuiParam->sar_width = options.ar_mod.x;
+        vuiParam->sar_height = options.ar_mod.y;
       }
     }
 
-    if (0x00 != options.levelChange) {
+    if (0x00 != options.level_mod) {
       if (
-        options.levelChange < spsParam->level_idc
+        options.level_mod < spsParam->level_idc
         && !handle->curProgParam.usageOfLowerLevel
       ) {
         LIBBLU_WARNING(
@@ -761,7 +761,7 @@ int rebuildH264SPSNalVuiParameters(
         handle->curProgParam.usageOfLowerLevel = true;
       }
 
-      spsParam->level_idc = options.levelChange;
+      spsParam->level_idc = options.level_mod;
     }
 
   } /* if (handle->curProgParam.useVuiUpdate) */
@@ -770,7 +770,7 @@ int rebuildH264SPSNalVuiParameters(
 }
 
 int patchH264HRDParameters_cpbRemovalDelayLength(
-  H264HrdParameters * param,
+  H264HrdParameters *param,
   unsigned newCpbRemovalDelayLength
 )
 {
@@ -794,7 +794,7 @@ int patchH264HRDParameters_cpbRemovalDelayLength(
 }
 
 int rebuildH264SPSNalVuiHRDParameters(
-  H264SPSDataParameters * spsParam
+  H264SPSDataParameters *spsParam
 )
 {
   int ret;
@@ -861,7 +861,7 @@ int patchH264SequenceParametersSet(
     update = true;
   }
 
-  if (options.forceRebuildSei) {
+  if (options.force_rebuild_sei) {
     /* SPS HRD parameters check (updating fields lengths) */
     if (!update)
       updatedSpsDataParam = handle->sequenceParametersSet.data;
@@ -886,15 +886,15 @@ int patchH264SequenceParametersSet(
 int buildH264SeiBufferingPeriodMessage(
   H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
-  H264SeiBufferingPeriod * param
+  H264SeiBufferingPeriod *param
 )
 {
   /* buffering_period() */
   unsigned SchedSelIdx, maxSchedSelIdx;
   unsigned fieldLength;
 
-  H264VuiParameters * vuiParam;
-  H264SeiBufferingPeriodSchedSel * hrdParam;
+  H264VuiParameters *vuiParam;
+  H264SeiBufferingPeriodSchedSel *hrdParam;
 
   assert(NULL != handle);
   assert(NULL != seiNal);
@@ -973,7 +973,7 @@ int buildH264SeiBufferingPeriodMessage(
 int buildH264SeiMessage(
   H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
-  H264SeiMessageParameters * param
+  H264SeiMessageParameters *param
 )
 {
   /* sei_message() */
@@ -1026,7 +1026,7 @@ int buildH264SeiMessage(
 int buildH264SupplementalEnhancementInformation(
   H264ParametersHandlerPtr handle,
   H264NalByteArrayHandlerPtr seiNal,
-  H264SeiRbspParameters * param
+  H264SeiRbspParameters *param
 )
 {
   /* sei_rbsp() */
@@ -1050,7 +1050,7 @@ int buildH264SupplementalEnhancementInformation(
 }
 
 bool isH264SeiBufferingPeriodPatchMessage(
-  const H264SeiRbspParameters * param
+  const H264SeiRbspParameters *param
 )
 {
   assert(NULL != param);
@@ -1065,7 +1065,7 @@ size_t appendH264Sei(
   H264ParametersHandlerPtr handle,
   EsmsHandlerPtr handle->esms,
   size_t insertingOffset,
-  H264SeiRbspParameters * param
+  H264SeiRbspParameters *param
 )
 {
   int ret;
@@ -1120,7 +1120,7 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
   H264ParametersHandlerPtr handle,
   EsmsHandlerPtr handle->esms,
   size_t insertingOffset,
-  H264SeiRbspParameters * param
+  H264SeiRbspParameters *param
 )
 {
   /**
@@ -1133,8 +1133,8 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
   H264NalByteArrayHandlerPtr seiNal;
 
   /* Pointers to saved parameters in H264ParametersHandlerPtr struct : */
-  H264ModifiedNalUnit * seiModNalUnit;
-  bool * seiModNalUnitPres;
+  H264ModifiedNalUnit *seiModNalUnit;
+  bool *seiModNalUnitPres;
 
   assert(NULL != handle);
   assert(NULL != param);
@@ -1202,19 +1202,19 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
 
 int patchH264SeiBufferingPeriodMessageParameters(
   H264ParametersHandlerPtr handle,
-  H264SeiMessageParameters * seiMessage,
+  H264SeiMessageParameters *seiMessage,
   const unsigned seq_parameter_set_id,
-  const H264SeiBufferingPeriodSchedSel * hrdParam,
-  const H264SeiBufferingPeriodSchedSel * vclParam
+  const H264SeiBufferingPeriodSchedSel *hrdParam,
+  const H264SeiBufferingPeriodSchedSel *vclParam
 )
 {
   size_t messageLen;
   unsigned cpbConfig, nbCpbConfigs;
   bool paddingRequired;
 
-  H264VuiParameters * vuiParam;
+  H264VuiParameters *vuiParam;
 
-  H264SeiBufferingPeriod * param;
+  H264SeiBufferingPeriod *param;
 
   assert(NULL != handle);
   assert(NULL != seiMessage);
@@ -1350,7 +1350,7 @@ int completeH264SeiBufferingPeriodComputation(
   /* BUG: Computed values are broken, wrong method. */
   int ret;
 
-  H264VuiParameters * vuiParam; /* Shorter-pointer. */
+  H264VuiParameters *vuiParam; /* Shorter-pointer. */
   uint8_t cpbRemovalDelayFieldLength;
   uint32_t maxAllowedCpbRemovalDelayValue;
 
@@ -1368,7 +1368,7 @@ int completeH264SeiBufferingPeriodComputation(
   H264SeiBufferingPeriodSchedSel vclHrd[1];
 
   /* Pointer to saved parameter in H264ParametersHandlerPtr struct : */
-  H264ModifiedNalUnit * seiModNalUnit;
+  H264ModifiedNalUnit *seiModNalUnit;
 
   H264NalHeaderParameters seiNalParam;
   H264NalByteArrayHandlerPtr seiNal;
@@ -1407,7 +1407,7 @@ int completeH264SeiBufferingPeriodComputation(
 
     nalCpbSize = vuiParam->nal_hrd_parameters.schedSel[0].CpbSize;
 
-    if (nalCpbSize < nalResultInitCpbRemovalDelay * nalBitRate / 90000)
+    if (nalCpbSize < nalResultInitCpbRemovalDelay *nalBitRate / 90000)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
 
     if (90000 < nalResultInitCpbRemovalDelay) {
@@ -1442,7 +1442,7 @@ int completeH264SeiBufferingPeriodComputation(
 
     vclCpbSize = vuiParam->vcl_hrd_parameters.schedSel[0].CpbSize;
 
-    if (vclCpbSize < vclResultInitCpbRemovalDelay * vclBitRate / 90000)
+    if (vclCpbSize < vclResultInitCpbRemovalDelay *vclBitRate / 90000)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
 
     if (90000 < vclResultInitCpbRemovalDelay)

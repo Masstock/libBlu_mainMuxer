@@ -11,7 +11,7 @@
 #include "pgs_parser.h"
 
 int analyzePgs(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   if (settings->options.hdmv.ass_input) {
@@ -22,7 +22,7 @@ int analyzePgs(
 #endif
   }
 
-  HdmvContext * ctx = createHdmvContext(settings, NULL, HDMV_STREAM_TYPE_PGS, false);
+  HdmvContext *ctx = createHdmvContext(settings, NULL, HDMV_STREAM_TYPE_PGS, false);
   if (NULL == ctx)
     return -1;
 

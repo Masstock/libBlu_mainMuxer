@@ -10,36 +10,36 @@
 
 int parseMlpMinorSyncHeader(
   BitstreamReaderPtr bs,
-  MlpSyncHeaderParameters * sh,
-  uint8_t * parity
+  MlpSyncHeaderParameters *sh,
+  uint8_t *parity
 );
 
 int parseMlpMajorSyncInfo(
-  LibbluBitReader * br,
-  MlpMajorSyncInfoParameters * param
+  LibbluBitReader *br,
+  MlpMajorSyncInfoParameters *param
 );
 
 int parseMlpSyncHeader(
   BitstreamReaderPtr bs,
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   uint8_t ** buffer,
-  size_t * buffer_size,
-  MlpSyncHeaderParameters * sh
+  size_t *buffer_size,
+  MlpSyncHeaderParameters *sh
 );
 
 int decodeMlpSubstreamDirectory(
-  LibbluBitReader * br,
-  MlpParsingContext * ctx,
-  uint8_t * parity
+  LibbluBitReader *br,
+  MlpParsingContext *ctx,
+  uint8_t *parity
 );
 
 int decodeMlpSubstreamSegments(
-  LibbluBitReader * br,
-  MlpParsingContext * ctx
+  LibbluBitReader *br,
+  MlpParsingContext *ctx
 );
 
 int decodeMlpExtraData(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   int64_t au_offset
 );
 

@@ -32,7 +32,7 @@ int checkBitmapDimensions(
 }
 
 int initHdmvBitmap(
-  HdmvBitmap * bitmap,
+  HdmvBitmap *bitmap,
   uint16_t width,
   uint16_t height
 )
@@ -40,7 +40,7 @@ int initHdmvBitmap(
   if (checkBitmapDimensions(width, height) < 0)
     return -1;
 
-  uint32_t * buf = calloc(width * height, sizeof(uint32_t));
+  uint32_t *buf = calloc(width *height, sizeof(uint32_t));
   if (NULL == buf)
     return -1;
 
@@ -53,18 +53,18 @@ int initHdmvBitmap(
 }
 
 int dupHdmvBitmap(
-  HdmvBitmap * dst,
-  const HdmvBitmap * src
+  HdmvBitmap *dst,
+  const HdmvBitmap *src
 )
 {
   if (initHdmvBitmap(dst, src->width, src->height) < 0)
     return -1;
-  memcpy(dst->rgba, src->rgba, src->width * src->height * sizeof(uint32_t));
+  memcpy(dst->rgba, src->rgba, src->width *src->height *sizeof(uint32_t));
   return 0;
 }
 
 int cropHdmvBitmap(
-  HdmvBitmap * dst,
+  HdmvBitmap *dst,
   HdmvRectangle rect
 )
 {
@@ -86,8 +86,8 @@ int cropHdmvBitmap(
 }
 
 int cropCopyHdmvBitmap(
-  HdmvBitmap * dst_ret,
-  const HdmvBitmap * src,
+  HdmvBitmap *dst_ret,
+  const HdmvBitmap *src,
   HdmvRectangle rect
 )
 {

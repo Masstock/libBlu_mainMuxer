@@ -177,10 +177,10 @@ static inline void setStillPictureEsmsHandler(
  */
 int appendSourceFileWithCrcEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const lbc * filepath,
+  const lbc *filepath,
   uint16_t crc_checked_bytes,
   uint32_t crc,
-  uint8_t * idx
+  uint8_t *idx
 );
 
 /** \~english
@@ -195,8 +195,8 @@ int appendSourceFileWithCrcEsmsHandler(
  */
 int appendSourceFileEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const lbc * filepath,
-  uint8_t * src_file_idx
+  const lbc *filepath,
+  uint8_t *src_file_idx
 );
 
 /** \~english
@@ -233,9 +233,9 @@ static inline bool isDataBlocksNbLimitReachedEsmsHandler(
  */
 int appendDataBlockEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const uint8_t * data_block,
+  const uint8_t *data_block,
   uint32_t data_block_size,
-  unsigned * data_block_id
+  unsigned *data_block_id
 );
 
 /** \~english
@@ -250,7 +250,7 @@ int appendDataBlockEsmsHandler(
  */
 int updateDataBlockEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  const uint8_t * data_block,
+  const uint8_t *data_block,
   uint32_t data_block_size,
   unsigned data_block_idx
 );
@@ -342,7 +342,7 @@ int appendAddDataCommandEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   uint32_t insert_offset,
   EsmsDataInsertionMode insert_mode,
-  const uint8_t * data,
+  const uint8_t *data,
   uint16_t data_size
 );
 
@@ -472,7 +472,7 @@ int completePesCuttingScriptEsmsHandler(
  * value is returned.
  */
 int updateEsmsFile(
-  const lbc * esms_filepath,
+  const lbc *esms_filepath,
   const EsmsHandlerPtr esms_hdl
 );
 

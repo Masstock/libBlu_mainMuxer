@@ -12,20 +12,20 @@
 typedef struct {
   HdmvPalletizedBitmap pal_bitmap;
 
-  uint8_t * rle;
+  uint8_t *rle;
   uint32_t rle_size;
 
   HdmvODescParameters desc; /**< User defined values. Initialized to 0. */
 } HdmvObject;
 
 int initFromPalletizedHdmvObject(
-  HdmvObject * dst,
+  HdmvObject *dst,
   HdmvPalletizedBitmap pal_bitmap
 );
 
 int initHdmvObject(
-  HdmvObject * dst,
-  const uint8_t * rle,
+  HdmvObject *dst,
+  const uint8_t *rle,
   uint32_t rle_size,
   uint16_t width,
   uint16_t height
@@ -43,30 +43,30 @@ static inline uint32_t decodedSizeHdmvObject(
   HdmvObject obj
 )
 {
-  return obj.pal_bitmap.width * obj.pal_bitmap.height;
+  return obj.pal_bitmap.width *obj.pal_bitmap.height;
 }
 
 int compressRleHdmvObject(
-  HdmvObject * obj,
-  unsigned * longuest_compressed_line_size_ret,
-  uint16_t * longuest_compressed_line_ret
+  HdmvObject *obj,
+  unsigned *longuest_compressed_line_size_ret,
+  uint16_t *longuest_compressed_line_ret
 );
 
-static inline uint8_t * getOrCompressRleHdmvObject(
-  HdmvObject * obj,
-  unsigned * longuest_compressed_line_size_ret,
-  uint16_t * longuest_compressed_line_ret
+static inline uint8_t *getOrCompressRleHdmvObject(
+  HdmvObject *obj,
+  unsigned *longuest_compressed_line_size_ret,
+  uint16_t *longuest_compressed_line_ret
 )
 {
-  unsigned * max_size_ret = longuest_compressed_line_size_ret;
-  uint16_t * max_ret      = longuest_compressed_line_ret;
+  unsigned *max_size_ret = longuest_compressed_line_size_ret;
+  uint16_t *max_ret      = longuest_compressed_line_ret;
   if (!obj->rle_size && compressRleHdmvObject(obj, max_size_ret, max_ret) < 0)
     return NULL;
   return obj->rle;
 }
 
-static inline uint8_t * getRleHdmvObject(
-  const HdmvObject * obj
+static inline uint8_t *getRleHdmvObject(
+  const HdmvObject *obj
 )
 {
   if (!obj->rle_size)
@@ -75,9 +75,9 @@ static inline uint8_t * getRleHdmvObject(
 }
 
 int decompressRleHdmvObject(
-  HdmvObject * obj,
-  unsigned * longuest_compressed_line_size_ret,
-  uint16_t * longuest_compressed_line_ret
+  HdmvObject *obj,
+  unsigned *longuest_compressed_line_size_ret,
+  uint16_t *longuest_compressed_line_ret
 );
 
 typedef struct {
@@ -89,11 +89,11 @@ bool testUpdateHdmvObject(
   HdmvPalletizedBitmap src_pal_bm,
   int offset_x,
   int offset_y,
-  HdmvPaletteUpdate * update_ret
+  HdmvPaletteUpdate *update_ret
 );
 
 int applyUpdateHdmvObject(
-  HdmvObject * dst,
+  HdmvObject *dst,
   HdmvPalletizedBitmap src_pal_bm
 );
 

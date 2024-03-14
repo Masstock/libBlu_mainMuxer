@@ -5,13 +5,13 @@
 #include "iniData.h"
 
 int parseIniFile(
-  IniFileContext * dst,
-  const lbc * filepath
+  IniFileContext *dst,
+  const lbc *filepath
 );
 
-lbc * lookupIniFile(
+lbc *lookupIniFile(
   const IniFileContext ctx,
-  const char * expr
+  const char *expr
 );
 
 #endif

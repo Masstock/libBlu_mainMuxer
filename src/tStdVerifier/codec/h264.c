@@ -9,8 +9,8 @@
 /* If NULL == StreamInfos.codecSpecInfos.h264Param, not available */
 
 int createH264BufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 )
@@ -51,9 +51,9 @@ int createH264BufferingChainBdavStd(
 
   tbParam = (BufModelBufferParameters) {
     .name = TRANSPORT_BUFFER,
-    .instantFilling = false,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_H264_TBS * 8
+    .instant_filling = false,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_H264_TBS * 8
   };
 
   bsmux = 0.004 * MAX(1200 * maxBr, 2000000);
@@ -62,16 +62,16 @@ int createH264BufferingChainBdavStd(
 
   mbParam = (BufModelBufferParameters) {
     .name = MULTIPLEX_BUFFER,
-    .instantFilling = true,
-    .dontOverflowOutput = true,
-    .bufferSize = mbs
+    .instant_filling = true,
+    .dont_overflow_output = true,
+    .buffer_size = mbs
   };
 
   ebParam = (BufModelBufferParameters) {
     .name = ELEMENTARY_BUFFER,
-    .instantFilling = true,
-    .dontOverflowOutput = false,
-    .bufferSize = CpbSize
+    .instant_filling = true,
+    .dont_overflow_output = false,
+    .buffer_size = CpbSize
   };
 
   /* Create TB */

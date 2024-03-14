@@ -67,7 +67,7 @@ unsigned getH262MaxBr(
 
 int decodeSequenceHeader(
   BitstreamReaderPtr m2vInput,
-  H262SequenceHeaderParameters * param
+  H262SequenceHeaderParameters *param
 )
 {
   uint32_t value;
@@ -201,7 +201,7 @@ int decodeSequenceHeader(
 }
 
 int checkSequenceHeaderCompliance(
-  H262SequenceHeaderParameters * param
+  H262SequenceHeaderParameters *param
 )
 {
 
@@ -235,7 +235,7 @@ int checkSequenceHeaderCompliance(
 
 #if 0
   /* TODO: Move to sequence extension */
-  if (options.secondaryStream && param->vertical_size_value <= 720)
+  if (options.secondary && param->vertical_size_value <= 720)
     LIBBLU_H262_WARNING(
       "HD video format may be not supported by all BD-players "
       "as secondary video track.\n"
@@ -459,8 +459,8 @@ int checkSequenceHeaderCompliance(
 }
 
 int constantSequenceHeaderCheck(
-  const H262SequenceHeaderParameters * first,
-  const H262SequenceHeaderParameters * second
+  const H262SequenceHeaderParameters *first,
+  const H262SequenceHeaderParameters *second
 )
 {
   return CHECK(
@@ -476,7 +476,7 @@ int constantSequenceHeaderCheck(
 
 int decodeSequenceExtension(
   BitstreamReaderPtr m2vInput,
-  H262SequenceExtensionParameters * param
+  H262SequenceExtensionParameters *param
 )
 {
   uint32_t value;
@@ -585,8 +585,8 @@ int decodeSequenceExtension(
 }
 
 int checkSequenceExtensionCompliance(
-  const H262SequenceExtensionParameters * param,
-  const H262SequenceHeaderParameters * header,
+  const H262SequenceExtensionParameters *param,
+  const H262SequenceHeaderParameters *header,
   LibbluESSettingsOptions options
 )
 {
@@ -756,7 +756,7 @@ int checkSequenceExtensionCompliance(
     bitRate
   );
 
-  if (options.dvdMedia && (BDAV_VIDEO_MAX_BITRATE_DVD_OUT / 400) < bit_rate)
+  if (options.dvd_media && (BDAV_VIDEO_MAX_BITRATE_DVD_OUT / 400) < bit_rate)
     LIBBLU_H262_WARNING(
       "Bitrate value exceed maximum recommanded for a DVD media mux "
       "(%u bps < %" PRIu64 " bps).\n",
@@ -764,7 +764,7 @@ int checkSequenceExtensionCompliance(
       bitRate
     );
 
-  if (options.secondaryStream && (BDAV_VIDEO_MAX_BITRATE_SEC_V / 400) < bit_rate)
+  if (options.secondary && (BDAV_VIDEO_MAX_BITRATE_SEC_V / 400) < bit_rate)
     LIBBLU_H262_ERROR_RETURN(
       "Bitrate value exceed maximum allowed for a secondary video track "
       "(%u bps < %" PRIu64 " bps).\n",
@@ -796,7 +796,7 @@ int checkSequenceExtensionCompliance(
     vbvBufferSize
   );
 
-  if (options.dvdMedia && BDAV_VIDEO_MAX_BUFFER_SIZE_DVD_OUT < vbvBufferSize)
+  if (options.dvd_media && BDAV_VIDEO_MAX_BUFFER_SIZE_DVD_OUT < vbvBufferSize)
     LIBBLU_H262_WARNING(
       "VBV required size exceed maximum recommanded for a DVD media mux "
       "(%u bits < %" PRIu64 " bits).\n",
@@ -850,7 +850,7 @@ int checkSequenceExtensionCompliance(
     frameRate
   );
 
-  if (!options.secondaryStream) {
+  if (!options.secondary) {
     /* Check as a primary stream */
     checkRet = checkPrimVideoConfiguration(
       horizontal_size,
@@ -907,8 +907,8 @@ int checkSequenceExtensionCompliance(
 }
 
 int constantSequenceExtensionCheck(
-  const H262SequenceExtensionParameters * first,
-  const H262SequenceExtensionParameters * second
+  const H262SequenceExtensionParameters *first,
+  const H262SequenceExtensionParameters *second
 )
 {
   return CHECK(
@@ -929,7 +929,7 @@ int constantSequenceExtensionCheck(
 
 int decodeSequenceDisplayExtension(
   BitstreamReaderPtr m2vInput,
-  H262SequenceDisplayExtensionParameters * param
+  H262SequenceDisplayExtensionParameters *param
 )
 {
   uint32_t value;
@@ -1009,7 +1009,7 @@ int decodeSequenceDisplayExtension(
 
 int decodeGopHeader(
   BitstreamReaderPtr m2vInput,
-  H262GopHeaderParameters * param
+  H262GopHeaderParameters *param
 )
 {
   uint32_t value;
@@ -1069,7 +1069,7 @@ int decodeGopHeader(
 
 int decodePictureHeader(
   BitstreamReaderPtr m2vInput,
-  H262PictureHeaderParameters * param
+  H262PictureHeaderParameters *param
 )
 {
   uint32_t value;
@@ -1157,7 +1157,7 @@ int decodePictureHeader(
 }
 
 int checkPictureHeaderCompliance(
-  const H262PictureHeaderParameters * param,
+  const H262PictureHeaderParameters *param,
   unsigned gopIndex
 )
 {
@@ -1289,7 +1289,7 @@ int checkPictureHeaderCompliance(
 
 int decodePictureCodingExtension(
   BitstreamReaderPtr m2vInput,
-  H262PictureCodingExtensionParameters * param
+  H262PictureCodingExtensionParameters *param
 ) {
   uint32_t value;
 
@@ -1403,7 +1403,7 @@ int decodePictureCodingExtension(
   return 0;
 }
 
-int decodeQuantMatrixExtension(BitstreamReaderPtr m2vInput, H262QuantMatrixExtensionParameters * param)
+int decodeQuantMatrixExtension(BitstreamReaderPtr m2vInput, H262QuantMatrixExtensionParameters *param)
 {
   uint32_t value;
 
@@ -1544,7 +1544,7 @@ int decodeQuantMatrixExtension(BitstreamReaderPtr m2vInput, H262QuantMatrixExten
   return 0;
 }
 
-int decodeCopyrightExtension(BitstreamReaderPtr m2vInput, H262CopyrightExtensionParameters * param)
+int decodeCopyrightExtension(BitstreamReaderPtr m2vInput, H262CopyrightExtensionParameters *param)
 {
   uint32_t value;
 
@@ -1644,7 +1644,7 @@ int jumpToNextCode(BitstreamReaderPtr m2vInput)
   return 0;
 }
 
-/* int decodeSlice(BitstreamReaderPtr m2vInput, H262SliceParameters * param) */
+/* int decodeSlice(BitstreamReaderPtr m2vInput, H262SliceParameters *param) */
 int decodeSlice(BitstreamReaderPtr m2vInput)
 {
   uint32_t value;
@@ -1735,7 +1735,7 @@ int browseUserData(BitstreamReaderPtr m2vInput)
 
 int decodeExtension(
   BitstreamReaderPtr m2vInput,
-  H262ExtensionParameters * param,
+  H262ExtensionParameters *param,
   ExtensionDataLocation location
 )
 {
@@ -1821,7 +1821,7 @@ int decodeExtension(
 
 int decodeExtensionUserData(
   BitstreamReaderPtr m2vInput,
-  H262ExtensionParameters * param,
+  H262ExtensionParameters *param,
   ExtensionDataLocation location
 )
 {
@@ -1855,8 +1855,8 @@ int decodeExtensionUserData(
 
 #if 0
 int checkSequenceDisplayExtensionCompliance(
-  H262SequenceDisplayExtensionParameters * param,
-  H262SequenceHeaderParameters * headerParam
+  H262SequenceDisplayExtensionParameters *param,
+  H262SequenceHeaderParameters *headerParam
 ) {
 
   LIBBLU_DEBUG_COM("Video format: ");
@@ -2009,7 +2009,7 @@ int checkSequenceDisplayExtensionCompliance(
 }
 #endif
 
-int constantSequenceDisplayExtensionCheck(H262SequenceDisplayExtensionParameters * first, H262SequenceDisplayExtensionParameters * second)
+int constantSequenceDisplayExtensionCheck(H262SequenceDisplayExtensionParameters *first, H262SequenceDisplayExtensionParameters *second)
 {
   return
     first->videoFormat == second->videoFormat &&
@@ -2024,8 +2024,8 @@ int constantSequenceDisplayExtensionCheck(H262SequenceDisplayExtensionParameters
 
 #if 0
 void setDefaultSequenceDisplayExtension(
-  H262SequenceDisplayExtensionParameters * param,
-  H262SequenceHeaderParameters * headerParam
+  H262SequenceDisplayExtensionParameters *param,
+  H262SequenceHeaderParameters *headerParam
 ) {
   if (NULL == param || NULL == headerParam)
     return;
@@ -2041,7 +2041,7 @@ void setDefaultSequenceDisplayExtension(
 #endif
 
 int checkGopHeaderCompliance(
-  const H262GopHeaderParameters * param,
+  const H262GopHeaderParameters *param,
   unsigned gopIndex
 )
 {
@@ -2071,15 +2071,15 @@ int checkGopHeaderCompliance(
   return 0;
 }
 
-int constantGopHeaderCheck(H262GopHeaderParameters * first, H262GopHeaderParameters * second)
+int constantGopHeaderCheck(H262GopHeaderParameters *first, H262GopHeaderParameters *second)
 {
   return first->dropFrame == second->dropFrame;
 }
 
 int checkPictureCodingExtensionCompliance(
-  H262PictureCodingExtensionParameters * param,
-  H262SequenceExtensionParameters * seqExtParam,
-  H262PictureHeaderParameters * pictHeaderParam
+  H262PictureCodingExtensionParameters *param,
+  H262SequenceExtensionParameters *seqExtParam,
+  H262PictureHeaderParameters *pictHeaderParam
 )
 {
   unsigned i, value;
@@ -2182,7 +2182,7 @@ int checkPictureCodingExtensionCompliance(
 }
 
 int analyzeH262(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   EsmsHandlerPtr h262Infos = NULL;
@@ -2367,7 +2367,7 @@ int analyzeH262(
     if (decodeExtensionUserData(m2vInput, &optionalExtensions, EXT_LOC_GROUP_OF_PICTURE_HEADER) < 0)
       return -1;
 
-    gopPts = startPts + pictNo * frameDuration;
+    gopPts = startPts + pictNo *frameDuration;
     gopPictIdx = 0;
 
     while (nextUint32(m2vInput) == PICTURE_START_CODE) {
@@ -2425,7 +2425,7 @@ int analyzeH262(
           ignoredBytes = 4; /* If not end of file, ignore useless SEQUENCE_END_CODE. */
       }
 
-      h262Pts = gopPts + pictureHeader.temporal_reference * frameDuration;
+      h262Pts = gopPts + pictureHeader.temporal_reference *frameDuration;
 
       /* LIBBLU_WARNING("#PTS: %" PRIu64 "\n", h262Pts); */
 
@@ -2494,7 +2494,7 @@ int analyzeH262(
   closeBitstreamReader(m2vInput);
 
   /* Display infos : */
-  h262Infos->PTS_final = (gopPts + pictureHeader.temporal_reference * frameDuration) / 300;
+  h262Infos->PTS_final = (gopPts + pictureHeader.temporal_reference *frameDuration) / 300;
 
   lbc_printf(
     lbc_str("== Stream Infos =======================================================================\n")

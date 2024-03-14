@@ -11,7 +11,7 @@
 /* ### Debug : ############################################################# */
 
 void writeDotHexatreeNode(
-  FILE * fd,
+  FILE *fd,
   HdmvQuantHexTreeNodePtr node
 )
 {
@@ -44,7 +44,7 @@ void writeDotHexatreeNode(
 }
 
 void writeDotHeader(
-  FILE * fd
+  FILE *fd
 )
 {
   fprintf(fd, "digraph hex_tree {\n");
@@ -53,14 +53,14 @@ void writeDotHeader(
 }
 
 void writeDotFooter(
-  FILE * fd
+  FILE *fd
 )
 {
   fprintf(fd, "}\n");
 }
 
 void writeDot(
-  FILE * fd,
+  FILE *fd,
   HdmvQuantHexTreeNodePtr tree
 )
 {
@@ -80,7 +80,7 @@ int saveDebugPDF(
   char dot_fp[HDMV_QUANT_DEBUG_MAX_FILENAME_LEN+1];
   snprintf(dot_fp, HDMV_QUANT_DEBUG_MAX_FILENAME_LEN, "%s.dot", base_filepath);
 
-  FILE * fd = fopen(dot_fp, "w");
+  FILE *fd = fopen(dot_fp, "w");
   if (NULL == fd)
     LIBBLU_HDMV_QUANT_ERROR_RETURN(
       "Unable to open output debug file '%s', %s (errno %d).\n",
@@ -108,7 +108,7 @@ int saveDebugPDF(
 /* ### HDMV Quantizer Hexatree node : ###################################### */
 
 int parseToPaletteHdmvQuantHexTreeNode(
-  HdmvPalette * dst,
+  HdmvPalette *dst,
   HdmvQuantHexTreeNodePtr tree
 )
 {
@@ -133,7 +133,7 @@ int parseToPaletteHdmvQuantHexTreeNode(
 /* ### HDMV Quantizer Hexatree nodes Inventory : ########################### */
 
 static int _increaseAllocInv(
-  HdmvQuantHexTreeNodesInventory * inv
+  HdmvQuantHexTreeNodesInventory *inv
 )
 {
   if (inv->nb_alloc_node_seg <= inv->nb_used_node_seg) {
@@ -147,7 +147,7 @@ static int _increaseAllocInv(
 
     HdmvQuantHexTreeNode ** new_arr = (HdmvQuantHexTreeNode **) realloc(
       inv->node_segments,
-      new_size * sizeof(HdmvQuantHexTreeNode *)
+      new_size *sizeof(HdmvQuantHexTreeNode *)
     );
     if (NULL == new_arr)
       LIBBLU_HDMV_QUANT_ERROR_RETURN("Memory allocation error.\n");
@@ -163,8 +163,8 @@ static int _increaseAllocInv(
   if (lb_mul_overflow_size_t(new_seg_size, sizeof(HdmvQuantHexTreeNode)))
     LIBBLU_HDMV_QUANT_ERROR_RETURN("Nodes segment size overflow.\n");
 
-  HdmvQuantHexTreeNode * new_seg = (HdmvQuantHexTreeNode *) malloc(
-    new_seg_size * sizeof(HdmvQuantHexTreeNode)
+  HdmvQuantHexTreeNode *new_seg = (HdmvQuantHexTreeNode *) malloc(
+    new_seg_size *sizeof(HdmvQuantHexTreeNode)
   );
   if (NULL == new_seg)
     LIBBLU_HDMV_QUANT_ERROR_RETURN("Memory allocation error.\n");
@@ -176,7 +176,7 @@ static int _increaseAllocInv(
 }
 
 static HdmvQuantHexTreeNodePtr _getUnusedNodeInv(
-  HdmvQuantHexTreeNodesInventory * inv
+  HdmvQuantHexTreeNodesInventory *inv
 )
 {
   HdmvQuantHexTreeNodePtr node = inv->unused_nodes_list;
@@ -186,7 +186,7 @@ static HdmvQuantHexTreeNodePtr _getUnusedNodeInv(
 }
 
 static HdmvQuantHexTreeNodePtr _getNodeInv(
-  HdmvQuantHexTreeNodesInventory * inv
+  HdmvQuantHexTreeNodesInventory *inv
 )
 {
   assert(NULL != inv);
@@ -203,7 +203,7 @@ static HdmvQuantHexTreeNodePtr _getNodeInv(
 }
 
 static void _putBackNodeInv(
-  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvQuantHexTreeNodesInventory *inv,
   HdmvQuantHexTreeNodePtr node
 )
 {
@@ -236,8 +236,8 @@ static unsigned _getBranch(
 }
 
 static int splitLeafHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodesInventory * inv,
-  HdmvQuantHexTreeNodePtr * tree,
+  HdmvQuantHexTreeNodesInventory *inv,
+  HdmvQuantHexTreeNodePtr *tree,
   int depth
 )
 {
@@ -261,11 +261,11 @@ static int splitLeafHdmvQuantizationHexatree(
 }
 
 static int insertHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodesInventory * inv,
-  HdmvQuantHexTreeNodePtr * tree_ref,
+  HdmvQuantHexTreeNodesInventory *inv,
+  HdmvQuantHexTreeNodePtr *tree_ref,
   uint32_t rgba,
   int depth,
-  unsigned * tree_size_ref
+  unsigned *tree_size_ref
 )
 {
   int ret;
@@ -374,7 +374,7 @@ static unsigned getReducibleBranchHdmvQuantizationHexatree(
 }
 
 static unsigned mergeBranchHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvQuantHexTreeNodesInventory *inv,
   HdmvQuantHexTreeNodePtr node
 )
 {
@@ -433,9 +433,9 @@ static unsigned mergeBranchHdmvQuantizationHexatree(
 }
 
 int reduceHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodesInventory * inv,
-  HdmvQuantHexTreeNodePtr * tree,
-  unsigned * tree_size_ref
+  HdmvQuantHexTreeNodesInventory *inv,
+  HdmvQuantHexTreeNodePtr *tree,
+  unsigned *tree_size_ref
 )
 {
   assert(NULL != tree);
@@ -491,11 +491,11 @@ int reduceHdmvQuantizationHexatree(
 }
 
 int performHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodePtr * tree_ref,
-  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvQuantHexTreeNodePtr *tree_ref,
+  HdmvQuantHexTreeNodesInventory *inv,
   HdmvBitmap bitmap,
   unsigned target_nb_colors,
-  unsigned * out_nb_colors_ref
+  unsigned *out_nb_colors_ref
 )
 {
   assert(NULL != inv);
@@ -512,13 +512,13 @@ int performHdmvQuantizationHexatree(
   if (start < 0)
     LIBBLU_HDMV_QUANT_DEBUG(" Warning: Unable to use clock().\n");
 
-  const uint32_t * pix   = bitmap.rgba;
-  const uint32_t * end   = &pix[bitmap.width * bitmap.height];
+  const uint32_t *pix   = bitmap.rgba;
+  const uint32_t *end   = &pix[bitmap.width *bitmap.height];
   unsigned cur_nb_colors = (NULL != out_nb_colors_ref) ? *out_nb_colors_ref : 0;
   size_t stride          = bitmap.width;
 
   while (pix != end) {
-    for (const uint32_t * eol = &pix[stride]; pix != eol; pix++) {
+    for (const uint32_t *eol = &pix[stride]; pix != eol; pix++) {
       if (insertHdmvQuantizationHexatree(inv, tree_ref, *pix, 0, &cur_nb_colors) < 0)
         goto free_return;
     }

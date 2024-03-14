@@ -26,7 +26,7 @@
   } while (0)
 
 static size_t _computeDcaExtSSHeaderMMSize(
-  const DcaExtSSHeaderMixMetadataParameters * param
+  const DcaExtSSHeaderMixMetadataParameters *param
 )
 {
   /* [u2 nuMixMetadataAdjLevel] */
@@ -35,16 +35,16 @@ static size_t _computeDcaExtSSHeaderMMSize(
   size_t size = 6;
 
   /* Output Audio Mix Configurations Loop : */
-  /* [u<nuBits4MixOutMask * nuNumMixOutConfigs> nuMixOutChMask[ns]] */
+  /* [u<nuBits4MixOutMask *nuNumMixOutConfigs> nuMixOutChMask[ns]] */
   unsigned nuBits4MixOutMask;
   COMPUTE_NUBITS4MIXOUTMASK(&nuBits4MixOutMask, param->nuMixOutChMask, param->nuNumMixOutConfigs);
-  size += nuBits4MixOutMask * param->nuNumMixOutConfigs;
+  size += nuBits4MixOutMask *param->nuNumMixOutConfigs;
 
   return size;
 }
 
 static size_t _computeDcaExtSSHeaderSFSize(
-  const DcaExtSSHeaderSFParameters * param,
+  const DcaExtSSHeaderSFParameters *param,
   uint8_t nExtSSIndex
 )
 {
@@ -87,8 +87,8 @@ static size_t _computeDcaExtSSHeaderSFSize(
 }
 
 static int _buildDcaExtSSHeaderSF(
-  LibbluBitWriter * br,
-  const DcaExtSSHeaderSFParameters * param,
+  LibbluBitWriter *br,
+  const DcaExtSSHeaderSFParameters *param,
   uint8_t nExtSSIndex
 )
 {
@@ -182,7 +182,7 @@ static int _buildDcaExtSSHeaderSF(
       LIBBLU_DTS_DEBUG_PATCHER_WRITE_NH("No Extension Substream (0x0);\n");
 
     else {
-      const char * sep = "";
+      const char *sep = "";
 
       for (unsigned nSS = 0; nSS < nExtSSIndex + 1u; nSS++) {
         if ((param->nuActiveExSSMask[nAuPr] >> nSS) & 0x1) {
@@ -236,7 +236,7 @@ static int _buildDcaExtSSHeaderSF(
   } while(0)
 
 static size_t _computeDcaExtSSAssetDescSFSize(
-  const DcaAudioAssetDescSFParameters * param
+  const DcaAudioAssetDescSFParameters *param
 )
 {
 
@@ -297,8 +297,8 @@ static size_t _computeDcaExtSSAssetDescSFSize(
     /* [u3 nuNumSpkrRemapSets] */
     /* Already counted */
 
-    /* [v<nuNumBits4SAMask * nuNumSpkrRemapSets> nuStndrSpkrLayoutMask] */
-    size += nuNumBits4SAMask * param->nuNumSpkrRemapSets;
+    /* [v<nuNumBits4SAMask *nuNumSpkrRemapSets> nuStndrSpkrLayoutMask] */
+    size += nuNumBits4SAMask *param->nuNumSpkrRemapSets;
 
     for (unsigned ns = 0; ns < param->nuNumSpkrRemapSets; ns++) {
       /* [u5 nuNumDecCh4Remap[ns]] */
@@ -320,8 +320,8 @@ static size_t _computeDcaExtSSAssetDescSFSize(
 }
 
 static int _buildDcaExtSSAssetDescSF(
-  LibbluBitWriter * br,
-  const DcaAudioAssetDescSFParameters * param
+  LibbluBitWriter *br,
+  const DcaAudioAssetDescSFParameters *param
 )
 {
 
@@ -593,10 +593,10 @@ static int _buildDcaExtSSAssetDescSF(
  * \return size_t Computed length in bits.
  */
 static size_t _computeDcaExtSSAssetDescDMSize(
-  const DcaAudioAssetDescDMParameters * param,
-  const DcaAudioAssetDescSFParameters * ad_sf,
+  const DcaAudioAssetDescDMParameters *param,
+  const DcaAudioAssetDescSFParameters *ad_sf,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf
+  const DcaExtSSHeaderSFParameters *sf
 )
 {
 
@@ -632,11 +632,11 @@ static size_t _computeDcaExtSSAssetDescDMSize(
 }
 
 static int _buildDcaExtSSAssetDescDM(
-  LibbluBitWriter * br,
-  const DcaAudioAssetDescDMParameters * param,
-  const DcaAudioAssetDescSFParameters * ad_sf,
+  LibbluBitWriter *br,
+  const DcaAudioAssetDescDMParameters *param,
+  const DcaAudioAssetDescSFParameters *ad_sf,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf
+  const DcaExtSSHeaderSFParameters *sf
 )
 {
 
@@ -847,11 +847,11 @@ static int _buildDcaExtSSAssetDescDM(
  * \return size_t Computed length in bits.
  */
 static size_t _computeDcaExtSSAssetDescDNDSize(
-  const DcaAudioAssetDescDecNDParameters * param,
-  const DcaAudioAssetDescSFParameters * ad_sf,
-  const DcaAudioAssetDescDMParameters * ad_md,
+  const DcaAudioAssetDescDecNDParameters *param,
+  const DcaAudioAssetDescSFParameters *ad_sf,
+  const DcaAudioAssetDescDMParameters *ad_md,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf,
+  const DcaExtSSHeaderSFParameters *sf,
   unsigned nuBits4ExSSFsize
 )
 {
@@ -859,7 +859,7 @@ static size_t _computeDcaExtSSAssetDescDNDSize(
   /* [u2 nuCodingMode] */
   size_t size = 3; /* Include some other fields */
 
-  const DcaAudioAssetDescDecNDCodingComponents * cc = &param->coding_components;
+  const DcaAudioAssetDescDecNDCodingComponents *cc = &param->coding_components;
 
   switch (param->nuCodingMode) {
   case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
@@ -1044,12 +1044,12 @@ static size_t _computeDcaExtSSAssetDescDNDSize(
 }
 
 static int _buildDcaExtSSAssetDescDND(
-  LibbluBitWriter * br,
-  const DcaAudioAssetDescDecNDParameters * param,
-  const DcaAudioAssetDescSFParameters * ad_sf,
-  const DcaAudioAssetDescDMParameters * ad_dm,
+  LibbluBitWriter *br,
+  const DcaAudioAssetDescDecNDParameters *param,
+  const DcaAudioAssetDescSFParameters *ad_sf,
+  const DcaAudioAssetDescDMParameters *ad_dm,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf,
+  const DcaExtSSHeaderSFParameters *sf,
   size_t nuBits4ExSSFsize
 )
 {
@@ -1065,7 +1065,7 @@ static int _buildDcaExtSSAssetDescDND(
     "      => %s.\n", dtsAudioAssetCodingModeStr(param->nuCodingMode)
   );
 
-  const DcaAudioAssetDescDecNDCodingComponents * cc = &param->coding_components;
+  const DcaAudioAssetDescDecNDCodingComponents *cc = &param->coding_components;
 
   switch (param->nuCodingMode) {
   case DCA_EXT_SS_CODING_MODE_DTS_HD_COMPONENTS:
@@ -1081,7 +1081,7 @@ static int _buildDcaExtSSAssetDescDND(
     );
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
-      const DcaAudioAssetExSSCoreParameters * p = &cc->ExSSCore;
+      const DcaAudioAssetExSSCoreParameters *p = &cc->ExSSCore;
 
       LIBBLU_DTS_DEBUG_PATCHER_WRITE(
         "       => DCA Core Component within current Extension Substream "
@@ -1123,7 +1123,7 @@ static int _buildDcaExtSSAssetDescDND(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
-      const DcaAudioAssetExSSXBRParameters * p = &cc->ExSSXBR;
+      const DcaAudioAssetExSSXBRParameters *p = &cc->ExSSXBR;
 
       LIBBLU_DTS_DEBUG_PATCHER_WRITE(
         "       => DCA XBR Extended Bit Rate within current "
@@ -1144,7 +1144,7 @@ static int _buildDcaExtSSAssetDescDND(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
-      const DcaAudioAssetExSSXXCHParameters * p = &cc->ExSSXXCH;
+      const DcaAudioAssetExSSXXCHParameters *p = &cc->ExSSXXCH;
 
       LIBBLU_DTS_DEBUG_PATCHER_WRITE(
         "       => DCA XXCH 5.1+ Channels Extension within current "
@@ -1164,7 +1164,7 @@ static int _buildDcaExtSSAssetDescDND(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
-      const DcaAudioAssetExSSX96Parameters * p = &cc->ExSSX96;
+      const DcaAudioAssetExSSX96Parameters *p = &cc->ExSSX96;
 
       LIBBLU_DTS_DEBUG_PATCHER_WRITE(
         "       => DCA X96 96kHz Sampling Frequency Extension within current "
@@ -1184,7 +1184,7 @@ static int _buildDcaExtSSAssetDescDND(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
-      const DcaAudioAssetExSSLBRParameters * p = &cc->ExSSLBR;
+      const DcaAudioAssetExSSLBRParameters *p = &cc->ExSSLBR;
 
       LIBBLU_DTS_DEBUG_PATCHER_WRITE(
         "       => DCA LBR Low Bitrate Component within current Extension "
@@ -1226,7 +1226,7 @@ static int _buildDcaExtSSAssetDescDND(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
-      const DcaAudioAssetExSSXllParameters * p = &cc->ExSSXLL;
+      const DcaAudioAssetExSSXllParameters *p = &cc->ExSSXLL;
 
       LIBBLU_DTS_DEBUG_PATCHER_WRITE(
         "       => DCA XLL Lossless Extension within current Extension "
@@ -1423,7 +1423,7 @@ static int _buildDcaExtSSAssetDescDND(
 
   if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
     /* Extension Substream contains DTS-XLL component. */
-    const DcaAudioAssetExSSXllParameters * p = &cc->ExSSXLL;
+    const DcaAudioAssetExSSXllParameters *p = &cc->ExSSXLL;
 
     /* [u3 nuDTSHDStreamID] */
     WRITE_BITS(br, p->nuDTSHDStreamID, 3, return -1);
@@ -1500,9 +1500,9 @@ static int _buildDcaExtSSAssetDescDND(
  * \return size_t Computed length in bytes.
  */
 static size_t _computeDcaExtSSAudioAssetDescriptorSize(
-  const DcaAudioAssetDescParameters * param,
+  const DcaAudioAssetDescParameters *param,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf,
+  const DcaExtSSHeaderSFParameters *sf,
   bool bHeaderSizeType
 )
 {
@@ -1560,10 +1560,10 @@ static size_t _computeDcaExtSSAudioAssetDescriptorSize(
  * value is returned.
  */
 static int _buildDcaExtSSAudioAssetDescriptor(
-  LibbluBitWriter * br,
-  const DcaAudioAssetDescParameters * param,
+  LibbluBitWriter *br,
+  const DcaAudioAssetDescParameters *param,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf,
+  const DcaExtSSHeaderSFParameters *sf,
   unsigned nuBits4ExSSFsize,
   uint16_t nuAssetDescriptFsize
 )
@@ -1678,7 +1678,7 @@ static int _buildDcaExtSSAudioAssetDescriptor(
  * \return uint16_t Computed length in bytes.
  */
 static uint16_t _computeDcaExtSSHeaderSize(
-  const DcaExtSSHeaderParameters * param,
+  const DcaExtSSHeaderParameters *param,
   uint16_t nuAssetDescriptFsizeArr[static DCA_EXT_SS_MAX_NB_AUDIO_ASSETS],
   bool bHeaderSizeType
 )
@@ -1695,7 +1695,7 @@ static uint16_t _computeDcaExtSSHeaderSize(
   unsigned nuBits4ExSSFsize = (bHeaderSizeType) ? 20 : 16;
   uint16_t size = 60u + nuBits4Header + nuBits4ExSSFsize;
 
-  const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
+  const DcaExtSSHeaderSFParameters *sf = &param->static_fields;
 
   if (param->bStaticFieldsPresent) {
     size += _computeDcaExtSSHeaderSFSize(
@@ -1704,7 +1704,7 @@ static uint16_t _computeDcaExtSSHeaderSize(
     );
   }
 
-  /* [u<nuBits4ExSSFsize * nuNumAssets> nuAssetFsize[nAst]] */
+  /* [u<nuBits4ExSSFsize *nuNumAssets> nuAssetFsize[nAst]] */
   /* Included further */
 
   for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
@@ -1744,7 +1744,7 @@ static uint16_t _computeDcaExtSSHeaderSize(
 }
 
 static uint16_t _computeCRC16ExtSSHeader(
-  LibbluBitWriter * br
+  LibbluBitWriter *br
 )
 {
   CrcContext crc_ctx;
@@ -1753,7 +1753,7 @@ static uint16_t _computeCRC16ExtSSHeader(
 
   initCrcContext(&crc_ctx, DCA_EXT_SS_CRC_PARAM, 0xFFFF);
 
-  const uint8_t * buf = &(accessLibbluBitWriter(br)[5]);
+  const uint8_t *buf = &(accessLibbluBitWriter(br)[5]);
   size_t size = (offsetLibbluBitWriter(br) >> 3) - 5;
   applyCrcContext(&crc_ctx, buf, size);
 
@@ -1761,14 +1761,14 @@ static uint16_t _computeCRC16ExtSSHeader(
 }
 
 static bool _checkHeaderSizeTypeAssetDescriptors(
-  const DcaExtSSHeaderParameters * param
+  const DcaExtSSHeaderParameters *param
 )
 {
-  const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
+  const DcaExtSSHeaderSFParameters *sf = &param->static_fields;
 
   uint32_t size_mask = 0;
   for (unsigned i = 0; i < sf->nuNumAssets; i++) {
-    const DcaAudioAssetDescDecNDParameters * dnd =
+    const DcaAudioAssetDescDecNDParameters *dnd =
       &param->audioAssets[i].dec_nav_data
     ;
 
@@ -1785,14 +1785,14 @@ static bool _checkHeaderSizeTypeAssetDescriptors(
 }
 
 static void _computeFrameSizeFields(
-  const DcaExtSSHeaderParameters * param,
-  bool * bHeaderSizeType_ret,
+  const DcaExtSSHeaderParameters *param,
+  bool *bHeaderSizeType_ret,
   uint16_t nuAssetDescriptFsizeArr[static DCA_EXT_SS_MAX_NB_AUDIO_ASSETS],
-  uint16_t * nuExtSSHeaderSize_ret,
-  uint32_t * nuExtSSFsize_ret
+  uint16_t *nuExtSSHeaderSize_ret,
+  uint32_t *nuExtSSFsize_ret
 )
 {
-  const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
+  const DcaExtSSHeaderSFParameters *sf = &param->static_fields;
 
   /* First check: Do assets size fields do not overflow */
   bool bHeaderSizeType = _checkHeaderSizeTypeAssetDescriptors(
@@ -1853,10 +1853,10 @@ static void _computeFrameSizeFields(
 uint32_t appendDcaExtSSHeader(
   EsmsHandlerPtr script,
   uint32_t insert_off,
-  const DcaExtSSHeaderParameters * param
+  const DcaExtSSHeaderParameters *param
 )
 {
-  const DcaExtSSHeaderSFParameters * sf = &param->static_fields;
+  const DcaExtSSHeaderSFParameters *sf = &param->static_fields;
   LibbluBitWriter br = {0};
 
   uint16_t nuAssetDescriptFsizeArr[DCA_EXT_SS_MAX_NB_AUDIO_ASSETS] = {0};
@@ -2069,10 +2069,10 @@ uint32_t appendDcaExtSSHeader(
     nCRC16ExtSSHeader
   );
 
-  assert(8u * nuExtSSHeaderSize == offsetLibbluBitWriter(&br));
+  assert(8u *nuExtSSHeaderSize == offsetLibbluBitWriter(&br));
 
   /* Append generated bitstream to the script */
-  const uint8_t * arr = accessLibbluBitWriter(&br);
+  const uint8_t *arr = accessLibbluBitWriter(&br);
   uint16_t arr_size = offsetLibbluBitWriter(&br) >> 3;
 
   if (appendAddDataCommandEsmsHandler(script, insert_off, INSERTION_MODE_OVERWRITE, arr, arr_size) < 0)
@@ -2089,7 +2089,7 @@ free_return:
 uint32_t appendDcaExtSSAsset(
   EsmsHandlerPtr script,
   uint32_t insert_off,
-  const DcaXllFrameSFPosition * param,
+  const DcaXllFrameSFPosition *param,
   unsigned scriptSourceFileId
 )
 {

@@ -24,13 +24,13 @@
  * \return false Filepath does not end with #IGS_COMPILER_FILE_EXT string.
  */
 static bool isIgsCompilerFile_ext(
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   size_t fp_size = lbc_strlen(filepath);
   if (fp_size < IGS_COMPILER_FILE_EXT_SIZE)
     return false;
-  const lbc * fp_ext = &filepath[fp_size - IGS_COMPILER_FILE_EXT_SIZE];
+  const lbc *fp_ext = &filepath[fp_size - IGS_COMPILER_FILE_EXT_SIZE];
 
   return lbc_equal(fp_ext, IGS_COMPILER_FILE_EXT);
 }
@@ -43,11 +43,11 @@ static bool isIgsCompilerFile_ext(
  * \return false The file does not start with #IGS_COMPILER_FILE_MAGIC magic.
  */
 static bool isIgsCompilerFile_magic(
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   bool ret = false;
-  FILE * fd = lbc_fopen(filepath, "rb");
+  FILE *fd = lbc_fopen(filepath, "rb");
   if (NULL == fd)
     goto free_return;
 
@@ -72,7 +72,7 @@ free_return:
 }
 
 bool isIgsCompilerFile(
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   assert(NULL != filepath);
@@ -82,13 +82,13 @@ bool isIgsCompilerFile(
 }
 
 int analyzeIgs(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   HdmvTimecodes timecodes = {0};
 
   bool compiler_mode = isIgsCompilerFile(settings->esFilepath);
-  lbc * es_fp_dup = NULL;
+  lbc *es_fp_dup = NULL;
 
   if (compiler_mode) {
 #if defined(DISABLE_IGS_COMPILER)
@@ -118,7 +118,7 @@ int analyzeIgs(
       LIBBLU_HDMV_IGS_ERROR_RETURN("Memory allocation error.\n");
   }
 
-  HdmvContext * ctx = createHdmvContext(settings, es_fp_dup, HDMV_STREAM_TYPE_IGS, compiler_mode);
+  HdmvContext *ctx = createHdmvContext(settings, es_fp_dup, HDMV_STREAM_TYPE_IGS, compiler_mode);
   if (NULL == ctx)
     goto free_return;
 

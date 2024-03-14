@@ -33,7 +33,7 @@ bool isValidHdmvSegmentType(
 int checkHdmvSegmentType(
   uint8_t segment_type_value,
   HdmvStreamType stream_type,
-  HdmvSegmentType * segment_type
+  HdmvSegmentType *segment_type
 )
 {
   static const struct {
@@ -87,14 +87,14 @@ int32_t computeObjectDataDecodeDuration(
    * Equation performed is (for Interactive Graphics):
    *
    *   OD_DECODE_DURATION(OD) =
-   *     ceil(90000 * 8 * (OD.object_width * OD.object_height) / 64000000)
-   * <=> ceil(9 * (OD.object_width * OD.object_height) / 800) // Compacted version
+   *     ceil(90000 * 8 * (OD.object_width *OD.object_height) / 64000000)
+   * <=> ceil(9 * (OD.object_width *OD.object_height) / 800) // Compacted version
    *
    * or (for Presentation Graphics):
    *
    *   OD_DECODE_DURATION(OD) =
-   *     ceil(90000 * 8 * (OD.object_width * OD.object_height) / 128000000)
-   * <=> ceil(9 * (OD.object_width * OD.object_height) / 1600) // Compacted version
+   *     ceil(90000 * 8 * (OD.object_width *OD.object_height) / 128000000)
+   * <=> ceil(9 * (OD.object_width *OD.object_height) / 1600) // Compacted version
    *
    * where:
    *  OD            : Object Definition.
@@ -112,7 +112,7 @@ int32_t computeObjectDataDecodeDuration(
   };
 
   return DIV_ROUND_UP(
-    9 * (object_width * object_height),
+    9 * (object_width *object_height),
     pixel_decoding_rate_divider[stream_type]
   );
 }
@@ -152,7 +152,7 @@ int32_t computeObjectDataDecodeDelay(
     object_height
   );
 
-  return (int32_t) ceilf(decode_delay_factor * od_decode_duration);
+  return (int32_t) ceilf(decode_delay_factor *od_decode_duration);
 }
 
 void cleanHdmvPageParameters(
@@ -165,7 +165,7 @@ void cleanHdmvPageParameters(
 }
 
 int allocateBogsHdmvPageParameters(
-  HdmvPageParameters * page
+  HdmvPageParameters *page
 )
 {
   if (!page->number_of_BOGs)
@@ -180,7 +180,7 @@ int allocateBogsHdmvPageParameters(
 }
 
 int copyHdmvPageParameters(
-  HdmvPageParameters * dst,
+  HdmvPageParameters *dst,
   const HdmvPageParameters src
 )
 {

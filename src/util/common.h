@@ -27,14 +27,14 @@
 #if defined(ARCH_WIN32)
 typedef unsigned __LONG32 DWORD;
 
-lbc * getLastWindowsErrorString(
-  DWORD * err
+lbc *getLastWindowsErrorString(
+  DWORD *err
 );
 
 #endif
 
 uint32_t lbc_fnv1aStrHash(
-  const lbc * str
+  const lbc *str
 );
 
 /** \~english
@@ -208,7 +208,7 @@ static inline unsigned lb_lcm_unsigned(
   unsigned y
 )
 {
-  return (x * y) / lb_gcd_unsigned(x, y);
+  return (x *y) / lb_gcd_unsigned(x, y);
 }
 
 /** \~english
@@ -319,7 +319,7 @@ static inline int lb_mul_overflow_size_t(
   size_t right
 )
 {
-  size_t res = left * right;
+  size_t res = left *right;
 
   return left != 0 && res / left != right;
 }
@@ -349,8 +349,8 @@ static inline int lb_u32add_overflow(
 }
 
 static inline bool lb_data_equal(
-  const void * dat1,
-  const void * dat2,
+  const void *dat1,
+  const void *dat2,
   size_t size
 )
 {
@@ -359,7 +359,7 @@ static inline bool lb_data_equal(
 
 static inline void lb_str_cat(
   char ** dst,
-  const char * src
+  const char *src
 )
 {
   while (*src != '\0')
@@ -369,7 +369,7 @@ static inline void lb_str_cat(
 
 static inline void lb_str_cat_comma(
   char ** dst,
-  const char * src,
+  const char *src,
   bool append_prefix_comma
 )
 {
@@ -381,8 +381,8 @@ static inline void lb_str_cat_comma(
 }
 
 static inline bool lb_str_equal(
-  const char * str1,
-  const char * str2
+  const char *str1,
+  const char *str2
 )
 {
   return
@@ -392,8 +392,8 @@ static inline bool lb_str_equal(
 }
 
 static inline bool lb_strn_equal(
-  const char * str1,
-  const char * str2,
+  const char *str1,
+  const char *str2,
   size_t size
 )
 {
@@ -403,12 +403,12 @@ static inline bool lb_strn_equal(
   ;
 }
 
-static inline char * lb_strn_dup(
-  const char * string,
+static inline char *lb_strn_dup(
+  const char *string,
   size_t size
 )
 {
-  char * dup;
+  char *dup;
 
   if (NULL == string)
     return NULL;
@@ -420,11 +420,11 @@ static inline char * lb_strn_dup(
   return dup;
 }
 
-static inline char * lb_str_dup(
-  const char * string
+static inline char *lb_str_dup(
+  const char *string
 )
 {
-  char * dup;
+  char *dup;
   size_t size;
 
   if (NULL == string)
@@ -438,8 +438,8 @@ static inline char * lb_str_dup(
   return dup;
 }
 
-static inline char * lb_str_dup_strip(
-  const char * string
+static inline char *lb_str_dup_strip(
+  const char *string
 )
 {
   size_t start, end;
@@ -456,11 +456,11 @@ static inline char * lb_str_dup_strip(
   return lb_strn_dup(string + start, end - start + 1);
 }
 
-static inline char * lb_str_dup_to_upper(
-  const char * string
+static inline char *lb_str_dup_to_upper(
+  const char *string
 )
 {
-  char * copy, * cp;
+  char *copy, * cp;
 
   if (NULL == (copy = lb_str_dup(string)))
     return NULL;
@@ -472,7 +472,7 @@ static inline char * lb_str_dup_to_upper(
 }
 
 static inline uint32_t lb_compute_crc32(
-  uint8_t * data,
+  uint8_t *data,
   size_t offset,
   size_t length
 )
@@ -503,29 +503,29 @@ static inline uint32_t lb_compute_crc32(
  * relative paths using script filepath as anchor.
  */
 int lb_get_relative_fp_from_anchor(
-  lbc * buf,
+  lbc *buf,
   size_t size,
-  const lbc * filepath,
-  const lbc * anchor
+  const lbc *filepath,
+  const lbc *anchor
 );
 
 int lb_gen_anchor_absolute_fp(
   lbc ** dst,
-  const lbc * base,
-  const lbc * path
+  const lbc *base,
+  const lbc *path
 );
 
 int lb_gen_absolute_fp(
   lbc ** dst,
-  const lbc * path
+  const lbc *path
 );
 
 static inline int lb_access_fp(
-  const char * filepath,
-  const char * mode
+  const char *filepath,
+  const char *mode
 )
 {
-  FILE * fd;
+  FILE *fd;
 
   if (NULL == (fd = fopen(filepath, mode)))
     return -1;
@@ -535,11 +535,11 @@ static inline int lb_access_fp(
 #if defined(ARCH_WIN32)
 
 static inline int lb_waccess_fp(
-  const wchar_t * filepath,
-  const wchar_t * mode
+  const wchar_t *filepath,
+  const wchar_t *mode
 )
 {
-  FILE * fd;
+  FILE *fd;
 
   if (NULL == (fd = _wfopen(filepath, mode)))
     return -1;
@@ -550,7 +550,7 @@ static inline int lb_waccess_fp(
 
 #if 0
 static inline void lb_print_data(
-  const uint8_t * buf,
+  const uint8_t *buf,
   size_t size
 )
 {
@@ -563,11 +563,11 @@ static inline void lb_print_data(
 }
 
 static inline void lb_send_data(
-  const uint8_t * buf,
+  const uint8_t *buf,
   size_t size
 )
 {
-  FILE * out = fopen("test.dat", "wb");
+  FILE *out = fopen("test.dat", "wb");
   fwrite(buf, sizeof(uint8_t), size, out);
   fclose(out);
 }

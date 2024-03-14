@@ -41,7 +41,7 @@ void destroyXmlContext(
  */
 int loadXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * filePath
+  const lbc *filePath
 );
 
 /** \~english
@@ -61,7 +61,7 @@ unsigned lastParsedNodeLineXmlCtx(
 
 /* ### XML Node : ########################################################## */
 
-const lbc * getNameXmlNode(
+const lbc *getNameXmlNode(
   const XmlNodePtr node
 );
 
@@ -115,7 +115,7 @@ XmlNodePtr getNodeXmlXPathObject(
  */
 XmlXPathObjectPtr getPathObjectXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path
+  const lbc *path
 );
 
 /** \~english
@@ -129,7 +129,7 @@ XmlXPathObjectPtr getPathObjectXmlCtx(
  */
 XmlXPathObjectPtr getPathObjectFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -144,13 +144,13 @@ XmlXPathObjectPtr getPathObjectFromExprVaXmlCtx(
  */
 XmlXPathObjectPtr getPathObjectFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
 bool existsPathObjectFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -201,9 +201,9 @@ int restoreLastRootXmlCtx(
  *
  * Returned pointer must be freed after use.
  */
-lbc * getStringXmlCtx(
+lbc *getStringXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path,
+  const lbc *path,
   int idx
 );
 
@@ -218,9 +218,9 @@ lbc * getStringXmlCtx(
  *
  * Returned pointer must be freed after use.
  */
-lbc * getStringFromExprVaXmlCtx(
+lbc *getStringFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -235,9 +235,9 @@ lbc * getStringFromExprVaXmlCtx(
  *
  * Returned pointer must be freed after use.
  */
-lbc * getStringFromExprXmlCtx(
+lbc *getStringFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -262,7 +262,7 @@ void freelbcPtr(
  */
 int getNbObjectsXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path
+  const lbc *path
 );
 
 /** \~english
@@ -276,7 +276,7 @@ int getNbObjectsXmlCtx(
  */
 int getNbObjectsFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -291,7 +291,7 @@ int getNbObjectsFromExprVaXmlCtx(
  */
 int getNbObjectsFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -309,8 +309,8 @@ int getNbObjectsFromExprXmlCtx(
 int getIfExistsStringXmlCtx(
   XmlCtxPtr ctx,
   lbc ** string,
-  const lbc * def,
-  const lbc * path
+  const lbc *def,
+  const lbc *path
 );
 
 /** \~english
@@ -329,8 +329,8 @@ int getIfExistsStringXmlCtx(
 int getIfExistsStringFromExprVaXmlCtx(
   XmlCtxPtr ctx,
   lbc ** string,
-  const lbc * def,
-  const lbc * path_format,
+  const lbc *def,
+  const lbc *path_format,
   va_list args
 );
 
@@ -350,8 +350,8 @@ int getIfExistsStringFromExprVaXmlCtx(
 int getIfExistsStringFromExprXmlCtx(
   XmlCtxPtr ctx,
   lbc ** string,
-  const lbc * def,
-  const lbc * path_format,
+  const lbc *def,
+  const lbc *path_format,
   ...
 );
 
@@ -359,17 +359,17 @@ int getIfExistsStringFromExprXmlCtx(
 
 int getIfExistsInt64FromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  int64_t * dst,
+  int64_t *dst,
   int64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
 int getIfExistsInt64FromExprXmlCtx(
   XmlCtxPtr ctx,
-  int64_t * dst,
+  int64_t *dst,
   int64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -384,9 +384,9 @@ int getIfExistsInt64FromExprXmlCtx(
  */
 int getIfExistsLongFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  long * dst,
+  long *dst,
   long def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -403,9 +403,9 @@ int getIfExistsLongFromExprVaXmlCtx(
  */
 int getIfExistsLongFromExprXmlCtx(
   XmlCtxPtr ctx,
-  long * dst,
+  long *dst,
   long def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -422,9 +422,9 @@ int getIfExistsLongFromExprXmlCtx(
  */
 int getIfExistsIntegerFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  int * dst,
+  int *dst,
   int def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -441,9 +441,9 @@ int getIfExistsIntegerFromExprVaXmlCtx(
  */
 int getIfExistsIntegerFromExprXmlCtx(
   XmlCtxPtr ctx,
-  int * dst,
+  int *dst,
   int def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -462,9 +462,9 @@ int getIfExistsIntegerFromExprXmlCtx(
  */
 int getIfExistsBooleanFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  bool * dst,
+  bool *dst,
   bool def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -481,9 +481,9 @@ int getIfExistsBooleanFromExprVaXmlCtx(
  */
 int getIfExistsBooleanFromExprXmlCtx(
   XmlCtxPtr ctx,
-  bool * dst,
+  bool *dst,
   bool def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -491,33 +491,33 @@ int getIfExistsBooleanFromExprXmlCtx(
 
 int getIfExistsDoubleFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  double * dst,
+  double *dst,
   double def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
 int getIfExistsDoubleFromExprXmlCtx(
   XmlCtxPtr ctx,
-  double * dst,
+  double *dst,
   double def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
 int getIfExistsFloatFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  float * dst,
+  float *dst,
   float def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
 int getIfExistsFloatFromExprXmlCtx(
   XmlCtxPtr ctx,
-  float * dst,
+  float *dst,
   float def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -525,17 +525,17 @@ int getIfExistsFloatFromExprXmlCtx(
 
 int getIfExistsUint64FromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  uint64_t * dst,
+  uint64_t *dst,
   uint64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
 int getIfExistsUint64FromExprXmlCtx(
   XmlCtxPtr ctx,
-  uint64_t * dst,
+  uint64_t *dst,
   uint64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 
@@ -551,9 +551,9 @@ int getIfExistsUint64FromExprXmlCtx(
  */
 int getIfExistsUnsignedFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  unsigned * dst,
+  unsigned *dst,
   unsigned def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 );
 
@@ -570,9 +570,9 @@ int getIfExistsUnsignedFromExprVaXmlCtx(
  */
 int getIfExistsUnsignedFromExprXmlCtx(
   XmlCtxPtr ctx,
-  unsigned * dst,
+  unsigned *dst,
   unsigned def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 );
 

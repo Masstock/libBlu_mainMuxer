@@ -12,8 +12,8 @@
 
 int parseMlpMinorSyncHeader(
   BitstreamReaderPtr bs,
-  MlpSyncHeaderParameters * sh,
-  uint8_t * parity
+  MlpSyncHeaderParameters *sh,
+  uint8_t *parity
 )
 {
   uint8_t mins_header[4];
@@ -46,7 +46,7 @@ int parseMlpMinorSyncHeader(
 
 
 void _unpackMlpMajorSyncFormatInfo(
-  MlpMajorSyncFormatInfo * dst,
+  MlpMajorSyncFormatInfo *dst,
   uint32_t value
 )
 {
@@ -78,7 +78,7 @@ void _unpackMlpMajorSyncFormatInfo(
 
 static void _unpackMlpMajorSyncextSubstreamInfo(
   uint8_t value,
-  MlpSubstreamInfo * si
+  MlpSubstreamInfo *si
 )
 {
   /** [v8 substream_info]
@@ -107,8 +107,8 @@ static void _unpackMlpMajorSyncextSubstreamInfo(
  * \return int
  */
 static int _parseMlpExtraChannelMeaningData(
-  LibbluBitReader * br,
-  MlpExtraChannelMeaningData * ecmd,
+  LibbluBitReader *br,
+  MlpExtraChannelMeaningData *ecmd,
   MlpSubstreamInfo si,
   unsigned length
 )
@@ -118,7 +118,7 @@ static int _parseMlpExtraChannelMeaningData(
 
   if (si.b16ch_presentation_present) {
     /* 16ch_channel_meaning() */
-    Mlp16ChChannelMeaning * v16ch_cm = &ecmd->content.v16ch_channel_meaning;
+    Mlp16ChChannelMeaning *v16ch_cm = &ecmd->content.v16ch_channel_meaning;
 
     ecmd->type = MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING;
 
@@ -167,8 +167,8 @@ static int _parseMlpExtraChannelMeaningData(
 }
 
 static int _parseMlpChannelMeaning(
-  LibbluBitReader * br,
-  MlpChannelMeaning * param,
+  LibbluBitReader *br,
+  MlpChannelMeaning *param,
   MlpSubstreamInfo si
 )
 {
@@ -223,7 +223,7 @@ static int _parseMlpChannelMeaning(
   param->extra_channel_meaning_length = 0;
 
   if (param->extra_channel_meaning_present) {
-    MlpExtraChannelMeaningData * ecmd = &param->extra_channel_meaning_data;
+    MlpExtraChannelMeaningData *ecmd = &param->extra_channel_meaning_data;
 
     /* [u4 extra_channel_meaning_length] */
     MLP_READ_BITS(&param->extra_channel_meaning_length, br, 4, return -1);
@@ -242,7 +242,7 @@ static int _parseMlpChannelMeaning(
 }
 
 static void _unpackMlpMajorSyncFlags(
-  MlpMajorSyncFlags * dst,
+  MlpMajorSyncFlags *dst,
   uint16_t value
 )
 {
@@ -263,8 +263,8 @@ static void _unpackMlpMajorSyncFlags(
 }
 
 int parseMlpMajorSyncInfo(
-  LibbluBitReader * br,
-  MlpMajorSyncInfoParameters * msi
+  LibbluBitReader *br,
+  MlpMajorSyncInfoParameters *msi
 )
 {
   CrcContext crc_ctx;
@@ -360,8 +360,8 @@ int parseMlpMajorSyncInfo(
 
 #if 0
 static bool _constantMlpMajorSyncChannelMeaningCheck(
-  const MlpChannelMeaning * first,
-  const MlpChannelMeaning * second
+  const MlpChannelMeaning *first,
+  const MlpChannelMeaning *second
 )
 {
   return CHECK(
@@ -385,8 +385,8 @@ static bool _constantMlpMajorSyncChannelMeaningCheck(
 }
 
 static bool _constantMlpMajorSyncCheck(
-  const MlpMajorSyncInfoParameters * first,
-  const MlpMajorSyncInfoParameters * second
+  const MlpMajorSyncInfoParameters *first,
+  const MlpMajorSyncInfoParameters *second
 )
 {
   return CHECK(
@@ -413,7 +413,7 @@ static bool _constantMlpMajorSyncCheck(
  * \param size Field size in bits, must be between 0-32 and a multiple of 4.
  */
 static inline void _applyNibbleXorMlp(
-  uint8_t * parity,
+  uint8_t *parity,
   uint32_t value,
   size_t size
 )
@@ -428,10 +428,10 @@ static inline void _applyNibbleXorMlp(
 
 int parseMlpSyncHeader(
   BitstreamReaderPtr bs,
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   uint8_t ** buffer,
-  size_t * buffer_size,
-  MlpSyncHeaderParameters * sh
+  size_t *buffer_size,
+  MlpSyncHeaderParameters *sh
 )
 {
   uint8_t mins_header[4];
@@ -459,7 +459,7 @@ int parseMlpSyncHeader(
   /* Init bit reader */
   if (*buffer_size < access_unit_data_size) {
     /* Reallocate backing buffer */
-    uint8_t * new_buf = realloc(*buffer, access_unit_data_size);
+    uint8_t *new_buf = realloc(*buffer, access_unit_data_size);
     if (NULL == new_buf)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -495,13 +495,13 @@ int parseMlpSyncHeader(
  * \return unsigned Size in 16-bits words.
  */
 static unsigned _getSizeMlpSyncHeader(
-  const MlpSyncHeaderParameters * param
+  const MlpSyncHeaderParameters *param
 )
 {
   unsigned size = 2; // Minor sync
 
   if (param->major_sync) {
-    const MlpChannelMeaning * chm = &param->major_sync_info.channel_meaning;
+    const MlpChannelMeaning *chm = &param->major_sync_info.channel_meaning;
     size += 10 + 3; // Major sync info (plus channel_meaning())
     if (chm->extra_channel_meaning_present)
       size += 1 + chm->extra_channel_meaning_length;
@@ -511,12 +511,12 @@ static unsigned _getSizeMlpSyncHeader(
 }
 
 static unsigned _computeLengthMlpSync(
-  const MlpSyncHeaderParameters * mlp_sync_header,
-  const MlpSubstreamDirectoryEntry * directory
+  const MlpSyncHeaderParameters *mlp_sync_header,
+  const MlpSubstreamDirectoryEntry *directory
 )
 {
   /* Compute access_unit headers size (in 16-bits words unit) */
-  const MlpMajorSyncInfoParameters * msi = &mlp_sync_header->major_sync_info;
+  const MlpMajorSyncInfoParameters *msi = &mlp_sync_header->major_sync_info;
 
   unsigned au_hdr_length = _getSizeMlpSyncHeader(mlp_sync_header);
   for (unsigned i = 0; i < msi->substreams; i++)
@@ -527,16 +527,16 @@ static unsigned _computeLengthMlpSync(
 
 
 int decodeMlpSubstreamDirectory(
-  LibbluBitReader * br,
-  MlpParsingContext * ctx,
-  uint8_t * parity
+  LibbluBitReader *br,
+  MlpParsingContext *ctx,
+  uint8_t *parity
 )
 {
-  const MlpMajorSyncInfoParameters * msi = &ctx->mlp_sync_header.major_sync_info;
+  const MlpMajorSyncInfoParameters *msi = &ctx->mlp_sync_header.major_sync_info;
 
   uint16_t parity_word = 0x0000;
   for (unsigned i = 0; i < msi->substreams; i++) {
-    MlpSubstreamDirectoryEntry * entry = &ctx->substream_directory[i];
+    MlpSubstreamDirectoryEntry *entry = &ctx->substream_directory[i];
 
     uint16_t word;
     MLP_READ_BITS(&word, br, 16, return -1);
@@ -603,12 +603,12 @@ int decodeMlpSubstreamDirectory(
 }
 
 static uint8_t _computeRestartHeaderChecksum(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   unsigned start_offset,
   unsigned end_offset
 )
 {
-  const uint8_t * buf = br->buf;
+  const uint8_t *buf = br->buf;
   CrcContext crc_ctx;
 
   /**
@@ -733,13 +733,13 @@ static const MlpHuffmanLUT mlpHuffmanTables[3] = {
 };
 
 static int _decodeVlcMlpSubstreamBitsReader(
-  LibbluBitReader * br,
-  const MlpHuffmanLUT * huffman_book_lut,
-  int32_t * value
+  LibbluBitReader *br,
+  const MlpHuffmanLUT *huffman_book_lut,
+  int32_t *value
 )
 {
   /* https://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art007 */
-  const MlpHuffmanLUTEntry * entries = huffman_book_lut->entries;
+  const MlpHuffmanLUTEntry *entries = huffman_book_lut->entries;
 
   /* Compute Huffman VLC maximum size */
   unsigned max_code_size = remainingBitsLibbluBitReader(br);
@@ -796,7 +796,7 @@ static const char * _matrixChanStr(
   uint8_t matrix_chan_idx
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "L",
     "R",
     "C",
@@ -814,8 +814,8 @@ static const char * _matrixChanStr(
 }
 
 static int _decodeMlpRestartHeader(
-  LibbluBitReader * br,
-  MlpRestartHeader * restart_hdr,
+  LibbluBitReader *br,
+  MlpRestartHeader *restart_hdr,
   unsigned ss_idx
 )
 {
@@ -1100,7 +1100,7 @@ static int _decodeMlpRestartHeader(
 }
 
 static void _defaultMlpSubstreamParameters(
-  MlpSubstreamParameters * ss_param
+  MlpSubstreamParameters *ss_param
 )
 {
   ss_param->block_header_content = MLP_BHC_DEFAULT; // 0xFF, full header.
@@ -1111,7 +1111,7 @@ static void _defaultMlpSubstreamParameters(
   unsigned min_chan = ss_param->restart_header.min_chan;
   unsigned max_chan = ss_param->restart_header.max_chan;
   for (unsigned ch = min_chan; ch <= max_chan; ch++) {
-    MlpChannelParameters * cp = &ss_param->channels_parameters[ch];
+    MlpChannelParameters *cp = &ss_param->channels_parameters[ch];
     cp->fir_filter.filter_order = 0;
     cp->fir_filter.shift = 0;
     cp->iir_filter.filter_order = 0;
@@ -1122,9 +1122,9 @@ static void _defaultMlpSubstreamParameters(
 }
 
 static int _decodeMlpMatrixParameters(
-  LibbluBitReader * br,
-  MlpMatrixParameters * matrix_param,
-  const MlpRestartHeader * restart_hdr
+  LibbluBitReader *br,
+  MlpMatrixParameters *matrix_param,
+  const MlpRestartHeader *restart_hdr
 )
 {
   bool noise_type = restart_hdr->noise_type;
@@ -1145,7 +1145,7 @@ static int _decodeMlpMatrixParameters(
   );
 
   for (unsigned mat = 0; mat < num_primitive_matrices; mat++) {
-    MlpMatrix * mat_param = &matrix_param->matrices[mat];
+    MlpMatrix *mat_param = &matrix_param->matrices[mat];
 
     LIBBLU_MLP_DEBUG_PARSING_SS(
       "          Primitive matrix configuration %u:\n",
@@ -1243,7 +1243,7 @@ typedef enum {
   MLP_IIR
 } MlpFilterType;
 
-static const char * MlpFilterTypeStr(
+static const char *MlpFilterTypeStr(
   MlpFilterType filter_type
 )
 {
@@ -1260,8 +1260,8 @@ static unsigned _filterMaxOrder(
 }
 
 static int _decodeMlpFilterParameters(
-  LibbluBitReader * br,
-  MlpFilter * filter,
+  LibbluBitReader *br,
+  MlpFilter *filter,
   MlpFilterType filter_type
 )
 {
@@ -1425,13 +1425,13 @@ static int _decodeMlpFilterParameters(
 }
 
 static int _decodeMlpChannelParameters(
-  LibbluBitReader * br,
-  MlpSubstreamParameters * ss_param,
+  LibbluBitReader *br,
+  MlpSubstreamParameters *ss_param,
   unsigned ch_idx,
   unsigned ss_idx
 )
 {
-  MlpChannelParameters * ch_param = &ss_param->channels_parameters[ch_idx];
+  MlpChannelParameters *ch_param = &ss_param->channels_parameters[ch_idx];
 
   if (ss_param->block_header_content & MLP_BHC_FIR_FILTER_PARAMETERS) {
     LIBBLU_MLP_DEBUG_PARSING_SS(
@@ -1578,8 +1578,8 @@ static int _decodeMlpChannelParameters(
 }
 
 static int _decodeMlpBlockHeader(
-  LibbluBitReader * br,
-  MlpSubstreamParameters * ss_param,
+  LibbluBitReader *br,
+  MlpSubstreamParameters *ss_param,
   unsigned ss_idx
 )
 {
@@ -1785,17 +1785,17 @@ static int _decodeMlpBlockHeader(
 }
 
 static int _decodeMlpBlockData(
-  LibbluBitReader * br,
-  MlpSubstreamParameters * ss_param,
+  LibbluBitReader *br,
+  MlpSubstreamParameters *ss_param,
   unsigned ss_idx
 )
 {
   unsigned min_chan   = ss_param->restart_header.min_chan;
   unsigned max_chan   = ss_param->restart_header.max_chan;
   unsigned block_size = ss_param->block_size;
-  const uint8_t * quant_step_size = ss_param->quant_step_size;
+  const uint8_t *quant_step_size = ss_param->quant_step_size;
 
-  const MlpMatrixParameters * matrix_param = &ss_param->matrix_parameters;
+  const MlpMatrixParameters *matrix_param = &ss_param->matrix_parameters;
   unsigned num_pmat = matrix_param->num_primitive_matrices;
 
   LIBBLU_MLP_DEBUG_PARSING_SS("      Block data, block_data()\n");
@@ -1825,7 +1825,7 @@ static int _decodeMlpBlockData(
     }
 
     for (unsigned ch = min_chan; ch <= max_chan; ch++) {
-      const MlpChannelParameters * ch_param = &ss_param->channels_parameters[ch];
+      const MlpChannelParameters *ch_param = &ss_param->channels_parameters[ch];
       unsigned huffman_codebook = ch_param->huffman_codebook;
 
       uint8_t num_huffman_lsbs = ch_param->num_huffman_lsbs;
@@ -1842,7 +1842,7 @@ static int _decodeMlpBlockData(
 
       if (0 < huffman_codebook) {
         /* Huffman VLC */
-        const MlpHuffmanLUT * huffman_book_lut = &mlpHuffmanTables[huffman_codebook-1];
+        const MlpHuffmanLUT *huffman_book_lut = &mlpHuffmanTables[huffman_codebook-1];
 
         /* [vn huffman_code] */
         int32_t value;
@@ -1877,8 +1877,8 @@ static int _decodeMlpBlockData(
 }
 
 static int _decodeMlpBlock(
-  LibbluBitReader * br,
-  MlpSubstreamParameters * ss_param,
+  LibbluBitReader *br,
+  MlpSubstreamParameters *ss_param,
   unsigned ss_idx,
   unsigned blk_idx
 )
@@ -1912,7 +1912,7 @@ static int _decodeMlpBlock(
     );
 
     if (restart_header_exists) {
-      MlpRestartHeader * rh = &ss_param->restart_header;
+      MlpRestartHeader *rh = &ss_param->restart_header;
 
       /* [vn restart_header()] */
       if (_decodeMlpRestartHeader(br, rh, ss_idx) < 0)
@@ -1975,7 +1975,7 @@ static int _decodeMlpBlock(
 
 
 static uint8_t _computeSubstreamCrc(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   size_t ss_offset,
   size_t ss_size
 )
@@ -1983,7 +1983,7 @@ static uint8_t _computeSubstreamCrc(
   CrcContext crc_ctx;
   initCrcContext(&crc_ctx, MLP_SS_CRC_PARAMS, 0xA2);
 
-  const uint8_t * buf = &accessLibbluBitReader(br)[ss_offset >> 3];
+  const uint8_t *buf = &accessLibbluBitReader(br)[ss_offset >> 3];
   applyCrcContext(&crc_ctx, buf, ss_size >> 3);
 
   return completeCrcContext(&crc_ctx);
@@ -1991,7 +1991,7 @@ static uint8_t _computeSubstreamCrc(
 
 
 static int _decodeMlpSSParityCrc(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   size_t ss_start_offset,
   size_t seg_data_size,
   unsigned ss_idx
@@ -2046,9 +2046,9 @@ static int _decodeMlpSSParityCrc(
 
 
 static int _decodeMlpSubstreamSegment(
-  LibbluBitReader * br,
-  MlpSubstreamParameters * ss,
-  const MlpSubstreamDirectoryEntry * entry,
+  LibbluBitReader *br,
+  MlpSubstreamParameters *ss,
+  const MlpSubstreamDirectoryEntry *entry,
   unsigned ss_idx
 )
 {
@@ -2194,7 +2194,7 @@ static int _decodeMlpSubstreamSegment(
 
 
 static uint32_t _getSSCodedChMask(
-  MlpSubstreamParameters * ss
+  MlpSubstreamParameters *ss
 )
 {
   if (!ss->restart_header_seen)
@@ -2208,12 +2208,12 @@ static uint32_t _getSSCodedChMask(
 
 
 int decodeMlpSubstreamSegments(
-  LibbluBitReader * br,
-  MlpParsingContext * mlp
+  LibbluBitReader *br,
+  MlpParsingContext *mlp
 )
 {
-  const MlpSyncHeaderParameters * sh = &mlp->mlp_sync_header;
-  const MlpMajorSyncInfoParameters * msi = &sh->major_sync_info;
+  const MlpSyncHeaderParameters *sh = &mlp->mlp_sync_header;
+  const MlpMajorSyncInfoParameters *msi = &sh->major_sync_info;
 
   if (sh->major_sync) {
     for (unsigned i = 0; i < MLP_MAX_NB_SS; i++)
@@ -2224,8 +2224,8 @@ int decodeMlpSubstreamSegments(
   bool terminator_signaled = false;
 
   for (unsigned i = 0; i < msi->substreams; i++) {
-    const MlpSubstreamDirectoryEntry * entry = &mlp->substream_directory[i];
-    MlpSubstreamParameters * ss = &mlp->substreams[i];
+    const MlpSubstreamDirectoryEntry *entry = &mlp->substream_directory[i];
+    MlpSubstreamParameters *ss = &mlp->substreams[i];
 
     /* substream_segment(i) */
     if (_decodeMlpSubstreamSegment(br, ss, entry, i) < 0)
@@ -2263,7 +2263,7 @@ int decodeMlpSubstreamSegments(
 
 
 int decodeMlpExtraData(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   int64_t au_offset
 )
 {

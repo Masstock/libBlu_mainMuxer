@@ -73,8 +73,8 @@
 #define BDAV_STD_DTS_BS_HDHR 17814
 
 int createDtsBufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 );

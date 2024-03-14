@@ -9,17 +9,17 @@
 
 int parseAc3SyncInfo(
   BitstreamReaderPtr bs,
-  Ac3SyncInfoParameters * syncinfo
+  Ac3SyncInfoParameters *syncinfo
 );
 
 int parseAc3Addbsi(
-  LibbluBitReader * br,
-  Ac3Addbsi * addbsi
+  LibbluBitReader *br,
+  Ac3Addbsi *addbsi
 );
 
 int parseAc3BitStreamInfo(
-  LibbluBitReader * br,
-  Ac3BitStreamInfoParameters * bsi
+  LibbluBitReader *br,
+  Ac3BitStreamInfoParameters *bsi
 );
 
 #endif

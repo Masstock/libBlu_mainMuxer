@@ -56,11 +56,11 @@ static unsigned _nbBitsSetTo1(
 }
 
 static int _parseDtshdChunk(
-  DtsContext * ctx,
-  LibbluESParsingSettings * settings
+  DtsContext *ctx,
+  LibbluESParsingSettings *settings
 )
 {
-  DtshdFileHandler * hdlr = &ctx->dtshd;
+  DtshdFileHandler *hdlr = &ctx->dtshd;
   int ret = decodeDtshdFileChunk(ctx->bs, hdlr);
 
   if (0 == ret) {
@@ -76,7 +76,7 @@ static int _parseDtshdChunk(
     ) {
       /* Peak Bit-Rate Smoothing shall be performed, try to initialize */
 
-      if (NULL == settings->options.pbrFilepath) {
+      if (NULL == settings->options.pbr_filepath) {
         /* No .dtspbr file specified */
         LIBBLU_WARNING(
           "Missing PBR file in parameters, "
@@ -86,7 +86,7 @@ static int _parseDtshdChunk(
       }
       else {
         /* Parse Peak Bit-Rate statistics */
-        if (initPbrFileHandler(settings->options.pbrFilepath, hdlr) < 0)
+        if (initPbrFileHandler(settings->options.pbr_filepath, hdlr) < 0)
           return -1;
 
         LIBBLU_DTS_INFO("Perfoming two passes Peak Bit-Rate smoothing.\n");
@@ -103,7 +103,7 @@ static int _parseDtshdChunk(
 
 static int _decodeDcaCoreBitStreamHeader(
   BitstreamReaderPtr file,
-  DcaCoreBSHeaderParameters * param
+  DcaCoreBSHeaderParameters *param
 )
 {
   uint32_t value;
@@ -208,7 +208,7 @@ static int _decodeDcaCoreBitStreamHeader(
 }
 
 static void _printHeaderDcaCoreSS(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   uint64_t nb_frames = 0, frame_pts = 0;
@@ -229,10 +229,10 @@ static void _printHeaderDcaCoreSS(
 }
 
 static int _decodeDcaCoreSS(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
-  DtsDcaCoreSSContext * core = &ctx->core;
+  DtsDcaCoreSSContext *core = &ctx->core;
 
   _printHeaderDcaCoreSS(ctx);
   DcaCoreSSFrameParameters frame;
@@ -302,7 +302,7 @@ static int _decodeDcaCoreSS(
 
 static int _decodeDcaExtSSHeaderMixMetadata(
   BitstreamReaderPtr file,
-  DcaExtSSHeaderMixMetadataParameters * param
+  DcaExtSSHeaderMixMetadataParameters *param
 )
 {
   /* [u2 nuMixMetadataAdjLevel] */
@@ -329,7 +329,7 @@ static int _decodeDcaExtSSHeaderMixMetadata(
 
 static int _decodeDcaExtSSHeaderStaticFields(
   BitstreamReaderPtr file,
-  DcaExtSSHeaderSFParameters * param,
+  DcaExtSSHeaderSFParameters *param,
   unsigned nExtSSIndex
 )
 {
@@ -387,7 +387,7 @@ static int _decodeDcaExtSSHeaderStaticFields(
 
 static int _decodeDcaExtSSAssetDescSF(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescSFParameters * param
+  DcaAudioAssetDescSFParameters *param
 )
 {
 
@@ -534,9 +534,9 @@ static int _decodeDcaExtSSAssetDescSF(
 
 static int _decodeDcaExtSSAssetDescDM(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescDMParameters * param,
-  DcaAudioAssetDescSFParameters * ad_sf,
-  DcaExtSSHeaderSFParameters * sf
+  DcaAudioAssetDescDMParameters *param,
+  DcaAudioAssetDescSFParameters *ad_sf,
+  DcaExtSSHeaderSFParameters *sf
 )
 {
 
@@ -663,7 +663,7 @@ static int _decodeDcaExtSSAssetDescDM(
 
 static int _decodeDcaAudioAssetExSSLBRParameters(
   BitstreamReaderPtr file,
-  DcaAudioAssetExSSLBRParameters * p
+  DcaAudioAssetExSSLBRParameters *p
 )
 {
   /* [u14 nuExSSLBRFsize] */
@@ -683,7 +683,7 @@ static int _decodeDcaAudioAssetExSSLBRParameters(
 
 static int _decodeDcaAudioAssetSSXllParameters(
   BitstreamReaderPtr file,
-  DcaAudioAssetExSSXllParameters * p,
+  DcaAudioAssetExSSXllParameters *p,
   unsigned nuBits4ExSSFsize
 )
 {
@@ -714,17 +714,17 @@ static int _decodeDcaAudioAssetSSXllParameters(
 
 static int _decodeDcaExSSAssetDescDecNDMode0(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescDecNDParameters * param,
+  DcaAudioAssetDescDecNDParameters *param,
   unsigned nuBits4ExSSFsize
 )
 {
-  DcaAudioAssetDescDecNDCodingComponents * cc = &param->coding_components;
+  DcaAudioAssetDescDecNDCodingComponents *cc = &param->coding_components;
 
   /* [u12 nuCoreExtensionMask] */
   READ_BITS(&param->nuCoreExtensionMask, file, 12, return -1);
 
   if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
-    DcaAudioAssetExSSCoreParameters * p = &cc->ExSSCore;
+    DcaAudioAssetExSSCoreParameters *p = &cc->ExSSCore;
 
     /* [u14 nuExSSCoreFsize] */
     READ_BITS_PO(&p->nuExSSCoreFsize, file, 14, return -1);
@@ -760,7 +760,7 @@ static int _decodeDcaExSSAssetDescDecNDMode0(
   }
 
   if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
-    DcaAudioAssetExSSXllParameters * p = &cc->ExSSXLL;
+    DcaAudioAssetExSSXllParameters *p = &cc->ExSSXLL;
     if (_decodeDcaAudioAssetSSXllParameters(file, p, nuBits4ExSSFsize) < 0)
       return -1;
   }
@@ -780,7 +780,7 @@ static int _decodeDcaExSSAssetDescDecNDMode0(
 
 static int _decodeDcaExSSAssetDescDecNDMode1(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescDecNDParameters * param,
+  DcaAudioAssetDescDecNDParameters *param,
   unsigned nuBits4ExSSFsize
 )
 {
@@ -795,7 +795,7 @@ static int _decodeDcaExSSAssetDescDecNDMode1(
 
 static int _decodeDcaExSSAssetDescDecNDMode2(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescDecNDParameters * param
+  DcaAudioAssetDescDecNDParameters *param
 )
 {
   param->nuCoreExtensionMask = DCA_EXT_SS_COD_COMP_EXTSUB_LBR;
@@ -808,12 +808,12 @@ static int _decodeDcaExSSAssetDescDecNDMode2(
 
 static int _decodeDcaExSSAssetDescDecNDMode3(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescDecNDParameters * param
+  DcaAudioAssetDescDecNDParameters *param
 )
 {
   param->nuCoreExtensionMask = 0;
 
-  DcaAudioAssetDescDecNDAuxiliaryCoding * aux = &param->auxilary_coding;
+  DcaAudioAssetDescDecNDAuxiliaryCoding *aux = &param->auxilary_coding;
 
   /* [u14 nuExSSAuxFsize] */
   READ_BITS_PO(&aux->nuExSSAuxFsize, file, 14, return -1);
@@ -835,10 +835,10 @@ static int _decodeDcaExSSAssetDescDecNDMode3(
 
 static int _decodeDcaExtSSAssetDescDecND(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescDecNDParameters * param,
-  DcaAudioAssetDescSFParameters * ad_sf,
-  DcaAudioAssetDescDMParameters * ad_dm,
-  DcaExtSSHeaderSFParameters * sf,
+  DcaAudioAssetDescDecNDParameters *param,
+  DcaAudioAssetDescSFParameters *ad_sf,
+  DcaAudioAssetDescDMParameters *ad_dm,
+  DcaExtSSHeaderSFParameters *sf,
   unsigned nuBits4ExSSFsize
 )
 {
@@ -873,7 +873,7 @@ static int _decodeDcaExtSSAssetDescDecND(
 
   if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
     /* Extension Substream contains DTS-XLL component. */
-    DcaAudioAssetExSSXllParameters * p = &param->coding_components.ExSSXLL;
+    DcaAudioAssetExSSXllParameters *p = &param->coding_components.ExSSXLL;
 
     /* [u3 nuDTSHDStreamID] */
     READ_BITS(&p->nuDTSHDStreamID, file, 3, return -1);
@@ -918,9 +918,9 @@ static int _decodeDcaExtSSAssetDescDecND(
 
 static int _decodeDcaExtSSAssetDescriptor(
   BitstreamReaderPtr file,
-  DcaAudioAssetDescParameters * param,
+  DcaAudioAssetDescParameters *param,
   bool bStaticFieldsPresent,
-  DcaExtSSHeaderSFParameters * sf,
+  DcaExtSSHeaderSFParameters *sf,
   unsigned nuBits4ExSSFsize
 )
 {
@@ -936,7 +936,7 @@ static int _decodeDcaExtSSAssetDescriptor(
   /* [u3 nuAssetIndex] */
   READ_BITS(&param->nuAssetIndex, file, 3, return -1);
 
-  DcaAudioAssetDescSFParameters * ad_sf = &param->static_fields; // Static fields
+  DcaAudioAssetDescSFParameters *ad_sf = &param->static_fields; // Static fields
   ad_sf->bOne2OneMapChannels2Speakers = false; // Default
 
   if (bStaticFieldsPresent) {
@@ -945,12 +945,12 @@ static int _decodeDcaExtSSAssetDescriptor(
   }
 
   /* -- Dynamic Metadata Section (DRC, DNC and Mixing Metadata) -- */
-  DcaAudioAssetDescDMParameters * ad_dm = &param->dyn_md; // Dynamic metadata
+  DcaAudioAssetDescDMParameters *ad_dm = &param->dyn_md; // Dynamic metadata
   if (_decodeDcaExtSSAssetDescDM(file, &param->dyn_md, ad_sf, sf) < 0)
     return -1;
 
   /* -- Decoder Navigation Data Section (Coding mode...) -- */
-  DcaAudioAssetDescDecNDParameters * ad_dnd = &param->dec_nav_data;
+  DcaAudioAssetDescDecNDParameters *ad_dnd = &param->dec_nav_data;
   if (_decodeDcaExtSSAssetDescDecND(file, ad_dnd, ad_sf, ad_dm, sf, nuBits4ExSSFsize) < 0)
     return -1;
 
@@ -1025,7 +1025,7 @@ static int _decodeDcaExtSSAssetDescriptor(
 
 static int _decodeDcaExtSSHeader(
   BitstreamReaderPtr file,
-  DcaExtSSHeaderParameters * param
+  DcaExtSSHeaderParameters *param
 )
 {
   int64_t start_off = tellBinaryPos(file);
@@ -1062,7 +1062,7 @@ static int _decodeDcaExtSSHeader(
   /* [b1 bStaticFieldsPresent] */
   READ_BITS(&param->bStaticFieldsPresent, file, 1, return -1);
 
-  DcaExtSSHeaderSFParameters * sf = &param->static_fields;
+  DcaExtSSHeaderSFParameters *sf = &param->static_fields;
   if (param->bStaticFieldsPresent) {
     /* [vn StaticFields] */
     if (_decodeDcaExtSSHeaderStaticFields(file, sf, param->nExtSSIndex) < 0)
@@ -1080,7 +1080,7 @@ static int _decodeDcaExtSSHeader(
   }
 
   for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
-    DcaAudioAssetDescParameters * desc = &param->audioAssets[nAst];
+    DcaAudioAssetDescParameters *desc = &param->audioAssets[nAst];
     bool sf_pres = param->bStaticFieldsPresent;
 
     /* [vn AssetDecriptor()] */
@@ -1160,12 +1160,12 @@ static int _decodeDcaExtSSHeader(
 }
 
 static int _decodeDcaExtSubAsset(
-  DtsContext * ctx,
+  DtsContext *ctx,
   DcaAudioAssetDescParameters asset,
   uint32_t asset_length
 )
 {
-  const DcaAudioAssetDescDecNDParameters * ad_dnd = &asset.dec_nav_data;
+  const DcaAudioAssetDescDecNDParameters *ad_dnd = &asset.dec_nav_data;
   uint16_t coding_mask = ad_dnd->nuCoreExtensionMask;
 
   if (DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING == ad_dnd->nuCodingMode)
@@ -1197,9 +1197,9 @@ static int _decodeDcaExtSubAsset(
 }
 
 static int _computeTargetExtSSAssetSize(
-  DtsContext * ctx,
-  uint8_t * xll_asset_idx_ret,
-  uint32_t * xll_target_size
+  DtsContext *ctx,
+  uint8_t *xll_asset_idx_ret,
+  uint32_t *xll_target_size
 )
 {
   uint32_t target_size;
@@ -1213,12 +1213,12 @@ static int _computeTargetExtSSAssetSize(
   uint8_t xll_asset_idx = UINT8_MAX;
   for (unsigned i = 0; i < DCA_EXT_SS_MAX_NB_INDEXES; i++) {
     if (ctx->ext_ss.presentIndexes[i]) {
-      const DcaExtSSHeaderParameters * hdr = &ctx->ext_ss.curFrames[i]->header;
+      const DcaExtSSHeaderParameters *hdr = &ctx->ext_ss.curFrames[i]->header;
       non_xll_size += hdr->nuExtSSHeaderSize;
 
       for (unsigned j = 0; j < hdr->static_fields.nuNumAssets; j++) {
         uint32_t non_xll_asset_size = hdr->audioAssetsLengths[j];
-        const DcaAudioAssetDescDecNDParameters * dnd = &hdr->audioAssets[j].dec_nav_data;
+        const DcaAudioAssetDescDecNDParameters *dnd = &hdr->audioAssets[j].dec_nav_data;
 
         if (dnd->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
           assert(UINT8_MAX == xll_asset_idx); // Assert unique XLL component
@@ -1247,9 +1247,9 @@ static int _computeTargetExtSSAssetSize(
 }
 
 static int _patchDcaExtSSHeader(
-  DtsContext * ctx,
+  DtsContext *ctx,
   DcaExtSSHeaderParameters ext_ss_hdr,
-  DcaXllFrameSFPosition * asset_content_offsets
+  DcaXllFrameSFPosition *asset_content_offsets
 )
 {
   uint32_t target_xll_size;
@@ -1337,8 +1337,8 @@ static int _patchDcaExtSSHeader(
   ext_ss_hdr.bHeaderSizeType = true;
 
   /* Set XLL asset header */
-  DcaAudioAssetDescParameters * asset = &ext_ss_hdr.audioAssets[xll_asset_id];
-  DcaAudioAssetExSSXllParameters * a_xll = &asset->dec_nav_data.coding_components.ExSSXLL;
+  DcaAudioAssetDescParameters *asset = &ext_ss_hdr.audioAssets[xll_asset_id];
+  DcaAudioAssetExSSXllParameters *a_xll = &asset->dec_nav_data.coding_components.ExSSXLL;
   a_xll->nuExSSXLLFsize        = target_xll_size;
   a_xll->bExSSXLLSyncPresent   = sync_word_present;
   a_xll->nuInitLLDecDlyFrames  = init_dec_delay;
@@ -1356,7 +1356,7 @@ static int _patchDcaExtSSHeader(
 // #define SET_DEBUG
 
 static int _decodeDcaExtSS(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   assert(NULL != ctx);
@@ -1408,7 +1408,7 @@ static int _decodeDcaExtSS(
     if (!ctx->ext_ss.presentIndexes[extSSIdx]) {
       assert(!ctx->ext_ss.presentIndexes[extSSIdx]);
 
-      DcaExtSSFrameParameters * cur_frame;
+      DcaExtSSFrameParameters *cur_frame;
       if (NULL == (cur_frame = malloc(sizeof(DcaExtSSFrameParameters))))
         LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
 
@@ -1472,7 +1472,7 @@ static int _decodeDcaExtSS(
     )
   ;
 
-  const DcaExtSSHeaderSFParameters * sf = &frame.header.static_fields;
+  const DcaExtSSHeaderSFParameters *sf = &frame.header.static_fields;
   for (unsigned nAst = 0; nAst < sf->nuNumAssets; nAst++) {
     int64_t asset_off = tellPos(ctx->bs);
 
@@ -1482,7 +1482,7 @@ static int _decodeDcaExtSS(
     );
 
     uint32_t asset_size = frame.header.audioAssetsLengths[nAst];
-    DcaAudioAssetDescParameters * asset = &frame.header.audioAssets[nAst];
+    DcaAudioAssetDescParameters *asset = &frame.header.audioAssets[nAst];
 
     if (!skip_frame) {
       /* Frame content saving */
@@ -1573,8 +1573,8 @@ static int _decodeDcaExtSS(
 }
 
 int parseDts(
-  DtsContext * ctx,
-  LibbluESParsingSettings * settings
+  DtsContext *ctx,
+  LibbluESParsingSettings *settings
 )
 {
 
@@ -1629,7 +1629,7 @@ int parseDts(
 }
 
 int analyzeDts(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   DtsContext ctx;

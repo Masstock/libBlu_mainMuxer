@@ -8,14 +8,14 @@
 #include "eac3_check.h"
 
 static void _buildStrReprEac3Chanmap(
-  char * dst,
+  char *dst,
   uint16_t mask
 )
 {
   int i;
-  char * sep;
+  char *sep;
 
-  static const char * chanmapStr[16] = {
+  static const char *chanmapStr[16] = {
     "LFE"
     "LFE2",
     "Lts, Rts",
@@ -46,7 +46,7 @@ static void _buildStrReprEac3Chanmap(
 }
 
 int checkEac3BitStreamInfoCompliance(
-  const Eac3BitStreamInfoParameters * bsi
+  const Eac3BitStreamInfoParameters *bsi
 )
 {
 
@@ -397,7 +397,7 @@ int checkEac3BitStreamInfoCompliance(
   );
 
   if (bsi->infomdate) {
-    const Eac3Infomdat * infParam = &bsi->infomdat;
+    const Eac3Infomdat *infParam = &bsi->infomdat;
 
     LIBBLU_EAC3_DEBUG(
       "   Bit Stream Mode (bsmod): 0x%02" PRIX8 ".\n",
@@ -647,12 +647,12 @@ int checkEac3BitStreamInfoCompliance(
 }
 
 int checkChangeEac3BitStreamInfoCompliance(
-  const Eac3BitStreamInfoParameters * old_bsi,
-  const Eac3BitStreamInfoParameters * new_bsi
+  const Eac3BitStreamInfoParameters *old_bsi,
+  const Eac3BitStreamInfoParameters *new_bsi
 )
 {
   char changed_param_str[20 * 10] = {0};
-  char * cpstr_ptr = changed_param_str;
+  char *cpstr_ptr = changed_param_str;
 
   LIBBLU_EAC3_DEBUG(" Changes in bsi(), check change compliance.\n");
   if (checkEac3BitStreamInfoCompliance(new_bsi) < 0)

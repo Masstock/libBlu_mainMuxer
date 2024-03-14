@@ -57,7 +57,7 @@
 
 int createSystemBufferingChainBdavStd(
   BufModelBuffersListPtr bufList,
-  BufModelNode * root,
+  BufModelNode *root,
   uint64_t initialTimestamp,
   uint64_t transportRate
 );

@@ -9,7 +9,7 @@
 
 
 int checkAc3SyncInfoCompliance(
-  const Ac3SyncInfoParameters * param
+  const Ac3SyncInfoParameters *param
 )
 {
   assert(NULL != param);
@@ -59,7 +59,7 @@ int checkAc3SyncInfoCompliance(
 
 
 int checkAc3AddbsiCompliance(
-  const Ac3Addbsi * param
+  const Ac3Addbsi *param
 )
 {
 
@@ -108,7 +108,7 @@ int checkAc3AddbsiCompliance(
 
 
 int checkAc3BitStreamInfoCompliance(
-  const Ac3BitStreamInfoParameters * param
+  const Ac3BitStreamInfoParameters *param
 )
 {
   LIBBLU_AC3_DEBUG(
@@ -476,7 +476,7 @@ int checkAc3BitStreamInfoCompliance(
 
 
 int checkAc3AlternateBitStreamInfoCompliance(
-  const Ac3BitStreamInfoParameters * param
+  const Ac3BitStreamInfoParameters *param
 )
 {
 

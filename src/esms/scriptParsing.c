@@ -39,9 +39,9 @@
 
 int parseESPropertiesHeaderEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESProperties * dst,
-  uint64_t * PTS_reference_ret,
-  uint64_t * PTS_final_ret
+  LibbluESProperties *dst,
+  uint64_t *PTS_reference_ret,
+  uint64_t *PTS_final_ret
 )
 {
   LIBBLU_SCRIPTR_DEBUG(
@@ -151,7 +151,7 @@ int parseESPropertiesHeaderEsms(
 }
 
 static int _checkCrcEntryESPropertiesSourceFilesEsms(
-  const lbc * filepath,
+  const lbc *filepath,
   EsmsESSourceFileProperties prop
 )
 {
@@ -160,7 +160,7 @@ static int _checkCrcEntryESPropertiesSourceFilesEsms(
   if (NULL == (file = createBitstreamReaderDefBuf(filepath)))
     LIBBLU_ERROR_RETURN("Unable to open source file.\n");
 
-  uint8_t * buf;
+  uint8_t *buf;
   if (NULL == (buf = (uint8_t *) malloc(prop.crc_checked_bytes)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
@@ -186,7 +186,7 @@ free_return:
 
 static int _parseEntryESPropertiesSourceFilesEsms(
   BitstreamReaderPtr esms_bs,
-  EsmsESSourceFiles * dst
+  EsmsESSourceFiles *dst
 )
 {
 
@@ -206,7 +206,7 @@ static int _parseEntryESPropertiesSourceFilesEsms(
       src_filepath_size
     );
 
-  lbc * src_filepath = calloc(1, src_filepath_size + 1);
+  lbc *src_filepath = calloc(1, src_filepath_size + 1);
   if (NULL == src_filepath)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -257,7 +257,7 @@ free_return:
 
 int parseESPropertiesSourceFilesEsms(
   BitstreamReaderPtr esms_bs,
-  EsmsESSourceFiles * dst
+  EsmsESSourceFiles *dst
 )
 {
   assert(0 == dst->nb_source_files);
@@ -286,10 +286,10 @@ int parseESPropertiesSourceFilesEsms(
 
 static int _parseH264VideoESFmtPropertiesEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESFmtProp * dst
+  LibbluESFmtProp *dst
 )
 {
-  LibbluESH264SpecProperties * prop = dst->h264;
+  LibbluESH264SpecProperties *prop = dst->h264;
 
   LIBBLU_SCRIPTR_DEBUG(" H.264 Format specific informations:\n");
 
@@ -324,8 +324,8 @@ static int _parseH264VideoESFmtPropertiesEsms(
 
 static int _parseVideoESFmtPropertiesEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESProperties * dst,
-  LibbluESFmtProp * fmt_prop_ret
+  LibbluESProperties *dst,
+  LibbluESFmtProp *fmt_prop_ret
 )
 {
 
@@ -396,10 +396,10 @@ static int _parseVideoESFmtPropertiesEsms(
 
 static int _parseAc3AudioESFmtPropertiesEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESFmtProp * dst
+  LibbluESFmtProp *dst
 )
 {
-  LibbluESAc3SpecProperties * prop = dst->ac3;
+  LibbluESAc3SpecProperties *prop = dst->ac3;
 
   LIBBLU_SCRIPTR_DEBUG(" AC-3 Format specific informations:\n");
 
@@ -456,8 +456,8 @@ static int _parseAc3AudioESFmtPropertiesEsms(
 
 static int _parseAudioESFmtPropertiesEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESProperties * dst,
-  LibbluESFmtProp * fmt_prop_ret
+  LibbluESProperties *dst,
+  LibbluESFmtProp *fmt_prop_ret
 )
 {
 
@@ -512,8 +512,8 @@ static int _parseAudioESFmtPropertiesEsms(
 
 int parseESFmtPropertiesEsms(
   BitstreamReaderPtr esms_bs,
-  LibbluESProperties * dst,
-  LibbluESFmtProp * fmt_prop_ret
+  LibbluESProperties *dst,
+  LibbluESFmtProp *fmt_prop_ret
 )
 {
   LIBBLU_SCRIPTR_DEBUG(
@@ -534,7 +534,7 @@ int parseESFmtPropertiesEsms(
 
 static int parseEntryESDataBlocksDefinitionEsms(
   BitstreamReaderPtr esms_bs,
-  EsmsDataBlocks * dst
+  EsmsDataBlocks *dst
 )
 {
 
@@ -549,7 +549,7 @@ static int parseEntryESDataBlocksDefinitionEsms(
   );
 
   /* [v<data_block_size> data_block] */
-  uint8_t * data_block = NULL;
+  uint8_t *data_block = NULL;
   if (0 < data_block_size) {
     if (NULL == (data_block = (uint8_t *) malloc(data_block_size)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
@@ -573,7 +573,7 @@ free_return:
 
 int parseESDataBlocksDefinitionEsms(
   BitstreamReaderPtr esms_bs,
-  EsmsDataBlocks * dst
+  EsmsDataBlocks *dst
 )
 {
   LIBBLU_SCRIPTR_DEBUG(
@@ -625,7 +625,7 @@ int parseESDataBlocksDefinitionEsms(
   skipBytes(scrt, s)
 
 static int parseEsmsPesPacketH264ExtData(
-  EsmsPesPacketH264ExtData * dst,
+  EsmsPesPacketH264ExtData *dst,
   BitstreamReaderPtr esms_bs,
   uint16_t ext_data_size
 )
@@ -676,7 +676,7 @@ static int parseEsmsPesPacketH264ExtData(
 }
 
 static int _parseEsmsPesPacketExtData(
-  EsmsPesPacketExtData * dst,
+  EsmsPesPacketExtData *dst,
   BitstreamReaderPtr esms_bs,
   LibbluStreamCodingType coding_type
 )
@@ -712,13 +712,13 @@ static int _parseEsmsPesPacketExtData(
 #undef SKIP_REMAINING_DATA
 
 static int _parseEsmsPesPacketProperties(
-  EsmsPesPacket * dst,
+  EsmsPesPacket *dst,
   BitstreamReaderPtr esms_bs,
   LibbluESType type,
   LibbluStreamCodingType coding_type
 )
 {
-  EsmsPesPacketProp * dst_prop = &dst->prop;
+  EsmsPesPacketProp *dst_prop = &dst->prop;
   dst_prop->type = type;
 
   /** [v16 frame_prop_word]
@@ -735,7 +735,7 @@ static int _parseEsmsPesPacketProperties(
 
   if (ES_VIDEO == type) {
     assert(isVideoStreamCodingType(coding_type));
-    EsmsPesPacketPropVideo * vprop = &dst_prop->prefix.video;
+    EsmsPesPacketPropVideo *vprop = &dst_prop->prefix.video;
     /* [u2 picture_type] [v5 reserved] [v1 marker_bit] */
     vprop->picture_type = (frame_prop_word >> 14);
 
@@ -746,7 +746,7 @@ static int _parseEsmsPesPacketProperties(
   }
   else if (ES_AUDIO == type) {
     assert(isAudioStreamCodingType(coding_type));
-    EsmsPesPacketPropAudio * aprop = &dst_prop->prefix.audio;
+    EsmsPesPacketPropAudio *aprop = &dst_prop->prefix.audio;
     /* [b1 extension_frame] [v7 reserved] */
     aprop->extension_frame = (frame_prop_word & 0x8000);
 
@@ -831,7 +831,7 @@ static int _parseEsmsPesPacketProperties(
 /* ###### Script commands utilities : ###################################### */
 
 static int _checkAllocAndSetCommandSize(
-  EsmsCommandParsingData * dst,
+  EsmsCommandParsingData *dst,
   uint16_t command_size
 )
 {
@@ -840,7 +840,7 @@ static int _checkAllocAndSetCommandSize(
     return 0; // Enough room
   }
 
-  uint8_t * new_data = realloc(dst->command_data, command_size);
+  uint8_t *new_data = realloc(dst->command_data, command_size);
   if (NULL == new_data)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -854,7 +854,7 @@ static int _checkAllocAndSetCommandSize(
 }
 
 static int _readRawCommand(
-  EsmsCommandParsingData * dst,
+  EsmsCommandParsingData *dst,
   BitstreamReaderPtr esms_bs
 )
 {
@@ -897,8 +897,8 @@ static int _readRawCommand(
   } while (0)
 
 static int _parseAddDataCommand(
-  EsmsCommand * dst_command,
-  const EsmsCommandParsingData * data
+  EsmsCommand *dst_command,
+  const EsmsCommandParsingData *data
 )
 {
   size_t parsing_off = 0;
@@ -943,7 +943,7 @@ static int _parseAddDataCommand(
     data_size
   );
 
-  uint8_t * data_bytes = NULL;
+  uint8_t *data_bytes = NULL;
   if (0 < data_size) {
     if (NULL == (data_bytes = (uint8_t *) malloc(data_size)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
@@ -964,8 +964,8 @@ static int _parseAddDataCommand(
 }
 
 static int _parseChangeByteOrderCommand(
-  EsmsCommand * dst_command,
-  const EsmsCommandParsingData * data
+  EsmsCommand *dst_command,
+  const EsmsCommandParsingData *data
 )
 {
   size_t parsing_off = 0;
@@ -1019,8 +1019,8 @@ static int _parseChangeByteOrderCommand(
 }
 
 static int _parseAddPesPayloadCommandode(
-  EsmsCommand * dst_command,
-  const EsmsCommandParsingData * data
+  EsmsCommand *dst_command,
+  const EsmsCommandParsingData *data
 )
 {
   size_t parsing_off = 0;
@@ -1136,8 +1136,8 @@ static int _parseAddPesPayloadCommandode(
 }
 
 static int _parseAddPaddingCommand(
-  EsmsCommand * dst_command,
-  const EsmsCommandParsingData * data
+  EsmsCommand *dst_command,
+  const EsmsCommandParsingData *data
 )
 {
   size_t parsing_off = 0;
@@ -1209,8 +1209,8 @@ static int _parseAddPaddingCommand(
 }
 
 static int _parseAddDataBlockCommand(
-  EsmsCommand * dst_command,
-  const EsmsCommandParsingData * data
+  EsmsCommand *dst_command,
+  const EsmsCommandParsingData *data
 )
 {
   size_t parsing_off = 0;
@@ -1275,9 +1275,9 @@ static int _parseAddDataBlockCommand(
 /* ###### Script commands parsing : ######################################## */
 
 static int _parseCommand(
-  EsmsCommand * dst_command,
+  EsmsCommand *dst_command,
   uint8_t command_type,
-  const EsmsCommandParsingData * command_data
+  const EsmsCommandParsingData *command_data
 )
 {
   switch (command_type) {
@@ -1302,9 +1302,9 @@ static int _parseCommand(
 }
 
 static int _parseEsmsPesPacketCommands(
-  EsmsPesPacket * dst,
+  EsmsPesPacket *dst,
   BitstreamReaderPtr esms_bs,
-  EsmsCommandParsingData * command_data
+  EsmsCommandParsingData *command_data
 )
 {
   assert(NULL != dst);
@@ -1372,11 +1372,11 @@ free_return:
 /* ######################################################################### */
 
 int parseFrameNodeESPesCuttingEsms(
-  EsmsPesPacket * dst,
+  EsmsPesPacket *dst,
   BitstreamReaderPtr esms_bs,
   LibbluESType type,
   LibbluStreamCodingType coding_type,
-  EsmsCommandParsingData * command_data
+  EsmsCommandParsingData *command_data
 )
 {
   int64_t offset = tellPos(esms_bs);

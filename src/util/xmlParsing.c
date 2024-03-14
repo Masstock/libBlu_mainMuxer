@@ -44,7 +44,7 @@ struct _XmlCtx {
 };
 
 static lbc * _xmlCharStringToLbc(
-  const xmlChar * xml_string
+  const xmlChar *xml_string
 )
 {
   return lbc_strdup(xml_string);
@@ -77,7 +77,7 @@ void destroyXmlContext(
 
 int loadXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   assert(NULL != ctx);
@@ -115,7 +115,7 @@ unsigned lastParsedNodeLineXmlCtx(
 
 /* ### XML Node : ########################################################## */
 
-const lbc * getNameXmlNode(
+const lbc *getNameXmlNode(
   const XmlNodePtr node
 )
 {
@@ -150,7 +150,7 @@ XmlNodePtr getNodeXmlXPathObject(
 
 XmlXPathObjectPtr getPathObjectFromPathObjXmlCtx(
   const XmlXPathObjectPtr path_obj,
-  const lbc * path
+  const lbc *path
 )
 {
   xmlNodePtr node = getNodeXmlXPathObject(path_obj, 0);
@@ -178,7 +178,7 @@ free_return:
 
 XmlXPathObjectPtr getPathObjectXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path
+  const lbc *path
 )
 {
   xmlXPathContextPtr xpath_ctx = NULL;
@@ -210,7 +210,7 @@ free_return:
 
 bool existsPathObjectXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path
+  const lbc *path
 )
 {
   xmlXPathContextPtr xpath_ctx = NULL;
@@ -234,11 +234,11 @@ free_return:
 
 XmlXPathObjectPtr getPathObjectFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * path = NULL;
+  lbc *path = NULL;
   if (lbc_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
@@ -250,7 +250,7 @@ XmlXPathObjectPtr getPathObjectFromExprVaXmlCtx(
 
 XmlXPathObjectPtr getPathObjectFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -265,11 +265,11 @@ XmlXPathObjectPtr getPathObjectFromExprXmlCtx(
 
 bool existsPathObjectFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * path = NULL;
+  lbc *path = NULL;
   if (lbc_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
@@ -281,7 +281,7 @@ bool existsPathObjectFromExprVaXmlCtx(
 
 bool existsPathObjectFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -363,9 +363,9 @@ int restoreLastRootXmlCtx(
   return 0;
 }
 
-lbc * getStringXmlCtx(
+lbc *getStringXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path,
+  const lbc *path,
   int idx
 )
 {
@@ -384,11 +384,11 @@ lbc * getStringXmlCtx(
       path
     );
 
-  xmlChar * xml_string = xmlNodeListGetString(ctx->libxml_ctx, node->children, 1);
+  xmlChar *xml_string = xmlNodeListGetString(ctx->libxml_ctx, node->children, 1);
   if (NULL == xml_string)
     goto free_return;
 
-  lbc * string = _xmlCharStringToLbc(xml_string);
+  lbc *string = _xmlCharStringToLbc(xml_string);
 
   destroyXmlXPathObject(xpath_obj);
   xmlFree(xml_string);
@@ -399,32 +399,32 @@ free_return:
   return NULL;
 }
 
-lbc * getStringFromExprVaXmlCtx(
+lbc *getStringFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * path = NULL;
+  lbc *path = NULL;
   if (lbc_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_NRETURN("Memory allocation error using lbc_vasprintf().\n");
 
-  lbc * string = getStringXmlCtx(ctx, path, 0);
+  lbc *string = getStringXmlCtx(ctx, path, 0);
 
   free(path);
   return string;
 }
 
-lbc * getStringFromExprXmlCtx(
+lbc *getStringFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
   va_list args;
   va_start(args, path_format);
 
-  lbc * string = getStringFromExprVaXmlCtx(ctx, path_format, args);
+  lbc *string = getStringFromExprVaXmlCtx(ctx, path_format, args);
 
   va_end(args);
   return string;
@@ -432,7 +432,7 @@ lbc * getStringFromExprXmlCtx(
 
 int getNbObjectsXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path
+  const lbc *path
 )
 {
   xmlXPathObjectPtr xpath_obj = getPathObjectXmlCtx(ctx, path);
@@ -447,11 +447,11 @@ int getNbObjectsXmlCtx(
 
 int getNbObjectsFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * path = NULL;
+  lbc *path = NULL;
   if (lbc_vasprintf(&path, path_format, args) < 0)
     LIBBLU_ERROR_RETURN("Memory allocation error using lbc_vasprintf().\n");
 
@@ -463,7 +463,7 @@ int getNbObjectsFromExprVaXmlCtx(
 
 int getNbObjectsFromExprXmlCtx(
   XmlCtxPtr ctx,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -480,8 +480,8 @@ int getNbObjectsFromExprXmlCtx(
 int getIfExistsStringXmlCtx(
   XmlCtxPtr ctx,
   lbc ** string_ret,
-  const lbc * def,
-  const lbc * path
+  const lbc *def,
+  const lbc *path
 )
 {
   xmlXPathObjectPtr phObj;
@@ -512,12 +512,12 @@ free_return:
 int getIfExistsStringFromExprVaXmlCtx(
   XmlCtxPtr ctx,
   lbc ** string,
-  const lbc * def,
-  const lbc * path_format,
+  const lbc *def,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * path;
+  lbc *path;
   int ret;
 
   if (lbc_vasprintf(&path, path_format, args) < 0)
@@ -532,8 +532,8 @@ int getIfExistsStringFromExprVaXmlCtx(
 int getIfExistsStringFromExprXmlCtx(
   XmlCtxPtr ctx,
   lbc ** string,
-  const lbc * def,
-  const lbc * path_format,
+  const lbc *def,
+  const lbc *path_format,
   ...
 )
 {
@@ -553,13 +553,13 @@ int getIfExistsStringFromExprXmlCtx(
 
 int getIfExistsInt64FromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  int64_t * dst,
+  int64_t *dst,
   int64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * string;
+  lbc *string;
   if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
 
@@ -567,7 +567,7 @@ int getIfExistsInt64FromExprVaXmlCtx(
     *dst = def; /* Does not exists */
   else {
     long long value;
-    lbc * end;
+    lbc *end;
 
     errno = 0; /* Clear errno */
     value = lbc_strtoll(string, &end, 0);
@@ -605,9 +605,9 @@ int getIfExistsInt64FromExprVaXmlCtx(
 
 int getIfExistsInt64FromExprXmlCtx(
   XmlCtxPtr ctx,
-  int64_t * dst,
+  int64_t *dst,
   int64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -623,9 +623,9 @@ int getIfExistsInt64FromExprXmlCtx(
 
 int getIfExistsLongFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  long * dst,
+  long *dst,
   long def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
@@ -650,9 +650,9 @@ int getIfExistsLongFromExprVaXmlCtx(
 
 int getIfExistsLongFromExprXmlCtx(
   XmlCtxPtr ctx,
-  long * dst,
+  long *dst,
   long def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -668,9 +668,9 @@ int getIfExistsLongFromExprXmlCtx(
 
 int getIfExistsIntegerFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  int * dst,
+  int *dst,
   int def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
@@ -695,9 +695,9 @@ int getIfExistsIntegerFromExprVaXmlCtx(
 
 int getIfExistsIntegerFromExprXmlCtx(
   XmlCtxPtr ctx,
-  int * dst,
+  int *dst,
   int def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -714,13 +714,13 @@ int getIfExistsIntegerFromExprXmlCtx(
 
 int getIfExistsBooleanFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  bool * dst,
+  bool *dst,
   bool def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * string;
+  lbc *string;
   if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
 
@@ -743,9 +743,9 @@ int getIfExistsBooleanFromExprVaXmlCtx(
 
 int getIfExistsBooleanFromExprXmlCtx(
   XmlCtxPtr ctx,
-  bool * dst,
+  bool *dst,
   bool def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -763,13 +763,13 @@ int getIfExistsBooleanFromExprXmlCtx(
 
 int getIfExistsDoubleFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  double * dst,
+  double *dst,
   double def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * string;
+  lbc *string;
   if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
 
@@ -778,7 +778,7 @@ int getIfExistsDoubleFromExprVaXmlCtx(
   else {
     errno = 0; // Clear errno
 
-    lbc * end;
+    lbc *end;
     double value = lbc_strtod(string, &end);
 
     if (EINVAL == errno || '\0' != *end)
@@ -806,9 +806,9 @@ int getIfExistsDoubleFromExprVaXmlCtx(
 
 int getIfExistsDoubleFromExprXmlCtx(
   XmlCtxPtr ctx,
-  double * dst,
+  double *dst,
   double def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -824,9 +824,9 @@ int getIfExistsDoubleFromExprXmlCtx(
 
 int getIfExistsFloatFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  float * dst,
+  float *dst,
   float def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
@@ -844,9 +844,9 @@ int getIfExistsFloatFromExprVaXmlCtx(
 
 int getIfExistsFloatFromExprXmlCtx(
   XmlCtxPtr ctx,
-  float * dst,
+  float *dst,
   float def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -864,13 +864,13 @@ int getIfExistsFloatFromExprXmlCtx(
 
 int getIfExistsUint64FromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  uint64_t * dst,
+  uint64_t *dst,
   uint64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
-  lbc * string;
+  lbc *string;
   if (getIfExistsStringFromExprVaXmlCtx(ctx, &string, NULL, path_format, args) < 0)
     return -1;
 
@@ -878,7 +878,7 @@ int getIfExistsUint64FromExprVaXmlCtx(
     *dst = def; /* Does not exists */
   else {
     unsigned long long value;
-    lbc * end;
+    lbc *end;
 
     value = lbc_strtoull(string, &end, 0);
 
@@ -900,9 +900,9 @@ int getIfExistsUint64FromExprVaXmlCtx(
 
 int getIfExistsUint64FromExprXmlCtx(
   XmlCtxPtr ctx,
-  uint64_t * dst,
+  uint64_t *dst,
   uint64_t def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {
@@ -918,9 +918,9 @@ int getIfExistsUint64FromExprXmlCtx(
 
 int getIfExistsUnsignedFromExprVaXmlCtx(
   XmlCtxPtr ctx,
-  unsigned * dst,
+  unsigned *dst,
   unsigned def,
-  const lbc * path_format,
+  const lbc *path_format,
   va_list args
 )
 {
@@ -944,9 +944,9 @@ int getIfExistsUnsignedFromExprVaXmlCtx(
 
 int getIfExistsUnsignedFromExprXmlCtx(
   XmlCtxPtr ctx,
-  unsigned * dst,
+  unsigned *dst,
   unsigned def,
-  const lbc * path_format,
+  const lbc *path_format,
   ...
 )
 {

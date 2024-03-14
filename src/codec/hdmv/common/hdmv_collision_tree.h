@@ -7,7 +7,7 @@
 #include "hdmv_error.h"
 
 typedef struct Node {
-  struct Node * left, * right;
+  struct Node *left, * right;
   HdmvRectangle rect;
   unsigned user_value;
 } HdmvCollisionTreeNode, *HdmvCollisionTreeNodePtr;
@@ -24,11 +24,11 @@ static inline void destroyHdmvCollisionTree(
 }
 
 int insertHdmvCollisionTree(
-  HdmvCollisionTreeNodePtr * tree,
+  HdmvCollisionTreeNodePtr *tree,
   HdmvRectangle rect,
   unsigned user_value,
-  HdmvRectangle * problematic_rect_ret,
-  unsigned * problematic_user_value_ret
+  HdmvRectangle *problematic_rect_ret,
+  unsigned *problematic_user_value_ret
 );
 
 #endif

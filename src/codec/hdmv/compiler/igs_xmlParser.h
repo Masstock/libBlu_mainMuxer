@@ -28,7 +28,7 @@
  * \return int A zero value on success, otherwise a negative value.
  */
 int parseIgsXmlFile(
-  IgsCompilerContext * ctx
+  IgsCompilerContext *ctx
 );
 
 #endif

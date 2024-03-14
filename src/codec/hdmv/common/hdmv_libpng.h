@@ -49,11 +49,11 @@ typedef struct {
     png_infop info_ptr,
     png_uint_32 * width,
     png_uint_32 * height,
-    int * bit_depth,
-    int * color_type,
-    int * interlace_method,
-    int * compression_method,
-    int * filter_method
+    int *bit_depth,
+    int *color_type,
+    int *interlace_method,
+    int *compression_method,
+    int *filter_method
   );
   png_uint_32 (*png_get_valid) (
     png_structp png_ptr,
@@ -103,7 +103,7 @@ typedef struct {
 } HdmvLibpngHandle;
 
 static inline void initHdmvLibpngHandle(
-  HdmvLibpngHandle * dst
+  HdmvLibpngHandle *dst
 )
 {
   *dst = (HdmvLibpngHandle) {
@@ -119,7 +119,7 @@ static inline void cleanHdmvLibpngHandle(
 }
 
 static inline bool isLoadedHdmvLibpngHandle(
-  const HdmvLibpngHandle * handle
+  const HdmvLibpngHandle *handle
 )
 {
   return NULL != handle->lib;
@@ -143,8 +143,8 @@ static inline bool isLoadedHdmvLibpngHandle(
  * If the library is already loaded, nothing is done.
  */
 int loadHdmvLibpngHandle(
-  HdmvLibpngHandle * handle,
-  const lbc * path
+  HdmvLibpngHandle *handle,
+  const lbc *path
 );
 
 /* ### PNG Picture handling : ############################################## */
@@ -164,7 +164,7 @@ typedef struct {
   int filter_method;
 } HdmvLibpngPictureProp;
 
-static inline const char * color_typeHdmvLibpngStr(
+static inline const char *color_typeHdmvLibpngStr(
   int color_type
 )
 {
@@ -184,7 +184,7 @@ static inline const char * color_typeHdmvLibpngStr(
   return "Unknown";
 }
 
-static inline const char * interlace_methodHdmvLibpngStr(
+static inline const char *interlace_methodHdmvLibpngStr(
   int interlace_method
 )
 {
@@ -200,7 +200,7 @@ static inline const char * interlace_methodHdmvLibpngStr(
   return "Unknown";
 }
 
-static inline const char * compression_methodHdmvLibpngStr(
+static inline const char *compression_methodHdmvLibpngStr(
   int compression_method
 )
 {
@@ -212,7 +212,7 @@ static inline const char * compression_methodHdmvLibpngStr(
   return "Unknown";
 }
 
-static inline const char * filter_methodHdmvLibpngStr(
+static inline const char *filter_methodHdmvLibpngStr(
   int filter_method
 )
 {
@@ -235,12 +235,12 @@ typedef struct {
 } HdmvLibpngPictureInfos;
 
 int initHdmvLibpngPictureInfos(
-  const HdmvLibpngHandle * libpng,
-  HdmvLibpngPictureInfos * dst
+  const HdmvLibpngHandle *libpng,
+  HdmvLibpngPictureInfos *dst
 );
 
 static inline void cleanHdmvLibpngPictureInfos(
-  const HdmvLibpngHandle * libpng,
+  const HdmvLibpngHandle *libpng,
   HdmvLibpngPictureInfos pngInfos
 )
 {
@@ -250,10 +250,10 @@ static inline void cleanHdmvLibpngPictureInfos(
 /* ### Picture IO : ######################################################## */
 
 int openPngHdmvBitmap(
-  HdmvBitmap * dst,
-  const HdmvLibpngHandle * libpng,
-  const lbc * filepath,
-  FILE * file
+  HdmvBitmap *dst,
+  const HdmvLibpngHandle *libpng,
+  const lbc *filepath,
+  FILE *file
 );
 
 #endif

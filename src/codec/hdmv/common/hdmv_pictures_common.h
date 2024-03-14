@@ -9,7 +9,7 @@
 // typedef struct {
 //   union {
 //     HdmvBitmap bitmap;
-//     HdmvBitmap * bitmap_ptr;
+//     HdmvBitmap *bitmap_ptr;
 //   };
 //   bool bitmap_self_managed;
 
@@ -34,7 +34,7 @@ typedef enum {
 //   uint16_t width;
 //   uint16_t height;
 
-//   HdmvPalette * linkedPal;
+//   HdmvPalette *linkedPal;
 //   HdmvColorDitheringMethod ditherMeth;
 
 //   size_t imgAllocatedSize;
@@ -47,13 +47,13 @@ typedef enum {
 typedef struct {
   HdmvPictureInfos infos;
 
-  uint32_t * rgba;
+  uint32_t *rgba;
   // bool updatedRgba;
 
-  // uint8_t * pal;
+  // uint8_t *pal;
   // bool updatedPal;
 
-  // uint8_t * rle;
+  // uint8_t *rle;
   // bool updatedRle;
 } HdmvPicture, *HdmvPicturePtr;
 
@@ -133,8 +133,8 @@ static inline uint16_t getHeightHdmvPicture(
 
 static inline void getDimensionsHdmvPicture(
   const HdmvPicturePtr pic,
-  uint16_t * width,
-  uint16_t * height
+  uint16_t *width,
+  uint16_t *height
 )
 {
   if (NULL != width)
@@ -149,10 +149,10 @@ static inline size_t getRgbaSizeHdmvPicture(
   const HdmvPicturePtr pic
 )
 {
-  return 1ull * pic->infos.width * pic->infos.height;
+  return 1ull *pic->infos.width *pic->infos.height;
 }
 
-const uint32_t * getRgbaHdmvPicture(
+const uint32_t *getRgbaHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -167,7 +167,7 @@ const uint32_t * getRgbaHdmvPicture(
  * #getRgbaHdmvPicture()). If this kind of manipulations is required,
  * #getRgbaHdmvPicture() shall be called prior.
  */
-uint32_t * getRgbaHandleHdmvPicture(
+uint32_t *getRgbaHandleHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -180,11 +180,11 @@ static inline size_t getPalSizeHdmvPicture(
   return getRgbaSizeHdmvPicture(pic);
 }
 
-const uint8_t * getPalHdmvPicture(
+const uint8_t *getPalHdmvPicture(
   HdmvPicturePtr pic
 );
 
-uint8_t * getPalHandleHdmvPicture(
+uint8_t *getPalHandleHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -194,11 +194,11 @@ size_t getRleSizeHdmvPicture(
   const HdmvPicturePtr pic
 );
 
-const uint8_t * getRleHdmvPicture(
+const uint8_t *getRleHdmvPicture(
   HdmvPicturePtr pic
 );
 
-uint8_t * getRleHandleHdmvPicture(
+uint8_t *getRleHandleHdmvPicture(
   HdmvPicturePtr pic
 );
 
@@ -215,7 +215,7 @@ uint8_t * getRleHandleHdmvPicture(
  */
 int setPaletteHdmvPicture(
   HdmvPicturePtr pic,
-  HdmvPalette * pal,
+  HdmvPalette *pal,
   HdmvColorDitheringMethod ditherMeth
 );
 

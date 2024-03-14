@@ -48,8 +48,8 @@
 #define BDAV_STD_AC3_BS 3360
 
 int createAc3BufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 );

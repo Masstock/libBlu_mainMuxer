@@ -35,18 +35,18 @@
 #if 0
 typedef struct image_s {
   int width, height, stride;
-  uint8_t * buffer;  // ABGR32
+  uint8_t *buffer;  // ABGR32
 } image_t;
 #endif
 
-ASS_Library * ass_library;
-ASS_Renderer * ass_renderer;
+ASS_Library *ass_library;
+ASS_Renderer *ass_renderer;
 
 void msg_callback(
   int level,
-  const char * fmt,
+  const char *fmt,
   va_list va,
-  void * data
+  void *data
 )
 {
   (void) data;
@@ -63,7 +63,7 @@ void msg_callback(
 #include <png.h>
 
 static void _write_png(
-  char * fname, HdmvBitmap * bitmap)
+  char *fname, HdmvBitmap *bitmap)
 {
   png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
   png_infop info_ptr = png_create_info_struct(png_ptr);
@@ -73,7 +73,7 @@ static void _write_png(
     return;
   }
 
-  FILE * fp;
+  FILE *fp;
   if (NULL == (fp = fopen(fname, "wb"))) {
     printf("PNG Error opening %s for writing!\n", fname);
     return;
@@ -95,14 +95,14 @@ static void _write_png(
   }
 
   png_byte ** row_pointers;
-  if (NULL == (row_pointers = malloc(bitmap->height * sizeof(png_byte *)))) {
+  if (NULL == (row_pointers = malloc(bitmap->height *sizeof(png_byte *)))) {
     png_destroy_write_struct(&png_ptr, &info_ptr);
     fclose(fp);
     return;
   }
 
   for (uint16_t k = 0; k < bitmap->height; k++)
-    row_pointers[k] = (uint8_t *) &bitmap->rgba[k * bitmap->width];
+    row_pointers[k] = (uint8_t *) &bitmap->rgba[k *bitmap->width];
 
   png_write_image(png_ptr, row_pointers);
   png_write_end(png_ptr, info_ptr);
@@ -141,15 +141,15 @@ static void init(int frame_w, int frame_h)
 
 // static image_t *_gen_image(int width, int height)
 // {
-//   image_t * img;
+//   image_t *img;
 //   if (NULL == (img = malloc(sizeof(image_t))))
 //     return NULL;
 
 //   img->width = width;
 //   img->height = height;
-//   img->stride = width * BPP;
+//   img->stride = width *BPP;
 
-//   if (NULL == (img->buffer = calloc(1, height * width * BPP))) {
+//   if (NULL == (img->buffer = calloc(1, height *width *BPP))) {
 //     free(img);
 //     return NULL;
 //   }
@@ -158,8 +158,8 @@ static void init(int frame_w, int frame_h)
 // }
 
 static void _blendASSImageToHdmvBitmap(
-  HdmvBitmap * bitmap,
-  ASS_Image * img
+  HdmvBitmap *bitmap,
+  ASS_Image *img
 )
 {
   double src_r = getR_RGBA(img->color);
@@ -169,14 +169,14 @@ static void _blendASSImageToHdmvBitmap(
   double opacity = 1. - src_a;
 
   uint8_t  * src = img->bitmap;
-  uint32_t * dst = &bitmap->rgba[img->dst_y * bitmap->width + img->dst_x];
+  uint32_t *dst = &bitmap->rgba[img->dst_y *bitmap->width + img->dst_x];
 
   for (int y = 0; y < img->h; y++) {
     for (int x = 0; x < img->w; x++) {
       double a_a = src[x] / 255. * opacity;
-      double r_a = src_r * a_a;
-      double g_a = src_g * a_a;
-      double b_a = src_b * a_a;
+      double r_a = src_r *a_a;
+      double g_a = src_g *a_a;
+      double b_a = src_b *a_a;
 
       double a_b = getA_RGBA(dst[x]);
       double b_b = getB_RGBA(dst[x]) * a_b;
@@ -196,7 +196,7 @@ static void _blendASSImageToHdmvBitmap(
   }
 }
 
-// static void _draw_box_pixel(uint8_t * dst, uint32_t rgba)
+// static void _draw_box_pixel(uint8_t *dst, uint32_t rgba)
 // {
 //   dst[0] = (rgba      ) & 0xFF;
 //   dst[1] = (rgba >>  8) & 0xFF;
@@ -204,7 +204,7 @@ static void _blendASSImageToHdmvBitmap(
 //   dst[3] = (rgba >> 24) & 0xFF;
 // }
 
-char * font_provider_labels[] = {
+char *font_provider_labels[] = {
   [ASS_FONTPROVIDER_NONE]       = "None",
   [ASS_FONTPROVIDER_AUTODETECT] = "Autodetect",
   [ASS_FONTPROVIDER_CORETEXT]   = "CoreText",
@@ -212,14 +212,14 @@ char * font_provider_labels[] = {
   [ASS_FONTPROVIDER_DIRECTWRITE]= "DirectWrite",
 };
 
-static void _print_font_providers(ASS_Library * ass_library)
+static void _print_font_providers(ASS_Library *ass_library)
 {
-  ASS_DefaultFontProvider * providers;
+  ASS_DefaultFontProvider *providers;
   size_t providers_size = 0;
   ass_get_available_font_providers(ass_library, &providers, &providers_size);
   printf("test.c: Available font providers (%zu): ", providers_size);
   for (size_t i = 0; i < providers_size; i++) {
-    const char * separator = i > 0 ? ", ": "";
+    const char *separator = i > 0 ? ", ": "";
     printf("%s'%s'", separator,  font_provider_labels[providers[i]]);
   }
   printf(".\n");
@@ -239,7 +239,7 @@ static void _print_font_providers(ASS_Library * ass_library)
 // }
 
 static HdmvRectangle _assImageRectangle(
-  const ASS_Image * img,
+  const ASS_Image *img,
   unsigned frame_w,
   unsigned frame_h
 )
@@ -307,7 +307,7 @@ static HdmvRectangle _assImageRectangle(
 }
 
 static void _drawSurroundingBoxDimensions(
-  HdmvBitmap * bitmap,
+  HdmvBitmap *bitmap,
   HdmvRectangle dim,
   uint32_t rgba
 )
@@ -316,7 +316,7 @@ static void _drawSurroundingBoxDimensions(
     setPixelHdmvBitmap(bitmap, rgba, dim.x + j, dim.y);
     setPixelHdmvBitmap(bitmap, rgba, dim.x + j, dim.y + dim.h);
     // _draw_box_pixel(
-    //   &bitmap->rgba[dim.y * bitmap->width + (dim.x + j)], rgba
+    //   &bitmap->rgba[dim.y *bitmap->width + (dim.x + j)], rgba
     // );
     // _draw_box_pixel(
     //   &bitmap->rgba[
@@ -349,14 +349,14 @@ typedef struct {
 } RenderingWindows;
 
 void resetRenderingWindows(
-  RenderingWindows * rw
+  RenderingWindows *rw
 )
 {
   memset(rw, 0, sizeof(*rw));
 }
 
 void addRenderingWindows(
-  RenderingWindows * rw,
+  RenderingWindows *rw,
   HdmvRectangle obj_dims
 )
 {
@@ -397,8 +397,8 @@ void addRenderingWindows(
 #endif
 
 // static void _drawNodesMergingTreeNode(
-//   HdmvBitmap * rframe,
-//   const MergingTreeNode * node,
+//   HdmvBitmap *rframe,
+//   const MergingTreeNode *node,
 //   unsigned level
 // )
 // {
@@ -412,8 +412,8 @@ void addRenderingWindows(
 // }
 
 static uint32_t _drawSurroundingBoxesObjectsPgsFrame(
-  HdmvBitmap * rframe,
-  const PgsFrame * frame,
+  HdmvBitmap *rframe,
+  const PgsFrame *frame,
   uint32_t rgba
 )
 {
@@ -423,16 +423,16 @@ static uint32_t _drawSurroundingBoxesObjectsPgsFrame(
     const HdmvRectangle dim = frame->bitmaps_pos[i];
     printf("  - %u: x=%u y=%u w=%u h=%u;\n", i, dim.x, dim.y, dim.w, dim.h);
     _drawSurroundingBoxDimensions(rframe, dim, rgba);
-    size += dim.w * dim.h;
+    size += dim.w *dim.h;
   }
 
   return size;
 }
 
 static int _peekBitmapsPgsFrame(
-  PgsFrame * frame,
-  const HdmvBitmap * rframe,
-  MergingTreeNode * img_merging_tree
+  PgsFrame *frame,
+  const HdmvBitmap *rframe,
+  MergingTreeNode *img_merging_tree
 )
 {
   assert(2 == HDMV_MAX_NB_PC_COMPO_OBJ);
@@ -465,8 +465,8 @@ static int _peekBitmapsPgsFrame(
 }
 
 static void _peekWindowsPgsFrameSequence(
-  PgsFrameSequence * seq,
-  MergingTreeNode * windows_merging_tree
+  PgsFrameSequence *seq,
+  MergingTreeNode *windows_merging_tree
 )
 {
   HdmvRectangle win0, win1;
@@ -505,24 +505,24 @@ static void _peekWindowsPgsFrameSequence(
 }
 
 static int64_t _computeWindowsDrawingDuration(
-  PgsFrameSequence * seq
+  PgsFrameSequence *seq
 )
 {
   int64_t size = 0;
   for (unsigned i = 0; i < seq->nb_windows; i++)
     size += areaRectangle(seq->windows[i]);
-  return DIV_ROUND_UP(9LL * size, 3200);
+  return DIV_ROUND_UP(9LL *size, 3200);
 }
 
 static int _computeWindowsPgsFrameSequence(
-  PgsFrameSequence * seq
+  PgsFrameSequence *seq
 )
 {
   LIBBLU_HDMV_PGS_ASS_DEBUG("Building sequence window(s):\n");
 
-  MergingTreeNode * windows_mt = NULL;
+  MergingTreeNode *windows_mt = NULL;
 
-  for (const PgsFrame * frame = seq->first_frm; NULL != frame; frame = frame->next) {
+  for (const PgsFrame *frame = seq->first_frm; NULL != frame; frame = frame->next) {
     for (unsigned i = 0; i < frame->nb_bitmaps; i++) {
       if (!isEmptyRectangle(frame->bitmaps_pos[i])) {
         if (insertMergingTreeNode(&windows_mt, frame->bitmaps_pos[i]) < 0)
@@ -547,10 +547,10 @@ static int _computeWindowsPgsFrameSequence(
 }
 
 static bool _checkDrawingDurationEpochStart(
-  PgsFrameSequence * cur_seq
+  PgsFrameSequence *cur_seq
 )
 {
-  const PgsFrameSequence * prev_seq = cur_seq->prev_seq;
+  const PgsFrameSequence *prev_seq = cur_seq->prev_seq;
   if (NULL == prev_seq)
     return true; // No previous frame sequence, we are fine
 
@@ -561,7 +561,7 @@ static bool _checkDrawingDurationEpochStart(
 }
 
 static void _initCompositionObject(
-  PgsCompositionObject * compo_obj,
+  PgsCompositionObject *compo_obj,
   HdmvRectangle bitmap_pos
 )
 {
@@ -581,11 +581,11 @@ static void _initCompositionObject(
 }
 
 static int _addRefPgsObjectVersionList(
-  PgsObjectVersionList * ver_list,
-  PgsFrame * frame
+  PgsObjectVersionList *ver_list,
+  PgsFrame *frame
 )
 {
-  PgsObjectVersion * ver = &ver_list->versions[ver_list->nb_used_versions-1];
+  PgsObjectVersion *ver = &ver_list->versions[ver_list->nb_used_versions-1];
 
   if (0 < ver->nb_used_references && ver->references[ver->nb_used_references-1] == frame)
     return 0; // Frame already registered as reference
@@ -594,7 +594,7 @@ static int _addRefPgsObjectVersionList(
     unsigned new_size = GROW_ALLOCATION(ver->nb_alloc_references, 1);
     PgsFrame ** new_array = (PgsFrame **) realloc(
       ver->references,
-      new_size * sizeof(PgsFrame *)
+      new_size *sizeof(PgsFrame *)
     );
     if (NULL == new_array)
       LIBBLU_HDMV_PGS_ASS_ERROR_RETURN("Memory allocation error.\n");
@@ -608,16 +608,16 @@ static int _addRefPgsObjectVersionList(
 }
 
 static int _addPgsObjectVersionList(
-  PgsObjectVersionList * ver_list,
-  PgsFrame * frame,
+  PgsObjectVersionList *ver_list,
+  PgsFrame *frame,
   HdmvObject obj
 )
 {
   if (ver_list->nb_allocated_versions <= ver_list->nb_used_versions) {
     unsigned new_size = GROW_ALLOCATION(ver_list->nb_allocated_versions, 1);
-    PgsObjectVersion * new_array = (PgsObjectVersion *) realloc(
+    PgsObjectVersion *new_array = (PgsObjectVersion *) realloc(
       ver_list->versions,
-      new_size * sizeof(PgsObjectVersion)
+      new_size *sizeof(PgsObjectVersion)
     );
     if (NULL == new_array)
       LIBBLU_HDMV_PGS_ASS_ERROR_RETURN("Memory allocation error.\n");
@@ -651,10 +651,10 @@ static int _addPgsObjectVersionList(
 }
 
 static int _addNewObjectPgsFrameSequence(
-  PgsFrameSequence * seq,
-  PgsFrame * frame,
+  PgsFrameSequence *seq,
+  PgsFrame *frame,
   HdmvObject obj,
-  uint16_t * id_ret
+  uint16_t *id_ret
 )
 {
   LIBBLU_HDMV_PGS_ASS_DEBUG("   Adding object:\n");
@@ -683,9 +683,9 @@ static int _addNewObjectPgsFrameSequence(
 
   if (seq->nb_allocated_objects <= seq->nb_used_objects) {
     unsigned new_size = GROW_ALLOCATION(seq->nb_allocated_objects, 8);
-    PgsObjectVersionList * new_array = (PgsObjectVersionList *) realloc(
+    PgsObjectVersionList *new_array = (PgsObjectVersionList *) realloc(
       seq->objects,
-      new_size * sizeof(PgsObjectVersionList)
+      new_size *sizeof(PgsObjectVersionList)
     );
     if (NULL == new_array)
       LIBBLU_HDMV_PGS_ASS_ERROR_RETURN("Memory allocation error.\n");
@@ -697,7 +697,7 @@ static int _addNewObjectPgsFrameSequence(
   uint16_t obj_id = seq->nb_used_objects++;
   obj.desc.object_id = obj_id;
 
-  PgsObjectVersionList * ver_list = &seq->objects[obj_id];
+  PgsObjectVersionList *ver_list = &seq->objects[obj_id];
   *ver_list = (PgsObjectVersionList) {
     .width  = obj.pal_bitmap.width,
     .height = obj.pal_bitmap.height,
@@ -731,8 +731,8 @@ static int _addNewObjectPgsFrameSequence(
 }
 
 static int64_t _computePlaneInitializationTime(
-  const PgsFrameSequence * seq,
-  const PgsFrame * frame,
+  const PgsFrameSequence *seq,
+  const PgsFrame *frame,
   HdmvVDParameters video_desc
 )
 {
@@ -764,7 +764,7 @@ static int64_t _computePlaneInitializationTime(
     if (empty_window) {
       /* Empty window, clear it */
       init_duration += DIV_ROUND_UP(
-        9LL * areaRectangle(seq->windows[window_id]),
+        9LL *areaRectangle(seq->windows[window_id]),
         3200
       );
     }
@@ -775,8 +775,8 @@ static int64_t _computePlaneInitializationTime(
 }
 
 static int64_t _getFrameObjectDecodingDuration(
-  const PgsFrameSequence * seq,
-  const PgsFrame * frame,
+  const PgsFrameSequence *seq,
+  const PgsFrame *frame,
   uint16_t obj_id_ref
 )
 {
@@ -791,20 +791,20 @@ static int64_t _getFrameObjectDecodingDuration(
 }
 
 static int64_t _computeWindowTransferDuration(
-  const PgsFrameSequence * seq,
+  const PgsFrameSequence *seq,
   uint16_t window_id
 )
 {
   assert(window_id < seq->nb_windows);
   return DIV_ROUND_UP(
-    9LL * areaRectangle(seq->windows[window_id]),
+    9LL *areaRectangle(seq->windows[window_id]),
     3200
   );
 }
 
 static int64_t _computeMinimalObjectsDecodingDuration(
-  const PgsFrameSequence * seq,
-  const PgsFrame * frame
+  const PgsFrameSequence *seq,
+  const PgsFrame *frame
 )
 {
   int64_t decode_duration = 0;
@@ -814,8 +814,8 @@ static int64_t _computeMinimalObjectsDecodingDuration(
 }
 
 static void _computeAndSetCompositionDecodingDurations(
-  const PgsFrameSequence * seq,
-  PgsFrame * frame,
+  const PgsFrameSequence *seq,
+  PgsFrame *frame,
   HdmvVDParameters video_desc
 )
 {
@@ -942,7 +942,7 @@ static void _abortWholeSequence(
   PgsFrameSequence ** seq_ptr
 )
 {
-  PgsFrameSequence * seq = *seq_ptr;
+  PgsFrameSequence *seq = *seq_ptr;
 
   if (NULL != seq->prev_seq)
     seq->prev_seq->next_seq = seq->next_seq;
@@ -954,18 +954,18 @@ static void _abortWholeSequence(
 }
 
 static int _checkDecodeTimePgsFrame(
-  const PgsFrameSequence * seq,
-  const PgsFrame * frame
+  const PgsFrameSequence *seq,
+  const PgsFrame *frame
 )
 {
   /* Check decode delay against previous frame in same sequence */
-  PgsFrame * prev_frame = frame->prev;
+  PgsFrame *prev_frame = frame->prev;
   if (NULL == prev_frame) {
     /* No previous frame in same sequence */
-    const PgsFrameSequence * prev_seq = seq->prev_seq;
+    const PgsFrameSequence *prev_seq = seq->prev_seq;
     if (NULL != prev_seq) {
       /* Check delay with previous sequence */
-      const PgsFrame * prev_frame = prev_seq->last_frm;
+      const PgsFrame *prev_frame = prev_seq->last_frm;
       if (prev_frame->timestamp + seq->min_drawing_duration > frame->timestamp) {
         /**
          * Unable to draw windows fast enough, previous event is too
@@ -1036,7 +1036,7 @@ static int _processCompletePgsFrameSequence(
   HdmvVDParameters video_desc
 )
 {
-  PgsFrameSequence * cur_seq = *seq_ptr;
+  PgsFrameSequence *cur_seq = *seq_ptr;
 
   LIBBLU_HDMV_PGS_ASS_DEBUG("Processing frame sequence.\n");
 
@@ -1072,7 +1072,7 @@ static int _processCompletePgsFrameSequence(
 
   cur_seq->dec_obj_buffer_usage = 0u;
   for (
-    PgsFrame * frame = cur_seq->first_frm;
+    PgsFrame *frame = cur_seq->first_frm;
     NULL != frame;
     frame = frame->next
   ) {
@@ -1170,19 +1170,19 @@ static int _processCompletePgsFrameSequence(
  * is complete yet.
  */
 static PgsFrameSequence * _getOldestCompleteSequence(
-  PgsFrameSequence * cur_seq,
-  unsigned * nb_complete_seq_ret
+  PgsFrameSequence *cur_seq,
+  unsigned *nb_complete_seq_ret
 )
 {
   assert(0 < PGS_ASS_MIN_NB_COMPLETED_FRAMES_THRESHOLD);
   assert(NULL != nb_complete_seq_ret);
 
-  PgsFrameSequence * oldest_complete_seq = NULL;
+  PgsFrameSequence *oldest_complete_seq = NULL;
   unsigned nb_pending_frames = 0;
   unsigned nb_complete_sequences = 0;
 
   for (
-    PgsFrameSequence * seq = cur_seq;
+    PgsFrameSequence *seq = cur_seq;
     NULL != seq;
     seq = seq->prev_seq
   ) {
@@ -1202,12 +1202,12 @@ static int _generateOutputPgsFrameSequence(
   PgsFrameSequence ** seq_ptr
 )
 {
-  PgsFrameSequence * cur_seq = *seq_ptr;
+  PgsFrameSequence *cur_seq = *seq_ptr;
 
   LIBBLU_HDMV_PGS_ASS_DEBUG("Generating completed frame sequences.\n");
 
   unsigned nb_complete_seq;
-  PgsFrameSequence * seq = _getOldestCompleteSequence(
+  PgsFrameSequence *seq = _getOldestCompleteSequence(
     cur_seq,
     &nb_complete_seq
   );
@@ -1231,7 +1231,7 @@ static int _generateOutputPgsFrameSequence(
 }
 
 int processPgsGenerator(
-  const lbc * ass_filepath
+  const lbc *ass_filepath
 )
 {
   HdmvVDParameters video_desc = {
@@ -1246,7 +1246,7 @@ int processPgsGenerator(
 
   init(1920, 1080);
   // TODO: Ensure UTF-8 paths for Windows or use ass_read_memory
-  ASS_Track * track = ass_read_file(ass_library, (char *) ass_filepath, NULL);
+  ASS_Track *track = ass_read_file(ass_library, (char *) ass_filepath, NULL);
   if (!track) {
     printf("track init failed!\n");
     return 1;
@@ -1264,8 +1264,8 @@ int processPgsGenerator(
 
   // RenderingWindows rendering_windows = (RenderingWindows) {0};
 
-  PgsFrameSequence * first_frame_seq = NULL;
-  PgsFrameSequence * cur_frame_seq = NULL;
+  PgsFrameSequence *first_frame_seq = NULL;
+  PgsFrameSequence *cur_frame_seq = NULL;
 
   bool empty_screen = true;
 
@@ -1285,7 +1285,7 @@ int processPgsGenerator(
   for (; timestamp < end_timestamp; timestamp += frame_duration, frame_nb++) {
     int change;
     long long now = timestamp / 27000ll;
-    ASS_Image * img = ass_render_frame(ass_renderer, track, now, &change);
+    ASS_Image *img = ass_render_frame(ass_renderer, track, now, &change);
 
     if (NULL == img) {
       if (!empty_screen) {
@@ -1328,16 +1328,16 @@ int processPgsGenerator(
       }
 
       if (0 != change) {
-        const char * state_str = (change == 1) ? "position_change" : "content_change";
+        const char *state_str = (change == 1) ? "position_change" : "content_change";
 
-        PgsFrame * frame = newFramePgsFrameSequence(cur_frame_seq, timestamp);
+        PgsFrame *frame = newFramePgsFrameSequence(cur_frame_seq, timestamp);
         if (NULL == frame)
           return -1;
 
         clearHdmvBitmap(&rframe);
 
         unsigned nb_obj = 0;
-        MergingTreeNode * bitmaps_mt = NULL;
+        MergingTreeNode *bitmaps_mt = NULL;
         for (; NULL != img; img = img->next, nb_obj++) {
           // clearHdmvBitmap(&rframe);
           _blendASSImageToHdmvBitmap(&rframe, img);
@@ -1397,7 +1397,7 @@ int processPgsGenerator(
       printf(" Content change: %s (%d).\n", _change_str(change), change);
 
       if (NULL != img) {
-        image_t * frame = _gen_image(frame_w, frame_h);
+        image_t *frame = _gen_image(frame_w, frame_h);
 
         int nb_objects = 0;
         RenderingWindows objects = (RenderingWindows) {0};
@@ -1502,11 +1502,11 @@ int processPgsGenerator(
     epoch_size++;
 
     int change;
-    ASS_Image * img = ass_render_frame(ass_renderer, track, timestamp, &change);
+    ASS_Image *img = ass_render_frame(ass_renderer, track, timestamp, &change);
 
     printf(" Content change: %s (%d).\n", _change_str(change), change);
 
-    image_t * frame = _gen_image(frame_w, frame_h);
+    image_t *frame = _gen_image(frame_w, frame_h);
 
     int nb_objects = 0;
     for (; NULL != img; img = img->next) {
@@ -1530,7 +1530,7 @@ int processPgsGenerator(
   }
 #endif
 
-  // image_t * frame = gen_image(frame_w, frame_h);
+  // image_t *frame = gen_image(frame_w, frame_h);
   // blend(frame, img);
 
   ass_free_track(track);

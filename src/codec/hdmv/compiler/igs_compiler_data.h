@@ -27,8 +27,8 @@
 
 #if 0
 typedef struct {
-  uint32_t * palette_entries;
-  uint32_t * yuvEntries;
+  uint32_t *palette_entries;
+  uint32_t *yuvEntries;
   unsigned capacity;
   unsigned usedEntries;
 
@@ -43,21 +43,21 @@ typedef struct {
   HdmvCDParameters composition_descriptor;
   HdmvICParameters interactive_composition;
 
-  /* Hash table (key: lbc * reference picture name, data: HdmvBitmap) */
+  /* Hash table (key: lbc *reference picture name, data: HdmvBitmap) */
   HdmvPicturesIndexer ref_pics_indexer;
-  HdmvBitmap * ref_pics_bitmaps;
+  HdmvBitmap *ref_pics_bitmaps;
   unsigned nb_allocated_ref_pics_bitmaps;
   unsigned nb_used_ref_pics_bitmaps;
 
-  HdmvBitmap * object_bitmaps;
+  HdmvBitmap *object_bitmaps;
   unsigned nb_allocated_object_bitmaps;
   unsigned nb_used_object_bitmaps;
 
-  HdmvPalette * palettes;
+  HdmvPalette *palettes;
   unsigned nb_allocated_palettes;
   unsigned nb_used_palettes;
 
-  HdmvObject * objects;
+  HdmvObject *objects;
   unsigned nb_objects;
 } IgsCompilerComposition;
 
@@ -81,28 +81,28 @@ static inline void cleanIgsCompilerComposition(
 /* ###### Add Entry : ###################################################### */
 
 int addRefPictureIgsCompilerComposition(
-  IgsCompilerComposition * dst,
+  IgsCompilerComposition *dst,
   HdmvBitmap bitmap,
-  const lbc * name
+  const lbc *name
 );
 
 int addObjectIgsCompilerComposition(
-  IgsCompilerComposition * dst,
+  IgsCompilerComposition *dst,
   HdmvBitmap pic,
-  unsigned * idx_ret
+  unsigned *idx_ret
 );
 
 int addPaletteIgsCompilerComposition(
-  IgsCompilerComposition * dst,
-  HdmvPalette * pal,
-  uint8_t * palette_id_ret
+  IgsCompilerComposition *dst,
+  HdmvPalette *pal,
+  uint8_t *palette_id_ret
 );
 
 /* ###### Get Entry : ###################################################### */
 
-static inline const HdmvBitmap * getRefPictureIgsCompilerComposition(
-  IgsCompilerComposition * compo,
-  const lbc * name
+static inline const HdmvBitmap *getRefPictureIgsCompilerComposition(
+  IgsCompilerComposition *compo,
+  const lbc *name
 )
 {
   return getHdmvPicturesIndexer(
@@ -123,7 +123,7 @@ typedef struct {
 } IgsCompilerData;
 
 typedef struct IgsCompilerSegment {
-  struct IgsCompilerSegment * next;
+  struct IgsCompilerSegment *next;
   HdmvSegmentParameters param;
 } IgsCompilerSegment;
 

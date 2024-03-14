@@ -23,7 +23,7 @@ static inline unsigned areaRectangle(
   HdmvRectangle dim
 )
 {
-  return dim.w * dim.h;
+  return dim.w *dim.h;
 }
 
 static inline bool isEmptyRectangle(

@@ -23,7 +23,7 @@
  * \return int
  */
 int mainMux(
-  LibbluMuxingSettings settings
+  const LibbluMuxingSettings *settings
 );
 
 #endif

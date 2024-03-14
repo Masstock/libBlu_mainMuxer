@@ -9,7 +9,7 @@
 #define HDMV_PIC_LIST_DEFAULT_NB_PICS  8
 
 int addHdmvBitmapList(
-  HdmvBitmapList * dst,
+  HdmvBitmapList *dst,
   HdmvBitmap pic
 )
 {
@@ -24,8 +24,8 @@ int addHdmvBitmapList(
     if (!new_size || lb_mul_overflow_size_t(new_size, sizeof(HdmvBitmap *)))
       LIBBLU_HDMV_PIC_ERROR_RETURN("Picture list size overflow.\n");
 
-    HdmvBitmap * new_array = (HdmvBitmap *) realloc(
-      dst->bitmaps, new_size * sizeof(HdmvBitmap)
+    HdmvBitmap *new_array = (HdmvBitmap *) realloc(
+      dst->bitmaps, new_size *sizeof(HdmvBitmap)
     );
     if (NULL == new_array)
       LIBBLU_HDMV_PIC_ERROR_RETURN("Memory allocation error.\n");
@@ -39,12 +39,12 @@ int addHdmvBitmapList(
 }
 
 static int _odsUsagePriorityComp(
-  const void * left_ptr,
-  const void * right_ptr
+  const void *left_ptr,
+  const void *right_ptr
 )
 {
-  const HdmvBitmap * left  = (HdmvBitmap *) left_ptr;
-  const HdmvBitmap * right = (HdmvBitmap *) right_ptr;
+  const HdmvBitmap *left  = (HdmvBitmap *) left_ptr;
+  const HdmvBitmap *right = (HdmvBitmap *) right_ptr;
 
   if (left->usage < right->usage)
     return 1;
@@ -54,7 +54,7 @@ static int _odsUsagePriorityComp(
 }
 
 void sortByUsageHdmvBitmapList(
-  HdmvBitmapList * list
+  HdmvBitmapList *list
 )
 {
   qsort(

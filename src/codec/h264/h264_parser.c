@@ -178,7 +178,7 @@ static inline bool _completePicturePresent(
   const H264ParametersHandlerPtr handle
 )
 {
-  const H264CurrentProgressParam * param = &handle->curProgParam;
+  const H264CurrentProgressParam *param = &handle->curProgParam;
 
   return
     (param->auContent.bottomFieldPresent && param->auContent.topFieldPresent)
@@ -190,7 +190,7 @@ static inline bool _complementaryFieldPairPresent(
   const H264ParametersHandlerPtr handle
 )
 {
-  const H264CurrentProgressParam * param = &handle->curProgParam;
+  const H264CurrentProgressParam *param = &handle->curProgParam;
 
   return
     param->auContent.bottomFieldPresent
@@ -210,9 +210,9 @@ static int32_t _computePicOrderCntType0(
   int32_t TopFieldOrderCnt, BottomFieldOrderCnt;
   int32_t PicOrderCnt;
 
-  const H264SPSDataParameters * sps       = &handle->sequenceParametersSet.data;
-  const H264SliceHeaderParameters * slice = &handle->slice.header;
-  H264LastPictureProperties * lstPic      = &handle->curProgParam.lstPic;
+  const H264SPSDataParameters *sps       = &handle->sequenceParametersSet.data;
+  const H264SliceHeaderParameters *slice = &handle->slice.header;
+  H264LastPictureProperties *lstPic      = &handle->curProgParam.lstPic;
 
   MaxPicOrderCntLsb = (int32_t) sps->MaxPicOrderCntLsb;
 
@@ -305,7 +305,7 @@ static int32_t calcCurPicOrderCnt(
 {
   int32_t PicOrderCnt;
 
-  const H264SPSDataParameters * sps = &handle->sequenceParametersSet.data;
+  const H264SPSDataParameters *sps = &handle->sequenceParametersSet.data;
 
   assert(handle->sequenceParametersSetPresent);
 
@@ -363,7 +363,7 @@ static int _computeAuPicOrderCnt(
   int64_t PicOrderCnt;
 
   H264SliceHeaderParameters slice_header;
-  H264LastPictureProperties * lastPicProp;
+  H264LastPictureProperties *lastPicProp;
 
   assert(NULL != handle);
 
@@ -371,25 +371,25 @@ static int _computeAuPicOrderCnt(
     return -1;
 
   if (
-    handle->curProgParam.halfPicOrderCnt
+    handle->curProgParam.half_PicOrderCnt
     && (PicOrderCnt & 0x1)
     && _completePicturePresent(handle)
   ) {
     /* Unexpected Odd PicOrderCnt, value shall not be divided. */
-    if (options.secondPass)
+    if (options.second_pass)
       LIBBLU_H264_ERROR_RETURN(
         "Unexpected odd picture order count value, "
         "values are broken.\n"
       );
 
-    handle->curProgParam.halfPicOrderCnt = false;
+    handle->curProgParam.half_PicOrderCnt = false;
     handle->curProgParam.restartRequired = true;
     LIBBLU_H264_DEBUG_AU_TIMINGS("DISABLE HALF\n");
   }
 
   slice_header = handle->slice.header;
 
-  int64_t DivPicOrderCnt = PicOrderCnt >> handle->curProgParam.halfPicOrderCnt;
+  int64_t DivPicOrderCnt = PicOrderCnt >> handle->curProgParam.half_PicOrderCnt;
 
   LIBBLU_H264_DEBUG_AU_TIMINGS(
     "PicOrderCnt=%" PRId64 " DivPicOrderCnt=%" PRId64 "\n",
@@ -421,7 +421,7 @@ static int _setBufferingInformationsAccessUnit(
    * respectively, DTS and PTS timestamps values of the looked AU.
    */
   uint64_t cpb_removal_time, dpb_output_time;
-  if (!options.disableHrdVerifier) {
+  if (!options.disable_HRD_verifier) {
     cpb_removal_time = handle->curProgParam.auCpbRemovalTime;
     dpb_output_time = handle->curProgParam.auDpbOutputTime;
   }
@@ -455,7 +455,7 @@ static int _setBufferingInformationsAccessUnit(
  * defined in 7.4.1.2.4.
  */
 bool _isStartOfANewAU(
-  H264CurrentProgressParam * curState,
+  H264CurrentProgressParam *curState,
   H264NalUnitTypeValue nal_unit_type
 )
 {
@@ -527,7 +527,7 @@ static int64_t _computeDtsIncrement(
 
 static void setEsmsPtsRef(
   EsmsHandlerPtr script,
-  const H264CurrentProgressParam * curProgParam
+  const H264CurrentProgressParam *curProgParam
 )
 {
   uint64_t reference = (uint64_t) (
@@ -551,7 +551,7 @@ static int64_t _computeStreamPicOrderCnt(
   H264ParametersHandlerPtr handle
 )
 {
-  H264CurrentProgressParam * cp = &handle->curProgParam;
+  H264CurrentProgressParam *cp = &handle->curProgParam;
 
   if (/* handle->slice.header.isIdrPic && */ 0 == cp->PicOrderCnt && 0 < cp->LastMaxStreamPicOrderCnt) {
     cp->MaxStreamPicOrderCnt = cp->LastMaxStreamPicOrderCnt + 1;
@@ -576,8 +576,8 @@ static int64_t _computeStreamPicOrderCnt(
 
 static int _initProperties(
   EsmsHandlerPtr esms,
-  H264CurrentProgressParam * curProgParam,
-  const H264SPSDataParameters * sps,
+  H264CurrentProgressParam *curProgParam,
+  const H264SPSDataParameters *sps,
   H264ConstraintsParam constraints
 )
 {
@@ -613,13 +613,13 @@ static int _initProperties(
     .level_IDC     = sps->level_idc
   };
 
-  LibbluESH264SpecProperties * param = esms->fmt_prop.h264;
+  LibbluESH264SpecProperties *param = esms->fmt_prop.h264;
   param->constraint_flags = valueH264ContraintFlags(sps->constraint_set_flags);
   if (
     sps->vui_parameters_present_flag
     && sps->vui_parameters.nal_hrd_parameters_present_flag
   ) {
-    const H264HrdParameters * hrd = &sps->vui_parameters.nal_hrd_parameters;
+    const H264HrdParameters *hrd = &sps->vui_parameters.nal_hrd_parameters;
     param->CpbSize = hrd->schedSel[hrd->cpb_cnt_minus1].CpbSize;
     param->BitRate = hrd->schedSel[0].BitRate;
     esms->bitrate = hrd->schedSel[0].BitRate;
@@ -649,7 +649,7 @@ static int _registerAccessUnitNALUs(
   H264ParametersHandlerPtr handle
 )
 {
-  H264CurrentProgressParam * curProgParam = &handle->curProgParam;
+  H264CurrentProgressParam *curProgParam = &handle->curProgParam;
 
   if (!curProgParam->curAccessUnit.nbUsedNalus)
     LIBBLU_H264_ERROR_RETURN(
@@ -761,13 +761,13 @@ static int _processPESFrame(
     );
   }
 
-  const H264SPSDataParameters * sps = &handle->sequenceParametersSet.data;
+  const H264SPSDataParameters *sps = &handle->sequenceParametersSet.data;
   if (!sps->vui_parameters_present_flag)
     LIBBLU_H264_ERROR_RETURN(
       "Missing VUI from AU SPS, unable to complete access unit.\n"
     );
 
-  H264CurrentProgressParam * cur = &handle->curProgParam;
+  H264CurrentProgressParam *cur = &handle->curProgParam;
 
   if (cur->nbSlicesInPic < handle->constraints.sliceNb) {
     LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
@@ -799,12 +799,12 @@ static int _processPESFrame(
 
   if (!cur->initializedParam) {
     /* Set pictures counting mode (apply correction if 2nd pass) */
-    if (!options.secondPass) {
-      cur->halfPicOrderCnt = true;
+    if (!options.second_pass) {
+      cur->half_PicOrderCnt = true;
         // By default, expect to divide by two the PicOrderCnt.
     }
     else {
-      cur->halfPicOrderCnt = options.halfPicOrderCnt;
+      cur->half_PicOrderCnt = options.half_PicOrderCnt;
       cur->initDecPicNbCntShift = options.initDecPicNbCntShift;
     }
 
@@ -827,7 +827,7 @@ static int _processPESFrame(
       pts_diff_shift
     );
 
-    if (options.secondPass)
+    if (options.second_pass)
       LIBBLU_H264_ERROR_RETURN(
         "Broken picture order count, negative decoding delay.\n"
       );
@@ -842,9 +842,9 @@ static int _processPESFrame(
   }
 
   int64_t dts = cur->lstPic.dts + cur->lstPic.duration;
-  int64_t pts = dts + pts_diff_shift * cur->frameDuration;
+  int64_t pts = dts + pts_diff_shift *cur->frameDuration;
   uint64_t dts_90kHz = (cur->lstPic.dts / 300) + DIV_ROUND_UP(cur->lstPic.duration, 300);
-  uint64_t pts_90kHz = dts_90kHz + DIV_ROUND_UP(pts_diff_shift * cur->frameDuration, 300);
+  uint64_t pts_90kHz = dts_90kHz + DIV_ROUND_UP(pts_diff_shift *cur->frameDuration, 300);
 
   LIBBLU_H264_DEBUG_AU_TIMINGS(" -> PTS: %" PRIu64 "@90kHz %" PRIu64 "@27MHz\n", pts_90kHz, pts);
   LIBBLU_H264_DEBUG_AU_TIMINGS(" -> DTS: %" PRIu64 "@90kHz %" PRIu64 "@27MHz\n", dts_90kHz, dts);
@@ -918,7 +918,7 @@ static bool _areEnoughDataToInitHrdVerifier(
 
 static bool _areSupportedParametersToInitHrdVerifier(
   const H264ParametersHandlerPtr handle,
-  const LibbluESSettingsOptions * options
+  const LibbluESSettingsOptions *options
 )
 {
   return checkH264CpbHrdVerifierAvailablity(
@@ -929,10 +929,10 @@ static bool _areSupportedParametersToInitHrdVerifier(
 }
 
 static int _checkInitializationHrdVerifier(
-  H264HrdVerifierContextPtr * dst,
+  H264HrdVerifierContextPtr *dst,
   const H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions * options,
-  bool * disable
+  LibbluESSettingsOptions *options,
+  bool *disable
 )
 {
   /* Check if enough data is present to process HRD Verifier */
@@ -991,8 +991,8 @@ static int _processHrdVerifierAccessUnit(
 
 static int _checkAndProcessHrdVerifierAccessUnit(
   H264ParametersHandlerPtr handle,
-  H264HrdVerifierContextPtr * hrdVerCtxPtr,
-  LibbluESParsingSettings * settings
+  H264HrdVerifierContextPtr *hrdVerCtxPtr,
+  LibbluESParsingSettings *settings
 )
 {
   if (NULL == *hrdVerCtxPtr) {
@@ -1003,7 +1003,7 @@ static int _checkAndProcessHrdVerifierAccessUnit(
       return -1;
 
     if (disable) { // Unable to initialize, disabled HRD Verifier.
-      settings->options.disableHrdVerifier = true;
+      settings->options.disable_HRD_verifier = true;
       return 0;
     }
   }
@@ -1013,14 +1013,14 @@ static int _checkAndProcessHrdVerifierAccessUnit(
 
 static int _processAccessUnit(
   H264ParametersHandlerPtr handle,
-  H264HrdVerifierContextPtr * hrdVerifierCtxPtr,
-  LibbluESParsingSettings * settings
+  H264HrdVerifierContextPtr *hrdVerifierCtxPtr,
+  LibbluESParsingSettings *settings
 )
 {
   assert(NULL != hrdVerifierCtxPtr);
 
   /* Check HRD Verifier */
-  if (!settings->options.disableHrdVerifier) {
+  if (!settings->options.disable_HRD_verifier) {
     if (_checkAndProcessHrdVerifierAccessUnit(handle, hrdVerifierCtxPtr, settings) < 0)
       return -1;
   }
@@ -1107,9 +1107,9 @@ int decodeH264AccessUnitDelimiter(
 
 static int _buildScalingList(
   H264ParametersHandlerPtr handle,
-  uint8_t * scalingList,
+  uint8_t *scalingList,
   const unsigned sizeOfList,
-  bool * useDefaultScalingMatrix
+  bool *useDefaultScalingMatrix
 )
 {
   uint32_t value;
@@ -1138,7 +1138,7 @@ static int _buildScalingList(
 
 static int _parseH264HrdParameters(
   H264ParametersHandlerPtr handle,
-  H264HrdParameters * param
+  H264HrdParameters *param
 )
 {
   /* hrd_parameters() */
@@ -1229,7 +1229,7 @@ static int _parseH264HrdParameters(
  */
 static unsigned _defaultMaxNumReorderFramesDecFrameBuffering(
   const H264ParametersHandlerPtr handle,
-  const H264SPSDataParameters * sps
+  const H264SPSDataParameters *sps
 )
 {
   unsigned MaxDpbMbs = handle->constraints.MaxDpbMbs;
@@ -1251,7 +1251,7 @@ static unsigned _defaultMaxNumReorderFramesDecFrameBuffering(
 
   /* Equation A.3.1.h) MaxDpbFrames */
   return MIN(
-    MaxDpbMbs / (sps->PicWidthInMbs * sps->FrameHeightInMbs),
+    MaxDpbMbs / (sps->PicWidthInMbs *sps->FrameHeightInMbs),
     16
   );
 }
@@ -1264,7 +1264,7 @@ static unsigned _defaultMaxNumReorderFramesDecFrameBuffering(
  * Default values according to [1] E.2.1 VUI parameters semantics.
  */
 static void _setDefaultH264VuiParameters(
-  H264VuiParameters * dst
+  H264VuiParameters *dst
 )
 {
   *dst = (H264VuiParameters) {
@@ -1291,7 +1291,7 @@ static void _setDefaultH264VuiParameters(
 
 static int _parseH264VuiParameters(
   H264ParametersHandlerPtr handle,
-  H264VuiParameters * param
+  H264VuiParameters *param
 )
 {
   /* vui_parameters() */
@@ -1511,11 +1511,11 @@ static int _parseH264VuiParameters(
 
 static void _updateH264VuiParameters(
   H264ParametersHandlerPtr handle,
-  H264SPSDataParameters * sps
+  H264SPSDataParameters *sps
 )
 {
-  H264VuiParameters * vui = &sps->vui_parameters;
-  H264VuiVideoSeqBsRestrParameters * bs_restr = &vui->bistream_restrictions;
+  H264VuiParameters *vui = &sps->vui_parameters;
+  H264VuiVideoSeqBsRestrParameters *bs_restr = &vui->bistream_restrictions;
 
   /* Set saved frame-rate value. */
   handle->curProgParam.frameRate = -1;
@@ -1543,7 +1543,7 @@ static void _updateH264VuiParameters(
 
 static int _parseH264SequenceParametersSetData(
   H264ParametersHandlerPtr handle,
-  H264SPSDataParameters * param
+  H264SPSDataParameters *param
 )
 {
   /* seq_parameter_set_data() */
@@ -1871,7 +1871,7 @@ static int _parseH264SequenceParametersSetData(
 
   param->RawMbBits =
     (uint64_t) 256 * param->BitDepthLuma
-    + (uint64_t) 2 * param->MbWidthC * param->MbHeightC * param->BitDepthChroma
+    + (uint64_t) 2 * param->MbWidthC *param->MbHeightC *param->BitDepthChroma
   ;
 
   if (param->pic_order_cnt_type == 0) {
@@ -1885,10 +1885,10 @@ static int _parseH264SequenceParametersSetData(
 
   param->PicWidthInMbs = param->pic_width_in_mbs_minus1 + 1;
   param->PicWidthInSamplesL = param->PicWidthInMbs * 16;
-  param->PicWidthInSamplesC = param->PicWidthInMbs * param->MbWidthC;
+  param->PicWidthInSamplesC = param->PicWidthInMbs *param->MbWidthC;
 
   param->PicHeightInMapUnits = param->pic_height_in_map_units_minus1 + 1;
-  param->PicSizeInMapUnits = param->PicWidthInMbs * param->PicHeightInMapUnits;
+  param->PicSizeInMapUnits = param->PicWidthInMbs *param->PicHeightInMapUnits;
 
   param->FrameHeightInMbs =
     (2 - param->frame_mbs_only_flag) * param->PicHeightInMapUnits
@@ -2060,7 +2060,7 @@ int decodeH264PicParametersSet(
     unsigned numSliceGroups = pps.num_slice_groups_minus1 + 1;
 
     /* Slices split in separate groups, need definitions. */
-    H264PicParametersSetSliceGroupsParameters * ppsSG =
+    H264PicParametersSetSliceGroupsParameters *ppsSG =
       &pps.slice_groups
     ;
 
@@ -2204,7 +2204,7 @@ int decodeH264PicParametersSet(
     pps.pic_scaling_matrix_present_flag = value;
 
     if (pps.pic_scaling_matrix_present_flag) {
-      H264SequenceParametersSetDataParameters * sps =
+      H264SequenceParametersSetDataParameters *sps =
         &handle->sequenceParametersSet.data
       ;
       pps.nbScalingMatrix =
@@ -2319,13 +2319,13 @@ int decodeH264PicParametersSet(
 
 static int _parseH264SeiBufferingPeriod(
   H264ParametersHandlerPtr handle,
-  H264SeiBufferingPeriod * param
+  H264SeiBufferingPeriod *param
 )
 {
   /* buffering_period(payloadSize) - Annex D.1.2 */
   uint32_t value;
 
-  H264SPSDataParameters * spsData;
+  H264SPSDataParameters *spsData;
 
   assert(NULL != handle);
   assert(NULL != param);
@@ -2368,7 +2368,7 @@ static int _parseH264SeiBufferingPeriod(
   param->seq_parameter_set_id = value;
 
   if (spsData->vui_parameters.nal_hrd_parameters_present_flag) {
-    H264HrdParameters * hrd = &spsData->vui_parameters.nal_hrd_parameters;
+    H264HrdParameters *hrd = &spsData->vui_parameters.nal_hrd_parameters;
     unsigned SchedSelIdx;
 
     for (SchedSelIdx = 0; SchedSelIdx <= hrd->cpb_cnt_minus1; SchedSelIdx++) {
@@ -2387,7 +2387,7 @@ static int _parseH264SeiBufferingPeriod(
   }
 
   if (spsData->vui_parameters.vcl_hrd_parameters_present_flag) {
-    H264HrdParameters * hrd = &spsData->vui_parameters.vcl_hrd_parameters;
+    H264HrdParameters *hrd = &spsData->vui_parameters.vcl_hrd_parameters;
     unsigned SchedSelIdx;
 
     for (SchedSelIdx = 0; SchedSelIdx <= hrd->cpb_cnt_minus1; SchedSelIdx++) {
@@ -2410,7 +2410,7 @@ static int _parseH264SeiBufferingPeriod(
 
 static int _parseH264SeiPicTiming(
   H264ParametersHandlerPtr handle,
-  H264SeiPicTiming * param
+  H264SeiPicTiming *param
 )
 {
   /* pic_timing(payloadSize) - Annex D.1.3 */
@@ -2420,8 +2420,8 @@ static int _parseH264SeiPicTiming(
   size_t dpb_output_delay_length;
   size_t time_offset_length;
 
-  H264SPSDataParameters * sps;
-  H264VuiParameters * vui;
+  H264SPSDataParameters *sps;
+  H264VuiParameters *vui;
 
   assert(NULL != handle);
   assert(NULL != param);
@@ -2520,7 +2520,7 @@ static int _parseH264SeiPicTiming(
       );
     }
 
-    memset(param->clock_timestamp, 0x00, param->NumClockTS * sizeof(H264ClockTimestampParam));
+    memset(param->clock_timestamp, 0x00, param->NumClockTS *sizeof(H264ClockTimestampParam));
 
     for (i = 0; i < param->NumClockTS; i++) {
       /* [b1 clock_timestamp_flag[i]] */
@@ -2647,7 +2647,7 @@ static int _parseH264SeiPicTiming(
 
 static int _parseH264SeiUserDataUnregistered(
   H264ParametersHandlerPtr handle,
-  H264SeiUserDataUnregistered * param,
+  H264SeiUserDataUnregistered *param,
   const size_t payloadSize
 )
 {
@@ -2679,7 +2679,7 @@ static int _parseH264SeiUserDataUnregistered(
 
 static int _parseH264SeiRecoveryPoint(
   H264ParametersHandlerPtr handle,
-  H264SeiRecoveryPoint * param
+  H264SeiRecoveryPoint *param
 )
 {
   /* recovery_point(payloadSize) - Annex D.1.8 */
@@ -2722,7 +2722,7 @@ static int _parseH264SeiReservedSeiMessage(
 
 static int _parseH264SupplementalEnhancementInformationMessage(
   H264ParametersHandlerPtr handle,
-  H264SeiMessageParameters * param
+  H264SeiMessageParameters *param
 )
 {
   /* sei_message() */
@@ -2978,7 +2978,7 @@ int decodeH264SupplementalEnhancementInformation(
 
 static int _parseH264RefPicListModification(
   H264ParametersHandlerPtr handle,
-  H264RefPicListModification * param,
+  H264RefPicListModification *param,
   H264SliceTypeValue slice_type
 )
 {
@@ -2997,7 +2997,7 @@ static int _parseH264RefPicListModification(
       unsigned listLen = 0;
 
       while (1) {
-        H264RefPicListModificationPictureIndex * index =
+        H264RefPicListModificationPictureIndex *index =
           &param->refPicListModificationl0[listLen]
         ;
 
@@ -3053,7 +3053,7 @@ static int _parseH264RefPicListModification(
       unsigned listLen = 0;
 
       while (1) {
-        H264RefPicListModificationPictureIndex * index =
+        H264RefPicListModificationPictureIndex *index =
           &param->refPicListModificationl1[listLen]
         ;
 
@@ -3104,15 +3104,15 @@ static int _parseH264RefPicListModification(
 
 static int _parseH264PredWeightTable(
   H264ParametersHandlerPtr handle,
-  H264PredWeightTable * param,
-  H264SliceHeaderParameters * sliceHeaderParam
+  H264PredWeightTable *param,
+  H264SliceHeaderParameters *sliceHeaderParam
 )
 {
   /* pred_weight_table() - 7.3.3.2 Prediction weight table syntax */
   uint32_t value;
   unsigned i, j;
 
-  H264SPSDataParameters * spsData;
+  H264SPSDataParameters *spsData;
 
   assert(NULL != handle);
   assert(NULL != param);
@@ -3216,7 +3216,7 @@ static int _parseH264PredWeightTable(
 }
 
 static int _checkAndSetPresentOperationsH264DecRefPicMarking(
-  H264DecRefPicMarking * param,
+  H264DecRefPicMarking *param,
   H264MemoryManagementControlOperationValue operation
 )
 {
@@ -3267,7 +3267,7 @@ static int _checkAndSetPresentOperationsH264DecRefPicMarking(
 
 static int _parseH264DecRefPicMarking(
   H264ParametersHandlerPtr handle,
-  H264DecRefPicMarking * param,
+  H264DecRefPicMarking *param,
   bool IdrPicFlag
 )
 {
@@ -3298,7 +3298,7 @@ static int _parseH264DecRefPicMarking(
     param->adaptive_ref_pic_marking_mode_flag = value;
 
     if (param->adaptive_ref_pic_marking_mode_flag) {
-      H264MemMngmntCtrlOpBlk * opBlk;
+      H264MemMngmntCtrlOpBlk *opBlk;
 
       H264MemoryManagementControlOperationValue operation;
 
@@ -3366,14 +3366,14 @@ static int _parseH264DecRefPicMarking(
 
 static int _parseH264SliceHeader(
   H264ParametersHandlerPtr handle,
-  H264SliceHeaderParameters * param
+  H264SliceHeaderParameters *param
 )
 {
   /* slice_header() - 7.3.3 Slice header syntax */
   uint32_t value;
 
-  H264SequenceParametersSetDataParameters * sps;
-  H264PicParametersSetParameters * pps;
+  H264SequenceParametersSetDataParameters *sps;
+  H264PicParametersSetParameters *pps;
 
   bool isRefPic = isReferencePictureH264NalRefIdcValue(getNalRefIdc(handle));
   bool IdrPicFlag = isIdrPictureH264NalUnitTypeValue(getNalUnitType(handle));
@@ -4113,7 +4113,7 @@ int decodeH264EndOfSequence(
 }
 
 int analyzeH264(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   assert(NULL != settings);
@@ -4204,7 +4204,7 @@ int analyzeH264(
       );
 
     case NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION: /* 6 - SEI */
-      if (settings->options.discardSei) {
+      if (settings->options.discard_sei) {
         /* Flag force SEI messages suppression, skip decoding. */
         LIBBLU_H264_DEBUG_SEI(" Discard SEI messages.\n");
 
@@ -4221,7 +4221,7 @@ int analyzeH264(
           goto free_return;
 
         if (
-          settings->options.forceRebuildSei
+          settings->options.force_rebuild_sei
           && (
             handle->sei.bufferingPeriodValid
             || handle->sei.picTimingValid
@@ -4266,7 +4266,7 @@ int analyzeH264(
 
         handle->curProgParam.presenceOfUselessSequenceParameterSet = false;
 
-        if (!settings->options.disableFixes) {
+        if (!settings->options.disable_fixes) {
           if (discardCurNalCell(handle) < 0)
             goto free_return;
           continue;
@@ -4279,7 +4279,7 @@ int analyzeH264(
         || handle->curProgParam.wrongVuiParameters
       ) {
         handle->curProgParam.useVuiRebuilding |=
-          !settings->options.disableFixes
+          !settings->options.disable_fixes
         ;
       }
 
@@ -4310,7 +4310,7 @@ int analyzeH264(
 
         handle->curProgParam.presenceOfUselessAccessUnitDelimiter = false;
 
-        if (!settings->options.disableFixes) {
+        if (!settings->options.disable_fixes) {
           if (discardCurNalCell(handle) < 0)
             goto free_return;
           continue;
@@ -4346,7 +4346,7 @@ int analyzeH264(
      * TODO: Find rebuilding algorithm.
      */
     if (sei_section) {
-      if (settings->options.forceRebuildSei) {
+      if (settings->options.force_rebuild_sei) {
 #if 0
         if (insertH264SeiBufferingPeriodPlaceHolder(handle) < 0)
           goto free_return;
@@ -4369,8 +4369,8 @@ int analyzeH264(
       "restart parsing with corrected parameters.\n"
     );
 
-    settings->options.secondPass = true;
-    settings->options.halfPicOrderCnt = handle->curProgParam.halfPicOrderCnt;
+    settings->options.second_pass = true;
+    settings->options.half_PicOrderCnt = handle->curProgParam.half_PicOrderCnt;
     settings->options.initDecPicNbCntShift = handle->curProgParam.initDecPicNbCntShift;
 
     /* Quick exit. */

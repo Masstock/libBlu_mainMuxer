@@ -7,7 +7,7 @@
 #include "codecsUtilities.h"
 
 LibbluStreamCodingType guessESStreamCodingType(
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   /* TODO */
@@ -17,7 +17,7 @@ LibbluStreamCodingType guessESStreamCodingType(
 }
 
 int initLibbluESFormatUtilities(
-  LibbluESFormatUtilities * dst,
+  LibbluESFormatUtilities *dst,
   LibbluStreamCodingType codingType
 )
 {
@@ -86,8 +86,8 @@ int initLibbluESFormatUtilities(
 
 int generateScriptES(
   LibbluESFormatUtilities utilities,
-  const lbc * esFilepath,
-  const lbc * outputScriptFilepath,
+  const lbc *esFilepath,
+  const lbc *outputScriptFilepath,
   LibbluESSettingsOptions options
 )
 {

@@ -7,10 +7,10 @@
 #include "hdmv_palette_gen.h"
 
 int buildPaletteListHdmvPalette(
-  HdmvPalette * dst,
-  HdmvBitmapList * list,
+  HdmvPalette *dst,
+  HdmvBitmapList *list,
   unsigned target_nb_colors,
-  HdmvQuantHexTreeNodesInventory * inv_ref
+  HdmvQuantHexTreeNodesInventory *inv_ref
 )
 {
   HdmvQuantHexTreeNodesInventory local_inv = {0};

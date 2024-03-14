@@ -150,7 +150,7 @@ typedef struct {
  * \note DOT parameter is present as it is in AACS Basic CCI.
  */
 void setHdmvLibbluDtcpSettings(
-  LibbluDtcpSettings * dst,
+  LibbluDtcpSettings *dst,
   bool retentionMoveMode,
   LibbluDtcpRetentionStateValue retentionState,
   bool epn,
@@ -167,7 +167,7 @@ void setHdmvLibbluDtcpSettings(
  * \param dst Destination structure.
  */
 void setHdmvDefaultUnencryptedLibbluDtcpSettings(
-  LibbluDtcpSettings * dst
+  LibbluDtcpSettings *dst
 );
 
 #endif

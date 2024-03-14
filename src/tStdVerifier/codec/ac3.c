@@ -7,8 +7,8 @@
 #include "ac3.h"
 
 int createAc3BufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 )
@@ -22,15 +22,15 @@ int createAc3BufferingChainBdavStd(
 
   tbParam = (BufModelBufferParameters) {
     .name = TRANSPORT_BUFFER,
-    .instantFilling = false,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_AC3_TBS * 8
+    .instant_filling = false,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_AC3_TBS * 8
   };
   bParam = (BufModelBufferParameters) {
     .name = MAIN_BUFFER,
-    .instantFilling = true,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_AC3_BS * 8
+    .instant_filling = true,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_AC3_BS * 8
   };
 
   /* Create TB */

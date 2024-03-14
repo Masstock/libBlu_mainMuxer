@@ -4,8 +4,8 @@
 #include "ac3_util.h"
 
 int initAc3Context(
-  Ac3Context * ctx,
-  LibbluESParsingSettings * settings
+  Ac3Context *ctx,
+  LibbluESParsingSettings *settings
 )
 {
   const LibbluESSettingsOptions options = settings->options;
@@ -44,7 +44,7 @@ int initAc3Context(
     .script = script,
     .script_fp = settings->scriptFilepath,
 
-    .skip_ext = options.extractCore
+    .skip_ext = options.extract_core
   };
 
   return 0;
@@ -94,7 +94,7 @@ static bool _isPresentMlpMajorSyncFormatSyncWord(
 
 
 Ac3ContentType initNextFrameAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
   Ac3ContentType type;
@@ -184,12 +184,12 @@ Ac3ContentType initNextFrameAc3Context(
 
 
 static int _reallocBitReaderBuffer(
-  Ac3Context * ctx,
+  Ac3Context *ctx,
   size_t new_size
 )
 {
   /* Reallocate backing buffer */
-  uint8_t * new_buf = realloc(ctx->buffer, new_size);
+  uint8_t *new_buf = realloc(ctx->buffer, new_size);
   if (NULL == new_buf)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -201,8 +201,8 @@ static int _reallocBitReaderBuffer(
 
 
 int fillAc3BitReaderAc3Context(
-  Ac3Context * ctx,
-  const Ac3SyncInfoParameters * si
+  Ac3Context *ctx,
+  const Ac3SyncInfoParameters *si
 )
 {
   // TODO: Check minimal frame_size value.
@@ -237,7 +237,7 @@ static unsigned _getFrmsizEac3(
 
 
 int fillEac3BitReaderAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
   // TODO: Check minimal frame_size value.
@@ -260,8 +260,8 @@ int fillEac3BitReaderAc3Context(
 
 
 int fillMlpBitReaderAc3Context(
-  Ac3Context * ctx,
-  const MlpSyncHeaderParameters * sh
+  Ac3Context *ctx,
+  const MlpSyncHeaderParameters *sh
 )
 {
 
@@ -286,10 +286,10 @@ int fillMlpBitReaderAc3Context(
 
 
 int completeFrameAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
-  const Ac3AccessUnit * au = &ctx->cur_au;
+  const Ac3AccessUnit *au = &ctx->cur_au;
   unsigned sfile_idx = ctx->src_file_idx;
 
   switch (au->type) {
@@ -351,8 +351,8 @@ static double _peakBitrateAc3FrameType(
 }
 
 static int _detectStreamType(
-  Ac3Context * ctx,
-  Ac3ContentType * type
+  Ac3Context *ctx,
+  Ac3ContentType *type
 )
 {
 
@@ -370,14 +370,14 @@ static int _detectStreamType(
 }
 
 static uint8_t _detectAudioFormat(
-  Ac3Context * ctx,
+  Ac3Context *ctx,
   Ac3ContentType stream_type
 )
 {
   unsigned ext_nb_channels = 0;
 
   if (stream_type == AC3_TRUEHD) {
-    const MlpMajorSyncInfoParameters * msi = &ctx->mlp.mlp_sync_header.major_sync_info;
+    const MlpMajorSyncInfoParameters *msi = &ctx->mlp.mlp_sync_header.major_sync_info;
 
     ext_nb_channels = MAX(ext_nb_channels, getNbChannels6ChPresentationAssignment(
       msi->format_info.u6ch_presentation_channel_assignment
@@ -403,14 +403,14 @@ static uint8_t _detectAudioFormat(
 }
 
 static SampleRateCode _detectSampleRateCode(
-  Ac3Context * ctx,
+  Ac3Context *ctx,
   Ac3ContentType stream_type
 )
 {
   unsigned ext_audio_freq = 0;
 
   if (stream_type == AC3_TRUEHD) {
-    const MlpMajorSyncInfoParameters * msi = &ctx->mlp.mlp_sync_header.major_sync_info;
+    const MlpMajorSyncInfoParameters *msi = &ctx->mlp.mlp_sync_header.major_sync_info;
     ext_audio_freq = sampleRateMlpAudioSamplingFrequency(msi->format_info.audio_sampling_frequency);
   }
 
@@ -425,8 +425,8 @@ static SampleRateCode _detectSampleRateCode(
 }
 
 static void _setLibbluESProperties(
-  Ac3Context * ctx,
-  LibbluESProperties * es_prop,
+  Ac3Context *ctx,
+  LibbluESProperties *es_prop,
   Ac3ContentType stream_type
 )
 {
@@ -441,8 +441,8 @@ static void _setLibbluESProperties(
 }
 
 static void _setLibbluESAc3SpecProperties(
-  Ac3Context * ctx,
-  LibbluESAc3SpecProperties * ac3_prop
+  Ac3Context *ctx,
+  LibbluESAc3SpecProperties *ac3_prop
 )
 {
   *ac3_prop = (LibbluESAc3SpecProperties) {
@@ -457,7 +457,7 @@ static void _setLibbluESAc3SpecProperties(
 }
 
 static void _setScriptProperties(
-  Ac3Context * ctx,
+  Ac3Context *ctx,
   Ac3ContentType stream_type
 )
 {
@@ -473,7 +473,7 @@ static void _setScriptProperties(
 }
 
 static const char * _streamFormatStr(
-  const Ac3Context * ctx,
+  const Ac3Context *ctx,
   Ac3ContentType stream_type
 )
 {
@@ -494,7 +494,7 @@ static const char * _streamFormatStr(
 }
 
 static void _printStreamInfos(
-  const Ac3Context * ctx,
+  const Ac3Context *ctx,
   Ac3ContentType stream_type
 )
 {
@@ -512,7 +512,7 @@ static void _printStreamInfos(
   );
 
   if (ctx->contains_mlp) {
-    const MlpInformations * mi = &ctx->mlp.info;
+    const MlpInformations *mi = &ctx->mlp.info;
     lbc_printf(lbc_str("MLP max output bit-depth: %u bits.\n"), mi->observed_bit_depth);
   }
 
@@ -523,7 +523,7 @@ static void _printStreamInfos(
 }
 
 int completeAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
 
@@ -546,7 +546,7 @@ int completeAc3Context(
 }
 
 void cleanAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 )
 {
   if (NULL == ctx)

@@ -7,8 +7,8 @@
 #include "dts.h"
 
 int createDtsBufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 )
@@ -43,15 +43,15 @@ int createDtsBufferingChainBdavStd(
 
   tbParam = (BufModelBufferParameters) {
     .name = TRANSPORT_BUFFER,
-    .instantFilling = false,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_DTS_TBS * 8
+    .instant_filling = false,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_DTS_TBS * 8
   };
   bParam = (BufModelBufferParameters) {
     .name = MAIN_BUFFER,
-    .instantFilling = true,
-    .dontOverflowOutput = false,
-    .bufferSize = bs * 8
+    .instant_filling = true,
+    .dont_overflow_output = false,
+    .buffer_size = bs * 8
   };
 
   /* Create TB */

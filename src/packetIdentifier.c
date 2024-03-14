@@ -6,7 +6,7 @@
 #include "packetIdentifier.h"
 
 void setBDAVStdLibbluNumberOfESTypes(
-  LibbluNumberOfESTypes * dst
+  LibbluNumberOfESTypes *dst
 )
 {
   *dst = (LibbluNumberOfESTypes) {
@@ -40,7 +40,7 @@ static LibbluRegisteredPIDValuesEntryPtr createLibbluRegisteredPIDValuesEntry(
 }
 
 int insertLibbluRegisteredPIDValues(
-  LibbluRegisteredPIDValues * set,
+  LibbluRegisteredPIDValues *set,
   uint16_t pid
 )
 {

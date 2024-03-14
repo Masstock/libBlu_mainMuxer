@@ -9,7 +9,7 @@
 #include "dts_xll_util.h"
 
 int saveFrameSizeDtsPbrSmoothing(
-  DtsPbrSmoothingStats * stats,
+  DtsPbrSmoothingStats *stats,
   unsigned audio_frame_idx,
   uint64_t timestamp,
   uint32_t size
@@ -25,9 +25,9 @@ int saveFrameSizeDtsPbrSmoothing(
         "Too many DTS XLL frames for PBR smoothing process.\n"
       );
 
-    DtsPbrSmoothingStatsFrame * new_array = realloc(
+    DtsPbrSmoothingStatsFrame *new_array = realloc(
       stats->frames,
-      new_len * sizeof(DtsPbrSmoothingStatsFrame)
+      new_len *sizeof(DtsPbrSmoothingStatsFrame)
     );
     if (NULL == new_array)
       LIBBLU_DTS_ERROR_RETURN(
@@ -44,7 +44,7 @@ int saveFrameSizeDtsPbrSmoothing(
     stats->nb_alloc_frames = new_len;
   }
 
-  DtsPbrSmoothingStatsFrame * frame = &stats->frames[audio_frame_idx];
+  DtsPbrSmoothingStatsFrame *frame = &stats->frames[audio_frame_idx];
   if (0 < frame->target_frame_size && frame->timestamp != timestamp)
     LIBBLU_DTS_PBR_ERROR_RETURN(
       "Mismatch of timestamps in audio frame %u (%" PRIu64 " / %" PRIu64 ")\n",
@@ -61,9 +61,9 @@ int saveFrameSizeDtsPbrSmoothing(
 }
 
 int _getFrameTargetSizeDtsPbrSmoothing(
-  DtsPbrSmoothingStats * stats,
+  DtsPbrSmoothingStats *stats,
   unsigned audio_frame_idx,
-  uint32_t * size
+  uint32_t *size
 )
 {
   assert(NULL != stats);
@@ -83,7 +83,7 @@ int _getFrameTargetSizeDtsPbrSmoothing(
 }
 
 static int _performComputationDtsPbrSmoothing(
-  DtsPbrSmoothingStats * stats
+  DtsPbrSmoothingStats *stats
 )
 {
   bool fake_pbr = !isInitPbrFileHandler();
@@ -129,7 +129,7 @@ static int _performComputationDtsPbrSmoothing(
 
   for (unsigned idx = stats->last_frame_idx + 1; 0 < idx; idx--) {
     /* Compute amount of bytes accumulated at current frame decoding */
-    DtsPbrSmoothingStatsFrame * frame = &stats->frames[idx-1];
+    DtsPbrSmoothingStatsFrame *frame = &stats->frames[idx-1];
     uint32_t cur_accltd_size = frame->target_frame_size + accltd_size;
 
     /* Compute frame maximum size */
@@ -202,15 +202,15 @@ static int _performComputationDtsPbrSmoothing(
 }
 
 int initDtsXllFrameContext(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   DcaAudioAssetDescParameters asset,
-  DtshdFileHandler * dtshd
+  DtshdFileHandler *dtshd
 )
 {
   assert(NULL != ctx);
 
-  DcaAudioAssetDescDecNDParameters * dec_nav_data = &asset.dec_nav_data;
-  DcaAudioAssetExSSXllParameters * xll_param = &dec_nav_data->coding_components.ExSSXLL;
+  DcaAudioAssetDescDecNDParameters *dec_nav_data = &asset.dec_nav_data;
+  DcaAudioAssetExSSXllParameters *xll_param = &dec_nav_data->coding_components.ExSSXLL;
 
   /* Update decoder PBRS buffer size according to header : */
   if (dec_nav_data->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
@@ -253,13 +253,13 @@ int initDtsXllFrameContext(
 }
 
 static int _updateDtsXllPbrBufferSize(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   uint32_t new_size
 )
 {
   if (ctx->pbrs_buf_alloc_size < new_size) {
     /* Need realloc */
-    uint8_t * buf = (uint8_t *) realloc(ctx->pbrs_buf, new_size);
+    uint8_t *buf = (uint8_t *) realloc(ctx->pbrs_buf, new_size);
     if (NULL == buf)
       LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
 
@@ -272,7 +272,7 @@ static int _updateDtsXllPbrBufferSize(
 
 int parseDtsXllToPbrBuffer(
   BitstreamReaderPtr dtsInput,
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   DcaAudioAssetExSSXllParameters asset,
   uint32_t asset_size
 )
@@ -285,7 +285,7 @@ int parseDtsXllToPbrBuffer(
   uint64_t xll_off  = (uint64_t) tellPos(dtsInput);
   uint32_t xll_size = asset.nuExSSXLLFsize;
 
-  uint8_t * buf_ptr = &ctx->pbrs_buf[ctx->pbr_buf_used_size];
+  uint8_t *buf_ptr = &ctx->pbrs_buf[ctx->pbr_buf_used_size];
   if (readBytes(dtsInput, buf_ptr, asset.nuExSSXLLFsize) < 0)
     return -1;
   ctx->pbr_buf_used_size += asset.nuExSSXLLFsize;
@@ -397,8 +397,8 @@ int parseDtsXllToPbrBuffer(
   return 0;
 }
 
-LibbluBitReader * initUnpackDtsXllPbr(
-  DtsXllFrameContext * ctx
+LibbluBitReader *initUnpackDtsXllPbr(
+  DtsXllFrameContext *ctx
 )
 {
   assert(0 < ctx->pbr_buf_used_size);
@@ -414,10 +414,10 @@ LibbluBitReader * initUnpackDtsXllPbr(
 }
 
 int completeUnpackDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 )
 {
-  LibbluBitReader * br = &ctx->bit_reader;
+  LibbluBitReader *br = &ctx->bit_reader;
 
   assert(ctx->initializedPbrUnpack);
 
@@ -437,8 +437,8 @@ int completeUnpackDtsXllPbr(
 #if 0
 
 int unpackBitsDtsXllPbr(
-  DtsXllFrameContext * ctx,
-  uint32_t * value,
+  DtsXllFrameContext *ctx,
+  uint32_t *value,
   size_t length
 )
 {
@@ -477,7 +477,7 @@ int unpackBitsDtsXllPbr(
 }
 
 int skipBitsDtsXllPbr(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   size_t length
 )
 {
@@ -485,15 +485,15 @@ int skipBitsDtsXllPbr(
 }
 
 void alignByteDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 )
 {
   ctx->remainingBits = 0;
 }
 
 int unpackByteDtsXllPbr(
-  DtsXllFrameContext * ctx,
-  uint8_t * byte
+  DtsXllFrameContext *ctx,
+  uint8_t *byte
 )
 {
   assert(ctx->initializedPbrUnpack);
@@ -532,8 +532,8 @@ int unpackByteDtsXllPbr(
 }
 
 int unpackBytesDtsXllPbr(
-  DtsXllFrameContext * ctx,
-  uint32_t * value,
+  DtsXllFrameContext *ctx,
+  uint32_t *value,
   size_t length
 )
 {
@@ -557,7 +557,7 @@ int unpackBytesDtsXllPbr(
 }
 
 int skipBytesDtsXllPbr(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   size_t length
 )
 {
@@ -573,7 +573,7 @@ int skipBytesDtsXllPbr(
 }
 
 uint32_t tellPosDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 )
 {
   return ctx->pbrBufferParsedSize;
@@ -582,11 +582,11 @@ uint32_t tellPosDtsXllPbr(
 #endif
 
 int registerDecodedFrameOffsetsDtsXllFrameContext(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   const DcaXllFrameSFPosition framePosition
 )
 {
-  DtsXllDecodedFrame * entry;
+  DtsXllDecodedFrame *entry;
 
   /* Create a new entry */
   entry = (DtsXllDecodedFrame *) newEntryCircularBuffer(
@@ -606,11 +606,11 @@ int registerDecodedFrameOffsetsDtsXllFrameContext(
 }
 
 int substractPbrFrameSliceDtsXllFrameContext(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   uint32_t req_frame_size,
-  DcaXllFrameSFPosition * builded_frame_pos_ret,
-  int * sync_word_off_idx_ret,
-  unsigned * init_dec_delay_ret
+  DcaXllFrameSFPosition *builded_frame_pos_ret,
+  int *sync_word_off_idx_ret,
+  unsigned *init_dec_delay_ret
 )
 {
   DcaXllFrameSFPosition builded_frame_pos = (DcaXllFrameSFPosition) {0};
@@ -618,7 +618,7 @@ int substractPbrFrameSliceDtsXllFrameContext(
   unsigned init_dec_delay = 0;
 
   for (int index = 0; 0 < req_frame_size; index++) {
-    DtsXllDecodedFrame * dec_frame = getCircularBuffer(
+    DtsXllDecodedFrame *dec_frame = getCircularBuffer(
       &ctx->decodedFramesOff,
       0
     );
@@ -680,8 +680,8 @@ void debugPrintDcaXllFrameSFPositionIndexes(
 }
 
 void substractDtsXllFrameOriginalPosition(
-  DtsXllFrameParameters * frame,
-  DcaXllFrameSFPosition * pbrFramePosition
+  DtsXllFrameParameters *frame,
+  DcaXllFrameSFPosition *pbrFramePosition
 )
 {
   DcaXllFrameSFPosition xll_frame_pos = (DcaXllFrameSFPosition) {0};
@@ -740,9 +740,9 @@ void substractDtsXllFrameOriginalPosition(
 }
 
 int collectFrameDataDcaXllFrameSFPosition(
-  DcaXllFrameSFPosition * src,
-  uint32_t * req_frame_size,
-  DcaXllFrameSFPosition * dst
+  DcaXllFrameSFPosition *src,
+  uint32_t *req_frame_size,
+  DcaXllFrameSFPosition *dst
 )
 {
   assert(NULL != src);
@@ -760,7 +760,7 @@ int collectFrameDataDcaXllFrameSFPosition(
     if (!rem_frame_size)
       break;
 
-    DcaXllFrameSFPositionIndex * srcIdx = &src->sourceOffsets[i];
+    DcaXllFrameSFPositionIndex *srcIdx = &src->sourceOffsets[i];
 
     assert(0 < srcIdx->size);
     uint32_t idx_consumed_size = MIN(rem_frame_size, srcIdx->size);
@@ -793,13 +793,13 @@ int collectFrameDataDcaXllFrameSFPosition(
 int getRelativeOffsetDcaXllFrameSFPosition(
   const DcaXllFrameSFPosition frame,
   int64_t abs_offset,
-  uint32_t * rel_offset
+  uint32_t *rel_offset
 )
 {
   uint32_t dist = 0; // Distance from first asset first byte
 
   for (unsigned i = 0; i < frame.nbSourceOffsets; i++) {
-    const DcaXllFrameSFPositionIndex * index = &frame.sourceOffsets[i];
+    const DcaXllFrameSFPositionIndex *index = &frame.sourceOffsets[i];
     int64_t end_off = index->offset + index->size;
 
     if (index->offset <= abs_offset && abs_offset < end_off) {
@@ -815,9 +815,9 @@ int getRelativeOffsetDcaXllFrameSFPosition(
 }
 
 int getFrameTargetSizeDtsXllPbr(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   unsigned audio_frame_idx,
-  uint32_t * size
+  uint32_t *size
 )
 {
   assert(NULL != ctx);
@@ -830,7 +830,7 @@ int getFrameTargetSizeDtsXllPbr(
 }
 
 int performComputationDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 )
 {
   return _performComputationDtsPbrSmoothing(

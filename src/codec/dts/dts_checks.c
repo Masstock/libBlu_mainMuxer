@@ -11,8 +11,8 @@
 /* ### DTS Coherent Acoustics (DCA) Core audio : ########################### */
 
 static int _checkDcaCoreBSHeaderCompliance(
-  const DcaCoreBSHeaderParameters * param,
-  DtsDcaCoreSSWarningFlags * warn_flags
+  const DcaCoreBSHeaderParameters *param,
+  DtsDcaCoreSSWarningFlags *warn_flags
 )
 {
 
@@ -142,7 +142,7 @@ static int _checkDcaCoreBSHeaderCompliance(
 
 #if 0
   if (
-    param->FSIZE * param->NBLKS * param->bitrate
+    param->FSIZE * param->NBLKS *param->bitrate
     < ((unsigned) param->FSIZE) * param->bitDepth * 8
   )
     LIBBLU_DTS_ERROR_RETURN(
@@ -296,8 +296,8 @@ static int _checkDcaCoreBSHeaderCompliance(
 }
 
 static bool _constantDcaCoreSSFrameHeader(
-  const DcaCoreBSHeaderParameters * first,
-  const DcaCoreBSHeaderParameters * second
+  const DcaCoreBSHeaderParameters *first,
+  const DcaCoreBSHeaderParameters *second
 )
 {
   return CHECK(
@@ -319,8 +319,8 @@ static bool _constantDcaCoreSSFrameHeader(
 }
 
 static int _checkDcaCoreBSHeaderChangeCompliance(
-  const DcaCoreBSHeaderParameters * old,
-  const DcaCoreBSHeaderParameters * cur
+  const DcaCoreBSHeaderParameters *old,
+  const DcaCoreBSHeaderParameters *cur
 )
 {
 
@@ -377,8 +377,8 @@ static int _checkDcaCoreBSHeaderChangeCompliance(
 }
 
 int checkDcaCoreSSCompliance(
-  const DcaCoreSSFrameParameters * frame,
-  DtsDcaCoreSSWarningFlags * warn_flags
+  const DcaCoreSSFrameParameters *frame,
+  DtsDcaCoreSSWarningFlags *warn_flags
 )
 {
   LIBBLU_DTS_DEBUG_CORE(" Bit stream header:\n");
@@ -391,8 +391,8 @@ int checkDcaCoreSSCompliance(
 }
 
 bool constantDcaCoreSS(
-  const DcaCoreSSFrameParameters * first,
-  const DcaCoreSSFrameParameters * second
+  const DcaCoreSSFrameParameters *first,
+  const DcaCoreSSFrameParameters *second
 )
 {
   return CHECK(
@@ -401,9 +401,9 @@ bool constantDcaCoreSS(
 }
 
 int checkDcaCoreSSChangeCompliance(
-  const DcaCoreSSFrameParameters * old,
-  const DcaCoreSSFrameParameters * cur,
-  DtsDcaCoreSSWarningFlags * warn_flags
+  const DcaCoreSSFrameParameters *old,
+  const DcaCoreSSFrameParameters *cur,
+  DtsDcaCoreSSWarningFlags *warn_flags
 )
 {
   if (checkDcaCoreSSCompliance(cur, warn_flags) < 0)
@@ -418,7 +418,7 @@ int checkDcaCoreSSChangeCompliance(
 
 
 static int _checkDcaExtSSHeaderMixMetadataCompliance(
-  const DcaExtSSHeaderMixMetadataParameters * param
+  const DcaExtSSHeaderMixMetadataParameters *param
 )
 {
 
@@ -461,10 +461,10 @@ static int _checkDcaExtSSHeaderMixMetadataCompliance(
 }
 
 static int _checkDcaExtSSHeaderStaticFieldsCompliance(
-  const DcaExtSSHeaderSFParameters * param,
+  const DcaExtSSHeaderSFParameters *param,
   bool is_secondary,
   unsigned nExtSSIndex,
-  DtsDcaExtSSWarningFlags * warn_flags
+  DtsDcaExtSSWarningFlags *warn_flags
 )
 {
   unsigned RefClock = getDcaExtReferenceClockValue(param->nuRefClockCode);
@@ -571,7 +571,7 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
       LIBBLU_DTS_DEBUG_EXTSS_NH("No Extension Substream (0x0);\n");
 
     else {
-      const char * sep = "";
+      const char *sep = "";
 
       for (unsigned nSS = 0; nSS < nExtSSIndex + 1; nSS++) {
         if ((param->nuActiveExSSMask[nAuPr] >> nSS) & 0x1) {
@@ -627,9 +627,9 @@ static int _checkDcaExtSSHeaderStaticFieldsCompliance(
 }
 
 static int _checkDcaAudioAssetDescSFCompliance(
-  const DcaAudioAssetDescSFParameters * param,
+  const DcaAudioAssetDescSFParameters *param,
   bool is_secondary,
-  DtsDcaExtSSWarningFlags * warn_flags
+  DtsDcaExtSSWarningFlags *warn_flags
 )
 {
 
@@ -970,7 +970,7 @@ static int _checkDcaAudioAssetDescSFCompliance(
               param->nuRemapDecChMask[ns][nCh]
             );
 
-            const char * sep = "";
+            const char *sep = "";
             for (unsigned nc = 0; nc < param->nCoeff[ns][nCh]; nc++) {
               LIBBLU_DTS_DEBUG_EXTSS_NH(
                 "%s%" PRIu8, sep,
@@ -1031,9 +1031,9 @@ static int _checkDcaAudioAssetDescSFCompliance(
 }
 
 static int _checkDcaAudioAssetDescDMCompliance(
-  const DcaAudioAssetDescDMParameters * dm,
-  const DcaAudioAssetDescSFParameters * ad_sf,
-  const DcaExtSSHeaderSFParameters * sf
+  const DcaAudioAssetDescDMParameters *dm,
+  const DcaAudioAssetDescSFParameters *ad_sf,
+  const DcaExtSSHeaderSFParameters *sf
 )
 {
 
@@ -1105,8 +1105,8 @@ static int _checkDcaAudioAssetDescDMCompliance(
 }
 
 static int _checkDcaAudioAssetDescDNDCompliance(
-  const DcaAudioAssetDescDecNDParameters * param,
-  const DcaExtSSHeaderMixMetadataParameters * mix_meta,
+  const DcaAudioAssetDescDecNDParameters *param,
+  const DcaExtSSHeaderMixMetadataParameters *mix_meta,
   bool is_sec_stream
 )
 {
@@ -1192,7 +1192,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_CORE_DCA) {
-      const DcaAudioAssetExSSCoreParameters * p = &param->coding_components.ExSSCore;
+      const DcaAudioAssetExSSCoreParameters *p = &param->coding_components.ExSSCore;
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "       => DCA Core Component within current Extension Substream "
@@ -1225,7 +1225,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XBR) {
-      const DcaAudioAssetExSSXBRParameters * p = &param->coding_components.ExSSXBR;
+      const DcaAudioAssetExSSXBRParameters *p = &param->coding_components.ExSSXBR;
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "       => DCA XBR Extended Bit Rate within current "
@@ -1243,7 +1243,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XXCH) {
-      const DcaAudioAssetExSSXXCHParameters * p = &param->coding_components.ExSSXXCH;
+      const DcaAudioAssetExSSXXCHParameters *p = &param->coding_components.ExSSXXCH;
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "       => DCA XXCH 5.1+ Channels Extension within current "
@@ -1260,7 +1260,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_X96) {
-      const DcaAudioAssetExSSX96Parameters * p = &param->coding_components.ExSSX96;
+      const DcaAudioAssetExSSX96Parameters *p = &param->coding_components.ExSSX96;
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "       => DCA X96 96kHz Sampling Frequency Extension within current "
@@ -1277,7 +1277,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_LBR) {
-      const DcaAudioAssetExSSLBRParameters * p = &param->coding_components.ExSSLBR;
+      const DcaAudioAssetExSSLBRParameters *p = &param->coding_components.ExSSLBR;
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "       => DCA LBR Low Bitrate Component within current Extension "
@@ -1310,7 +1310,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     }
 
     if (param->nuCoreExtensionMask & DCA_EXT_SS_COD_COMP_EXTSUB_XLL) {
-      const DcaAudioAssetExSSXllParameters * p = &param->coding_components.ExSSXLL;
+      const DcaAudioAssetExSSXllParameters *p = &param->coding_components.ExSSXLL;
 
       LIBBLU_DTS_DEBUG_EXTSS(
         "       => DCA XLL Lossless Extension within current Extension "
@@ -1370,7 +1370,7 @@ static int _checkDcaAudioAssetDescDNDCompliance(
     break;
 
   case DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING:
-    const DcaAudioAssetDescDecNDAuxiliaryCoding * aux = &param->auxilary_coding;
+    const DcaAudioAssetDescDecNDAuxiliaryCoding *aux = &param->auxilary_coding;
 
     LIBBLU_DTS_DEBUG_EXTSS(
       "      Size of Auxilary Coded Data (nuExSSAuxFsize): "
@@ -1473,16 +1473,16 @@ static int _checkDcaAudioAssetDescDNDCompliance(
 }
 
 static int _checkDcaAudioAssetDescriptorCompliance(
-  const DcaAudioAssetDescParameters * param,
+  const DcaAudioAssetDescParameters *param,
   bool is_sec_stream,
   bool bStaticFieldsPresent,
-  const DcaExtSSHeaderSFParameters * sf,
-  DtsDcaExtSSWarningFlags * warn_flags
+  const DcaExtSSHeaderSFParameters *sf,
+  DtsDcaExtSSWarningFlags *warn_flags
 )
 {
-  const DcaAudioAssetDescSFParameters * ad_sf = &param->static_fields;
-  const DcaAudioAssetDescDMParameters * ad_dm = &param->dyn_md;
-  const DcaAudioAssetDescDecNDParameters * ad_dnd = &param->dec_nav_data;
+  const DcaAudioAssetDescSFParameters *ad_sf = &param->static_fields;
+  const DcaAudioAssetDescDMParameters *ad_dm = &param->dyn_md;
+  const DcaAudioAssetDescDecNDParameters *ad_dnd = &param->dec_nav_data;
 
   LIBBLU_DTS_DEBUG_EXTSS(
     "    Size of Audio Asset Descriptor (nuAssetDescriptFsize): "
@@ -1537,9 +1537,9 @@ static int _checkDcaAudioAssetDescriptorCompliance(
 }
 
 int checkDcaExtSSHeaderCompliance(
-  const DcaExtSSHeaderParameters * param,
+  const DcaExtSSHeaderParameters *param,
   bool is_sec_stream,
-  DtsDcaExtSSWarningFlags * warn_flags
+  DtsDcaExtSSWarningFlags *warn_flags
 )
 {
 

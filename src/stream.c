@@ -39,8 +39,8 @@ void destroyLibbluStream(
 }
 
 int requestESPIDLibbluStream(
-  LibbluPIDValues * pid_vals,
-  uint16_t * pid_ret,
+  LibbluPIDValues *pid_vals,
+  uint16_t *pid_ret,
   LibbluStreamPtr stream
 )
 {
@@ -49,16 +49,16 @@ int requestESPIDLibbluStream(
   assert(NULL != stream);
   assert(isESLibbluStream(stream));
 
-  const LibbluESSettings * es_sets = stream->es.settings_ref;
-  const LibbluESProperties * es_prop = &stream->es.prop;
+  const LibbluESSettings *es_sets = stream->es.settings_ref;
+  const LibbluESProperties *es_prop = &stream->es.prop;
 
   /* Get the base PID and the current number of ES of stream type */
   uint16_t sel_es_type_base_pid;
-  unsigned * sel_es_type_cur_nb_ptr, sel_es_type_limit;
-  const char * sel_es_type_str;
+  unsigned *sel_es_type_cur_nb_ptr, sel_es_type_limit;
+  const char *sel_es_type_str;
 
   if (es_prop->type == ES_VIDEO) {
-    if (!es_sets->options.secondaryStream) {
+    if (!es_sets->options.secondary) {
       sel_es_type_base_pid   = PRIM_VIDEO_PID;
       sel_es_type_cur_nb_ptr = &pid_vals->nb_streams.primaryVideo;
       sel_es_type_limit      = pid_vals->limits.primaryVideo;
@@ -72,7 +72,7 @@ int requestESPIDLibbluStream(
     }
   }
   else if (es_prop->type == ES_AUDIO) {
-    if (!es_sets->options.secondaryStream) {
+    if (!es_sets->options.secondary) {
       sel_es_type_base_pid   = PRIM_AUDIO_PID;
       sel_es_type_cur_nb_ptr = &pid_vals->nb_streams.primaryAudio;
       sel_es_type_limit      = pid_vals->limits.primaryAudio;

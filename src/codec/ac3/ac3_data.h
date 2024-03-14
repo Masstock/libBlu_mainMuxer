@@ -71,12 +71,12 @@ static inline unsigned sampleRateAc3Fscod(
   return 0;
 }
 
-static inline const char * Ac3FscodStr(
+static inline const char *Ac3FscodStr(
   Ac3Fscod fscod,
   bool fromEac3
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "48 kHz",
     "44.1 kHz",
     "32 kHz",
@@ -218,12 +218,12 @@ static inline bool bothSurroundChannelsPresentAc3mod(
   return (AC3_ACMOD_L_R_SL_SR <= acmod);
 }
 
-static inline const char * Ac3AcmodStr(
+static inline const char *Ac3AcmodStr(
   Ac3Acmod acmod,
   bool lfeon
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Duplicated Mono (1+1): Ch1, Ch2",
     "Mono 1.0 (1/0): C",
     "Stereo 2.0 (2/0): L, R",
@@ -273,12 +273,12 @@ typedef enum {
   AC3_BSMOD_VO_KARA  = 0x7   /**< Voice Over (VO) or Karaoke.                */
 } Ac3Bsmod;
 
-static inline const char * Ac3BsmodStr(
+static inline const char *Ac3BsmodStr(
   Ac3Bsmod bsmod,
   Ac3Acmod acmod
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Main audio service - Complete Main (CM)",
     "Main audio service - Music and effects (ME)",
     "Associated service - Visually impaired (VI)",
@@ -306,11 +306,11 @@ typedef enum {
   AC3_CMIXLEV_RES  = 0x4
 } Ac3Cmixlev;
 
-static inline const char * Ac3CmixlevStr(
+static inline const char *Ac3CmixlevStr(
   Ac3Cmixlev cmixlev
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "0.707 (-3.0 dB)",
     "0.595 (-4.5 dB)",
     "0.500 (-6.0 dB)"
@@ -328,11 +328,11 @@ typedef enum {
   AC3_SURMIXLEV_RES  = 0x4
 } Ac3Surmixlev;
 
-static inline const char * Ac3SurmixlevStr(
+static inline const char *Ac3SurmixlevStr(
   Ac3Surmixlev surmixlev
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "0.707 (-3.0 dB)",
     "0.500 (-6.0 dB)",
     "0.0 (-0 dB)"
@@ -350,11 +350,11 @@ typedef enum {
   AC3_DSURMOD_RES            = 0x4
 } Ac3Dsurmod;
 
-static inline const char * Ac3DsurmodStr(
+static inline const char *Ac3DsurmodStr(
   Ac3Dsurmod dsurmod
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not indicated",
     "Not Dolby Surround encoded",
     "Dolby Surround encoded"
@@ -372,11 +372,11 @@ typedef enum {
   AC3_ROOMTYP_RES            = 0x3
 } Ac3Roomtyp;
 
-static inline const char * Ac3RoomtypStr(
+static inline const char *Ac3RoomtypStr(
   Ac3Roomtyp roomtyp
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not indicated",
     "Large room, X curve monitor",
     "Small room, flat monitor"
@@ -394,11 +394,11 @@ typedef enum {
   AC3_DMIXMOD_RES            = 0x3
 } Ac3Dmixmod;
 
-static inline const char * Ac3DmixmodStr(
+static inline const char *Ac3DmixmodStr(
   Ac3Dmixmod dmixmod
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not indicated",
     "Lt/Rt downmix preferred",
     "Lo/Ro downmix preferred"
@@ -420,11 +420,11 @@ typedef enum {
   AC3_LTRTCMIXLEV_0_000  = 0x7
 } Ac3Ltrtcmixlev;
 
-static inline const char * Ac3LtrtcmixlevStr(
+static inline const char *Ac3LtrtcmixlevStr(
   Ac3Ltrtcmixlev ltrtcmixlev
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "1.414 (+3.0 dB)",
     "1.189 (+1.5 dB)",
     "1.000 (0.0 dB)",
@@ -451,11 +451,11 @@ typedef enum {
   AC3_LOROCMIXLEV_0_000  = 0x7
 } Ac3Lorocmixlev;
 
-static inline const char * Ac3lLorocmixlevStr(
+static inline const char *Ac3lLorocmixlevStr(
   Ac3Lorocmixlev lorocmixlev
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "1.414 (+3.0 dB)",
     "1.189 (+1.5 dB)",
     "1.000 (0.0 dB)",
@@ -482,11 +482,11 @@ typedef enum {
   AC3_LTRTSURMIXLEV_0_000  = 0x7
 } Ac3Ltrtsurmixlev;
 
-static inline const char * Ac3LtrtsurmixlevStr(
+static inline const char *Ac3LtrtsurmixlevStr(
   Ac3Ltrtsurmixlev ltrtsurmixlev
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Reserved value",
     "Reserved value",
     "Reserved value",
@@ -513,11 +513,11 @@ typedef enum {
   AC3_LOROSURMIXLEV_0_000  = 0x7
 } Ac3Lorosurmixlev;
 
-static inline const char * Ac3LorosurmixlevStr(
+static inline const char *Ac3LorosurmixlevStr(
   Ac3Lorosurmixlev lorosurmixlev
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Reserved value",
     "Reserved value",
     "Reserved value",
@@ -540,11 +540,11 @@ typedef enum {
   AC3_DHEADPHONMOD_RES             = 0x3
 } Ac3Dheadphonmod;
 
-static inline const char * Ac3DheadphonmodStr(
+static inline const char *Ac3DheadphonmodStr(
   Ac3Dheadphonmod dheadphonmod
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not indicated",
     "Not Dolby Headphone encoded",
     "Dolby Headphone encoded",
@@ -563,11 +563,11 @@ typedef enum {
   AC3_DSUREXMOD_DPLIIZ_ENCODED          = 0x2
 } Ac3Dsurexmod;
 
-static inline const char * Ac3DsurexmodStr(
+static inline const char *Ac3DsurexmodStr(
   Ac3Dsurexmod dsurexmod
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not indicated",
     "Not Dolby Surround EX nor Dolby Pro Logic IIx/IIz encoded",
     "Dolby Surround EX or Dolby Pro Logic IIx encoded",
@@ -663,11 +663,11 @@ typedef enum {
   EAC3_STRMTYP_RES     = 0x3
 } Eac3Strmtyp;
 
-static inline const char * Eac3StrmtypStr(
+static inline const char *Eac3StrmtypStr(
   Eac3Strmtyp strmtyp
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Type 1, independent substream",
     "Type 2, dependent substream",
     "Type 3, independent substream (AC-3 encoded)"
@@ -700,11 +700,11 @@ static inline unsigned sampleRateEac3Fscod2(
   return 0;
 }
 
-static inline const char * Eac3Fscod2Str(
+static inline const char *Eac3Fscod2Str(
   Eac3Fscod2 fscod2
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "24 kHz",
     "22.05 kHz",
     "16 kHz"
@@ -934,7 +934,7 @@ typedef struct {
 #define MLP_SYNCWORD                                                          \
   ((uint32_t) (MLP_SYNCWORD_PREFIX << 8) | MLP_SYNCWORD_SUFFIX)
 
-static inline char * MlpFormatSyncStr(
+static inline char *MlpFormatSyncStr(
   uint32_t format_sync
 )
 {
@@ -974,16 +974,16 @@ static inline unsigned sampleRateMlpAudioSamplingFrequency(
   return 0;
 }
 
-static inline const char * MlpAudioSamplingFrequencyStr(
+static inline const char *MlpAudioSamplingFrequencyStr(
   MlpAudioSamplingFrequency audio_sampling_frequency
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "48 kHz",
     "96 kHz",
     "192 kHz"
   };
-  static const char * strings2[] = {
+  static const char *strings2[] = {
     "44.1 kHz",
     "88.2 kHz",
     "176.4 kHz"
@@ -1002,7 +1002,7 @@ typedef enum {
   MLP_6CH_MULTICHANNEL_TYPE_RES              = 0x1
 } Mlp6ChMultichannelType;
 
-static inline const char * Mlp6ChMultichannelTypeStr(
+static inline const char *Mlp6ChMultichannelTypeStr(
   Mlp6ChMultichannelType u6ch_multichannel_type
 )
 {
@@ -1016,7 +1016,7 @@ typedef enum {
   MLP_8CH_MULTICHANNEL_TYPE_RES              = 0x1
 } Mlp8ChMultichannelType;
 
-static inline const char * Mlp8ChMultichannelTypeStr(
+static inline const char *Mlp8ChMultichannelTypeStr(
   Mlp8ChMultichannelType u8ch_multichannel_type
 )
 {
@@ -1032,11 +1032,11 @@ typedef enum {
   MLP_2CH_PRES_CH_MOD_MONO       = 0x3
 } Mlp2ChPresentationChannelModifier;
 
-static inline const char * Mlp2ChPresentationChannelModifierStr(
+static inline const char *Mlp2ChPresentationChannelModifierStr(
   Mlp2ChPresentationChannelModifier u2ch_presentation_channel_modifier
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Stereo (L/R speaker feeds)",
     "Lt/Rt (Matrix-surround encoded, L/R speaker feeds compatible)",
     "Lbin/Rbin (Binaural headphone playback encoded)",
@@ -1055,19 +1055,19 @@ typedef enum {
   MLP_6CH_PRES_CH_MOD_MONO__DPLIIZ            = 0x3
 } Mlp6ChPresentationChannelModifier;
 
-static inline const char * Mlp6ChPresentationChannelModifierStr(
+static inline const char *Mlp6ChPresentationChannelModifierStr(
   Mlp6ChPresentationChannelModifier u6ch_presentation_channel_modifier,
   unsigned nbChannels,
   bool lsRsPres
 )
 {
-  static const char * strings1[] = {
+  static const char *strings1[] = {
     "Stereo (L/R speaker feeds)",
     "Lt/Rt (Matrix-surround encoded, L/R speaker feeds compatible)",
     "Lbin/Rbin (Binaural headphone playback encoded)",
     "Mono (Single channel signal/Identical L/R speaker feeds)"
   };
-  static const char * strings2[] = {
+  static const char *strings2[] = {
     "Ls/Rs content type: Not indicated",
     "Ls/Rs content type: Not Dolby Surround EX, Dolby Pro Logic IIx or IIz encoded",
     "Ls/Rs content type: Dolby Surround EX/Dolby Pro Logic IIx encoded",
@@ -1101,20 +1101,20 @@ typedef enum {
   MLP_8CH_PRES_CH_MOD_MONO__DPLIIZ            = 0x3
 } Mlp8ChPresentationChannelModifier;
 
-static inline const char * Mlp8ChPresentationChannelModifierStr(
+static inline const char *Mlp8ChPresentationChannelModifierStr(
   Mlp8ChPresentationChannelModifier u8ch_presentation_channel_modifier,
   unsigned nb_channels,
   bool main_L_R_ch_present,
   bool sur_Ls_Rs_present
 )
 {
-  static const char * strings1[] = {
+  static const char *strings1[] = {
     "Stereo (L/R speaker feeds)",
     "Lt/Rt (Matrix-surround encoded, L/R speaker feeds compatible)",
     "Lbin/Rbin (Binaural headphone playback encoded)",
     "Mono (Single channel signal/Identical L/R speaker feeds)"
   };
-  static const char * strings2[] = {
+  static const char *strings2[] = {
     "Ls/Rs content type: Not indicated",
     "Ls/Rs content type: Not Dolby Surround EX, Dolby Pro Logic IIx or IIz encoded",
     "Ls/Rs content type: Dolby Surround EX/Dolby Pro Logic IIx encoded",
@@ -1193,8 +1193,8 @@ typedef struct {
 } Mlp16ChChannelMeaning;
 
 static inline bool constantMlp16ChChannelMeaningCheck(
-  const Mlp16ChChannelMeaning * first,
-  const Mlp16ChChannelMeaning * second
+  const Mlp16ChChannelMeaning *first,
+  const Mlp16ChChannelMeaning *second
 )
 {
   return CHECK(
@@ -1210,11 +1210,11 @@ typedef enum {
   MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING
 } MlpExtraChannelMeaningContent;
 
-static inline const char * MlpExtraChannelMeaningContentStr(
+static inline const char *MlpExtraChannelMeaningContentStr(
   MlpExtraChannelMeaningContent type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Unknown",
     "16-ch meaning"
   };
@@ -1242,15 +1242,15 @@ typedef struct {
 } MlpExtraChannelMeaningData;
 
 static inline bool atmosPresentMlpExtraChannelMeaning(
-  const MlpExtraChannelMeaningData * param
+  const MlpExtraChannelMeaningData *param
 )
 {
   return (MLP_EXTRA_CH_MEANING_CONTENT_16CH_MEANING != param->type);
 }
 
 static inline bool constantMlpExtraChannelMeaningCheck(
-  const MlpExtraChannelMeaningData * first,
-  const MlpExtraChannelMeaningData * second
+  const MlpExtraChannelMeaningData *first,
+  const MlpExtraChannelMeaningData *second
 )
 {
   return CHECK(
@@ -1268,12 +1268,12 @@ typedef enum {
   MLP_EXT_SS_INFO_16CH_PRES_SS_0_1_2_3  = 0x3
 } MlpExtendedSubstreamInfo;
 
-static inline const char * MlpExtendedSubstreamInfoStr(
+static inline const char *MlpExtendedSubstreamInfoStr(
   MlpExtendedSubstreamInfo extended_substream_info,
   bool b16ch_presentation_present
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Substream 3",
     "Substreams 2 and 3",
     "Substreams 1, 2 and 3",
@@ -1294,11 +1294,11 @@ typedef enum {
   MLP_SS_INFO_6CH_PRES_SS_0_1    = 0x3
 } MlpSubstreamInfo6ChPresentation;
 
-static inline const char * MlpSubstreamInfo6ChPresentationStr(
+static inline const char *MlpSubstreamInfo6ChPresentationStr(
   MlpSubstreamInfo6ChPresentation u6ch_presentation
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Illegal",
     "Substream 0 (Copy of 2-ch presentation)",
     "Substream 1",
@@ -1321,11 +1321,11 @@ typedef enum {
   MLP_SS_INFO_8CH_PRES_SS_0_1_2  = 0x7
 } MlpSubstreamInfo8ChPresentation;
 
-static inline const char * MlpSubstreamInfo8ChPresentationStr(
+static inline const char *MlpSubstreamInfo8ChPresentationStr(
   MlpSubstreamInfo8ChPresentation u8ch_presentation
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Illegal",
     "Substream 0 (Copy of 2-ch presentation)",
     "Substream 1 (Copy of 6-ch presentation)",
@@ -1417,7 +1417,7 @@ typedef struct {
 } MlpMajorSyncInfoParameters;
 
 static inline bool atmosPresentMlpMajorSyncParameters(
-  const MlpMajorSyncInfoParameters * param
+  const MlpMajorSyncInfoParameters *param
 )
 {
   if (!param->channel_meaning.extra_channel_meaning_present)
@@ -1438,7 +1438,7 @@ typedef struct {
 } MlpSyncHeaderParameters;
 
 static inline void updateMlpSyncHeaderParametersParameters(
-  MlpSyncHeaderParameters * dst,
+  MlpSyncHeaderParameters *dst,
   MlpSyncHeaderParameters src
 )
 {
@@ -1566,11 +1566,11 @@ typedef enum {
   MLP_HUFFCB_TABLE_2  = 0x3
 } MlpHuffmanCodebook;
 
-static inline const char * MlpHuffmanCodebookStr(
+static inline const char *MlpHuffmanCodebookStr(
   MlpHuffmanCodebook huffman_codebook
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "None, no entropy coded MSB",
     "Table 0, -7 to +10 values",
     "Table 1, -7 to +8 values",

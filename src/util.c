@@ -21,7 +21,7 @@
 #  include <fcntl.h>
 #endif
 
-const lbc * streamTypeStr(
+const lbc *streamTypeStr(
   StreamType typ
 )
 {
@@ -108,7 +108,7 @@ void printFileParsingProgressionBar(BitstreamReaderPtr bitStream)
 }
 
 int str_time(
-  lbc * buf,
+  lbc *buf,
   size_t buf_size,
   str_time_format format_mode,
   uint64_t clock_value

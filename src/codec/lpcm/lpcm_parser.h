@@ -75,14 +75,14 @@ static inline unsigned nbChannelsWaveChannelMask(
 #define WAVE_CH_MASK_STR_BUFSIZE  160
 
 static inline void buildStrReprWaveChannelMask(
-  char * dst,
+  char *dst,
   uint32_t dwChannelMask
 )
 {
   unsigned i;
-  char * sep;
+  char *sep;
 
-  static const char * strings[] = {
+  static const char *strings[] = {
     "L",
     "R",
     "C",
@@ -128,7 +128,7 @@ typedef enum {
   WAVE_FORMAT_EXTENSIBLE  = 0xFFFE
 } WaveFmtFormatTag;
 
-static inline const char * WaveFmtFormatTagStr(
+static inline const char *WaveFmtFormatTagStr(
   WaveFmtFormatTag wFormatTag
 )
 {
@@ -177,7 +177,7 @@ typedef struct {
 
 typedef struct {
   // uint32_t fileSize;
-  // uint32_t dataSize;
+  // uint32_t data_size;
   // uint32_t pesPacketLength;
   RiffFormHeader riff_form;
 
@@ -187,7 +187,7 @@ typedef struct {
 } WaveFile;
 
 int analyzeLpcm(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

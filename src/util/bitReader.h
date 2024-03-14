@@ -6,14 +6,14 @@
 #include "common.h"
 
 typedef struct {
-  const uint8_t * buf;  /**< Byte array content. */
+  const uint8_t *buf;  /**< Byte array content. */
   size_t offset;        /**< Reading offset in bits. */
   size_t size;          /**< Total buffer size in bits. */
 } LibbluBitReader;
 
 static inline void initLibbluBitReader(
-  LibbluBitReader * br,
-  const uint8_t * buf,
+  LibbluBitReader *br,
+  const uint8_t *buf,
   size_t size
 )
 {
@@ -23,34 +23,34 @@ static inline void initLibbluBitReader(
   };
 }
 
-static inline const uint8_t * accessLibbluBitReader(
-  const LibbluBitReader * br
+static inline const uint8_t *accessLibbluBitReader(
+  const LibbluBitReader *br
 )
 {
   return br->buf;
 }
 
 static inline size_t offsetLibbluBitReader(
-  const LibbluBitReader * br
+  const LibbluBitReader *br
 )
 {
   return br->offset;
 }
 
 static inline size_t remainingBitsLibbluBitReader(
-  const LibbluBitReader * br
+  const LibbluBitReader *br
 )
 {
   return br->size - br->offset;
 }
 
 static inline int getLibbluBitReader(
-  LibbluBitReader * br,
-  uint32_t * value,
+  LibbluBitReader *br,
+  uint32_t *value,
   unsigned bits
 )
 {
-  const uint8_t * buf = br->buf;
+  const uint8_t *buf = br->buf;
   size_t off  = br->offset;
   size_t size = br->size;
 
@@ -72,8 +72,8 @@ static inline int getLibbluBitReader(
 }
 
 static inline int readLibbluBitReader(
-  LibbluBitReader * br,
-  uint32_t * value,
+  LibbluBitReader *br,
+  uint32_t *value,
   unsigned bits
 )
 {
@@ -84,7 +84,7 @@ static inline int readLibbluBitReader(
 }
 
 static void skipLibbluBitReader(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   unsigned bits
 )
 {
@@ -93,7 +93,7 @@ static void skipLibbluBitReader(
 }
 
 static inline int padByteLibbluBitReader(
-  LibbluBitReader * br
+  LibbluBitReader *br
 )
 {
   unsigned padding_size = (~(br->offset - 1)) & 0x7;
@@ -105,7 +105,7 @@ static inline int padByteLibbluBitReader(
 }
 
 static inline int padWordLibbluBitReader(
-  LibbluBitReader * br
+  LibbluBitReader *br
 )
 {
   unsigned padding_size = (~(br->offset - 1)) & 0xF;
@@ -117,7 +117,7 @@ static inline int padWordLibbluBitReader(
 }
 
 static inline int padDwordLibbluBitReader(
-  LibbluBitReader * br
+  LibbluBitReader *br
 )
 {
   unsigned padding_size = (~(br->offset - 1)) & 0x1F;
@@ -129,12 +129,12 @@ static inline int padDwordLibbluBitReader(
 }
 
 static inline uint8_t computeParityLibbluBitReader(
-  LibbluBitReader * br,
+  LibbluBitReader *br,
   size_t start_offset,
   size_t size
 )
 {
-  const uint8_t * buf = &accessLibbluBitReader(br)[start_offset >> 3];
+  const uint8_t *buf = &accessLibbluBitReader(br)[start_offset >> 3];
 
   assert(0x0 == (start_offset & 0x7));
   start_offset >>= 3;

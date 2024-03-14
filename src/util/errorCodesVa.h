@@ -14,15 +14,15 @@
   LIBBLU_ECHO_VA(status, "[DEBUG/" name "] ", format, ap)
 
 void echoMessageFdVa(
-  FILE * fd,
+  FILE *fd,
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   va_list args
 );
 
 void echoMessageVa(
   const LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   va_list args
 );
 

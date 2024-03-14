@@ -9,9 +9,9 @@
 /* ###### Add Entry : ###################################################### */
 
 int addRefPictureIgsCompilerComposition(
-  IgsCompilerComposition * dst,
+  IgsCompilerComposition *dst,
   HdmvBitmap bitmap,
-  const lbc * name
+  const lbc *name
 )
 {
   /* Save reference picture in composition bitmaps */
@@ -19,16 +19,16 @@ int addRefPictureIgsCompilerComposition(
   if (addObjectIgsCompilerComposition(dst, bitmap, &idx) < 0)
     return -1;
   /* Use composition memory allocation */
-  HdmvBitmap * bitmap_ptr = &dst->object_bitmaps[idx];
+  HdmvBitmap *bitmap_ptr = &dst->object_bitmaps[idx];
   return addHdmvPicturesIndexer(&dst->ref_pics_indexer, bitmap_ptr, name);
 }
 
 #define HDMV_COMPL_COMPO_DEFAULT_NB_OBJ  8
 
 int addObjectIgsCompilerComposition(
-  IgsCompilerComposition * dst,
+  IgsCompilerComposition *dst,
   HdmvBitmap pic,
-  unsigned * idx_ret
+  unsigned *idx_ret
 )
 {
   assert(NULL != dst);
@@ -41,9 +41,9 @@ int addObjectIgsCompilerComposition(
     if (!new_size || lb_mul_overflow_size_t(new_size, sizeof(HdmvBitmap)))
       LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN("Composition nb obj overflow.\n");
 
-    HdmvBitmap * new_array = (HdmvBitmap *) realloc(
+    HdmvBitmap *new_array = (HdmvBitmap *) realloc(
       dst->object_bitmaps,
-      new_size * sizeof(HdmvBitmap)
+      new_size *sizeof(HdmvBitmap)
     );
 
     dst->object_bitmaps = new_array;
@@ -59,9 +59,9 @@ int addObjectIgsCompilerComposition(
 #define HDMV_COMPL_COMPO_DEFAULT_NB_PAL  8
 
 int addPaletteIgsCompilerComposition(
-  IgsCompilerComposition * dst,
-  HdmvPalette * pal,
-  uint8_t * palette_id_ret
+  IgsCompilerComposition *dst,
+  HdmvPalette *pal,
+  uint8_t *palette_id_ret
 )
 {
   assert(NULL != dst);
@@ -79,9 +79,9 @@ int addPaletteIgsCompilerComposition(
     if (!new_size || lb_mul_overflow_size_t(new_size, sizeof(HdmvPalette)))
       LIBBLU_HDMV_IGS_COMPL_ERROR_RETURN("Composition nb pal overflow.\n");
 
-    HdmvPalette * new_array = (HdmvPalette *) realloc(
+    HdmvPalette *new_array = (HdmvPalette *) realloc(
       dst->palettes,
-      new_size * sizeof(HdmvPalette)
+      new_size *sizeof(HdmvPalette)
     );
 
     dst->palettes = new_array;

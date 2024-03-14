@@ -15,7 +15,7 @@ typedef Hashtable HdmvPicturesIndexer;
 /* ###### Creation / Destruction : ######################################### */
 
 static inline void initHdmvPicturesIndexer(
-  HdmvPicturesIndexer * dst
+  HdmvPicturesIndexer *dst
 )
 {
   *dst = newHashtable();
@@ -38,12 +38,12 @@ static inline void cleanHdmvPicturesIndexer(
 /* ###### Add Entry : ###################################################### */
 
 static inline int addHdmvPicturesIndexer(
-  HdmvPicturesIndexer * indexer,
-  HdmvBitmap * pic,
-  const lbc * name
+  HdmvPicturesIndexer *indexer,
+  HdmvBitmap *pic,
+  const lbc *name
 )
 {
-  lbc * name_dup = lbc_strdup(name);
+  lbc *name_dup = lbc_strdup(name);
   if (NULL == name_dup)
     LIBBLU_HDMV_PIC_ERROR_RETURN("Memory allocation error.\n");
 
@@ -56,9 +56,9 @@ static inline int addHdmvPicturesIndexer(
 
 /* ###### Get Entry : ###################################################### */
 
-static inline HdmvBitmap * getHdmvPicturesIndexer(
-  HdmvPicturesIndexer * indexer,
-  const lbc * name
+static inline HdmvBitmap *getHdmvPicturesIndexer(
+  HdmvPicturesIndexer *indexer,
+  const lbc *name
 )
 {
   return (HdmvBitmap *) getHashTable(

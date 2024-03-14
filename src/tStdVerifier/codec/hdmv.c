@@ -7,8 +7,8 @@
 #include "hdmv.h"
 
 int createHdmvBufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 )
@@ -22,15 +22,15 @@ int createHdmvBufferingChainBdavStd(
 
   tbParam = (BufModelBufferParameters) {
     .name = TRANSPORT_BUFFER,
-    .instantFilling = false,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_HDMV_TBS * 8
+    .instant_filling = false,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_HDMV_TBS * 8
   };
   bParam = (BufModelBufferParameters) {
     .name = MAIN_BUFFER,
-    .instantFilling = true,
-    .dontOverflowOutput = false,
-    .bufferSize = BDAV_STD_HDMV_CDBS * 8
+    .instant_filling = true,
+    .dont_overflow_output = false,
+    .buffer_size = BDAV_STD_HDMV_CDBS * 8
   };
 
   /* Create TB */

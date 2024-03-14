@@ -26,7 +26,7 @@ int parseFragmentHdmvSequence(
     /* Need sequence data size increasing */
     uint32_t new_size = dst->fragments_used_len + fragment_length;
 
-    uint8_t * new_array = (uint8_t *) realloc(dst->fragments, new_size);
+    uint8_t *new_array = (uint8_t *) realloc(dst->fragments, new_size);
     if (NULL == new_array)
       LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
 
@@ -49,7 +49,7 @@ int parseFragmentHdmvSequence(
 /* ### HDMV Display Set : ################################################## */
 
 HdmvSequencePtr getFirstSequenceByIdxHdmvDSState(
-  const HdmvDSState * ds_state,
+  const HdmvDSState *ds_state,
   hdmv_segtype_idx idx
 )
 {
@@ -58,7 +58,7 @@ HdmvSequencePtr getFirstSequenceByIdxHdmvDSState(
 }
 
 static HdmvSequencePtr _getDSLastSequenceByIdxHdmvDSState(
-  const HdmvDSState * ds_state,
+  const HdmvDSState *ds_state,
   hdmv_segtype_idx idx
 )
 {
@@ -66,7 +66,7 @@ static HdmvSequencePtr _getDSLastSequenceByIdxHdmvDSState(
 }
 
 HdmvSequencePtr getICSPCSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   HdmvSequencePtr seq;
@@ -87,7 +87,7 @@ HdmvSequencePtr getICSPCSSequenceHdmvDSState(
 }
 
 HdmvSequencePtr getICSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ICS_IDX);
@@ -100,7 +100,7 @@ HdmvSequencePtr getICSSequenceHdmvDSState(
 }
 
 HdmvSequencePtr getPCSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PCS_IDX);
@@ -113,7 +113,7 @@ HdmvSequencePtr getPCSSequenceHdmvDSState(
 }
 
 HdmvSequencePtr getWDSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_WDS_IDX);
@@ -122,35 +122,35 @@ HdmvSequencePtr getWDSSequenceHdmvDSState(
 }
 
 HdmvSequencePtr getFirstPDSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   return getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PDS_IDX);
 }
 
 HdmvSequencePtr getLastPDSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   return _getDSLastSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_PDS_IDX);
 }
 
 HdmvSequencePtr getFirstODSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   return getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ODS_IDX);
 }
 
 HdmvSequencePtr getLastODSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   return _getDSLastSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_ODS_IDX);
 }
 
 HdmvSequencePtr getENDSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   HdmvSequencePtr seq = getFirstSequenceByIdxHdmvDSState(ds_state, HDMV_SEGMENT_TYPE_END_IDX);
@@ -165,11 +165,11 @@ HdmvSequencePtr getENDSequenceHdmvDSState(
 /* ### HDMV Epoch memory state : ########################################### */
 
 bool fetchPaletteHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint8_t palette_id,
   bool must_be_in_current_DS,
-  HdmvPDSegmentParameters * pd_ret,
-  bool * has_been_updated_ret
+  HdmvPDSegmentParameters *pd_ret,
+  bool *has_been_updated_ret
 )
 {
   assert(UINT8_MAX <= HDMV_MAX_NB_PAL); // Avoid type limited range warning
@@ -187,11 +187,11 @@ bool fetchPaletteHdmvEpochState(
 }
 
 void setPaletteHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvPDSegmentParameters pal_def
 )
 {
-  HdmvEpochStatePalette * dst_pal = &epoch_state->palettes[
+  HdmvEpochStatePalette *dst_pal = &epoch_state->palettes[
     pal_def.palette_descriptor.palette_id
   ];
 
@@ -223,11 +223,11 @@ void setPaletteHdmvEpochState(
 }
 
 void setObjectHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvODParameters obj_def
 )
 {
-  HdmvEpochStateObject * dst_obj = &epoch_state->objects[
+  HdmvEpochStateObject *dst_obj = &epoch_state->objects[
     obj_def.object_descriptor.object_id
   ];
 
@@ -251,7 +251,7 @@ void setObjectHdmvEpochState(
 }
 
 void setActivePCHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   HdmvPCParameters pc,
   int64_t pc_pts
 )
@@ -264,7 +264,7 @@ void setActivePCHdmvEpochState(
 }
 
 void setWDHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvWDParameters wd
 )
 {
@@ -274,7 +274,7 @@ void setWDHdmvEpochState(
 }
 
 int setActiveICHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   HdmvICParameters ic,
   int64_t ic_pts
 )
@@ -285,7 +285,7 @@ int setActiveICHdmvEpochState(
   }
   else {
     /* Update current active IC */
-    HdmvICParameters * dst = &epoch_state->active_ic;
+    HdmvICParameters *dst = &epoch_state->active_ic;
     assert(dst->number_of_pages == ic.number_of_pages);
     for (uint8_t i = 0; i < ic.number_of_pages; i++) {
       if (ic.pages[i].page_version_number != dst->pages[i].page_version_number) {

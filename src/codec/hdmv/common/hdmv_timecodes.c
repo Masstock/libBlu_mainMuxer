@@ -8,19 +8,19 @@
 #include "hdmv_timecodes.h"
 
 int copyHdmvTimecodes(
-  HdmvTimecodes * dst,
+  HdmvTimecodes *dst,
   HdmvTimecodes tm
 )
 {
-  int64_t * array = NULL;
+  int64_t *array = NULL;
 
   assert(NULL != dst);
 
   if (0 < tm.usedValues) {
     /* Copy array */
-    if (NULL == (array = (int64_t *) malloc(tm.allocatedValues * sizeof(int64_t))))
+    if (NULL == (array = (int64_t *) malloc(tm.allocatedValues *sizeof(int64_t))))
       LIBBLU_HDMV_TC_ERROR_RETURN("Memory allocation error.\n");
-    memcpy(array, tm.values, tm.usedValues * sizeof(int64_t));
+    memcpy(array, tm.values, tm.usedValues *sizeof(int64_t));
   }
 
   *dst = (HdmvTimecodes) {
@@ -33,11 +33,11 @@ int copyHdmvTimecodes(
 }
 
 int _incrementAllocationHdmvTimecodes(
-  HdmvTimecodes * tm
+  HdmvTimecodes *tm
 )
 {
   size_t newSize;
-  int64_t * newArray;
+  int64_t *newArray;
 
   newSize = GROW_ALLOCATION(
     tm->allocatedValues,
@@ -47,7 +47,7 @@ int _incrementAllocationHdmvTimecodes(
   if (lb_mul_overflow_size_t(newSize, sizeof(int64_t)))
     LIBBLU_HDMV_TC_ERROR_RETURN("Too many timecode values, overflow.\n");
 
-  newArray = (int64_t *) realloc(tm->values, newSize * sizeof(int64_t));
+  newArray = (int64_t *) realloc(tm->values, newSize *sizeof(int64_t));
   if (NULL == newArray)
     LIBBLU_HDMV_TC_ERROR_RETURN("Memory allocation error.\n");
 
@@ -58,7 +58,7 @@ int _incrementAllocationHdmvTimecodes(
 }
 
 int addHdmvTimecodes(
-  HdmvTimecodes * tm,
+  HdmvTimecodes *tm,
   int64_t value
 )
 {

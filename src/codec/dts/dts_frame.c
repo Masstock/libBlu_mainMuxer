@@ -20,7 +20,7 @@ static int increaseContentCellsAllocationDtsAU(
 )
 {
   unsigned newLength;
-  DtsAUCell * newArray;
+  DtsAUCell *newArray;
 
   newLength = GROW_ALLOCATION(frm->nbAllocatedContentCells, 2);
   if (newLength <= frm->nbAllocatedContentCells)
@@ -28,7 +28,7 @@ static int increaseContentCellsAllocationDtsAU(
 
   newArray = (DtsAUCell *) realloc(
     frm->contentCells,
-    newLength * sizeof(DtsAUCell)
+    newLength *sizeof(DtsAUCell)
   );
   if (NULL == newArray)
     LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
@@ -44,8 +44,8 @@ static int increaseReplacementParamsAllocationDtsAU(
 )
 {
   unsigned newLength, i;
-  DtsAUInnerReplacementParam * newArray;
-  DtsAUCell * inner;
+  DtsAUInnerReplacementParam *newArray;
+  DtsAUCell *inner;
 
   newLength = GROW_ALLOCATION(frm->nbAllocatedReplacementParam, 2);
   if (newLength <= frm->nbAllocatedReplacementParam)
@@ -53,7 +53,7 @@ static int increaseReplacementParamsAllocationDtsAU(
 
   newArray = (DtsAUInnerReplacementParam *) realloc(
     frm->replacementParams,
-    newLength * sizeof(DtsAUInnerReplacementParam)
+    newLength *sizeof(DtsAUInnerReplacementParam)
   );
   if (NULL == newArray)
     LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
@@ -102,7 +102,7 @@ uint32_t getSizeDtsAUFrame(
 
   uint32_t size = 0;
   for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
-    const DtsAUCell * cell = &frm->contentCells[i];
+    const DtsAUCell *cell = &frm->contentCells[i];
     assert(DTS_AU_REPLACE != cell->treatment); // Shall not be used after mods.
     if (DTS_AU_KEEP == cell->treatment)
       size += cell->size;
@@ -178,9 +178,9 @@ static void optimizeContiguousCellsDtsAUFrame(
   DtsAUFramePtr frm
 )
 {
-  DtsAUCell * dst = NULL;
+  DtsAUCell *dst = NULL;
   for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
-    DtsAUCell * src = frm->contentCells + i;
+    DtsAUCell *src = frm->contentCells + i;
 
     if (DTS_AU_REPLACE == src->treatment) {
       /**
@@ -236,13 +236,13 @@ DtsAUContentType identifyContentTypeDtsAUFrame(
 }
 
 static int _appendReplacementParameters(
-  DtsAUCell * cell,
+  DtsAUCell *cell,
   EsmsHandlerPtr script,
   uint32_t cur_off,
   unsigned src_file_idx
 )
 {
-  const DtsAUInnerReplacementParam * param = cell->param;
+  const DtsAUInnerReplacementParam *param = cell->param;
 
   switch (cell->type) {
   case DTS_FRM_INNER_EXT_SS_HDR:
@@ -299,7 +299,7 @@ int processCompleteFrameDtsAUFrame(
 
   uint32_t cur_off = 0;
   for (unsigned i = 0; i < frm->nbUsedContentCells; i++) {
-    DtsAUCell * cell = &frm->contentCells[i];
+    DtsAUCell *cell = &frm->contentCells[i];
     LIBBLU_DTS_DEBUG(
       "  Cell %u (%s, %s):\n",
       i,

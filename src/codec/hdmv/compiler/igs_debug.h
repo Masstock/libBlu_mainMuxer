@@ -105,11 +105,11 @@
 #include "../common/hdmv_data.h"
 #include "../common/hdmv_quantizer.h"
 
-void writeHexatreeNode(FILE * f, HdmvQuantHexTreeNodePtr node);
+void writeHexatreeNode(FILE *f, HdmvQuantHexTreeNodePtr node);
 
-void ecrireDebut(FILE * f);
-void ecrireFin(FILE * f);
-void dessineCode(FILE * f, HdmvQuantHexTreeNodePtr tree);
+void ecrireDebut(FILE *f);
+void ecrireFin(FILE *f);
+void dessineCode(FILE *f, HdmvQuantHexTreeNodePtr tree);
 
 #  define IGS_DEBUG_MAX_CMD_LEN 200
 

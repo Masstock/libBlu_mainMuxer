@@ -21,11 +21,11 @@ static uint32_t _tableDataLength(
 }
 
 static int _initLibbluSystemStream(
-  LibbluSystemStream * sys_stream,
+  LibbluSystemStream *sys_stream,
   uint32_t data_length
 )
 {
-  uint8_t * data = NULL;
+  uint8_t *data = NULL;
 
   if (0 < data_length) {
     data = (uint8_t *) malloc(data_length);
@@ -47,32 +47,39 @@ static int _initLibbluSystemStream(
   WA_ARRAY(strm->table_data, off, val, len)
 
 int preparePATParam(
-  PatParameters * dst,
+  PatParameters *dst,
   uint16_t transport_stream_id,
   uint8_t nb_programs,
-  const uint16_t * program_numbers,
-  const uint16_t * network_program_map_PIDs
+  const uint16_t *program_numbers_array,
+  const uint16_t *network_program_map_PIDs_array
 )
 {
-  if (MAX_NB_PAT_PROG < nb_programs)
-    LIBBLU_ERROR_RETURN(
-      "Unsupported number of PAT programs (%u < %u).\n",
-      MAX_NB_PAT_PROG, nb_programs
+  assert(NULL != dst);
+  assert(NULL != network_program_map_PIDs_array);
+
+  ProgramPatIndex *programs_array = malloc(
+    nb_programs *sizeof(ProgramPatIndex)
+  );
+  if (NULL == programs_array)
+    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
+  for (uint8_t i = 0; i < nb_programs; i++) {
+    ProgramPatIndex *program = &programs_array[i];
+    program->program_number = (
+      (NULL != program_numbers_array)
+      ? program_numbers_array[i]
+      : i
     );
-
-  PatParameters pat = (PatParameters) {
-    .transport_stream_id = transport_stream_id,
-    .current_next_indicator = 0x1,
-    .nb_programs = nb_programs
-  };
-
-  for (unsigned i = 0; i < nb_programs; i++) {
-    ProgramPatIndex * program = &pat.programs[i];
-    program->program_number = (NULL != program_numbers) ? program_numbers[i] : i;
-    program->network_program_map_PID = network_program_map_PIDs[i];
+    program->network_program_map_PID = network_program_map_PIDs_array[i];
   }
 
-  *dst = pat;
+  *dst = (PatParameters) {
+    .transport_stream_id    = transport_stream_id,
+    .current_next_indicator = true,
+    .nb_programs            = nb_programs,
+    .programs               = programs_array
+  };
+
   return 0;
 }
 
@@ -112,12 +119,12 @@ static uint16_t _sectionLengthPatParameters(
 }
 
 int preparePATSystemStream(
-  LibbluSystemStream * dst,
-  PatParameters param
+  LibbluSystemStream *dst,
+  const PatParameters param
 )
 {
-  uint16_t section_length;
-  if (0 == (section_length = _sectionLengthPatParameters(param)))
+  uint16_t section_length = _sectionLengthPatParameters(param);
+  if (0 == section_length)
     return -1;
 
   uint32_t pat_size = _tableDataLength(section_length);
@@ -162,7 +169,7 @@ int preparePATSystemStream(
   WB_SYSSTREAM(dst, offset, 0x00);
 
   for (uint8_t i = 0; i < param.nb_programs; i++) {
-    const ProgramPatIndex * program = &param.programs[i];
+    const ProgramPatIndex *program = &param.programs[i];
 
     /* [u16 program_number] */
     WB_SYSSTREAM(dst, offset, program->program_number >> 8);
@@ -196,49 +203,53 @@ int preparePATSystemStream(
 
 /* ###### Program and Program Element Descriptors : ######################## */
 
-#define WB_DESC(dst, b)                                                       \
+#define WB_DESC(dst, off, size, b)                                            \
   do {                                                                        \
-    if (UINT8_MAX == (dst)->descriptor_length)                                \
-      LIBBLU_ERROR_RETURN(                                                    \
-        "Descriptor (tag: 0x%02" PRIX8 ") is too big.\n",                     \
-        (dst)->descriptor_tag                                                 \
-      );                                                                      \
-    (dst)->data[(dst)->descriptor_length++] = (b);                            \
+    if (UINT8_MAX == off || (0 < size && size <= off))                        \
+      return 0;                                                               \
+    if (NULL != dst)                                                          \
+      dst[off] = (b);                                                         \
+    off++;                                                                    \
   } while (0)
 
 /* ######### Registration Descriptor (0x05) : ############################## */
 
-static int _setRegistrationDescriptor(
-  Descriptor * dst,
+static uint8_t _setRegistrationDescriptor(
+  uint8_t *dst,
+  uint8_t size,
   DescriptorParameters desc_param
 )
 {
   RegistrationDescriptorParameters param = desc_param.registration_descriptor;
+  uint8_t offset = 0;
 
   /* [u32 format_identifier] */
-  WB_DESC(dst, param.format_identifier >> 24);
-  WB_DESC(dst, param.format_identifier >> 16);
-  WB_DESC(dst, param.format_identifier >> 8);
-  WB_DESC(dst, param.format_identifier);
+  WB_DESC(dst, offset, size, param.format_identifier >> 24);
+  WB_DESC(dst, offset, size, param.format_identifier >> 16);
+  WB_DESC(dst, offset, size, param.format_identifier >>  8);
+  WB_DESC(dst, offset, size, param.format_identifier);
 
   /* [vn additional_identification_info] */
   for (size_t i = 0; i < param.additional_identification_info_len; i++)
-    WB_DESC(dst, param.additional_identification_info[i]);
+    WB_DESC(dst, offset, size, param.additional_identification_info[i]);
 
-  return 0;
+  assert(0 == size || offset == size);
+  return offset;
 }
 
 /* ######### AVC Video Descriptor (0x28) : ################################# */
 
-static int _setAVCVideoDescriptorParameters(
-  Descriptor * dst,
+static uint8_t _setAVCVideoDescriptorParameters(
+  uint8_t *dst,
+  uint8_t size,
   DescriptorParameters desc_param
 )
 {
   AVCVideoDescriptorParameters param = desc_param.AVC_video_descriptor;
+  uint8_t offset = 0;
 
   /* [u8 profile_idc] */
-  WB_DESC(dst, param.profile_idc);
+  WB_DESC(dst, offset, size, param.profile_idc);
 
   /** u8 constraint_flags
    * -> b1  : constraint_set0_flag
@@ -249,10 +260,10 @@ static int _setAVCVideoDescriptorParameters(
    * -> b1  : constraint_set5_flag
    * -> u2  : AVC_compatible_flags
    */
-  WB_DESC(dst, param.constraint_flags);
+  WB_DESC(dst, offset, size, param.constraint_flags);
 
   /* [u8 level_idc] */
-  WB_DESC(dst, param.level_idc);
+  WB_DESC(dst, offset, size, param.level_idc);
 
   /**
    * [b1 AVC_still_present]
@@ -262,77 +273,88 @@ static int _setAVCVideoDescriptorParameters(
    */
   WB_DESC(
     dst,
+    offset,
+    size,
     (param.AVC_still_present << 7)
     | (param.AVC_24_hour_picture_flag << 6)
     | (param.Frame_Packing_SEI_not_present_flag << 5)
     | 0x1F
   );
 
-  return 0;
+  assert(0 == size || offset == size);
+  return offset;
 }
 
 /* ######### Partial Transport Stream Descriptor (0x63) : ################## */
 
-static int _setPartialTSDescriptor(
-  Descriptor * dst,
+static uint8_t _setPartialTSDescriptor(
+  uint8_t *dst,
+  uint8_t size,
   DescriptorParameters desc_param
 )
 {
   PartialTSDescriptorParameters param = desc_param.partial_transport_stream_descriptor;
+  uint8_t offset = 0;
 
   /* [v2 DVB_reserved_future_use] [u22 peak_rate] */
-  WB_DESC(dst, (param.peak_rate >> 16) | 0xC0);
-  WB_DESC(dst,  param.peak_rate >> 8);
-  WB_DESC(dst,  param.peak_rate);
+  WB_DESC(dst, offset, size, (param.peak_rate >> 16) | 0xC0);
+  WB_DESC(dst, offset, size,  param.peak_rate >> 8);
+  WB_DESC(dst, offset, size,  param.peak_rate);
 
   /* [v2 DVB_reserved_future_use] [u22 minimum_overall_smoothing_rate] */
-  WB_DESC(dst, (param.minimum_overall_smoothing_rate >> 16) | 0xC0);
-  WB_DESC(dst,  param.minimum_overall_smoothing_rate >> 8);
-  WB_DESC(dst,  param.minimum_overall_smoothing_rate);
+  WB_DESC(dst, offset, size, (param.minimum_overall_smoothing_rate >> 16) | 0xC0);
+  WB_DESC(dst, offset, size,  param.minimum_overall_smoothing_rate >> 8);
+  WB_DESC(dst, offset, size,  param.minimum_overall_smoothing_rate);
 
   /* [v2 DVB_reserved_future_use] [u14 maximum_overall_smoothing_buffer] */
-  WB_DESC(dst, (param.maximum_overall_smoothing_buffer >> 8) | 0xC0);
-  WB_DESC(dst,  param.maximum_overall_smoothing_buffer);
+  WB_DESC(dst, offset, size, (param.maximum_overall_smoothing_buffer >> 8) | 0xC0);
+  WB_DESC(dst, offset, size,  param.maximum_overall_smoothing_buffer);
 
-  return 0;
+  assert(0 == size || offset == size);
+  return offset;
 }
 
 /* ######### AC-3 Audio Descriptor (0x81) : ################################ */
 
-static int _setAC3AudioDescriptorParameters(
-  Descriptor * dst,
+static uint8_t _setAC3AudioDescriptorParameters(
+  uint8_t *dst,
+  uint8_t size,
   DescriptorParameters desc_param
 )
 {
-  AC3AudioDescriptorParameters param = desc_param.ac3_audio_stream_descriptor;
+  AC3AudioDescriptorParameters param = desc_param.AC3_audio_stream_descriptor;
+  uint8_t offset = 0;
 
   /* [u3 sample_rate_code] [u5 bsid] */
-  WB_DESC(dst, (param.sample_rate_code << 5) | param.bsid);
+  WB_DESC(dst, offset, size, (param.sample_rate_code << 5) | param.bsid);
 
   /* [u6 bit_rate_code] [u2 surround_mode] */
-  WB_DESC(dst, (param.bit_rate_code << 2) | param.surround_mode);
+  WB_DESC(dst, offset, size, (param.bit_rate_code << 2) | param.surround_mode);
 
   /* [u3 bsmod] [u4 num_channels] [b1 full_svc] */
-  WB_DESC(dst, (param.bsmod << 5) | (param.num_channels << 1) | param.full_svc);
+  WB_DESC(dst, offset, size, (param.bsmod << 5) | (param.num_channels << 1) | param.full_svc);
 
   /* [v8 langcod] // deprecated (0xFF) */
-  WB_DESC(dst, 0xFF);
+  WB_DESC(dst, offset, size, 0xFF);
 
-  return 0;
+  assert(0 == size || offset == size);
+  return offset;
 }
 
 /* ######### DTCP Descriptor (0x88) : ###################################### */
 
-static int _setDTCPDescriptor(
-  Descriptor * dst,
+static uint8_t _setDTCPDescriptor(
+  uint8_t *dst,
+  uint8_t size,
   DescriptorParameters desc_param
 )
 {
   DTCPDescriptorParameters param = desc_param.DTCP_descriptor;
+  uint8_t offset = 0;
 
   /* [u16 CA_System_ID] */
-  WB_DESC(dst, param.CA_System_ID >> 8);
-  WB_DESC(dst, param.CA_System_ID);
+  WB_DESC(dst, offset, size, param.CA_System_ID >> 8);
+  WB_DESC(dst, offset, size, param.CA_System_ID);
 
   /**
    * [v1 reserved]
@@ -343,6 +365,8 @@ static int _setDTCPDescriptor(
    */
   WB_DESC(
     dst,
+    offset,
+    size,
     (param.Retention_Move_mode << 6)
     | ((param.Retention_State << 3) & 0x38)
     | (param.EPN << 2)
@@ -359,6 +383,8 @@ static int _setDTCPDescriptor(
    */
   WB_DESC(
     dst,
+    offset,
+    size,
     (param.DOT << 4)
     | (param.AST << 3)
     | (param.Image_Constraint_Token << 2)
@@ -366,15 +392,16 @@ static int _setDTCPDescriptor(
     | 0xE0
   );
 
-  return 0;
+  assert(0 == size || offset == size);
+  return offset;
 }
 
 /* ######################################################################### */
 
-typedef int (*DescriptorSetFun) (Descriptor *, DescriptorParameters);
+typedef uint8_t (*DescriptorSetFun) (uint8_t *, uint8_t, DescriptorParameters);
 
 static int _prepareDescriptor(
-  Descriptor * dst,
+  Descriptor *dst,
   DescriptorTagValue descriptor_tag,
   DescriptorParameters descriptor_param,
   DescriptorSetFun descriptor_set_fun
@@ -382,31 +409,60 @@ static int _prepareDescriptor(
 {
   assert(NULL != dst);
 
+  uint8_t expected_size = descriptor_set_fun(NULL, 0, descriptor_param);
+  if (!expected_size)
+    LIBBLU_ERROR_RETURN("Unable to prepare descriptor 0x%02X.\n", descriptor_tag);
+
+  uint8_t *data = malloc(expected_size);
+  if (NULL == data)
+    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
+  if (!descriptor_set_fun(data, expected_size, descriptor_param)) {
+    free(data);
+    return -1;
+  }
+
   *dst = (Descriptor) {
-    .descriptor_tag = descriptor_tag
+    .descriptor_tag    = descriptor_tag,
+    .descriptor_length = expected_size,
+    .data              = data
   };
 
-  return descriptor_set_fun(dst, descriptor_param);
+  return 0;
 }
 
 /* ######################################################################### */
 
-static Descriptor * _getNewDescriptorPmtProgramElement(
-  PmtProgramElement * elem
+static Descriptor * _getDescriptorsPmtProgramElement(
+  PmtProgramElement *elem,
+  uint8_t requested_nb
 )
 {
-  if (PMT_MAX_NB_ALLOWED_PROGRAM_ELEMENT_DESCRIPTORS <= elem->nb_descriptors)
-    return NULL;
-  return &elem->descriptors[elem->nb_descriptors++];
+  if (UINT8_MAX < (1u *elem->nb_descriptors + requested_nb))
+    LIBBLU_ERROR_NRETURN("Too many PMT program element descriptors.\n");
+  size_t array_size = (elem->nb_descriptors + requested_nb) * sizeof(Descriptor);
+
+  Descriptor *new_desc_array = realloc(elem->descriptors, array_size);
+  if (NULL == new_desc_array)
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+
+  Descriptor *new_arr = &new_desc_array[elem->nb_descriptors];
+  memset(new_arr, 0, requested_nb *sizeof(Descriptor));
+
+  elem->nb_descriptors += requested_nb;
+  elem->descriptors     = new_desc_array;
+
+  return new_arr;
 }
 
 static int _prepareElementDescriptorsPMTParam(
-  PmtProgramElement * dst,
+  PmtProgramElement *dst,
   LibbluESProperties prop,
   LibbluESFmtProp fmt_prop
 )
 {
   RegistationDescriptorFormatIdentifierValue format_id = REG_DESC_FMT_ID_HDMV;
+
   uint8_t add_id_info[PMT_REG_DESC_MAX_ADD_ID_INFO_LENGTH];
   uint8_t add_id_info_len = 0;
 
@@ -493,16 +549,12 @@ static int _prepareElementDescriptorsPMTParam(
     add_id_info, add_id_info_len
   );
 
-  Descriptor * desc = _getNewDescriptorPmtProgramElement(dst);
-  if (NULL == desc)
-    LIBBLU_ERROR_RETURN(
-      "Too many PMT program element descriptors defined (%u < %u).\n",
-      PMT_MAX_NB_ALLOWED_PROGRAM_ELEMENT_DESCRIPTORS,
-      dst->nb_descriptors
-    );
+  Descriptor *desc_arr = _getDescriptorsPmtProgramElement(dst, 1);
+  if (NULL == desc_arr)
+    return -1;
 
   uint8_t desc_tag = DESC_TAG_REGISTRATION_DESCRIPTOR;
-  if (_prepareDescriptor(desc, desc_tag, desc_param, _setRegistrationDescriptor) < 0)
+  if (_prepareDescriptor(&desc_arr[0], desc_tag, desc_param, _setRegistrationDescriptor) < 0)
     return -1;
 
   /* Additional descriptors : */
@@ -539,7 +591,7 @@ static int _prepareElementDescriptorsPMTParam(
     /* AC-3 Audio DescriptorPtr */
     desc_tag = DESC_TAG_AC3_AUDIO_DESCRIPTOR;
     desc_param = (DescriptorParameters) {
-      .ac3_audio_stream_descriptor = {
+      .AC3_audio_stream_descriptor = {
         .sample_rate_code = fmt_prop.ac3->sample_rate_code,
         .bsid             = fmt_prop.ac3->bsid,
         .bit_rate_code    = fmt_prop.ac3->bit_rate_code,
@@ -554,64 +606,82 @@ static int _prepareElementDescriptorsPMTParam(
   else
     return 0; /* No more descriptors */
 
-  if (NULL == (desc = _getNewDescriptorPmtProgramElement(dst)))
-    LIBBLU_ERROR_RETURN(
-      "Too many PMT program element descriptors defined (%u < %u).\n",
-      PMT_MAX_NB_ALLOWED_PROGRAM_ELEMENT_DESCRIPTORS,
-      dst->nb_descriptors
-    );
+  desc_arr = _getDescriptorsPmtProgramElement(dst, 1);
+  if (NULL == desc_arr)
+    return -1;
 
-  if (_prepareDescriptor(desc, desc_tag, desc_param, desc_set_fun) < 0)
+  if (_prepareDescriptor(&desc_arr[0], desc_tag, desc_param, desc_set_fun) < 0)
     return -1;
 
   return 0;
 }
 
-static Descriptor * _getNewDescriptorPmtParameters(
-  PmtParameters * param
+static Descriptor * _getDescriptorsPmtParameters(
+  PmtParameters *param,
+  uint8_t requested_nb
 )
 {
-  if (PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS <= param->nb_descriptors)
-    return NULL;
-  return &param->descriptors[param->nb_descriptors++];
+  if (UINT8_MAX < (1u *param->nb_descriptors + requested_nb))
+    LIBBLU_ERROR_NRETURN("Too many descriptors in PMT parameters.\n");
+  size_t array_size = (param->nb_descriptors + requested_nb) * sizeof(Descriptor);
+
+  Descriptor *new_desc_array = realloc(param->descriptors, array_size);
+  if (NULL == new_desc_array)
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+
+  Descriptor *new_arr = &new_desc_array[param->nb_descriptors];
+  memset(new_arr, 0, requested_nb *sizeof(Descriptor));
+
+  param->nb_descriptors += requested_nb;
+  param->descriptors     = new_desc_array;
+
+  return new_arr;
 }
 
-static PmtProgramElement * _getNewProgramElementPmtParameters(
-  PmtParameters * param,
-  LibbluStreamCodingType stream_type,
-  uint16_t elementary_PID
+static PmtProgramElement * _getProgramElementsPmtParameters(
+  PmtParameters *param,
+  uint8_t requested_nb
 )
 {
-  if (LIBBLU_MAX_NB_STREAMS <= param->nb_elements)
+  if (UINT8_MAX < (1u *param->nb_elements + requested_nb))
     LIBBLU_ERROR_NRETURN("Too many stream indexes in PMT parameters.\n");
+  size_t array_size = (param->nb_elements + requested_nb) * sizeof(PmtProgramElement);
 
-  PmtProgramElement * element = &param->elements[param->nb_elements++];
-  *element = (PmtProgramElement) {
-    .stream_type = stream_type,
-    .elementary_PID = elementary_PID
-  };
+  PmtProgramElement *new_elem_array = realloc(param->elements, array_size);
+  if (NULL == new_elem_array)
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  return element;
+  PmtProgramElement *new_arr = &new_elem_array[param->nb_elements];
+  memset(new_arr, 0, requested_nb *sizeof(PmtProgramElement));
+
+  param->nb_elements += requested_nb;
+  param->elements     = new_elem_array;
+
+  return new_arr;
 }
 
 int preparePMTParam(
-  PmtParameters * dst,
-  const LibbluESProperties * streams_prop,
-  const LibbluESFmtProp * streams_fmt_spec_prop,
-  const uint16_t * streams_PIDs,
-  unsigned nb_streams,
+  PmtParameters *dst,
+  const LibbluESProperties *streams_prop,
+  const LibbluESFmtProp *streams_fmt_spec_prop,
+  const uint16_t *streams_PIDs,
+  uint8_t nb_streams,
   LibbluDtcpSettings DTCP_settings,
   uint16_t program_number,
   uint16_t PCR_pid
 )
 {
-
   assert(NULL != dst);
 
   PmtParameters pmt = (PmtParameters) {
     .program_number = program_number,
     .PCR_PID = PCR_pid
   };
+
+  /* Descriptors */
+  Descriptor *desc_arr = _getDescriptorsPmtParameters(&pmt, 2);
+  if (NULL == desc_arr)
+    goto free_return;
 
   /* Main registration descriptor HDMV */
   DescriptorParameters desc_param = (DescriptorParameters) {
@@ -620,17 +690,9 @@ int preparePMTParam(
     }
   };
 
-  Descriptor * desc = _getNewDescriptorPmtParameters(&pmt);
-  if (NULL == desc)
-    LIBBLU_ERROR_RETURN(
-      "Too many PMT program descriptors defined (%u < %u).\n",
-      PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS,
-      pmt.nb_descriptors
-    );
-
   uint8_t desc_tag = DESC_TAG_REGISTRATION_DESCRIPTOR;
-  if (_prepareDescriptor(desc, desc_tag, desc_param, _setRegistrationDescriptor) < 0)
-    return -1;
+  if (_prepareDescriptor(&desc_arr[0], desc_tag, desc_param, _setRegistrationDescriptor) < 0)
+    goto free_return;
 
   /* DTCP descriptor */
   desc_param = (DescriptorParameters) {
@@ -647,40 +709,47 @@ int preparePMTParam(
     }
   };
 
-  if (NULL == (desc = _getNewDescriptorPmtParameters(&pmt)))
-    LIBBLU_ERROR_RETURN(
-      "Too many PMT program descriptors defined (%u < %u).\n",
-      PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS,
-      pmt.nb_descriptors
-    );
-
   desc_tag = DESC_TAG_DTCP_DESCRIPTOR;
-  if (_prepareDescriptor(desc, desc_tag, desc_param, _setDTCPDescriptor) < 0)
-    return -1;
+  if (_prepareDescriptor(&desc_arr[1], desc_tag, desc_param, _setDTCPDescriptor) < 0)
+    goto free_return;
+
+  /* Program elements */
+  PmtProgramElement *elem_arr = _getProgramElementsPmtParameters(
+    &pmt,
+    nb_streams
+  );
+  if (NULL == elem_arr)
+    goto free_return;
 
   for (uint8_t i = 0; i < nb_streams; i++) {
-    LibbluStreamCodingType coding_type = streams_prop[i].coding_type;
-    PmtProgramElement * elem = _getNewProgramElementPmtParameters(
-      &pmt, coding_type, streams_PIDs[i]
-    );
-    if (NULL == elem)
-      return -1;
+    PmtProgramElement *element = &elem_arr[i];
+    element->stream_type    = streams_prop[i].coding_type;
+    element->elementary_PID = streams_PIDs[i];
 
-    if (_prepareElementDescriptorsPMTParam(elem, streams_prop[i], streams_fmt_spec_prop[i]) < 0)
-      return -1;
+    int ret = _prepareElementDescriptorsPMTParam(
+      element,
+      streams_prop[i],
+      streams_fmt_spec_prop[i]
+    );
+    if (ret < 0)
+      goto free_return;
   }
 
   *dst = pmt;
   return 0;
+
+free_return:
+  cleanPmtParameters(pmt);
+  return -1;
 }
 
 int preparePMTSystemStream(
-  LibbluSystemStream * dst,
-  const PmtParameters * param
+  LibbluSystemStream *dst,
+  const PmtParameters *param
 )
 {
-  uint16_t section_length;
-  if (0 == (section_length = sectionLengthPmtParameters(param)))
+  uint16_t section_length = sectionLengthPmtParameters(param);
+  if (0 == section_length)
     return -1;
   size_t pmt_size = _tableDataLength(section_length);
 
@@ -736,7 +805,7 @@ int preparePMTSystemStream(
   WB_SYSSTREAM(dst, offset,  program_info_length);
 
   for (uint8_t i = 0; i < param->nb_descriptors; i++) {
-    const Descriptor * desc = &param->descriptors[i];
+    const Descriptor *desc = &param->descriptors[i];
 
     /* descriptor() */
     /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
@@ -746,7 +815,7 @@ int preparePMTSystemStream(
   }
 
   for (uint8_t i = 0; i < param->nb_elements; i++) {
-    const PmtProgramElement * elem = &param->elements[i];
+    const PmtProgramElement *elem = &param->elements[i];
 
     /* [u8 stream_type] */
     WB_SYSSTREAM(dst, offset, elem->stream_type);
@@ -766,7 +835,7 @@ int preparePMTSystemStream(
     WB_SYSSTREAM(dst, offset,  ES_info_length);
 
     for (uint8_t j = 0; j < elem->nb_descriptors; j++) {
-      const Descriptor * desc = &elem->descriptors[j];
+      const Descriptor *desc = &elem->descriptors[j];
 
       /* descriptor() */
       /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
@@ -800,7 +869,7 @@ int preparePMTSystemStream(
 /* ### Program Clock Reference (PCR) : ##################################### */
 
 int preparePCRSystemStream(
-  LibbluSystemStream * dst
+  LibbluSystemStream *dst
 )
 {
   return _initLibbluSystemStream(dst, 0x0);
@@ -808,58 +877,69 @@ int preparePCRSystemStream(
 
 /* ### Selection Information Section (SIT) : ############################### */
 
-static Descriptor * _getNewDescriptorSitParameters(
-  SitParameters * param
+static Descriptor * _getDescriptorsSitParameters(
+  SitParameters *param,
+  uint8_t requested_nb
 )
 {
-  if (SIT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS <= param->nb_descriptors)
-    return NULL;
-  return &param->descriptors[param->nb_descriptors++];
+  if (UINT8_MAX < (1u *param->nb_descriptors + requested_nb))
+    LIBBLU_ERROR_NRETURN("Too many SIT descriptors.\n");
+  size_t array_size = (param->nb_descriptors + requested_nb) * sizeof(Descriptor);
+
+  Descriptor *new_desc_array = realloc(param->descriptors, array_size);
+  if (NULL == new_desc_array)
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
+
+  Descriptor *new_arr = &new_desc_array[param->nb_descriptors];
+  memset(new_arr, 0, requested_nb *sizeof(Descriptor));
+
+  param->nb_descriptors += requested_nb;
+  param->descriptors     = new_desc_array;
+
+  return new_arr;
 }
 
-static SitService * _getNewServiceSitParameters(
-  SitParameters * param,
-  uint16_t service_id,
-  uint8_t running_status
+static SitService * _getServicesSitParameters(
+  SitParameters *param,
+  uint8_t requested_nb
 )
 {
-  if (SIT_MAX_NB_ALLOWED_SERVICES <= param->nb_services)
-    LIBBLU_ERROR_NRETURN("Too many program indexes in SIT parameters.\n");
+  if (UINT8_MAX < (1u *param->nb_services + requested_nb))
+    LIBBLU_ERROR_NRETURN("Too many SIT services.\n");
+  size_t array_size = (param->nb_services + requested_nb) * sizeof(SitService);
 
-  assert(running_status <= 0x7);
+  SitService *new_services_array = realloc(param->services, array_size);
+  if (NULL == new_services_array)
+    LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  SitService * service = &param->services[param->nb_services++];
-  *service = (SitService) {
-    .service_id = service_id,
-    .running_status = running_status
-  };
+  SitService *new_arr = &new_services_array[param->nb_services];
+  memset(new_arr, 0, requested_nb *sizeof(SitService));
 
-  return service;
+  param->nb_services += requested_nb;
+  param->services     = new_services_array;
+
+  return new_arr;
 }
-
-#if 0
-static Descriptor * _getNewDescriptorSitService(
-  SitService * elem
-)
-{
-  if (SIT_MAX_NB_ALLOWED_PROGRAM_DESCRIPTORS <= elem->nb_descriptors)
-    return NULL;
-  return &elem->descriptors[elem->nb_descriptors++];
-}
-#endif
 
 int prepareSITParam(
-  SitParameters * dst,
+  SitParameters *dst,
   uint64_t max_TS_rate,
   uint16_t program_number
 )
 {
   assert(NULL != dst);
 
-  SitParameters sit = (SitParameters) {0};
+  SitParameters sit = (SitParameters) {
+    0
+  };
 
   /* Partial Transport Stream descriptor */
-  DescriptorParameters desc_param = {
+  Descriptor *descriptors = _getDescriptorsSitParameters(&sit, 1);
+  if (NULL == descriptors)
+    goto free_return;
+
+  const uint8_t desc_tag = DESC_TAG_PARTIAL_TS_DESCRIPTOR;
+  const DescriptorParameters desc_param = {
     .partial_transport_stream_descriptor = {
       .peak_rate = max_TS_rate / 400, // e.g. muxingRate = 48 Mb/s = 48000000 b/s
       .minimum_overall_smoothing_rate = 0x3FFFFF,
@@ -867,37 +947,34 @@ int prepareSITParam(
     } // TODO: Does these values change with BD-UHD?
   };
 
-  Descriptor * desc = _getNewDescriptorSitParameters(&sit);
-  if (NULL == desc)
-    LIBBLU_ERROR_RETURN(
-      "Too many SIT program descriptors defined (%u < %u).\n",
-      PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS,
-      sit.nb_descriptors
-    );
-
-  uint8_t desc_tag = DESC_TAG_PARTIAL_TS_DESCRIPTOR;
-  if (_prepareDescriptor(desc, desc_tag, desc_param, _setPartialTSDescriptor) < 0)
+  if (_prepareDescriptor(&descriptors[0], desc_tag, desc_param, _setPartialTSDescriptor) < 0)
     return -1;
 
   /* Program */
-  if (NULL == _getNewServiceSitParameters(&sit, program_number, 0x0))
-    LIBBLU_ERROR_RETURN(
-      "Too many SIT programs defined (%u < %u).\n",
-      PMT_MAX_NB_ALLOWED_MAIN_DESCRIPTORS,
-      sit.nb_descriptors
-    );
+  SitService *services = _getServicesSitParameters(&sit, 1);
+  if (NULL == services)
+    goto free_return;
+
+  services[0] = (SitService) {
+    .service_id     = program_number,
+    .running_status = 0x0 // Undefined
+  };
 
   *dst = sit;
   return 0;
+
+free_return:
+  cleanSitParameters(sit);
+  return -1;
 }
 
 int prepareSITSystemStream(
-  LibbluSystemStream * dst,
-  const SitParameters * param
+  LibbluSystemStream *dst,
+  const SitParameters *param
 )
 {
-  uint16_t section_length;
-  if (0 == (section_length = sectionLengthSitParameters(param)))
+  uint16_t section_length = sectionLengthSitParameters(param);
+  if (0 == section_length)
     return -1;
   uint32_t sit_length = _tableDataLength(section_length);
 
@@ -946,7 +1023,7 @@ int prepareSITSystemStream(
   WB_SYSSTREAM(dst, offset,  trans_info_loop_length);
 
   for (uint8_t i = 0; i < param->nb_descriptors; i++) {
-    const Descriptor * desc = &param->descriptors[i];
+    const Descriptor *desc = &param->descriptors[i];
 
     /* descriptor() */
     /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
@@ -956,7 +1033,7 @@ int prepareSITSystemStream(
   }
 
   for (uint8_t i = 0; i < param->nb_services; i++) {
-    const SitService * service = &param->services[i];
+    const SitService *service = &param->services[i];
 
     /* [u16 service_id] */
     WB_SYSSTREAM(dst, offset, service->service_id >> 8);
@@ -975,7 +1052,7 @@ int prepareSITSystemStream(
     WB_SYSSTREAM(dst, offset, service_loop_length);
 
     for (uint8_t j = 0; j < service->nb_descriptors; j++) {
-      const Descriptor * desc = &service->descriptors[j];
+      const Descriptor *desc = &service->descriptors[j];
 
       /* [u8 descriptor_tag] [u8 descriptor_length] [vn data] */
       WB_SYSSTREAM(dst, offset, desc->descriptor_tag);
@@ -1007,7 +1084,7 @@ int prepareSITSystemStream(
 /* ### Null packets (Null) : ############################################### */
 
 int prepareNULLSystemStream(
-  LibbluSystemStream * dst
+  LibbluSystemStream *dst
 )
 {
   uint32_t null_length = _tableDataLength(0x0);

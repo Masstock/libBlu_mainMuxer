@@ -15,84 +15,72 @@
 #include "dtcpSettings.h"
 #include "ini/iniHandler.h"
 
-#define LIBBLU_MAX_NB_STREAMS  32
-
 typedef struct {
-  bool forcedScriptBuilding;
-  bool cbrMuxing;
-  bool writeTPExtraHeaders;
-  bool pcrOnESPackets;
-  bool disableBufModel;  /**< Disable T-STD Buffer model use. */
+  bool force_script_generation;
+  bool CBR_mux;
+  bool write_TP_extra_headers;
+  bool PCR_on_ES_packets;
+  bool disable_buffering_model;  /**< Disable T-STD Buffer model use. */
 
-  LibbluESSettingsOptions globalSharedOptions;
-  BufModelOptions bufModelOptions;
+  LibbluESSettingsOptions es_shared_options;
+  BufModelOptions buffering_model_options;
 
-  uint16_t pcrPID;          /**< PCR carriage ES PID value.                  */
+  uint16_t PCR_PID;  /**< PCR carriage ES PID value.                         */
 } LibbluMuxingOptions;
 
 static inline void defaultLibbluMuxingOptions(
-  LibbluMuxingOptions * dst,
+  LibbluMuxingOptions *dst,
   IniFileContext conf_hdl
 )
 {
   *dst = (LibbluMuxingOptions) {
-    .writeTPExtraHeaders = true,
-    .disableBufModel = false,
-    .globalSharedOptions = {
+    .write_TP_extra_headers = true,
+    .es_shared_options = {
       .conf_hdl = conf_hdl
     },
-    .bufModelOptions = {
-      .abortOnUnderflow = false,
-      .underflowWarnTimeout = 0
-    }
   };
 }
 
+int initLibbluMuxingOptions(
+  LibbluMuxingOptions *dst,
+  IniFileContext conf_hdl
+);
+
 typedef struct {
-  lbc * outputTsFilename;
+  lbc *output_ts_filename;
 
-  LibbluESSettings inputStreams[LIBBLU_MAX_NB_STREAMS];
-  unsigned nbInputStreams;
+  LibbluESSettings *es_settings;
+  unsigned nb_allocated_es;
+  unsigned nb_used_es;
 
-  uint64_t targetMuxingRate;
-  uint64_t initialPresentationTime;
-  float initialTStdBufDuration;
+  uint64_t TS_recording_rate;
+  uint64_t presentation_start_time;
+  float initial_STD_STC_delay;       /**< Initial System Target Decoder
+    System Time Clock delay in seconds. This value must be greater than 0 and
+    lesser than 1 second. */
 
-  LibbluDtcpSettings dtcpParameters;
+  LibbluDtcpSettings DTCP_parameters;
 
-  /* Options : */
   LibbluMuxingOptions options;
 } LibbluMuxingSettings;
 
-#define LIBBLU_MUX_SETTINGS_SET_OPTION(set, opname, val)                      \
-  ((set)->options.opname = (val))
+#define LIBBLU_DEFAULT_OUTPUT_TS_FILENAME  "out.m2ts"
 
-#define LIBBLU_MUX_SETTINGS_OPTION(set, opname)                               \
-  ((set)->options.opname)
-
-#define LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(set, opname, val)                  \
-  ((set)->options.globalSharedOptions.opname = (val))
-
-#define LIBBLU_MUX_SETTINGS_GLB_OPTION(set, opname)                           \
-  ((set)->options.globalSharedOptions.opname)
-
-#define LIBBLU_DEFAULT_OUTPUT_TS_FILENAME  lbc_str("out.m2ts")
-
-#define LIBBLU_DEFAULT_INIT_TSTD_DUR  0.9
+#define MUX_DEFAULT_INITIAL_STD_STC_DELAY  0.9
 
 /** \~english
  * \brief Initiate #LibbluMuxingSettings structure.
  *
  * \param dst
- * \param outputTsFilename
+ * \param output_ts_filename
  * \param conf_hdl
  * \return int Upon success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
 int initLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  const lbc * outputTsFilename,
-  IniFileContext conf_hdl
+  LibbluMuxingSettings *dst,
+  const lbc *output_ts_filename,
+  const LibbluMuxingOptions mux_options
 );
 
 /** \~english
@@ -104,9 +92,10 @@ static inline void cleanLibbluMuxingSettings(
   LibbluMuxingSettings settings
 )
 {
-  free(settings.outputTsFilename);
-  for (unsigned i = 0; i < settings.nbInputStreams; i++)
-    cleanLibbluESSettings(settings.inputStreams[i]);
+  free(settings.output_ts_filename);
+  for (unsigned i = 0; i < settings.nb_used_es; i++)
+    cleanLibbluESSettings(settings.es_settings[i]);
+  free(settings.es_settings);
 }
 
 /** \~english
@@ -118,29 +107,41 @@ static inline void cleanLibbluMuxingSettings(
  * settings is returned. Otherwise, if the limit of ES as been reached, a NULL
  * pointer is returned.
  */
-static inline LibbluESSettings * getNewESLibbluMuxingSettings(
-  LibbluMuxingSettings * settings
+static inline LibbluESSettings *getNewESLibbluMuxingSettings(
+  LibbluMuxingSettings *settings
 )
 {
-  LibbluESSettings * es;
-
   assert(NULL != settings);
 
-  if (LIBBLU_MAX_NB_STREAMS <= settings->nbInputStreams)
-    return NULL; /* No more, too much ES used */
+  if (settings->nb_allocated_es <= settings->nb_used_es) {
+    unsigned new_size = GROW_ALLOCATION(settings->nb_allocated_es, 8);
+    if (!new_size)
+      LIBBLU_ERROR_NRETURN("ES settings overflow.\n");
 
-  es = settings->inputStreams + settings->nbInputStreams++;
+    LibbluESSettings *new_array = realloc(
+      settings->es_settings,
+      new_size *sizeof(LibbluESSettings)
+    );
+
+    settings->es_settings     = new_array;
+    settings->nb_allocated_es = new_size;
+  }
+
+  LibbluESSettings *es = &settings->es_settings[
+    settings->nb_used_es++
+  ];
+
   return initLibbluESSettings(es);
 }
 
-#define LIBBLU_MIN_MUXING_RATE  500000
+#define MUX_MIN_TS_RECORDING_RATE  500000
 
-#define LIBBLU_MAX_MUXING_RATE  120000000
+#define MUX_MAX_TS_RECORDING_RATE  120000000
 
-#define LIBBLU_DEFAULT_MUXING_RATE  48000000
+#define MUX_DEFAULT_TS_RECORDING_RATE  48000000
 
 /** \~english
- * \brief Set the muxing target multiplex rate value.
+ * \brief Set the muxing target multiplex recording rate value.
  *
  * \param dst Destination muxing settings structure.
  * \param value Multiplex bit rate in bits per second (bps).
@@ -148,24 +149,24 @@ static inline LibbluESSettings * getNewESLibbluMuxingSettings(
  * value is returned, indicating supplied value exceed parameter limits.
  */
 static inline int setTargetMuxRateLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  uint64_t value
+  LibbluMuxingSettings *dst,
+  uint64_t TS_recording_rate
 )
 {
-  if (value < LIBBLU_MIN_MUXING_RATE)
-    return -1;
-  if (LIBBLU_MAX_MUXING_RATE < value)
-    return -1;
+  if (TS_recording_rate < MUX_MIN_TS_RECORDING_RATE)
+    return -1; // Below min
+  if (MUX_MAX_TS_RECORDING_RATE < TS_recording_rate)
+    return -1; // Above max
 
-  dst->targetMuxingRate = value;
+  dst->TS_recording_rate = TS_recording_rate;
   return 0;
 }
 
-#define LIBBLU_MIN_INIT_PRES_TIME  SUB_CLOCK_90KHZ
+#define MUX_MIN_PRES_START_TIME  SUB_CLOCK_90KHZ
 
-#define LIBBLU_MAX_INIT_PRES_TIME  ((uint64_t) SUB_CLOCK_90KHZ * 60 * 60 * 5000)
+#define MUX_MAX_PRES_START_TIME  ((uint64_t) SUB_CLOCK_90KHZ * 60 * 60 * 5000)
 
-#define LIBBLU_DEFAULT_INIT_PRES_TIME  ((uint64_t) 54000000 * 300)
+#define MUX_DEFAULT_PRES_START_TIME  ((uint64_t) 54000000 * 300)
 
 /** \~english
  * \brief Set the muxing initial presentation time value.
@@ -176,74 +177,71 @@ static inline int setTargetMuxRateLibbluMuxingSettings(
  * value is returned, indicating supplied value exceed parameter limits.
  */
 static inline int setInitPresTimeLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
+  LibbluMuxingSettings *dst,
   uint64_t value
 )
 {
-  if (value < LIBBLU_MIN_INIT_PRES_TIME)
+  if (value < MUX_MIN_PRES_START_TIME)
     return -1;
-  if (LIBBLU_MAX_INIT_PRES_TIME < value)
+  if (MUX_MAX_PRES_START_TIME < value)
     return -1;
 
-  dst->initialPresentationTime = value * 300;
+  dst->presentation_start_time = value * 300;
   return 0;
 }
 
 static inline int setFpsChangeLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  const lbc * expr
+  LibbluMuxingSettings *dst,
+  const lbc *expr
 )
 {
   HdmvFrameRateCode idc;
-
   if (parseFpsChange(expr, &idc) < 0)
     return -1;
 
-  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, fpsChange, idc);
+  dst->options.es_shared_options.fps_mod = idc;
   return 0;
 }
 
 static inline int setArChangeLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  const lbc * expr
+  LibbluMuxingSettings *dst,
+  const lbc *expr
 )
 {
-  LibbluAspectRatioMod values;
-
-  if (parseArChange(expr, &values) < 0)
+  LibbluAspectRatioMod aspect_ratio;
+  if (parseArChange(expr, &aspect_ratio) < 0)
     return -1;
 
-  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, arChange, values);
+  dst->options.es_shared_options.ar_mod = aspect_ratio;
   return 0;
 }
 
 static inline int setLevelChangeLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  const lbc * expr
+  LibbluMuxingSettings *dst,
+  const lbc *expr
 )
 {
-  uint8_t idc;
-
-  if (parseLevelChange(expr, &idc) < 0)
+  uint8_t level;
+  if (parseLevelChange(expr, &level) < 0)
     return -1;
 
-  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, levelChange, idc);
+  dst->options.es_shared_options.level_mod = level;
   return 0;
 }
 
 static inline int setHdmvInitialTimestampLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  uint64_t value
+  LibbluMuxingSettings *dst,
+  uint64_t timestamp
 )
 {
 #if 0 < LIBBLU_MIN_HDMV_INIT_TIMESTAMP
-  if (value < LIBBLU_MIN_HDMV_INIT_TIMESTAMP)
+  if (timestamp < LIBBLU_MIN_HDMV_INIT_TIMESTAMP)
     return -1;
 #endif
-  if (LIBBLU_MAX_HDMV_INIT_TIMESTAMP < value)
+  if (LIBBLU_MAX_HDMV_INIT_TIMESTAMP < timestamp)
     return -1;
 
-  LIBBLU_MUX_SETTINGS_SET_GLB_OPTION(dst, hdmv.initial_timestamp, value);
+  dst->options.es_shared_options.hdmv.initial_timestamp = timestamp;
   return 0;
 }
 

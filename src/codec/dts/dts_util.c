@@ -12,11 +12,11 @@
 
 void dcaExtChMaskStrPrintFun(
   uint16_t mask,
-  int (*printFun) (const lbc * format, ...)
+  int (*printFun) (const lbc *format, ...)
 )
 {
   unsigned i;
-  char * sep;
+  char *sep;
 
   static const uint16_t chConfigsMasks[16] = {
     DCA_EXT_SS_CH_MASK_C,
@@ -37,7 +37,7 @@ void dcaExtChMaskStrPrintFun(
     DCA_EXT_SS_CH_MASK_LHR_RHR
   };
 
-  static const char * chConfigsNames[16] = {
+  static const char *chConfigsNames[16] = {
     "C",
     "L, R",
     "Ls, Rs",
@@ -66,8 +66,8 @@ void dcaExtChMaskStrPrintFun(
 }
 
 int initDtsContext(
-  DtsContext * ctx,
-  LibbluESParsingSettings * settings
+  DtsContext *ctx,
+  LibbluESParsingSettings *settings
 )
 {
   const LibbluESSettingsOptions options = settings->options;
@@ -117,8 +117,8 @@ int initDtsContext(
     .script_fp = settings->scriptFilepath,
 
     .is_dtshd_file = is_dtshd_file,
-    .is_secondary = options.secondaryStream,
-    .skip_ext = options.extractCore
+    .is_secondary = options.secondary,
+    .skip_ext = options.extract_core
   };
 
   return 0;
@@ -131,7 +131,7 @@ free_return:
 }
 
 int _setScriptProperties(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   EsmsHandlerPtr script = ctx->script;
@@ -153,7 +153,7 @@ int _setScriptProperties(
   script->prop.coding_type = coding_type;
 
   if (ctx->core_pres) {
-    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
+    const DcaCoreBSHeaderParameters *bsh = &ctx->core.cur_frame.bs_header;
     script->PTS_final = getPTSDtsDcaCoreSSContext(&ctx->core);
 
     switch (bsh->AMODE) {
@@ -224,18 +224,18 @@ int _setScriptProperties(
 }
 
 static inline unsigned _getNbChannels(
-  const DtsContext * ctx
+  const DtsContext *ctx
 )
 {
   if (ctx->core_pres) {
-    const DcaCoreBSHeaderParameters * bsh = &ctx->core.cur_frame.bs_header;
+    const DcaCoreBSHeaderParameters *bsh = &ctx->core.cur_frame.bs_header;
     return getNbChDcaCoreAudioChannelAssignCode(bsh->AMODE);
   }
   return 0; // TODO: Suppport secondary audio.
 }
 
 static void _printStreamInfos(
-  const DtsContext * ctx
+  const DtsContext *ctx
 )
 {
   /* Display infos : */
@@ -257,7 +257,7 @@ static void _printStreamInfos(
 }
 
 int completeDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
 
@@ -278,7 +278,7 @@ int completeDtsContext(
 }
 
 void cleanDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   if (NULL == ctx)
@@ -294,7 +294,7 @@ void cleanDtsContext(
 }
 
 int initParsingDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   cleanDtshdFileHandler(ctx->dtshd);
@@ -311,7 +311,7 @@ int initParsingDtsContext(
 }
 
 DtsFrameInitializationRet initNextDtsFrame(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   uint32_t sync_word;
@@ -346,11 +346,11 @@ DtsFrameInitializationRet initNextDtsFrame(
 
 
 static uint64_t _getAndUpdatePTSCore(
-  DtsDcaCoreSSContext * core,
-  unsigned * nb_audio_frames
+  DtsDcaCoreSSContext *core,
+  unsigned *nb_audio_frames
 )
 {
-  const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
+  const DcaCoreBSHeaderParameters *bsh = &core->cur_frame.bs_header;
   uint64_t pts = getPTSDtsDcaCoreSSContext(core);
 
   core->nb_parsed_samples += (bsh->NBLKS + 1) * (bsh->SHORT + 1);
@@ -361,12 +361,12 @@ static uint64_t _getAndUpdatePTSCore(
 }
 
 static uint64_t _getAndUpdatePTSExtSS(
-  DtsDcaExtSSContext * ext_ss
+  DtsDcaExtSSContext *ext_ss
 )
 {
-  const DcaExtSSFrameParameters * frame = ext_ss->curFrames[ext_ss->currentExtSSIdx];
+  const DcaExtSSFrameParameters *frame = ext_ss->curFrames[ext_ss->currentExtSSIdx];
   assert(NULL != frame);
-  const DcaExtSSHeaderSFParameters * sf = &frame->header.static_fields;
+  const DcaExtSSHeaderSFParameters *sf = &frame->header.static_fields;
   uint64_t pts = getPTSDtsDcaExtSSContext(ext_ss);
 
   ext_ss->nb_parsed_samples += sf->nuExSSFrameDurationCode;
@@ -375,7 +375,7 @@ static uint64_t _getAndUpdatePTSExtSS(
 }
 
 static uint64_t _getAndUpdatePTS(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   DtsAUContentType content_type = identifyContentTypeDtsAUFrame(&ctx->cur_au);
@@ -393,7 +393,7 @@ static uint64_t _getAndUpdatePTS(
 }
 
 int completeDtsFrame(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   uint64_t pts = _getAndUpdatePTS(ctx);
@@ -412,7 +412,7 @@ int completeDtsFrame(
   else {
     if (DTS_PARSMOD_TWO_PASS_FIRST == ctx->mode) {
       /* Peak Bit-Rate Smoothing first pass, save audio frame size. */
-      DtsPbrSmoothingStats * pbrs = &ctx->xll.pbrSmoothing;
+      DtsPbrSmoothingStats *pbrs = &ctx->xll.pbrSmoothing;
       uint32_t au_size = getSizeDtsAUFrame(&ctx->cur_au);
       if (saveFrameSizeDtsPbrSmoothing(pbrs, ctx->nb_audio_frames, pts, au_size) < 0)
         return -1;

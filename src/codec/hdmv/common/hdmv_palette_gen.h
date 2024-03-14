@@ -10,10 +10,10 @@
 #include "hdmv_quantizer.h"
 
 int buildPaletteListHdmvPalette(
-  HdmvPalette * dst,
-  HdmvBitmapList * list,
+  HdmvPalette *dst,
+  HdmvBitmapList *list,
   unsigned target_nb_colors,
-  HdmvQuantHexTreeNodesInventory * inv
+  HdmvQuantHexTreeNodesInventory *inv
 );
 
 #endif

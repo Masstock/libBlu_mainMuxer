@@ -27,7 +27,7 @@ typedef struct {
  * Used during PBR smoothing process.
  */
 typedef struct {
-  DtsPbrSmoothingStatsFrame * frames;
+  DtsPbrSmoothingStatsFrame *frames;
   unsigned nb_alloc_frames;
   unsigned last_frame_idx;
 
@@ -38,7 +38,7 @@ typedef struct {
 } DtsPbrSmoothingStats;
 
 int saveFrameSizeDtsPbrSmoothing(
-  DtsPbrSmoothingStats * stats,
+  DtsPbrSmoothingStats *stats,
   unsigned audio_frame_idx,
   uint64_t timestamp,
   uint32_t size
@@ -95,7 +95,7 @@ typedef struct {
  * only check if decoding delayed XLL frames cause overflow.
  */
 typedef struct {
-  uint8_t * pbrs_buf;          /**< PBRS buffer used to re-assemble XLL
+  uint8_t *pbrs_buf;          /**< PBRS buffer used to re-assemble XLL
     frames prior to decoding.                                                */
   uint32_t pbrs_buf_alloc_size;  /**< PBR buffer allocated size in bytes.      */
   uint32_t pbr_buf_size;         /**< PBR buffer active max size according to
@@ -141,67 +141,67 @@ static inline void cleanDtsXllFrameContext(
 }
 
 int initDtsXllFrameContext(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   DcaAudioAssetDescParameters asset,
-  DtshdFileHandler * dtshd
+  DtshdFileHandler *dtshd
 );
 
 int parseDtsXllToPbrBuffer(
   BitstreamReaderPtr dtsInput,
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   DcaAudioAssetExSSXllParameters asset,
   uint32_t asset_size
 );
 
-LibbluBitReader * initUnpackDtsXllPbr(
-  DtsXllFrameContext * ctx
+LibbluBitReader *initUnpackDtsXllPbr(
+  DtsXllFrameContext *ctx
 );
 
 int completeUnpackDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 );
 
 #if 0
 
 int unpackBitsDtsXllPbr(
-  DtsXllFrameContext * ctx,
-  uint32_t * value,
+  DtsXllFrameContext *ctx,
+  uint32_t *value,
   size_t length
 );
 
 int skipBitsDtsXllPbr(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   size_t length
 );
 
 void alignByteDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 );
 
 int unpackByteDtsXllPbr(
-  DtsXllFrameContext * ctx,
-  uint8_t * byte
+  DtsXllFrameContext *ctx,
+  uint8_t *byte
 );
 
 int unpackBytesDtsXllPbr(
-  DtsXllFrameContext * ctx,
-  uint32_t * value,
+  DtsXllFrameContext *ctx,
+  uint32_t *value,
   size_t length
 );
 
 int skipBytesDtsXllPbr(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   size_t length
 );
 
 uint32_t tellPosDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 );
 
 #endif
 
 int registerDecodedFrameOffsetsDtsXllFrameContext(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   const DcaXllFrameSFPosition framePosition
 );
 
@@ -226,11 +226,11 @@ int registerDecodedFrameOffsetsDtsXllFrameContext(
  * returned.
  */
 int substractPbrFrameSliceDtsXllFrameContext(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   uint32_t req_frame_size,
-  DcaXllFrameSFPosition * builded_frame_pos_ret,
-  int * sync_word_off_idx_ret,
-  unsigned * init_dec_delay_ret
+  DcaXllFrameSFPosition *builded_frame_pos_ret,
+  int *sync_word_off_idx_ret,
+  unsigned *init_dec_delay_ret
 );
 
 void debugPrintDcaXllFrameSFPositionIndexes(
@@ -239,20 +239,20 @@ void debugPrintDcaXllFrameSFPositionIndexes(
 );
 
 void substractDtsXllFrameOriginalPosition(
-  DtsXllFrameParameters * frame,
-  DcaXllFrameSFPosition * pbrFramePosition
+  DtsXllFrameParameters *frame,
+  DcaXllFrameSFPosition *pbrFramePosition
 );
 
 int collectFrameDataDcaXllFrameSFPosition(
-  DcaXllFrameSFPosition * src,
-  uint32_t * req_frame_size,
-  DcaXllFrameSFPosition * dst
+  DcaXllFrameSFPosition *src,
+  uint32_t *req_frame_size,
+  DcaXllFrameSFPosition *dst
 );
 
 int getRelativeOffsetDcaXllFrameSFPosition(
   const DcaXllFrameSFPosition frame,
   int64_t abs_offset,
-  uint32_t * rel_offset
+  uint32_t *rel_offset
 );
 
 /** \~english
@@ -264,13 +264,13 @@ int getRelativeOffsetDcaXllFrameSFPosition(
  * \return int
  */
 int getFrameTargetSizeDtsXllPbr(
-  DtsXllFrameContext * ctx,
+  DtsXllFrameContext *ctx,
   unsigned audio_frame_idx,
-  unsigned * size
+  unsigned *size
 );
 
 int performComputationDtsXllPbr(
-  DtsXllFrameContext * ctx
+  DtsXllFrameContext *ctx
 );
 
 #endif

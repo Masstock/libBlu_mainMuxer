@@ -17,7 +17,7 @@
 
 static struct {
   const LibbluExplodeLevel level;
-  const char * name;
+  const char *name;
   bool disabled;
 } explode_lvls[] = {
 #define DECLARE_LEVEL(l, n)  {.level = l, .name = n}
@@ -50,7 +50,7 @@ int readSettingsExplodeLevels(
     char optionPath[1024];
     snprintf(optionPath, 1024, "DISABLEDERRORS.%s", explode_lvls[i].name);
 
-    lbc * string = lookupIniFile(conf_hdl, optionPath);
+    lbc *string = lookupIniFile(conf_hdl, optionPath);
     if (NULL != string) {
       bool value;
 
@@ -74,7 +74,7 @@ typedef enum {
 
 static const struct {
   debugging_option_type type;
-  char * desc;
+  char *desc;
 
   union {
     struct {
@@ -82,8 +82,8 @@ static const struct {
       char ** names;
     } single;
     struct {
-      char * name;
-      LibbluStatus * values;
+      char *name;
+      LibbluStatus *values;
     } range;
   };
 } debugging_options[] = {
@@ -509,7 +509,7 @@ static void _printDebugOptions(
 )
 {
   LIBBLU_ERROR("List of all available debugging options: ");
-  const char * sep = "";
+  const char *sep = "";
   for (size_t i = 0; i < ARRAY_SIZE(debugging_options); i++) {
     if (SINGLE_OPTION == debugging_options[i].type) {
       LIBBLU_ERROR_NO_HEADER("%s'%s'", sep, debugging_options[i].single.names[0]);
@@ -523,13 +523,13 @@ static char enabled_status[LIBBLU_NB_STATUS];
 static bool enabled_debug;
 
 static int _checkApplyDebugOption(
-  const char * req_opt_name,
+  const char *req_opt_name,
   size_t i
 )
 {
 
   if (SINGLE_OPTION == debugging_options[i].type) {
-    char * const * opt_name = debugging_options[i].single.names;
+    char *const *opt_name = debugging_options[i].single.names;
     for (; NULL != *opt_name; opt_name++) {
       if (0 == strcmp(req_opt_name, *opt_name)) {
         LibbluStatus status = debugging_options[i].single.opt;
@@ -555,7 +555,7 @@ static int _checkApplyDebugOption(
 }
 
 int enableDebugStatusString(
-  const char * string
+  const char *string
 )
 {
   do {
@@ -605,13 +605,13 @@ bool isEnabledLibbbluStatus(
   return enabled_status[status];
 }
 
-static FILE * debugging_fd = NULL;
+static FILE *debugging_fd = NULL;
 
 int initDebugLogFile(
-  const lbc * log_filepath
+  const lbc *log_filepath
 )
 {
-  FILE * fd = lbc_fopen(log_filepath, "w");
+  FILE *fd = lbc_fopen(log_filepath, "w");
   if (NULL == fd)
     LIBBLU_ERROR_RETURN(
       "Unable to create output log file '%" PRI_LBCS "', %s (errno: %d).\n",
@@ -639,9 +639,9 @@ int closeDebugLogFile(
 }
 
 void echoMessageFdVa(
-  FILE * fd,
+  FILE *fd,
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   va_list args
 )
 {
@@ -655,7 +655,7 @@ void echoMessageFdVa(
 
 void echoMessageVa(
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   va_list args
 )
 {
@@ -674,9 +674,9 @@ void echoMessageVa(
 }
 
 void echoMessageFd(
-  FILE * fd,
+  FILE *fd,
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   ...
 )
 {
@@ -689,7 +689,7 @@ void echoMessageFd(
 
 void echoMessage(
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   ...
 )
 {
@@ -710,9 +710,9 @@ void printDebuggingMessageCategoriesList(
 
     lbc_printf(lbc_str("%-*c- %s"), indent, ' ', debugging_options[i].single.names[0]);
 
-    char * prefix = " (";
-    char * suffix = "";
-    char * const * name = &debugging_options[i].single.names[1];
+    char *prefix = " (";
+    char *suffix = "";
+    char *const *name = &debugging_options[i].single.names[1];
     for (; NULL != *name; name++) {
       lbc_printf(lbc_str("%s%s"), prefix, *name);
       prefix = ", ";
@@ -735,9 +735,9 @@ void printDebuggingMessageCategoriesListWithDesc(
 
     lbc_printf(lbc_str("%-*c- '%s'"), indent, ' ', debugging_options[i].single.names[0]);
 
-    char * prefix = " (aliase(s): ";
-    char * suffix = "";
-    char * const * name = &debugging_options[i].single.names[1];
+    char *prefix = " (aliase(s): ";
+    char *suffix = "";
+    char *const *name = &debugging_options[i].single.names[1];
     for (; NULL != *name; name++) {
       lbc_printf(lbc_str("%s'%s'"), prefix, *name);
       prefix = ", ";

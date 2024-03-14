@@ -54,15 +54,15 @@ static uint32_t _convRGBAToYCbCrA(
 
   /* Apply transformation matrix */
   float y  = coeff_r        * r + coeff_g        * g + coeff_b        * b;
-  float cb = 0.5f * cf_cb_r * r + 0.5f * cf_cb_g * g + 0.5f           * b;
-  float cr = 0.5f           * r + 0.5f * cf_cr_g * g + 0.5f * cf_cr_b * b;
+  float cb = 0.5f *cf_cb_r *r + 0.5f *cf_cb_g *g + 0.5f           * b;
+  float cr = 0.5f           * r + 0.5f *cf_cr_g *g + 0.5f *cf_cr_b *b;
 
   /* Apply YCbCr values range clipping if required. */
   /* e.g. (0-255, 0-255, 0-255) -> (16-235, 16-240, 16-240) */
 #define ROUND_FUN  nearbyintf
   uint8_t ch_y  = CLIP_UINT8(ROUND_FUN(off_y  + y  * scl_y ));
-  uint8_t ch_cb = CLIP_UINT8(ROUND_FUN(off_br + cb * scl_br));
-  uint8_t ch_cr = CLIP_UINT8(ROUND_FUN(off_br + cr * scl_br));
+  uint8_t ch_cb = CLIP_UINT8(ROUND_FUN(off_br + cb *scl_br));
+  uint8_t ch_cr = CLIP_UINT8(ROUND_FUN(off_br + cr *scl_br));
 
   uint8_t ch_a  = GET_CHANNEL(rgba, C_A);
 
@@ -105,7 +105,7 @@ uint32_t convToYCbCrHdmvPaletteColorMatrix(
 #if 0
 
 static void convertToYCbCrHdmvPalette(
-  HdmvPalette * pal
+  HdmvPalette *pal
 )
 {
   float r, g, b;
@@ -139,7 +139,7 @@ static void convertToYCbCrHdmvPalette(
 }
 
 static void convertToRgbaHdmvPalette(
-  HdmvPalette * pal
+  HdmvPalette *pal
 )
 {
   (void) pal;
@@ -149,7 +149,7 @@ static void convertToRgbaHdmvPalette(
 /* ### Operations : ######################################################## */
 
 void setColorMatrixHdmvPalette(
-  HdmvPalette * pal,
+  HdmvPalette *pal,
   HdmvPaletteColorMatrix matrix
 )
 {
@@ -162,8 +162,8 @@ void setColorMatrixHdmvPalette(
 #endif
 
 static int compFun(
-  const void * first,
-  const void * second
+  const void *first,
+  const void *second
 )
 {
   int64_t rgba_fst = ((HdmvPaletteEntry *)  first)->rgba;
@@ -176,14 +176,14 @@ static int compFun(
 }
 
 void sortEntriesHdmvPalette(
-  HdmvPalette * pal
+  HdmvPalette *pal
 )
 {
   qsort(pal->entries, pal->nb_entries, sizeof(HdmvPaletteEntry), compFun);
 }
 
 int addRgbaEntryHdmvPalette(
-  HdmvPalette * pal,
+  HdmvPalette *pal,
   uint32_t rgba
 )
 {

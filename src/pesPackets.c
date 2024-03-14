@@ -9,9 +9,9 @@
 #include "pesPackets.h"
 
 size_t writePesHeader(
-  uint8_t * packetData,
+  uint8_t *packetData,
   size_t offset,
-  const PesPacketHeaderParam * param
+  const PesPacketHeaderParam *param
 )
 {
   // uint64_t pts, dts;

@@ -103,11 +103,11 @@ int checkDtsXllCommonHeader(
 
   /* TODO: nSmplInSeg shall be checked for <= 48KHz. */
 
-  if (DTS_XLL_MAX_SAMPLES_NB < param.nSegmentsInFrame * param.nSmplInSeg)
+  if (DTS_XLL_MAX_SAMPLES_NB < param.nSegmentsInFrame *param.nSmplInSeg)
     LIBBLU_DTS_ERROR_RETURN(
       "Too many Samples in DTS XLL frame (product of number of samples per "
       "segment and number of segments %u exceed %u samples).\n",
-      param.nSegmentsInFrame * param.nSmplInSeg,
+      param.nSegmentsInFrame *param.nSmplInSeg,
       DTS_XLL_MAX_SAMPLES_NB
     );
 

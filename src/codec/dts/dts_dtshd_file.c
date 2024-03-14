@@ -82,7 +82,7 @@ static const char * _dtshdChunkIdStr(
 
 
 static int _getRefClock(
-  unsigned * RefClock,
+  unsigned *RefClock,
   uint8_t RefClockCode
 )
 {
@@ -104,7 +104,7 @@ static int _getRefClock(
 
 static int _decodeDtshdHeaderChunk(
   BitstreamReaderPtr bs,
-  DtshdFileHeaderChunk * param
+  DtshdFileHeaderChunk *param
 )
 {
   assert(NULL != param);
@@ -276,11 +276,11 @@ static int _decodeDtshdString(
   BitstreamReaderPtr bs,
   uint64_t max_size,
   char ** dst_ptr,
-  uint64_t * res_size
+  uint64_t *res_size
 )
 {
   uint64_t buffer_size = 0, current_size = 0;
-  uint8_t * buffer = NULL;
+  uint8_t *buffer = NULL;
 
   uint8_t byte;
   do {
@@ -293,7 +293,7 @@ static int _decodeDtshdString(
       /* Realloc buffer */
       if (0 == (buffer_size = GROW_ALLOCATION(buffer_size, 16u)))
         LIBBLU_DTS_ERROR_RETURN("DTS-HD bs header string size overflow.\n");
-      uint8_t * new_buffer = realloc(buffer, buffer_size);
+      uint8_t *new_buffer = realloc(buffer, buffer_size);
       if (NULL == new_buffer)
         LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
       buffer = new_buffer;
@@ -309,7 +309,7 @@ static int _decodeDtshdString(
 
 static int _decodeDtshdFileInfoChunk(
   BitstreamReaderPtr bs,
-  DtshdFileInfo * param
+  DtshdFileInfo *param
 )
 {
 
@@ -358,7 +358,7 @@ static int _decodeDtshdFileInfoChunk(
 
 static int _decodeDtshdStreamDataChunk(
   BitstreamReaderPtr bs,
-  DtshdStreamData * param,
+  DtshdStreamData *param,
   bool in_STRMDATA,
   uint64_t off_STRMDATA
 )
@@ -412,7 +412,7 @@ static int _decodeDtshdStreamDataChunk(
 
 static int _decodeDtshdCoreSubStreamMetaChunk(
   BitstreamReaderPtr bs,
-  DtshdCoreSubStrmMeta * param
+  DtshdCoreSubStrmMeta *param
 )
 {
 
@@ -503,7 +503,7 @@ static int _decodeDtshdCoreSubStreamMetaChunk(
 
 static int _decodeDtshdExtSubStreamMetaChunk(
   BitstreamReaderPtr bs,
-  DtshdExtSubStrmMeta * param,
+  DtshdExtSubStrmMeta *param,
   bool is_VBR
 )
 {
@@ -587,7 +587,7 @@ static int _decodeDtshdExtSubStreamMetaChunk(
 
 static int _decodeDtshdAudioPresHeaderMetaChunk(
   BitstreamReaderPtr bs,
-  DtshdAudioPresPropHeaderMeta * param
+  DtshdAudioPresPropHeaderMeta *param
 )
 {
 
@@ -819,7 +819,7 @@ static int _decodeDtshdAudioPresHeaderMetaChunk(
 
 static int _decodeDtshdAudioPresInfoChunk(
   BitstreamReaderPtr bs,
-  DtshdAudioPresText * param
+  DtshdAudioPresText *param
 )
 {
 
@@ -879,7 +879,7 @@ static int _decodeDtshdAudioPresInfoChunk(
 
 int decodeDtshdNavigationMetaChunk(
   BitstreamReaderPtr bs,
-  DtshdNavMeta * param
+  DtshdNavMeta *param
 )
 {
 
@@ -917,7 +917,7 @@ int decodeDtshdNavigationMetaChunk(
 
 int decodeDtshdTimecodeChunk(
   BitstreamReaderPtr bs,
-  DtshdTimecode * param
+  DtshdTimecode *param
 )
 {
 
@@ -1013,7 +1013,7 @@ int decodeDtshdTimecodeChunk(
 
 int decodeDtshdBuildVerChunk(
   BitstreamReaderPtr bs,
-  DtshdBuildVer * param
+  DtshdBuildVer *param
 )
 {
 
@@ -1058,7 +1058,7 @@ int decodeDtshdBuildVerChunk(
 
 int decodeDtshdBlackoutChunk(
   BitstreamReaderPtr bs,
-  DtshdBlackout * param
+  DtshdBlackout *param
 )
 {
 
@@ -1078,7 +1078,7 @@ int decodeDtshdBlackoutChunk(
   );
 
   /* [vn Blackout_Frame] */
-  uint8_t * frame = (uint8_t *) malloc(param->Blackout_Data_Byte_Size);
+  uint8_t *frame = (uint8_t *) malloc(param->Blackout_Data_Byte_Size);
   if (NULL == frame)
     LIBBLU_DTS_ERROR_RETURN("Memory allocation error.\n");
 
@@ -1124,7 +1124,7 @@ static int _decodeDtshdUnknownChunk(
 
 int decodeDtshdFileChunk(
   BitstreamReaderPtr bs,
-  DtshdFileHandler * handle
+  DtshdFileHandler *handle
 )
 {
   assert(NULL != bs);
@@ -1150,7 +1150,7 @@ int decodeDtshdFileChunk(
     tellPos(bs), _dtshdChunkIdStr(magic), magic
   );
 
-  unsigned * presence_counter = NULL;
+  unsigned *presence_counter = NULL;
   int ret = 0;
 
   switch (magic) {

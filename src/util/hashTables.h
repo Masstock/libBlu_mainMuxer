@@ -15,7 +15,7 @@
 #include "common.h"
 
 typedef union {
-  void * ptr;
+  void *ptr;
   struct {
     uint32_t val;
     bool non_empty;
@@ -24,7 +24,7 @@ typedef union {
 
 typedef struct {
   HashentryKey key;
-  void * data;
+  void *data;
 } Hashentry;
 
 typedef uint32_t (*HashTable_keyHashFun) (
@@ -47,7 +47,7 @@ typedef struct {
   HashTable_freeFun dat_free_fun;
   bool numeric_key;
 
-  Hashentry * array;
+  Hashentry *array;
   size_t array_used_len;
   size_t array_allocated_len;
   bool initialized;
@@ -68,7 +68,7 @@ static inline Hashtable newNumHashtable(
 }
 
 void setFunHashTable(
-  Hashtable * table,
+  Hashtable *table,
   HashTable_keyHashFun key_hash_fun,
   HashTable_keyCompFun key_comp_fun,
   HashTable_freeFun key_free_fun,
@@ -79,26 +79,26 @@ void cleanHashTable(
   Hashtable table
 );
 
-void * getHashTable(
-  Hashtable * table,
-  const void * entry_key
+void *getHashTable(
+  Hashtable *table,
+  const void *entry_key
 );
 
-void * getNumHashTable(
-  Hashtable * table,
+void *getNumHashTable(
+  Hashtable *table,
   uint32_t entry_key
 );
 
 int putHashTable(
-  Hashtable * table,
-  void * entry_key,
-  void * entry_data
+  Hashtable *table,
+  void *entry_key,
+  void *entry_data
 );
 
 int putNumHashTable(
-  Hashtable * table,
+  Hashtable *table,
   uint32_t entry_key,
-  void * entry_data
+  void *entry_data
 );
 
 #endif

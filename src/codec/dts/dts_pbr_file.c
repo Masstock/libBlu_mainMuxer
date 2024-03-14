@@ -15,24 +15,24 @@ typedef struct {
 } PbrFileHandlerEntry;
 
 static struct {
-  FILE * file;
+  FILE *file;
   DtshdTCFrameRate TC_Frame_Rate;
   bool dropped_frame_rate;
 
-  PbrFileHandlerEntry * entries;
+  PbrFileHandlerEntry *entries;
   unsigned nb_alloc_entries;
   unsigned nb_entries;
   unsigned last_accessed_entry;
 } dtspbr_handle;
 
 static DtshdTCFrameRate _getTCFrameRate(
-  char * frame_rate,
+  char *frame_rate,
   bool dropped
 )
 {
   static const struct {
     DtshdTCFrameRate code;
-    char * frame_rate;
+    char *frame_rate;
     bool dropped;
   } values[] = {
     {     DTSHD_TCFR_23_976, "23.976", false},
@@ -62,7 +62,7 @@ static int _parseFrameRate(
 {
   char buf[20];
 
-  char * ret = fgets(buf, sizeof(buf), dtspbr_handle.file);
+  char *ret = fgets(buf, sizeof(buf), dtspbr_handle.file);
   if (NULL == ret)
     LIBBLU_DTS_PBR_ERROR_RETURN("Expect a frame-rate value.\n");
 
@@ -121,9 +121,9 @@ static uint64_t _TCtoTimestamp(
 
   if (likely(!dtspbr_handle.dropped_frame_rate)) {
     return (
-      SUB_CLOCK_90KHZ * seconds
+      SUB_CLOCK_90KHZ *seconds
       + DIV_ROUND_UP(
-        SUB_CLOCK_90KHZ * rem_frames * frame_rates[frame_rate_idx][1],
+        SUB_CLOCK_90KHZ *rem_frames *frame_rates[frame_rate_idx][1],
         frame_rates[frame_rate_idx][0]
       )
     );
@@ -132,7 +132,7 @@ static uint64_t _TCtoTimestamp(
   /* Case of 'Drop' frame-rates */
   // TODO: Simplify this piece
   uint64_t nb_frames = rem_frames + (
-    seconds * frame_rates[frame_rate_idx][0]
+    seconds *frame_rates[frame_rate_idx][0]
     / frame_rates[frame_rate_idx][1]
   );
 
@@ -142,13 +142,13 @@ static uint64_t _TCtoTimestamp(
     nb_frames = _applyFrameDropCompensation(nb_frames, 30.f);
 
   return DIV_ROUND_UP(
-    SUB_CLOCK_90KHZ * nb_frames * frame_rates[frame_rate_idx][1],
+    SUB_CLOCK_90KHZ *nb_frames *frame_rates[frame_rate_idx][1],
     frame_rates[frame_rate_idx][0]
   );
 }
 
 static int _parsePbrFile(
-  const DtshdFileHandler * dtshd
+  const DtshdFileHandler *dtshd
 )
 {
   LIBBLU_DTS_DEBUG_PBRFILE("Parsing DTS PBR Statistics file.\n");
@@ -173,7 +173,7 @@ static int _parsePbrFile(
   for (;;) {
     char buf[30];
 
-    char * ret = fgets(buf, sizeof(buf), dtspbr_handle.file);
+    char *ret = fgets(buf, sizeof(buf), dtspbr_handle.file);
     if (NULL == ret)
       break; // EOF
 
@@ -199,9 +199,9 @@ static int _parsePbrFile(
       if (lb_mul_overflow_size_t(new_size, sizeof(PbrFileHandlerEntry)))
         LIBBLU_DTS_PBR_ERROR_RETURN("Too many entries, overflow.\n");
 
-      PbrFileHandlerEntry * new_arr = (PbrFileHandlerEntry *) realloc(
+      PbrFileHandlerEntry *new_arr = (PbrFileHandlerEntry *) realloc(
         dtspbr_handle.entries,
-        new_size * sizeof(PbrFileHandlerEntry)
+        new_size *sizeof(PbrFileHandlerEntry)
       );
       if (NULL == new_arr)
         LIBBLU_DTS_PBR_ERROR_RETURN("Memory allocation error.\n");
@@ -212,7 +212,7 @@ static int _parsePbrFile(
 
     uint64_t timestamp  = _TCtoTimestamp(h * 3600u + m * 60u + s, frames);
     unsigned frame_size = DIV_ROUND_UP(
-      br_kbps * samples_per_frame * 125u,
+      br_kbps *samples_per_frame * 125u,
       sample_rate
     );
 
@@ -266,8 +266,8 @@ free_return:
 }
 
 int initPbrFileHandler(
-  const lbc * dtspbr_filename,
-  const DtshdFileHandler * dtshd
+  const lbc *dtspbr_filename,
+  const DtshdFileHandler *dtshd
 )
 {
   assert(NULL != dtspbr_filename);
@@ -310,7 +310,7 @@ bool isInitPbrFileHandler(
 
 int getMaxSizePbrFileHandler(
   unsigned timestamp,
-  unsigned * frame_size
+  unsigned *frame_size
 )
 {
   assert(NULL != frame_size);
@@ -328,7 +328,7 @@ int getMaxSizePbrFileHandler(
 }
 
 int getAvgSizePbrFileHandler(
-  uint32_t * avg_size
+  uint32_t *avg_size
 )
 {
   double avg = 0.;

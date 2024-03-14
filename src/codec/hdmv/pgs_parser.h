@@ -26,7 +26,7 @@
 #endif
 
 int analyzePgs(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

@@ -24,12 +24,12 @@
 
 int pidSwitchFilterDecisionFunBdavStd(
   BufModelFilterPtr filter,
-  unsigned * idx,
-  void * streamPtr
+  unsigned *idx,
+  void *streamPtr
 );
 
 int createBdavStd(
-  BufModelNode * rootNode
+  BufModelNode *rootNode
 );
 
 static inline bool isManagedSystemBdavStd(
@@ -59,7 +59,7 @@ int addSystemToBdavStd(
 
 int addESToBdavStd(
   BufModelNode rootNode,
-  LibbluES * es,
+  LibbluES *es,
   uint16_t pid,
   uint64_t initialTimestamp
 );

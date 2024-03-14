@@ -12,8 +12,8 @@
 #define inierror yyerror
 
 extern int yylex();
-extern int yyerror(IniFileContext * ctx, char * format, ...);
-extern char * yytext;
+extern int yyerror(IniFileContext *ctx, char *format, ...);
+extern char *yytext;
 extern int lineno;
 
 #define LOC(yyloc)                                                            \
@@ -39,11 +39,11 @@ extern int lineno;
 }
 
 %locations
-%parse-param {IniFileContext * ctx}
+%parse-param {IniFileContext *ctx}
 
 %union {
   IniFileNodePtr node;
-  char * string;
+  char *string;
 }
 
 %type <node> file sections section section_inner entry

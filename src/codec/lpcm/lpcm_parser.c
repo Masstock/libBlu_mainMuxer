@@ -37,7 +37,7 @@
 
 static int _parseRiffChunkHeader(
   BitstreamReaderPtr br,
-  RiffChunkHeader * hdr
+  RiffChunkHeader *hdr
 )
 {
   int64_t offset = tellPos(br);
@@ -83,8 +83,8 @@ static int _decodeWaveJunkChunk(
 static int _parseWaveFmtChunkCommonFields(
   BitstreamReaderPtr br,
   RiffChunkHeader header,
-  WaveFmtChunkCommonFields * com_fmt,
-  uint32_t * remaining_bytes
+  WaveFmtChunkCommonFields *com_fmt,
+  uint32_t *remaining_bytes
 )
 {
   /* ckID == "fmt " */
@@ -142,7 +142,7 @@ static int _parseWaveFmtChunkCommonFields(
 }
 
 static int _checkWaveFmtChunkCommonFields(
-  const WaveFmtChunkCommonFields * com_fmt
+  const WaveFmtChunkCommonFields *com_fmt
 )
 {
 
@@ -190,7 +190,7 @@ static int _checkWaveFmtChunkCommonFields(
 
 static int _parseWaveFmtPCMFormatSpecific(
   BitstreamReaderPtr br,
-  WaveFmtPCMFormatSpecific * pcm_fmt
+  WaveFmtPCMFormatSpecific *pcm_fmt
 )
 {
 
@@ -206,11 +206,11 @@ static int _parseWaveFmtPCMFormatSpecific(
 }
 
 static int _checkWaveFmtPCMFormatSpecific(
-  const WaveFmtChunk * fmt
+  const WaveFmtChunk *fmt
 )
 {
-  const WaveFmtChunkCommonFields * com_fmt = &fmt->common_fields;
-  const WaveFmtPCMFormatSpecific * pcm_fmt = &fmt->fmt_spec.pcm;
+  const WaveFmtChunkCommonFields *com_fmt = &fmt->common_fields;
+  const WaveFmtPCMFormatSpecific *pcm_fmt = &fmt->fmt_spec.pcm;
 
   if (pcm_fmt->wBitsPerSample != 16 && pcm_fmt->wBitsPerSample != 24) {
     if (pcm_fmt->wBitsPerSample == 20)
@@ -226,21 +226,21 @@ static int _checkWaveFmtPCMFormatSpecific(
     );
   }
 
-  if (com_fmt->wChannels * pcm_fmt->wBitsPerSample != com_fmt->wBlockAlign * 8)
+  if (com_fmt->wChannels *pcm_fmt->wBitsPerSample != com_fmt->wBlockAlign * 8)
     LIBBLU_LPCM_ERROR_RETURN(
       "The number of bits per block does not match the number of channels "
       "and samples bit-depth values "
-      "(wChannels * wBitsPerSample (= %u bits) != wBlockAlign (= %u bits)).\n",
-      com_fmt->wChannels * pcm_fmt->wBitsPerSample,
+      "(wChannels *wBitsPerSample (= %u bits) != wBlockAlign (= %u bits)).\n",
+      com_fmt->wChannels *pcm_fmt->wBitsPerSample,
       com_fmt->wBlockAlign * 8
     );
 
-  if (com_fmt->nSamplesPerSec * com_fmt->wBlockAlign != com_fmt->dwAvgBytesPerSec)
+  if (com_fmt->nSamplesPerSec *com_fmt->wBlockAlign != com_fmt->dwAvgBytesPerSec)
     LIBBLU_LPCM_ERROR_RETURN(
       "The number of bits per second does not match the sample rate "
-      "and audio block alignement values (nSamplesPerSec * wBlockAlign "
+      "and audio block alignement values (nSamplesPerSec *wBlockAlign "
       "(= %u bits) != dwAvgBytesPerSec (= %u bits)).\n",
-      com_fmt->nSamplesPerSec * com_fmt->wBlockAlign,
+      com_fmt->nSamplesPerSec *com_fmt->wBlockAlign,
       com_fmt->dwAvgBytesPerSec
     );
 
@@ -256,7 +256,7 @@ static const char * _WaveFmtSubFormatTypeStr(
   WaveFmtSubFormatType SubFormat_type
 )
 {
-  const char * strings[] = {
+  const char *strings[] = {
     "Unknown",
     "PCM Extensible format"
   };
@@ -279,7 +279,7 @@ static WaveFmtSubFormatType _getSubFormatType(
 
 static int _parseWaveFmtExtensibleSpecific(
   BitstreamReaderPtr br,
-  WaveFmtExtensibleSpecific * ext_fmt
+  WaveFmtExtensibleSpecific *ext_fmt
 )
 {
 
@@ -337,11 +337,11 @@ static int _parseWaveFmtExtensibleSpecific(
 }
 
 static int _checkWaveFmtExtensibleSpecific(
-  const WaveFmtChunk * fmt
+  const WaveFmtChunk *fmt
 )
 {
   const WaveFmtChunkCommonFields  * com_fmt = &fmt->common_fields;
-  const WaveFmtExtensibleSpecific * ext_fmt = &fmt->fmt_spec.extensible;
+  const WaveFmtExtensibleSpecific *ext_fmt = &fmt->fmt_spec.extensible;
 
   /* Check PCM common fields */
   if (_checkWaveFmtPCMFormatSpecific(fmt) < 0)
@@ -396,7 +396,7 @@ static int _checkWaveFmtExtensibleSpecific(
 static int _decodeWaveFmtChunk(
   BitstreamReaderPtr br,
   RiffChunkHeader header,
-  WaveFmtChunk * fmt
+  WaveFmtChunk *fmt
 )
 {
   uint32_t rem_bytes;
@@ -437,7 +437,7 @@ static int _decodeWaveFmtChunk(
 
 static int _parseWaveFormHeader(
   BitstreamReaderPtr br,
-  RiffFormHeader * hdr
+  RiffFormHeader *hdr
 )
 {
   RiffChunkHeader header;
@@ -482,8 +482,8 @@ typedef struct {
 
 static int _decodeWaveChunk(
   BitstreamReaderPtr br,
-  WaveChunk * chunk,
-  uint32_t * allowed_chunks
+  WaveChunk *chunk,
+  uint32_t *allowed_chunks
 )
 {
   RiffChunkHeader header;
@@ -523,7 +523,7 @@ static int _decodeWaveChunk(
 
 static int decodeWaveHeaders(
   BitstreamReaderPtr br,
-  WaveFile * chunks
+  WaveFile *chunks
 )
 {
   uint32_t allowed_chunks[] = {WAVE_DATA, WAVE_JUNK, WAVE_FMT, 0x0};
@@ -567,8 +567,8 @@ static int decodeWaveHeaders(
 }
 
 static int _getChannelAssignment(
-  const WaveFmtChunk * fmt,
-  uint8_t * result
+  const WaveFmtChunk *fmt,
+  uint8_t *result
 )
 {
   uint8_t assignment = 0x00;
@@ -598,8 +598,8 @@ static int _getChannelAssignment(
 }
 
 static int _getSamplingFrequency(
-  const WaveFmtChunk * fmt,
-  uint8_t * result
+  const WaveFmtChunk *fmt,
+  uint8_t *result
 )
 {
   uint8_t sampling_frequency = 0x00;
@@ -623,8 +623,8 @@ static int _getSamplingFrequency(
 }
 
 static int _getBitsPerSample(
-  const WaveFmtChunk * fmt,
-  uint8_t * result
+  const WaveFmtChunk *fmt,
+  uint8_t *result
 )
 {
   uint8_t bits_per_sample;
@@ -651,13 +651,13 @@ static int _getBitsPerSample(
 
 static int _setLPCMAudioDataHeader(
   uint8_t header[static LPCM_AUDIO_DATA_HEADER_SIZE],
-  const WaveFile * chunks
+  const WaveFile *chunks
 )
 {
-  const WaveFmtChunk * fmt = &chunks->fmt;
+  const WaveFmtChunk *fmt = &chunks->fmt;
 
   uint16_t audio_data_payload_size = (
-    (fmt->common_fields.wBlockAlign * fmt->common_fields.nSamplesPerSec)
+    (fmt->common_fields.wBlockAlign *fmt->common_fields.nSamplesPerSec)
     / LPCM_PES_FRAMES_PER_SECOND
   );
 
@@ -682,8 +682,8 @@ static int _setLPCMAudioDataHeader(
 
 static int _setPesHeader(
   EsmsHandlerPtr script,
-  const WaveFile * chunks,
-  unsigned * header_block_idx
+  const WaveFile *chunks,
+  unsigned *header_block_idx
 )
 {
   uint8_t header[LPCM_AUDIO_DATA_HEADER_SIZE]; // LPCM_audio_data_header
@@ -697,7 +697,7 @@ static int _setPesHeader(
 }
 
 int analyzeLpcm(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 )
 {
   EsmsHandlerPtr esms;
@@ -724,7 +724,7 @@ int analyzeLpcm(
   WaveFile chunks = {0};
   if (decodeWaveHeaders(waveInput, &chunks) < 0)
     return -1;
-  const WaveFmtChunk * fmt = &chunks.fmt;
+  const WaveFmtChunk *fmt = &chunks.fmt;
 
   esms->prop.coding_type = STREAM_CODING_TYPE_LPCM; /* LPCM */
   if (1 == chunks.fmt.common_fields.wChannels)
@@ -769,7 +769,7 @@ int analyzeLpcm(
 
   uint8_t sample_size = DIV_ROUND_UP(fmt->fmt_spec.pcm.wBitsPerSample, 8);
   unsigned pes_size = (
-    (fmt->common_fields.wBlockAlign * fmt->common_fields.nSamplesPerSec)
+    (fmt->common_fields.wBlockAlign *fmt->common_fields.nSamplesPerSec)
     / LPCM_PES_FRAMES_PER_SECOND
   );
 

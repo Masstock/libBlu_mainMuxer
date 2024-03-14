@@ -9,21 +9,21 @@
 
 #define LINE_BUFSIZE  STR_BUFSIZE
 
-typedef struct TxtFileHandler * TxtFileHandlerPtr;
+typedef struct TxtFileHandler *TxtFileHandlerPtr;
 
 TxtFileHandlerPtr openTxtFile(
-  const lbc * filepath
+  const lbc *filepath
 );
 
 void closeTxtFile(
   TxtFileHandlerPtr handler
 );
 
-const lbc * readTxtFile(
+const lbc *readTxtFile(
   TxtFileHandlerPtr handler
 );
 
-const lbc * lastReadedTxtFile(
+const lbc *lastReadedTxtFile(
   TxtFileHandlerPtr handler
 );
 

@@ -50,15 +50,15 @@ static HdmvPictureFormat _identifyFormatHdmvPictureLibraries(
   )
 
 int openHdmvBitmap(
-  HdmvBitmap * dst,
-  HdmvPictureLibraries * libs,
-  const lbc * filepath,
+  HdmvBitmap *dst,
+  HdmvPictureLibraries *libs,
+  const lbc *filepath,
   const IniFileContext conf_hdl
 )
 {
   assert(NULL != filepath);
 
-  FILE * fd = lbc_fopen(filepath, "rb");
+  FILE *fd = lbc_fopen(filepath, "rb");
   if (NULL == fd)
     ERROR_FRETURN("Unable to open picture");
 
@@ -71,7 +71,7 @@ int openHdmvBitmap(
   switch (_identifyFormatHdmvPictureLibraries(signature)) {
   case HDMV_PIC_FORMAT_PNG:
     if (!isLoadedHdmvLibpngHandle(&libs->libpng)) {
-      const lbc * libFilepath = lookupIniFile(conf_hdl, "LIBRARIES.LIBPNG");
+      const lbc *libFilepath = lookupIniFile(conf_hdl, "LIBRARIES.LIBPNG");
       if (loadHdmvLibpngHandle(&libs->libpng, libFilepath) < 0)
         goto free_return;
     }

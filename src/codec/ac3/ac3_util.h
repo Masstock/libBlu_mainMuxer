@@ -26,11 +26,11 @@ typedef enum {
   AC3_TRUEHD
 } Ac3ContentType;
 
-static inline const char * Ac3ContentTypeStr(
+static inline const char *Ac3ContentTypeStr(
   Ac3ContentType type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "AC-3 core",
     "E-AC-3 extension",
     "MLP extension"
@@ -53,10 +53,10 @@ typedef struct {
   BitstreamReaderPtr bs;
   BitstreamWriterPtr script_bs;
   EsmsHandlerPtr script;
-  const lbc * script_fp;
+  const lbc *script_fp;
 
   LibbluBitReader br;
-  uint8_t * buffer;
+  uint8_t *buffer;
   size_t buffer_size;
 
   Ac3CoreContext core;
@@ -70,12 +70,12 @@ typedef struct {
 } Ac3Context;
 
 int initAc3Context(
-  Ac3Context * ctx,
-  LibbluESParsingSettings * settings
+  Ac3Context *ctx,
+  LibbluESParsingSettings *settings
 );
 
 Ac3ContentType initNextFrameAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 );
 
 /** \~english
@@ -88,8 +88,8 @@ Ac3ContentType initNextFrameAc3Context(
  * \return int
  */
 int fillAc3BitReaderAc3Context(
-  Ac3Context * ctx,
-  const Ac3SyncInfoParameters * si
+  Ac3Context *ctx,
+  const Ac3SyncInfoParameters *si
 );
 
 /** \~english
@@ -101,7 +101,7 @@ int fillAc3BitReaderAc3Context(
  * \return int
  */
 int fillEac3BitReaderAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 );
 
 /** \~english
@@ -114,27 +114,27 @@ int fillEac3BitReaderAc3Context(
  * \return int
  */
 int fillMlpBitReaderAc3Context(
-  Ac3Context * ctx,
-  const MlpSyncHeaderParameters * sh
+  Ac3Context *ctx,
+  const MlpSyncHeaderParameters *sh
 );
 
 int completeFrameAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 );
 
 static inline bool isEofAc3Context(
-  const Ac3Context * ctx
+  const Ac3Context *ctx
 )
 {
   return isEof(ctx->bs);
 }
 
 int completeAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 );
 
 void cleanAc3Context(
-  Ac3Context * ctx
+  Ac3Context *ctx
 );
 
 #endif

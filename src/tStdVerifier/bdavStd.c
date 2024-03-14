@@ -14,9 +14,9 @@ static bool _matchPidSwitchFilterDecisionListBdavStd(
 {
   unsigned i;
 
-  assert(BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC == label.value.listItemsType);
+  assert(BUF_MODEL_FILTER_LABEL_TYPE_NUMERIC == label.value.list_item_type);
 
-  for (i = 0; i < label.value.listLength; i++) {
+  for (i = 0; i < label.value.list_length; i++) {
     if (label.value.list[i].number == pid)
       return true;
   }
@@ -26,8 +26,8 @@ static bool _matchPidSwitchFilterDecisionListBdavStd(
 
 int pidSwitchFilterDecisionFunBdavStd(
   BufModelFilterPtr filter,
-  unsigned * idx,
-  void * streamPtr
+  unsigned *idx,
+  void *streamPtr
 )
 {
   unsigned i, voidBuf;
@@ -40,7 +40,7 @@ int pidSwitchFilterDecisionFunBdavStd(
   pid = ((LibbluStreamPtr) streamPtr)->pid;
 
   voidBufDef = false;
-  for (i = 0; i < filter->nbUsedNodes; i++) {
+  for (i = 0; i < filter->nb_used_nodes; i++) {
     switch (filter->labels[i].type) {
     case BUF_MODEL_FILTER_LABEL_TYPE_LIST:
       if (_matchPidSwitchFilterDecisionListBdavStd(filter->labels[i], pid)) {
@@ -85,7 +85,7 @@ int pidSwitchFilterDecisionFunBdavStd(
   );
 }
 
-int createBdavStd(BufModelNode * rootNode)
+int createBdavStd(BufModelNode *rootNode)
 {
   assert(NULL != rootNode);
 
@@ -149,7 +149,7 @@ int addSystemToBdavStd(
 
 int addESToBdavStd(
   BufModelNode rootNode,
-  LibbluES * es,
+  LibbluES *es,
   uint16_t pid,
   uint64_t initialTimestamp
 )
@@ -217,7 +217,7 @@ int addESToBdavStd(
   if (ret < 0)
     return -1;
 
-  es->lnkdBufList = strmBufList;
+  es->lnkd_tstd_buf_list = strmBufList;
 
   return addNodeToBufModelFilterNode(
     rootNode,
@@ -236,10 +236,10 @@ int addSystemFramesToBdavStd(
     addFrameToBufferFromList(
       dst, TRANSPORT_BUFFER, NULL,
       (BufModelBufferFrame) {
-        .headerSize = headerLength * 8,
-        .dataSize = payloadLength * 8,
-        .outputDataSize = 0,
-        .doNotRemove = false
+        .header_size = headerLength * 8,
+        .data_size = payloadLength * 8,
+        .output_data_size = 0,
+        .do_not_remove = false
       }
     ) < 0
   )
@@ -248,10 +248,10 @@ int addSystemFramesToBdavStd(
   return addFrameToBufferFromList(
     dst, MAIN_BUFFER, NULL,
     (BufModelBufferFrame) {
-      .headerSize = 0,
-      .dataSize = payloadLength * 8,
-      .outputDataSize = 0,
-      .doNotRemove = false
+      .header_size = 0,
+      .data_size = payloadLength * 8,
+      .output_data_size = 0,
+      .do_not_remove = false
     }
   );
 }
@@ -265,35 +265,35 @@ int addESPesPacketToBdavStd(
   uint64_t referentialStc
 )
 {
-  LibbluES * es;
+  LibbluES *es;
 
-  uint64_t removalTimestamp, outputTimestamp;
+  uint64_t removal_timestamp, outputTimestamp;
   LibbluESPesPacketProperties curPesPacket;
 
   assert(NULL != stream);
   assert(isESLibbluStream(stream));
   es = &stream->es;
 
-  if (NULL == es->lnkdBufList)
+  if (NULL == es->lnkd_tstd_buf_list)
     return 0; /* No buffering chain to use. */
 
   curPesPacket = es->curPesPacket.prop;
   if (
     es->prop.coding_type == STREAM_CODING_TYPE_AVC
-    && curPesPacket.extDataPresent
+    && curPesPacket.extension_data_pres
     && 0
   ) {
-    removalTimestamp =
-      curPesPacket.extData.h264.cpb_removal_time
+    removal_timestamp =
+      curPesPacket.extension_data.h264.cpb_removal_time
       + referentialStc
     ;
     outputTimestamp =
-      curPesPacket.extData.h264.dpb_output_time
+      curPesPacket.extension_data.h264.dpb_output_time
       + referentialStc
     ;
   }
   else {
-    removalTimestamp =
+    removal_timestamp =
       curPesPacket.dts
     ;
     outputTimestamp =
@@ -305,44 +305,44 @@ int addESPesPacketToBdavStd(
     "Registering %zu+%zu=%zu bytes of PES for PID 0x%04" PRIX16 ", "
     "Remove: %" PRIu64 ", Output: %" PRIu64 ".\n",
     headerLength, payloadLength, headerLength + payloadLength, stream->pid,
-    removalTimestamp, outputTimestamp
+    removal_timestamp, outputTimestamp
   );
 
   if (es->prop.type == ES_VIDEO) {
     if (
       addFrameToBufferFromList(
-        es->lnkdBufList, MULTIPLEX_BUFFER, NULL,
+        es->lnkd_tstd_buf_list, MULTIPLEX_BUFFER, NULL,
         (BufModelBufferFrame) {
-          .headerSize = headerLength * 8,
-          .dataSize = payloadLength * 8,
-          .removalTimestamp = removalTimestamp,
-          .outputDataSize = 0,
-          .doNotRemove = false
+          .header_size = headerLength * 8,
+          .data_size = payloadLength * 8,
+          .removal_timestamp = removal_timestamp,
+          .output_data_size = 0,
+          .do_not_remove = false
         }
       ) < 0
     )
       return -1;
 
     return addFrameToBufferFromList(
-      es->lnkdBufList, ELEMENTARY_BUFFER, NULL,
+      es->lnkd_tstd_buf_list, ELEMENTARY_BUFFER, NULL,
       (BufModelBufferFrame) {
-        .headerSize = 0,
-        .dataSize = payloadLength * 8,
-        .removalTimestamp = outputTimestamp,
-        .outputDataSize = 0,
-        .doNotRemove = false
+        .header_size = 0,
+        .data_size = payloadLength * 8,
+        .removal_timestamp = outputTimestamp,
+        .output_data_size = 0,
+        .do_not_remove = false
       }
     );
   }
 
   return addFrameToBufferFromList(
-    es->lnkdBufList, MAIN_BUFFER, NULL,
+    es->lnkd_tstd_buf_list, MAIN_BUFFER, NULL,
     (BufModelBufferFrame) {
-      .headerSize = headerLength * 8,
-      .dataSize = payloadLength * 8,
-      .removalTimestamp = removalTimestamp,
-      .outputDataSize = 0,
-      .doNotRemove = false
+      .header_size = headerLength * 8,
+      .data_size = payloadLength * 8,
+      .removal_timestamp = removal_timestamp,
+      .output_data_size = 0,
+      .do_not_remove = false
     }
   );
 }
@@ -361,10 +361,10 @@ int addESTsFrameToBdavStd(
   return addFrameToBufferFromList(
     dst, TRANSPORT_BUFFER, NULL,
     (BufModelBufferFrame) {
-      .headerSize = headerLength * 8,
-      .dataSize = payloadLength * 8,
-      .outputDataSize = 0,
-      .doNotRemove = false
+      .header_size = headerLength * 8,
+      .data_size = payloadLength * 8,
+      .output_data_size = 0,
+      .do_not_remove = false
     }
   );
 }

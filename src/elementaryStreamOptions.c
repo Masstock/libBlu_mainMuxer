@@ -12,21 +12,21 @@ uint64_t computeFlagsLibbluESSettingsOptions(
 )
 {
   return
-    (options.secondaryStream          << FLAG_SHFT_SEC_STREAM)
-    | (options.extractCore            << FLAG_SHFT_EXTRACT_CORE)
-    | (options.dvdMedia               << FLAG_SHFT_DVD_OUTPUT)
-    | (options.disableFixes           << FLAG_SHFT_DISABLE_FIXES)
-    | (options.forceRebuildSei        << FLAG_SHFT_FORCE_REBUILD_SEI)
-    | ((options.fpsChange != 0x00)    << FLAG_SHFT_CHANGE_FPS)
-    | (isUsedLibbluAspectRatioMod(options.arChange) << FLAG_SHFT_CHANGE_AR)
-    | ((options.levelChange != 0x00)  << FLAG_SHFT_CHANGE_LEVEL)
-    | (options.discardSei             << FLAG_SHFT_REMOVE_SEI)
+    (options.secondary          << FLAG_SHFT_SEC_STREAM)
+    | (options.extract_core            << FLAG_SHFT_EXTRACT_CORE)
+    | (options.dvd_media               << FLAG_SHFT_DVD_OUTPUT)
+    | (options.disable_fixes           << FLAG_SHFT_DISABLE_FIXES)
+    | (options.force_rebuild_sei        << FLAG_SHFT_FORCE_REBUILD_SEI)
+    | ((options.fps_mod != 0x00)    << FLAG_SHFT_CHANGE_FPS)
+    | (isUsedLibbluAspectRatioMod(options.ar_mod) << FLAG_SHFT_CHANGE_AR)
+    | ((options.level_mod != 0x00)  << FLAG_SHFT_CHANGE_LEVEL)
+    | (options.discard_sei             << FLAG_SHFT_REMOVE_SEI)
   ;
 }
 
 int parseFpsChange(
-  const lbc * expr,
-  HdmvFrameRateCode * val
+  const lbc *expr,
+  HdmvFrameRateCode *val
 )
 {
   float valueFloat;
@@ -42,8 +42,8 @@ int parseFpsChange(
 }
 
 int parseArChange(
-  const lbc * expr,
-  LibbluAspectRatioMod * val
+  const lbc *expr,
+  LibbluAspectRatioMod *val
 )
 {
   unsigned x, y;
@@ -56,7 +56,7 @@ int parseArChange(
     return -1;
 
   idc = H264_ASPECT_RATIO_IDC_EXTENDED_SAR;
-  switch (x * y) {
+  switch (x *y) {
   case 0:
     x = y = (unsigned) -1;
     idc = H264_ASPECT_RATIO_IDC_UNSPECIFIED;
@@ -150,8 +150,8 @@ int parseArChange(
 }
 
 int parseLevelChange(
-  const lbc * expr,
-  uint8_t * val
+  const lbc *expr,
+  uint8_t *val
 )
 {
   unsigned prefix, suffix;

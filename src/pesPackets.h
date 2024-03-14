@@ -42,10 +42,10 @@ typedef struct {
   bool pStdBufferFlag;            /* P-STD_buffer_flag                    */
   bool pesExtensionFlag2;         /* PES_extension_flag_2                 */
 
-  uint8_t * pesPrivateData;       /* PES_private_data                     */
+  uint8_t *pesPrivateData;       /* PES_private_data                     */
 
   uint8_t packFieldLength;        /* pack_field_length                    */
-  uint8_t * packHeader;           /* pack_header()                        */
+  uint8_t *packHeader;           /* pack_header()                        */
 
   uint8_t programPacketSequenceCounter;  /* program_packet_sequence_counter          */
   bool mpeg1H262Identifier;      /* MPEG1_H262_identifier               */
@@ -106,7 +106,7 @@ typedef struct {
 } PesPacketHeaderParam;
 
 static inline size_t computePesPacketHeaderLen(
-  const PesPacketHeaderParam * pes_header
+  const PesPacketHeaderParam *pes_header
 )
 {
   return
@@ -120,7 +120,7 @@ static inline size_t computePesPacketHeaderLen(
 }
 
 static inline void setLengthPesPacketHeaderParam(
-  PesPacketHeaderParam * dst,
+  PesPacketHeaderParam *dst,
   size_t header_size,
   size_t payload_size
 )
@@ -132,9 +132,9 @@ static inline void setLengthPesPacketHeaderParam(
 }
 
 size_t writePesHeader(
-  uint8_t * packetData,
+  uint8_t *packetData,
   size_t offset,
-  const PesPacketHeaderParam * param
+  const PesPacketHeaderParam *param
 );
 
 #endif

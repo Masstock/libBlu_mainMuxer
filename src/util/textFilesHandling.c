@@ -11,22 +11,22 @@
 
 struct TxtFileHandler {
   struct {
-    FILE * fd;
-    lbc * filepath;
+    FILE *fd;
+    lbc *es_filepath;
   } inputFile;
 
   lbc lineBuffer[LINE_BUFSIZE+1];  /**< Line buffer.                         */
-  lbc * rp;                        /**< Line buffer reading pointer.         */
+  lbc *rp;                        /**< Line buffer reading pointer.         */
   unsigned lineNumber;             /**< Current line number.                 */
 
-  lbc * token;
+  lbc *token;
   size_t tokenAllocatedSize;
 
   bool eof;
 };
 
 TxtFileHandlerPtr openTxtFile(
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   TxtFileHandlerPtr handler;
@@ -36,7 +36,7 @@ TxtFileHandlerPtr openTxtFile(
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
   handler->inputFile.fd = NULL;
-  handler->inputFile.filepath = NULL;
+  handler->inputFile.es_filepath = NULL;
   handler->lineBuffer[0] = lbc_char('\0');
   handler->rp = handler->lineBuffer;
   handler->lineNumber = 0;
@@ -55,7 +55,7 @@ TxtFileHandlerPtr openTxtFile(
       errno
     );
 
-  if (NULL == (handler->inputFile.filepath = lbc_strdup(filepath)))
+  if (NULL == (handler->inputFile.es_filepath = lbc_strdup(filepath)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
   return handler;
@@ -76,13 +76,13 @@ void closeTxtFile(
     if (fclose(handler->inputFile.fd) < 0)
       LIBBLU_ERROR(
         "Unable to close file '%" PRI_LBCS "', %s (errno: %d).\n",
-        handler->inputFile.filepath,
+        handler->inputFile.es_filepath,
         strerror(errno),
         errno
       );
   }
 
-  free(handler->inputFile.filepath);
+  free(handler->inputFile.es_filepath);
   free(handler->token);
   free(handler);
 }
@@ -91,12 +91,12 @@ static int fillBufferTxtFile(
   TxtFileHandlerPtr handler
 )
 {
-  lbc * car;
+  lbc *car;
 
   if (handler->eof)
     LIBBLU_ERROR_RETURN(
       "Error while reading file '%" PRI_LBCS "', prematurate end-of-file.\n",
-      handler->inputFile.filepath
+      handler->inputFile.es_filepath
     );
 
   if (NULL == lbc_fgets(handler->lineBuffer, LINE_BUFSIZE, handler->inputFile.fd)) {
@@ -149,7 +149,7 @@ static int consumeGarbage(
       if ((ret = fillBufferTxtFile(handler)) < 0)
         LIBBLU_ERROR_RETURN(
           "Error while reading file '%" PRI_LBCS "', %s (errno: %d).\n",
-          handler->inputFile.filepath,
+          handler->inputFile.es_filepath,
           strerror(errno),
           errno
         );
@@ -166,7 +166,7 @@ static int consumeGarbage(
 
 static int consumeDelimiters(
   TxtFileHandlerPtr handler,
-  const lbc * delimiters
+  const lbc *delimiters
 )
 {
 
@@ -179,7 +179,7 @@ static int consumeDelimiters(
       if ((ret = fillBufferTxtFile(handler)) < 0)
         LIBBLU_ERROR_RETURN(
           "Error while reading file '%" PRI_LBCS "', %s (errno: %d).\n",
-          handler->inputFile.filepath,
+          handler->inputFile.es_filepath,
           strerror(errno),
           errno
         );
@@ -187,7 +187,7 @@ static int consumeDelimiters(
       if (!ret)
         LIBBLU_ERROR_RETURN(
           "Error while reading file '%" PRI_LBCS "', prematurate end-of-file.\n",
-          handler->inputFile.filepath
+          handler->inputFile.es_filepath
         );
     }
 
@@ -207,7 +207,7 @@ static int consumeDelimiters(
 
 static int consumeToken(
   TxtFileHandlerPtr handler,
-  const lbc * delimiters
+  const lbc *delimiters
 )
 {
   size_t tokenSize;
@@ -220,13 +220,13 @@ static int consumeToken(
   tokenSize = lbc_strcspn(handler->rp, delimiters);
   if (handler->tokenAllocatedSize <= tokenSize) {
     size_t newSize;
-    lbc * newToken;
+    lbc *newToken;
 
     newSize = tokenSize + 1;
     if (lb_mul_overflow_size_t(newSize, sizeof(lbc)))
       LIBBLU_ERROR_RETURN("String token size overflow.\n");
 
-    newToken = (lbc *) realloc(handler->token, newSize * sizeof(lbc));
+    newToken = (lbc *) realloc(handler->token, newSize *sizeof(lbc));
     if (NULL == newToken)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -234,7 +234,7 @@ static int consumeToken(
     handler->tokenAllocatedSize = newSize;
   }
 
-  memcpy(handler->token, handler->rp, tokenSize * sizeof(lbc));
+  memcpy(handler->token, handler->rp, tokenSize *sizeof(lbc));
   handler->token[tokenSize] = lbc_char('\0');
 
   handler->rp += tokenSize;
@@ -246,12 +246,12 @@ static int getNextToken(
   TxtFileHandlerPtr handler
 )
 {
-  const lbc * delimiters;
+  const lbc *delimiters;
   lbc expectedFinalChar;
 
-  static const lbc * normalStateDelimiters = lbc_str(" \'\",=\n");
-  static const lbc * singleQuotesStateDelimiters = lbc_str("\'\n");
-  static const lbc * doubleQuotesStateDelimiters = lbc_str("\"\n");
+  static const lbc *normalStateDelimiters = lbc_str(" \'\",=\n");
+  static const lbc *singleQuotesStateDelimiters = lbc_str("\'\n");
+  static const lbc *doubleQuotesStateDelimiters = lbc_str("\"\n");
 
   if (consumeGarbage(handler) < 0)
     return -1;
@@ -297,7 +297,7 @@ static int getNextToken(
   return 0;
 }
 
-const lbc * readTxtFile(
+const lbc *readTxtFile(
   TxtFileHandlerPtr handler
 )
 {
@@ -306,7 +306,7 @@ const lbc * readTxtFile(
   return handler->token;
 }
 
-const lbc * lastReadedTxtFile(
+const lbc *lastReadedTxtFile(
   TxtFileHandlerPtr handler
 )
 {

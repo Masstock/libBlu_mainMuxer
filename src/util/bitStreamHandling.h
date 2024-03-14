@@ -30,7 +30,7 @@
  * CRC.
  */
 typedef struct {
-  uint8_t * byteArray;      /**< Reading byte-array high-level buffer.       */
+  uint8_t *byteArray;      /**< Reading byte-array high-level buffer.       */
   size_t byteArraySize;     /**< Current size of byte-array buffer in bytes. */
   size_t byteArrayOff;      /**< Reading offset in byte-array buffer.        */
   unsigned bitCount;        /**< Remaining unreaded bits in current pointed
@@ -38,8 +38,8 @@ typedef struct {
 
   CrcContext crcCtx;
 
-  FILE * file;    /**< Linked FILE * pointer.                                */
-  char * buffer;  /**< Low level IO buffer.                                  */
+  FILE *file;    /**< Linked FILE *pointer.                                */
+  char *buffer;  /**< Low level IO buffer.                                  */
 
   int64_t fileSize;     /**< File length in bytes.                           */
   int64_t fileOffset;   /**< Current file position offset in bytes.          */
@@ -47,8 +47,8 @@ typedef struct {
   uint64_t identifier;  /**< Bytestream randomized identifier.               */
 } BitstreamHandler, *BitstreamWriterPtr, *BitstreamReaderPtr;
 
-static inline CrcContext * crcCtxBitstream(
-  BitstreamHandler * bs
+static inline CrcContext *crcCtxBitstream(
+  BitstreamHandler *bs
 )
 {
   return &bs->crcCtx;
@@ -58,15 +58,15 @@ static inline CrcContext * crcCtxBitstream(
  * \brief Creates a bitstream reading handling structure on supplied file.
  *
  * \param inputFilename Bitstream linked file name.
- * \param bufferSize Bitstream buffering size (at least 32) in bytes.
+ * \param buffer_size Bitstream buffering size (at least 32) in bytes.
  * \return BitstreamReaderPtr On success, created object is returned.
  * Otherwise, a NULL pointer is returned.
  *
  * Created reader must be passed to #closeBitstreamReader() after use.
  */
 BitstreamReaderPtr createBitstreamReader(
-  const lbc * inputFilename,
-  const size_t bufferSize
+  const lbc *inputFilename,
+  const size_t buffer_size
 );
 
 /** \~english
@@ -81,7 +81,7 @@ BitstreamReaderPtr createBitstreamReader(
  * To set a custom buffer size, use #createBitstreamReader() instead.
  */
 static inline BitstreamReaderPtr createBitstreamReaderDefBuf(
-  const lbc * inputFilename
+  const lbc *inputFilename
 )
 {
   return createBitstreamReader(
@@ -103,15 +103,15 @@ void closeBitstreamReader(
  * \brief Creates a bitstream writing handling structure on supplied file.
  *
  * \param outputFilename Bitstream output filename.
- * \param bufferSize Bitstream writing buffering size (at least 32) in bytes.
+ * \param buffer_size Bitstream writing buffering size (at least 32) in bytes.
  * \return BitstreamWriterPtr On success, created object is returned.
  * Otherwise, a NULL pointer is returned.
  *
  * Created reader must be passed to #closeBitstreamWriter() after use.
  */
 BitstreamWriterPtr createBitstreamWriter(
-  const lbc * outputFilename,
-  const size_t bufferSize
+  const lbc *outputFilename,
+  const size_t buffer_size
 );
 
 /** \~english
@@ -126,7 +126,7 @@ BitstreamWriterPtr createBitstreamWriter(
  * To set a custom buffer size, use #createBitstreamWriter() instead.
  */
 static inline BitstreamReaderPtr createBitstreamWriterDefBuf(
-  const lbc * outputFilename
+  const lbc *outputFilename
 )
 {
   return createBitstreamWriter(
@@ -250,7 +250,7 @@ static inline int seekPos(
 
 int nextBytes(
   BitstreamReaderPtr bitStream,
-  uint8_t * data,
+  uint8_t *data,
   size_t dataLen
 );
 
@@ -344,18 +344,18 @@ static inline bool nextBit(
 
 int readBit(
   BitstreamReaderPtr bitStream,
-  bool * bit
+  bool *bit
 );
 
 int readBits(
   BitstreamReaderPtr bitStream,
-  uint32_t * value,
+  uint32_t *value,
   size_t size
 );
 
 static inline int readBits64(
   BitstreamReaderPtr bitStream,
-  uint64_t * value,
+  uint64_t *value,
   size_t length
 )
 {
@@ -398,31 +398,31 @@ static inline int skipBits(
 
 int readByte(
   BitstreamReaderPtr bitStream,
-  uint8_t * data
+  uint8_t *data
 );
 
 int readBytes(
   BitstreamReaderPtr bs,
-  uint8_t * data,
+  uint8_t *data,
   size_t size
 );
 
 int readValueBigEndian(
   BitstreamReaderPtr bitStream,
   const size_t length,
-  uint32_t * value
+  uint32_t *value
 );
 
 int readValue64BigEndian(
   BitstreamReaderPtr bitStream,
   const size_t length,
-  uint64_t * value
+  uint64_t *value
 );
 
 int readValue64LittleEndian(
   BitstreamReaderPtr bitStream,
   size_t length,
-  uint64_t * value
+  uint64_t *value
 );
 
 static inline int skipBytes(
@@ -468,7 +468,7 @@ int writeByte(
 
 int writeBytes(
   BitstreamWriterPtr bs,
-  const uint8_t * data,
+  const uint8_t *data,
   size_t size
 );
 
@@ -477,8 +477,8 @@ void crcTableGenerator(
 );
 
 int getFileSize(
-  const lbc * filename,
-  int64_t * size
+  const lbc *filename,
+  int64_t *size
 );
 
 #endif

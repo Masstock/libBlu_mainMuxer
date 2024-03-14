@@ -11,10 +11,10 @@
 
 static IniFileNodePtr createIniFileNode(
   IniFileNodeType type,
-  const char * name
+  const char *name
 )
 {
-  char * name_copy = NULL;
+  char *name_copy = NULL;
   if (NULL != name) {
     if (NULL == (name_copy = lb_str_dup_to_upper(name)))
       LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
@@ -38,11 +38,11 @@ free_return:
 }
 
 IniFileNodePtr createEntryIniFileNode(
-  const char * name,
-  const char * value
+  const char *name,
+  const char *value
 )
 {
-  lbc * value_copy = lbc_strdup((lbc *) value);
+  lbc *value_copy = lbc_strdup((lbc *) value);
   if (NULL == value_copy)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
@@ -59,7 +59,7 @@ free_return:
 }
 
 IniFileNodePtr createSectionIniFileNode(
-  const char * name
+  const char *name
 )
 {
   IniFileNodePtr node;
@@ -121,11 +121,11 @@ void attachChildIniFileNode(
 
 static bool matchIniFileNode(
   const IniFileNodePtr node,
-  const char * expr,
-  size_t * namePartSize
+  const char *expr,
+  size_t *namePartSize
 )
 {
-  const char * cp;
+  const char *cp;
   size_t nameSize;
 
   nameSize = 0;
@@ -142,9 +142,9 @@ static bool matchIniFileNode(
   return true;
 }
 
-lbc * lookupIniFileNode(
+lbc *lookupIniFileNode(
   const IniFileNodePtr node,
-  const char * expr
+  const char *expr
 )
 {
   if (NULL == node)

@@ -16,8 +16,8 @@
  * value is returned.
  */
 int checkMlpSyncHeader(
-  const MlpSyncHeaderParameters * sync,
-  MlpInformations * info,
+  const MlpSyncHeaderParameters *sync,
+  MlpInformations *info,
   bool firstAU
 );
 
@@ -35,8 +35,8 @@ int checkMlpSyncHeader(
  * value is returned.
  */
 int checkAndComputeSSSizesMlpSubstreamDirectory(
-  MlpSubstreamDirectoryEntry * directory,
-  const MlpMajorSyncInfoParameters * msi,
+  MlpSubstreamDirectoryEntry *directory,
+  const MlpMajorSyncInfoParameters *msi,
   unsigned au_ss_length,
   bool is_major_sync
 );

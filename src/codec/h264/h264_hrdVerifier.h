@@ -33,18 +33,18 @@
 #define H264_DPB_HRD_MSG_PREFIX  H264_DPB_HRD_MSG_NAME  lbc_str(": ")
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
-  const H264CurrentProgressParam * cur_state,
-  const LibbluESSettingsOptions * options,
-  const H264SPSDataParameters * sps
+  const H264CurrentProgressParam *cur_state,
+  const LibbluESSettingsOptions *options,
+  const H264SPSDataParameters *sps
 )
 {
 
   if (cur_state->stillPictureTolerance) // TODO: Check still pictures.
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of still pictures.\n");
 
-  if (options->discardSei)
+  if (options->discard_sei)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI discarding.\n");
-  if (options->forceRebuildSei)
+  if (options->force_rebuild_sei)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI rebuilding.\n");
 
   if (!sps->vui_parameters_present_flag)
@@ -84,8 +84,8 @@ typedef struct {
 } H264HrdVerifierWarnings;
 
 typedef struct {
-  FILE * cpb_fd;
-  FILE * dpb_fd;
+  FILE *cpb_fd;
+  FILE *dpb_fd;
 } H264HrdVerifierDebug;
 
 typedef enum {
@@ -170,12 +170,12 @@ typedef struct {
 
   /* Access Units currently in CPB: */
   H264CpbHrdAU cpb_content[H264_MAX_AU_IN_CPB]; /* Circular buffer list (FIFO). */
-  H264CpbHrdAU * cpb_content_heap; /* Oldest AU added. */
+  H264CpbHrdAU *cpb_content_heap; /* Oldest AU added. */
   unsigned nb_au_cpb_content; /* Nb of AU currently in CPB. */
 
   /* Frames currently in DPB: */
   H264DpbHrdPic dpb_content[H264_MAX_DPB_SIZE]; /* Circular buffer list (FIFO). */
-  H264DpbHrdPic * dpb_content_heap; /* Oldest decoded picture added. */
+  H264DpbHrdPic *dpb_content_heap; /* Oldest decoded picture added. */
   unsigned nb_au_dpb_content; /* Nb of pictures currently in DPB. */
 
   unsigned numShortTerm;
@@ -200,9 +200,9 @@ typedef struct {
 } H264HrdVerifierContext, *H264HrdVerifierContextPtr;
 
 H264HrdVerifierContextPtr createH264HrdVerifierContext(
-  LibbluESSettingsOptions * options,
-  const H264SPSDataParameters * sps,
-  const H264ConstraintsParam * constraints
+  LibbluESSettingsOptions *options,
+  const H264SPSDataParameters *sps,
+  const H264ConstraintsParam *constraints
 );
 
 void destroyH264HrdVerifierContext(
@@ -212,7 +212,7 @@ void destroyH264HrdVerifierContext(
 void echoDebugH264HrdVerifierContext(
   H264HrdVerifierContextPtr ctx,
   LibbluStatus status,
-  const lbc * format,
+  const lbc *format,
   ...
 );
 

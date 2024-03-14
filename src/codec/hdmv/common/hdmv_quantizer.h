@@ -47,7 +47,7 @@ typedef struct {
  * \param rep Number of pixels sharing this color value.
  */
 static inline void setHdmvRGBAData(
-  HdmvRGBAData * dst,
+  HdmvRGBAData *dst,
   uint32_t rgba,
   uint64_t rep
 )
@@ -71,7 +71,7 @@ static inline void setHdmvRGBAData(
  * \note #HdmvRGBAData.rgba value is not updated.
  */
 static inline void addHdmvRGBAData(
-  HdmvRGBAData * dst,
+  HdmvRGBAData *dst,
   HdmvRGBAData src
 )
 {
@@ -106,18 +106,18 @@ static inline uint32_t genValueHdmvRGBAData(
 /* ### HDMV Quantizer Hexatree node : ###################################### */
 
 typedef union HdmvQuantHexTreeNode {
-  union HdmvQuantHexTreeNode * next_unused_node; /* Only used in inventory. */
+  union HdmvQuantHexTreeNode *next_unused_node; /* Only used in inventory. */
 
   struct {
     int leaf_dist; /* If == 0, leaf, else node */
 
     HdmvRGBAData data;
-    union HdmvQuantHexTreeNode * child_nodes[16];
+    union HdmvQuantHexTreeNode *child_nodes[16];
   };
 } HdmvQuantHexTreeNode, *HdmvQuantHexTreeNodePtr;
 
 static inline void initHdmvQuantHexTreeNode(
-  HdmvQuantHexTreeNode * dst,
+  HdmvQuantHexTreeNode *dst,
   bool isLeaf,
   uint32_t rgba,
   uint64_t rep
@@ -131,8 +131,8 @@ static inline void initHdmvQuantHexTreeNode(
 
 static inline void getHdmvQuantHexTreeNode(
   HdmvQuantHexTreeNodePtr node,
-  int * leaf_dist,
-  unsigned * rep
+  int *leaf_dist,
+  unsigned *rep
 )
 {
   assert(NULL != node);
@@ -144,7 +144,7 @@ static inline void getHdmvQuantHexTreeNode(
 }
 
 int parseToPaletteHdmvQuantHexTreeNode(
-  HdmvPalette * dst,
+  HdmvPalette *dst,
   HdmvQuantHexTreeNodePtr tree
 );
 
@@ -175,19 +175,19 @@ static inline void cleanHdmvQuantHexTreeNodesInventory(
 /* ######################################################################### */
 
 int performHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodePtr * tree_ref,
-  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvQuantHexTreeNodePtr *tree_ref,
+  HdmvQuantHexTreeNodesInventory *inv,
   HdmvBitmap bitmap,
   unsigned target_nb_colors,
-  unsigned * out_nb_colors_ref
+  unsigned *out_nb_colors_ref
 );
 
 static inline int generateHdmvQuantizationHexatree(
-  HdmvQuantHexTreeNodePtr * tree,
-  HdmvQuantHexTreeNodesInventory * inv,
+  HdmvQuantHexTreeNodePtr *tree,
+  HdmvQuantHexTreeNodesInventory *inv,
   HdmvBitmap bitmap,
   unsigned target_nb_colors,
-  unsigned * out_nb_colors_ret
+  unsigned *out_nb_colors_ret
 )
 {
   *tree = NULL;

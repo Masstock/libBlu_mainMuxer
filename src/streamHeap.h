@@ -46,7 +46,7 @@ typedef struct {
 } StreamHeapTimingInfos;
 
 static inline void incrementTPTimestampStreamHeapTimingInfos(
-  StreamHeapTimingInfos * dst
+  StreamHeapTimingInfos *dst
 )
 {
   dst->tsPt += dst->tsDuration;
@@ -66,7 +66,7 @@ typedef struct {
  *
  */
 typedef struct {
-  StreamHeapNode * content;  /**< Heap content.                              */
+  StreamHeapNode *content;  /**< Heap content.                              */
   int usedSize;              /**< Heap used size.                            */
   int allocatedSize;         /**< heap array allocated size.                 */
 } StreamHeap, *StreamHeapPtr;
@@ -111,20 +111,21 @@ int addStreamHeap(
  * \brief Return true if the heap top stream timing value as been reached.
  *
  * \param heap Heap to check.
- * \param currentStcTs Current timing value in #MAIN_CLOCK_27MHZ ticks.
+ * \param current_STC_TS Current timing value in #MAIN_CLOCK_27MHZ ticks.
  * \return true Time value reached.
  * \return false Empty heap or not reached time value.
  */
 static inline bool streamIsReadyStreamHeap(
   StreamHeapPtr heap,
-  uint64_t currentStcTs
+  uint64_t current_STC_TS
 )
 {
   assert(NULL != heap);
+  assert(0 < heap->usedSize);
 
   return
     (0 < heap->usedSize)
-    && (heap->content[0].timer.tsPt <= currentStcTs)
+    && (heap->content[0].timer.tsPt <= current_STC_TS)
   ;
 }
 
@@ -143,8 +144,8 @@ static inline bool streamIsReadyStreamHeap(
  */
 void extractStreamHeap(
   StreamHeapPtr heap,
-  StreamHeapTimingInfos * timer,
-  LibbluStreamPtr * stream
+  StreamHeapTimingInfos *timer,
+  LibbluStreamPtr *stream
 );
 
 #endif

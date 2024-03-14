@@ -63,8 +63,8 @@
 #define BDAV_STD_LPCM_BS_192 1073664
 
 int createLpcmBufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 );

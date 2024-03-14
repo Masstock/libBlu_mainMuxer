@@ -51,9 +51,9 @@ typedef struct {
 } HdmvContextInput;
 
 typedef struct {
-  lbc * filepath;           /**< Script filepath.                            */
-  EsmsHandlerPtr script;    /**< Script building handle.                     */
-  BitstreamWriterPtr file;  /**< Script file handle.                         */
+  lbc *script_fp;               /**< Script filepath.                       */
+  EsmsHandlerPtr script_hdl;     /**< Script building handle.                */
+  BitstreamWriterPtr script_fh;  /**< Script file handle.                    */
 } HdmvContextOutput;
 
 typedef struct {
@@ -86,22 +86,22 @@ typedef struct {
   unsigned nb_epochs;
 } HdmvContext;
 
-static inline HdmvDSState * getPrevDSHdmvContext(
-  HdmvContext * ctx
+static inline HdmvDSState *getPrevDSHdmvContext(
+  HdmvContext *ctx
 )
 {
   return &ctx->ds[ctx->cur_ds ^ 1];
 }
 
-static inline HdmvDSState * getCurDSHdmvContext(
-  HdmvContext * ctx
+static inline HdmvDSState *getCurDSHdmvContext(
+  HdmvContext *ctx
 )
 {
   return &ctx->ds[ctx->cur_ds];
 }
 
 static inline void switchCurDSHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   ctx->cur_ds ^= 0x1; // Switch DS
@@ -111,24 +111,24 @@ static inline void switchCurDSHdmvContext(
   memset(&ctx->ds[ctx->cur_ds], 0x0, sizeof(HdmvDSState));
 }
 
-HdmvContext * createHdmvContext(
-  LibbluESParsingSettings * settings,
-  const lbc * infilepath,
+HdmvContext *createHdmvContext(
+  LibbluESParsingSettings *settings,
+  const lbc *infilepath,
   HdmvStreamType type,
   bool generation_mode
 );
 
 void destroyHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 );
 
 int addOriginalFileHdmvContext(
-  HdmvContext * ctx,
-  const lbc * filepath
+  HdmvContext *ctx,
+  const lbc *filepath
 );
 
 static inline int addTimecodeHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   uint64_t value
 )
 {
@@ -139,7 +139,7 @@ static inline int addTimecodeHdmvContext(
 }
 
 static inline int addTimecodesHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvTimecodes timecodes
 )
 {
@@ -150,11 +150,11 @@ static inline int addTimecodesHdmvContext(
 }
 
 int closeHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 );
 
 static inline void printContentHdmvContext(
-  const HdmvContext * ctx
+  const HdmvContext *ctx
 )
 {
   printContentHdmvContextSegmentTypesCounter(
@@ -164,23 +164,23 @@ static inline void printContentHdmvContext(
 }
 
 static inline BitstreamReaderPtr inputHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   return ctx->input.file;
 }
 
 static inline int readValueHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   size_t length,
-  uint64_t * value
+  uint64_t *value
 )
 {
   return readValue64BigEndian(inputHdmvContext(ctx), length, value);
 }
 
 static inline bool isEofHdmvContext(
-  const HdmvContext * ctx
+  const HdmvContext *ctx
 )
 {
   return isEof(ctx->input.file);
@@ -197,7 +197,7 @@ static inline bool isEofHdmvContext(
  * Takes the composition_descriptor of the first Display Set segment/sequence.
  */
 int initEpochHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvCDParameters composition_descriptor,
   HdmvVDParameters video_descriptor
 );
@@ -209,7 +209,7 @@ int initEpochHdmvContext(
  * \return int
  */
 int completeCurDSHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 );
 
 /** \~english
@@ -233,7 +233,7 @@ int completeCurDSHdmvContext(
  *  - A sequence start segment is not preceded by a completion segment.
  */
 HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx,
   HdmvSegmentParameters seg_param,
   HdmvSequenceLocation location
@@ -247,12 +247,12 @@ HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
  * \return int
  */
 int completeSeqDisplaySetHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx
 );
 
 static inline void incrementSegmentsNbHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx
 )
 {
@@ -263,7 +263,7 @@ static inline void incrementSegmentsNbHdmvContext(
 }
 
 static inline void incrementSequencesNbDSHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx
 )
 {
@@ -271,7 +271,7 @@ static inline void incrementSequencesNbDSHdmvContext(
 }
 
 static inline void incrementSequencesNbEpochHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx
 )
 {

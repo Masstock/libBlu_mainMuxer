@@ -80,7 +80,7 @@ static inline hdmv_segtype_idx segmentTypeIndexHdmvContext(
 
 #define SEGMENT_TYPE_IDX_STR_SIZE  4
 
-static inline const char * segmentTypeIndexStr(
+static inline const char *segmentTypeIndexStr(
   hdmv_segtype_idx idx
 )
 {
@@ -107,7 +107,7 @@ typedef struct {
 } HdmvContextSegmentTypesCounter;
 
 static inline void incByIdxHdmvContextSegmentTypesCounter(
-  HdmvContextSegmentTypesCounter * counter,
+  HdmvContextSegmentTypesCounter *counter,
   hdmv_segtype_idx idx
 )
 {
@@ -135,7 +135,7 @@ static inline unsigned getByIdxHdmvContextSegmentTypesCounter(
 }
 
 static inline void resetHdmvContextSegmentTypesCounter(
-  HdmvContextSegmentTypesCounter * counter
+  HdmvContextSegmentTypesCounter *counter
 )
 {
   *counter = (HdmvContextSegmentTypesCounter) {
@@ -175,7 +175,7 @@ static inline void printContentHdmvContextSegmentTypesCounter(
 /* ### HDMV Segment : ###################################################### */
 
 typedef struct HdmvSegment {
-  struct HdmvSegment * next_segment;
+  struct HdmvSegment *next_segment;
   HdmvSegmentParameters param;
 } HdmvSegment, *HdmvSegmentPtr;
 
@@ -204,8 +204,8 @@ static inline void destroyHdmvSegmentList(
 /* ### HDMV Sequence : ##################################################### */
 
 typedef struct HdmvSequence {
-  struct HdmvSequence * prev_sequence;
-  struct HdmvSequence * next_sequence;
+  struct HdmvSequence *prev_sequence;
+  struct HdmvSequence *next_sequence;
   unsigned idx;  /**< Original bitstream index of the segment sequence among
     other sequences of the same type.                                        */
 
@@ -213,7 +213,7 @@ typedef struct HdmvSequence {
   HdmvSegmentPtr segments;
   HdmvSegmentPtr last_segment;
 
-  uint8_t * fragments;
+  uint8_t *fragments;
   uint32_t fragments_allocated_len;
   uint32_t fragments_used_len;
   uint32_t fragments_parsed_off;
@@ -307,9 +307,9 @@ static inline uint32_t getRemSizeFragmentHdmvSequence(
   return sequence->fragments_used_len - sequence->fragments_parsed_off;
 }
 
-static inline const uint8_t * getRemDataFragmentHdmvSequence(
+static inline const uint8_t *getRemDataFragmentHdmvSequence(
   HdmvSequencePtr sequence,
-  uint32_t * remaining_size_ret
+  uint32_t *remaining_size_ret
 )
 {
   assert(NULL != sequence);
@@ -326,7 +326,7 @@ static inline const uint8_t * getRemDataFragmentHdmvSequence(
 static inline int readValueFragmentHdmvSequence(
   HdmvSequencePtr sequence,
   uint32_t size,
-  uint64_t * value_ret
+  uint64_t *value_ret
 )
 {
   assert(NULL != sequence);
@@ -387,7 +387,7 @@ static inline void cleanHdmvDSState(
 }
 
 static inline void addDSSequenceByIdxHdmvDSState(
-  HdmvDSState * ds_state,
+  HdmvDSState *ds_state,
   hdmv_segtype_idx seg_type_idx,
   HdmvSequencePtr sequence
 )
@@ -416,7 +416,7 @@ static inline void addDSSequenceByIdxHdmvDSState(
  * (or NULL if absent).
  */
 HdmvSequencePtr getFirstSequenceByIdxHdmvDSState(
-  const HdmvDSState * ds_state,
+  const HdmvDSState *ds_state,
   hdmv_segtype_idx idx
 );
 
@@ -428,7 +428,7 @@ HdmvSequencePtr getFirstSequenceByIdxHdmvDSState(
  * \return HdmvSequencePtr Sequence of ICS/PCS segments.
  */
 HdmvSequencePtr getICSPCSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 /** \~english
@@ -438,7 +438,7 @@ HdmvSequencePtr getICSPCSSequenceHdmvDSState(
  * \return HdmvSequencePtr Sequence of ICS segments.
  */
 HdmvSequencePtr getICSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 /** \~english
@@ -448,35 +448,35 @@ HdmvSequencePtr getICSSequenceHdmvDSState(
  * \return HdmvSequencePtr Sequence of PCS segments.
  */
 HdmvSequencePtr getPCSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 HdmvSequencePtr getWDSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 HdmvSequencePtr getFirstPDSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 HdmvSequencePtr getLastPDSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 HdmvSequencePtr getFirstODSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 HdmvSequencePtr getLastODSSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 HdmvSequencePtr getENDSequenceHdmvDSState(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 );
 
 static inline bool isCompoStateHdmvDSState(
-  const HdmvDSState * ds_state,
+  const HdmvDSState *ds_state,
   HdmvCompositionState expected
 )
 {
@@ -554,7 +554,7 @@ static inline void cleanHdmvEpochState(
 }
 
 static inline void resetEpochStartHdmvEpochState(
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 )
 {
   memset(epoch_state->palettes, 0x00, sizeof(epoch_state->palettes));
@@ -565,7 +565,7 @@ static inline void resetEpochStartHdmvEpochState(
 }
 
 static inline void resetAcquisitionPointHdmvEpochState(
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 )
 {
   for (unsigned i = 0; i < HDMV_MAX_NB_PAL; i++)
@@ -575,7 +575,7 @@ static inline void resetAcquisitionPointHdmvEpochState(
 }
 
 static inline void resetNormalHdmvEpochState(
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 )
 {
   for (unsigned i = 0; i < HDMV_MAX_NB_PAL; i++)
@@ -587,15 +587,15 @@ static inline void resetNormalHdmvEpochState(
 /* ### Palette Definitions : ############################################### */
 
 bool fetchPaletteHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint8_t palette_id,
   bool must_be_in_current_DS,
-  HdmvPDSegmentParameters * pd_ret,
-  bool * has_been_updated_ret
+  HdmvPDSegmentParameters *pd_ret,
+  bool *has_been_updated_ret
 );
 
 static inline bool justProvidedPaletteHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint8_t palette_id
 )
 {
@@ -604,7 +604,7 @@ static inline bool justProvidedPaletteHdmvEpochState(
 }
 
 static inline bool comparePDSEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   const HdmvPDSegmentParameters pal_def
 )
 {
@@ -625,18 +625,18 @@ static inline bool comparePDSEpochState(
 }
 
 void setPaletteHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvPDSegmentParameters pal_def
 );
 
 /* ### Object Definitions : ################################################ */
 
 static inline bool fetchObjectHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint16_t object_id,
   bool must_be_in_current_DS,
-  HdmvODParameters * od_ret,
-  bool * has_been_updated_ret
+  HdmvODParameters *od_ret,
+  bool *has_been_updated_ret
 )
 {
   if (HDMV_MAX_NB_OBJ <= object_id)
@@ -665,9 +665,9 @@ static inline bool fetchObjectHdmvEpochState(
  * \return false
  */
 static inline bool existsObjectHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint16_t object_id,
-  HdmvODParameters * od_ret
+  HdmvODParameters *od_ret
 )
 {
   assert(object_id < HDMV_MAX_NB_OBJ);
@@ -683,7 +683,7 @@ static inline bool existsObjectHdmvEpochState(
 }
 
 static inline bool justProvidedObjectHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint16_t object_id
 )
 {
@@ -692,7 +692,7 @@ static inline bool justProvidedObjectHdmvEpochState(
 }
 
 static inline bool compareODSEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   const HdmvODParameters obj_def
 )
 {
@@ -714,17 +714,17 @@ static inline bool compareODSEpochState(
 }
 
 void setObjectHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvODParameters obj_def
 );
 
 /* ### Presentation Compositions : ########################################## */
 
 static inline bool fetchPCHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   unsigned neg_offset,
-  HdmvPCParameters * pc_ret,
-  int64_t * pc_pts_ret
+  HdmvPCParameters *pc_ret,
+  int64_t *pc_pts_ret
 )
 {
   if (epoch_state->nb_active_pc <= neg_offset)
@@ -743,9 +743,9 @@ static inline bool fetchPCHdmvEpochState(
 }
 
 static inline bool fetchOldestPCHdmvEpochState(
-  const HdmvEpochState * epoch_state,
-  HdmvPCParameters * pc_ret,
-  int64_t * pc_pts_ret
+  const HdmvEpochState *epoch_state,
+  HdmvPCParameters *pc_ret,
+  int64_t *pc_pts_ret
 )
 {
   return fetchPCHdmvEpochState(
@@ -754,9 +754,9 @@ static inline bool fetchOldestPCHdmvEpochState(
 }
 
 static inline bool fetchCurrentPCHdmvEpochState(
-  const HdmvEpochState * epoch_state,
-  HdmvPCParameters * pc_ret,
-  int64_t * pc_pts_ret
+  const HdmvEpochState *epoch_state,
+  HdmvPCParameters *pc_ret,
+  int64_t *pc_pts_ret
 )
 {
   return fetchPCHdmvEpochState(
@@ -765,7 +765,7 @@ static inline bool fetchCurrentPCHdmvEpochState(
 }
 
 void setActivePCHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   HdmvPCParameters pc,
   int64_t pc_pts
 );
@@ -773,9 +773,9 @@ void setActivePCHdmvEpochState(
 /* ### Window Definitions : ################################################ */
 
 static inline bool fetchCurrentWDHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   bool must_be_in_current_DS,
-  HdmvWDParameters * wd_ret
+  HdmvWDParameters *wd_ret
 )
 {
   if (!epoch_state->window_def_present)
@@ -788,16 +788,16 @@ static inline bool fetchCurrentWDHdmvEpochState(
 }
 
 void setWDHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvWDParameters wd
 );
 
 /* ### Interactive Compositions : ########################################## */
 
 static inline bool fetchActiveICHdmvEpochState(
-  const HdmvEpochState * epoch_state,
-  HdmvICParameters * ic_ret,
-  int64_t * ic_pts_ret
+  const HdmvEpochState *epoch_state,
+  HdmvICParameters *ic_ret,
+  int64_t *ic_pts_ret
 )
 {
   if (!epoch_state->active_ic_present)
@@ -810,9 +810,9 @@ static inline bool fetchActiveICHdmvEpochState(
 }
 
 static inline bool fetchActiveICPageHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint8_t page_id,
-  HdmvPageParameters * page_ret
+  HdmvPageParameters *page_ret
 )
 {
   HdmvICParameters ic;
@@ -826,7 +826,7 @@ static inline bool fetchActiveICPageHdmvEpochState(
 }
 
 static inline bool compareICPageEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   const HdmvPageParameters page
 )
 {
@@ -836,7 +836,7 @@ static inline bool compareICPageEpochState(
 }
 
 int setActiveICHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   HdmvICParameters ic,
   int64_t ic_pts
 );
@@ -866,7 +866,7 @@ int setActiveICHdmvEpochState(
  * elem_segments is a list of incrementally sized lists (called 'segments')
  * containing slots of size elem_size. First elem_segments list index (0) is a
  * segment of #HDMV_SEG_INV_POOL_DEFAULT_SEG_SIZE slots, each of elem_size
- * bytes (so a array of HDMV_SEG_INV_POOL_DEFAULT_SEG_SIZE * elem_size bytes).
+ * bytes (so a array of HDMV_SEG_INV_POOL_DEFAULT_SEG_SIZE *elem_size bytes).
  * Each following segment (next index of elem_segments array) size is the double of
  * the previous one.
  *
@@ -883,7 +883,7 @@ typedef struct {
 } HdmvSegmentsInventoryPool;
 
 static inline void initHdmvSegmentsInventoryPool(
-  HdmvSegmentsInventoryPool * dst,
+  HdmvSegmentsInventoryPool *dst,
   size_t elem_size
 )
 {
@@ -904,7 +904,7 @@ static inline void cleanHdmvSegmentsInventoryPool(
 }
 
 static inline void resetHdmvSegmentsInventoryPool(
-  HdmvSegmentsInventoryPool * pool
+  HdmvSegmentsInventoryPool *pool
 )
 {
   pool->nb_used_elem_segments = 0;
@@ -920,7 +920,7 @@ typedef struct {
 } HdmvSegmentsInventory;
 
 void initHdmvSegmentsInventory(
-  HdmvSegmentsInventory * dst
+  HdmvSegmentsInventory *dst
 );
 
 #define CLEAN_POOL_ELEMENTS(p, t, c)                                          \
@@ -945,7 +945,7 @@ static inline void cleanHdmvSegmentsInventory(
 }
 
 static inline void resetHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+  HdmvSegmentsInventory *inv
 )
 {
   resetHdmvSegmentsInventoryPool(&inv->sequences);
@@ -955,11 +955,11 @@ static inline void resetHdmvSegmentsInventory(
 /* ###### Inventory content fetching functions : ########################### */
 
 HdmvSequencePtr getHdmvSequenceHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+  HdmvSegmentsInventory *inv
 );
 
 HdmvSegmentPtr getHdmvSegmentHdmvSegmentsInventory(
-  HdmvSegmentsInventory * inv
+  HdmvSegmentsInventory *inv
 );
 #else
 

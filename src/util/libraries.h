@@ -20,24 +20,24 @@ typedef struct LibbluLibraryHandleStruct
 ;
 
 LibbluLibraryHandlePtr loadLibbluLibrary(
-  const lbc * name
+  const lbc *name
 );
 
 void closeLibbluLibrary(
   LibbluLibraryHandlePtr handle
 );
 
-void * resolveSymLibbluLibrary(
+void *resolveSymLibbluLibrary(
   LibbluLibraryHandlePtr handle,
-  const char * name
+  const char *name
 );
 
 /** \~english
  * \brief Resolve a symbol using the resolveSymLibbluLibrary() function.
  *
  * \param h LibbluLibraryHandlePtr Library handle.
- * \param n const char * Symbol name to resolve.
- * \param d void * Resolved symbol destination.
+ * \param n const char *Symbol name to resolve.
+ * \param d void *Resolved symbol destination.
  * \param e Executed instruction on resolve error.
  *
  * \code{.c}

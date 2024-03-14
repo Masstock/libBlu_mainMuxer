@@ -5,12 +5,12 @@
 #include "pgs_frame.h"
 
 // typedef struct {
-//   PgsFrame * frames;
-//   PgsFrameSequence * frame_sequences;
+//   PgsFrame *frames;
+//   PgsFrameSequence *frame_sequences;
 // } PgsCompilerContext;
 
 // static inline void initPgsCompilerContext(
-//   PgsCompilerContext * dst
+//   PgsCompilerContext *dst
 // )
 // {
 //   *dst = (PgsCompilerContext) {

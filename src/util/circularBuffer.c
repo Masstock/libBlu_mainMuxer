@@ -8,18 +8,18 @@
 
 #include "circularBuffer.h"
 
-CircularBuffer * createCircularBuffer(
+CircularBuffer *createCircularBuffer(
   void
 )
 {
-  CircularBuffer * buf;
+  CircularBuffer *buf;
   if (NULL == (buf = (CircularBuffer *) calloc(1, sizeof(CircularBuffer))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
   return buf;
 }
 
-void * newEntryCircularBuffer(
-  CircularBuffer * buf,
+void *newEntryCircularBuffer(
+  CircularBuffer *buf,
   size_t slot_size
 )
 {
@@ -40,8 +40,8 @@ void * newEntryCircularBuffer(
     if (!new_size || lb_mul_overflow_size_t(new_size, slot_size))
       LIBBLU_ERROR_NRETURN("Circular buffer FIFO overflow.\n");
 
-    uint8_t * new_buf;
-    if (NULL == (new_buf = realloc(buf->array, new_size * slot_size)))
+    uint8_t *new_buf;
+    if (NULL == (new_buf = realloc(buf->array, new_size *slot_size)))
       LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
     /* Moving indexes from buffer. */
@@ -49,7 +49,7 @@ void * newEntryCircularBuffer(
     size_t bI = cur_size - buf->top; // Buffer Index
     for (; bI < buf->used_size; bI++, dI++) {
       size_t sI = (buf->top + bI) & (cur_size - 1); // Source Index
-      memcpy(&new_buf[dI * slot_size], &new_buf[sI * slot_size], slot_size);
+      memcpy(&new_buf[dI *slot_size], &new_buf[sI *slot_size], slot_size);
     }
 
     buf->array = new_buf;
@@ -60,5 +60,5 @@ void * newEntryCircularBuffer(
   size_t dI = (buf->top + (buf->used_size++)) & (allocated_size - 1);
     // Destination Index
 
-  return &buf->array[dI * slot_size];
+  return &buf->array[dI *slot_size];
 }

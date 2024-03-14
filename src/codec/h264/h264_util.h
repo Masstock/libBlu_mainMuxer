@@ -56,7 +56,7 @@ typedef struct {
   bool sequenceParametersSetGopValid;
   bool sequenceParametersSetValid;
 
-  H264PicParametersSetParameters * picParametersSet[H264_MAX_PPS];
+  H264PicParametersSetParameters *picParametersSet[H264_MAX_PPS];
   bool picParametersSetIdsPresent[H264_MAX_PPS];
   bool picParametersSetIdsValid[H264_MAX_PPS];
   unsigned picParametersSetIdsPresentNb;
@@ -95,7 +95,7 @@ void updateH264ProfileLimits(
 
 /* Handling functions : */
 H264ParametersHandlerPtr initH264ParametersHandler(
-  const LibbluESParsingSettings * settings
+  const LibbluESParsingSettings *settings
 );
 
 void resetH264ParametersHandler(
@@ -104,7 +104,7 @@ void resetH264ParametersHandler(
 
 int completeH264ParametersHandler(
   H264ParametersHandlerPtr handle,
-  const LibbluESParsingSettings * settings
+  const LibbluESParsingSettings *settings
 );
 
 void destroyH264ParametersHandler(
@@ -113,7 +113,7 @@ void destroyH264ParametersHandler(
 
 int updatePPSH264Parameters(
   H264ParametersHandlerPtr handle,
-  const H264PicParametersSetParameters * param,
+  const H264PicParametersSetParameters *param,
   unsigned id
 );
 
@@ -122,9 +122,9 @@ int deserializeRbspCell(
 );
 
 typedef struct {
-  uint8_t * array;           /**< Builded NALU destination byte array.       */
-  uint8_t * writingPointer;  /**< Byte array writting offset pointer.        */
-  uint8_t * endPointer;      /**< Pointer to the byte following the end of
+  uint8_t *array;           /**< Builded NALU destination byte array.       */
+  uint8_t *writingPointer;  /**< Byte array writting offset pointer.        */
+  uint8_t *endPointer;      /**< Pointer to the byte following the end of
     the allocated byte array.                                                */
   uint16_t allocatedSize;    /**< Byte array allocated size.                 */
 
@@ -205,7 +205,7 @@ static inline H264NalUnitTypeValue getNalUnitType(
 /* Reading functions : */
 static inline int readBitNal(
   H264ParametersHandlerPtr handle,
-  bool * bit
+  bool *bit
 )
 {
   assert(NULL != handle);
@@ -228,7 +228,7 @@ static inline int readBitNal(
 
 static inline int readBitsNal(
   H264ParametersHandlerPtr handle,
-  uint32_t * value,
+  uint32_t *value,
   size_t length
 )
 {
@@ -254,7 +254,7 @@ static inline int readBitsNal(
 
 static inline int readBytesNal(
   H264ParametersHandlerPtr handle,
-  uint8_t * bytes,
+  uint8_t *bytes,
   size_t length
 )
 {
@@ -291,7 +291,7 @@ static inline int readBytesNal(
  */
 static inline int readExpGolombCodeNal(
   H264ParametersHandlerPtr handle,
-  uint32_t * value,
+  uint32_t *value,
   int maxLength
 )
 {
@@ -353,7 +353,7 @@ static inline int readExpGolombCodeNal(
  */
 static inline int readSignedExpGolombCodeNal(
   H264ParametersHandlerPtr handle,
-  uint32_t * value,
+  uint32_t *value,
   int maxLength
 )
 {

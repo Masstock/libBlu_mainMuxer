@@ -3,13 +3,13 @@
 
 #include "pgs_merging_tree.h"
 
-MergingTreeNode * createMergingTreeNode(
+MergingTreeNode *createMergingTreeNode(
   HdmvRectangle box,
-  MergingTreeNode * left,
-  MergingTreeNode * right
+  MergingTreeNode *left,
+  MergingTreeNode *right
 )
 {
-  MergingTreeNode * node = malloc(sizeof(MergingTreeNode));
+  MergingTreeNode *node = malloc(sizeof(MergingTreeNode));
   if (NULL == node)
     return NULL;
 
@@ -23,7 +23,7 @@ MergingTreeNode * createMergingTreeNode(
 }
 
 void destroyMergingTreeNode(
-  MergingTreeNode * node
+  MergingTreeNode *node
 )
 {
   if (NULL == node)
@@ -39,7 +39,7 @@ int insertMergingTreeNode(
 )
 {
   if (NULL == *tree) {
-    MergingTreeNode * node = createMergingTreeNode(box, NULL, NULL);
+    MergingTreeNode *node = createMergingTreeNode(box, NULL, NULL);
     if (NULL == node)
       return -1;
 
@@ -49,7 +49,7 @@ int insertMergingTreeNode(
 
   if (NULL == (*tree)->left) {
     HdmvRectangle res_box = mergeRectangle((*tree)->box, box);
-    MergingTreeNode * node = createMergingTreeNode(res_box, *tree, NULL);
+    MergingTreeNode *node = createMergingTreeNode(res_box, *tree, NULL);
     if (NULL == node)
       return -1;
     *tree = node;
@@ -81,10 +81,10 @@ int insertMergingTreeNode(
   }
 
   /* Left + Right merge */
-  MergingTreeNode * new_l = createMergingTreeNode(lr_merge, (*tree)->left, (*tree)->right);
+  MergingTreeNode *new_l = createMergingTreeNode(lr_merge, (*tree)->left, (*tree)->right);
   if (NULL == new_l)
     return -1;
-  MergingTreeNode * new_r = createMergingTreeNode(box, NULL, NULL);
+  MergingTreeNode *new_r = createMergingTreeNode(box, NULL, NULL);
   if (NULL == new_r)
     return -1;
 

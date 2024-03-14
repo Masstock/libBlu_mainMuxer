@@ -19,7 +19,7 @@ int checkBitmapDimensions(
 );
 
 typedef struct {
-  uint32_t * rgba;
+  uint32_t *rgba;
   uint16_t width;
   uint16_t height;
 
@@ -28,14 +28,14 @@ typedef struct {
 } HdmvBitmap;
 
 int initHdmvBitmap(
-  HdmvBitmap * bitmap,
+  HdmvBitmap *bitmap,
   uint16_t width,
   uint16_t height
 );
 
 int dupHdmvBitmap(
-  HdmvBitmap * dst,
-  const HdmvBitmap * src
+  HdmvBitmap *dst,
+  const HdmvBitmap *src
 );
 
 static inline void cleanHdmvBitmap(
@@ -46,7 +46,7 @@ static inline void cleanHdmvBitmap(
 }
 
 static inline bool isRectangleInsideHdmvBitmap(
-  const HdmvBitmap * bitmap,
+  const HdmvBitmap *bitmap,
   HdmvRectangle rectangle
 )
 {
@@ -58,40 +58,40 @@ static inline bool isRectangleInsideHdmvBitmap(
 }
 
 static inline void fillHdmvBitmap(
-  HdmvBitmap * bitmap,
+  HdmvBitmap *bitmap,
   uint32_t rgba
 )
 {
-  size_t size = 1ull * bitmap->width * bitmap->height;
+  size_t size = 1ull *bitmap->width *bitmap->height;
   for (size_t i = 0; i < size; i++)
     bitmap->rgba[i] = rgba;
 }
 
 static inline void clearHdmvBitmap(
-  HdmvBitmap * bitmap
+  HdmvBitmap *bitmap
 )
 {
   fillHdmvBitmap(bitmap, 0x00);
 }
 
 static inline void setPixelHdmvBitmap(
-  HdmvBitmap * bitmap,
+  HdmvBitmap *bitmap,
   uint32_t rgba,
   uint16_t x,
   uint16_t y
 )
 {
-  bitmap->rgba[y * bitmap->width + x] = rgba;
+  bitmap->rgba[y *bitmap->width + x] = rgba;
 }
 
 int cropHdmvBitmap(
-  HdmvBitmap * dst,
+  HdmvBitmap *dst,
   HdmvRectangle rect
 );
 
 int cropCopyHdmvBitmap(
-  HdmvBitmap * dst_ret,
-  const HdmvBitmap * src,
+  HdmvBitmap *dst_ret,
+  const HdmvBitmap *src,
   HdmvRectangle rect
 );
 

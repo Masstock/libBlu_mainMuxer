@@ -23,11 +23,11 @@ typedef enum {
   DTS_FRM_INNER_EXT_SS_ASSET
 } DtsAUInnerType;
 
-static inline const char * DtsAUInnerTypeStr(
+static inline const char *DtsAUInnerTypeStr(
   DtsAUInnerType type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Core SS",
     "Ext SS Header",
     "Ext SS Asset"
@@ -49,11 +49,11 @@ typedef enum {
   DTS_AU_REPLACE
 } DtsAUCellTreatment;
 
-static inline const char * DtsAUCellTreatmentStr(
+static inline const char *DtsAUCellTreatmentStr(
   DtsAUCellTreatment treatment
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "keep",
     "skip",
     "replace"
@@ -71,17 +71,17 @@ typedef struct {
   uint32_t size;
 
   DtsAUCellTreatment treatment;
-  DtsAUInnerReplacementParam * param;
+  DtsAUInnerReplacementParam *param;
 } DtsAUCell, *DtsAUCellPtr;
 
 typedef struct {
-  DtsAUCell * contentCells;
+  DtsAUCell *contentCells;
   unsigned nbUsedContentCells;
   unsigned nbAllocatedContentCells;
 
   bool initializedCell;
 
-  DtsAUInnerReplacementParam * replacementParams; // TODO: Simplify this.
+  DtsAUInnerReplacementParam *replacementParams; // TODO: Simplify this.
   unsigned nbUsedReplacementParam;
   unsigned nbAllocatedReplacementParam;
 } DtsAUFrame, *DtsAUFramePtr;

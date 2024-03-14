@@ -27,13 +27,13 @@
 uint32_t appendDcaExtSSHeader(
   EsmsHandlerPtr script,
   uint32_t insert_off,
-  const DcaExtSSHeaderParameters * param
+  const DcaExtSSHeaderParameters *param
 );
 
 uint32_t appendDcaExtSSAsset(
   EsmsHandlerPtr script,
   uint32_t insert_off,
-  const DcaXllFrameSFPosition * param,
+  const DcaXllFrameSFPosition *param,
   unsigned scriptSourceFileId
 );
 

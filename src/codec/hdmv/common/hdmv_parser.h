@@ -13,7 +13,7 @@
 #include "hdmv_context.h"
 
 int parseHdmvSegment(
-  HdmvContext * ctx
+  HdmvContext *ctx
 );
 
 #endif

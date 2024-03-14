@@ -11,12 +11,12 @@
 
 
 int parseEac3SyncInfo(
-  LibbluBitReader * br
+  LibbluBitReader *br
 );
 
 int parseEac3BitStreamInfo(
-  LibbluBitReader * br,
-  Eac3BitStreamInfoParameters * bsi
+  LibbluBitReader *br,
+  Eac3BitStreamInfoParameters *bsi
 );
 
 #endif

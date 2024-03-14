@@ -19,7 +19,7 @@
  * \brief Modular circular buffer FIFO structure.
  */
 typedef struct {
-  uint8_t * array;             /**< Circular buffer array.                   */
+  uint8_t *array;             /**< Circular buffer array.                   */
   unsigned alloc_shft_size;    /**< Buffer current allocated size as a power
     of 2.                                                                    */
   size_t used_size;            /**< Buffer number of stored entries.         */
@@ -32,7 +32,7 @@ typedef struct {
  * \brief Creates and initialize a circular buffer.
  *
  * \param entrySize Buffer array entries size in bytes.
- * \return CircularBuffer * On sucess, created object is returned. Otherwise,
+ * \return CircularBuffer *On sucess, created object is returned. Otherwise,
  * a NULL pointer is returned.
  *
  * Supplied entrySize is the size of buffer saved entries. This value can't
@@ -42,7 +42,7 @@ typedef struct {
  *
  * Created object must be passed to #destroyCircularBuffer() after use.
  */
-CircularBuffer * createCircularBuffer(
+CircularBuffer *createCircularBuffer(
   void
 );
 
@@ -52,7 +52,7 @@ CircularBuffer * createCircularBuffer(
  * \param buf Circulat buffer object to free.
  */
 static inline void destroyCircularBuffer(
-  CircularBuffer * buf
+  CircularBuffer *buf
 )
 {
   if (NULL == buf)
@@ -82,13 +82,13 @@ static inline void cleanCircularBuffer(
  * If buffer is full, its size is growed. If buffer is too big or if a memory
  * allocation occurs, an error is returned.
  */
-void * newEntryCircularBuffer(
-  CircularBuffer * buf,
+void *newEntryCircularBuffer(
+  CircularBuffer *buf,
   size_t slot_size
 );
 
 static inline size_t nbEntriesCircularBuffer(
-  const CircularBuffer * buf
+  const CircularBuffer *buf
 )
 {
   assert(NULL != buf);
@@ -97,14 +97,14 @@ static inline size_t nbEntriesCircularBuffer(
 }
 
 static inline bool isEmptyCircularBuffer(
-  const CircularBuffer * buf
+  const CircularBuffer *buf
 )
 {
   return 0 == buf->used_size;
 }
 
-static inline void * getCircularBuffer(
-  const CircularBuffer * buf,
+static inline void *getCircularBuffer(
+  const CircularBuffer *buf,
   size_t index
 )
 {
@@ -117,7 +117,7 @@ static inline void * getCircularBuffer(
   size_t mask = ((CB_DEF_SIZE << buf->alloc_shft_size) - 1);
   size_t entry_idx = (buf->top + index) & mask;
 
-  return (void *) &buf->array[entry_idx * buf->slot_size];
+  return (void *) &buf->array[entry_idx *buf->slot_size];
 }
 
 /** \~english
@@ -131,8 +131,8 @@ static inline void * getCircularBuffer(
  * Calls to #newEntryCircularBuffer() might invalidate previously returned
  * pointers.
  */
-static inline void * popCircularBuffer(
-  CircularBuffer * buf
+static inline void *popCircularBuffer(
+  CircularBuffer *buf
 )
 {
   assert(NULL != buf);
@@ -140,7 +140,7 @@ static inline void * popCircularBuffer(
   if (!buf->used_size)
     return NULL; // Empty circular buffer.
 
-  void * entry = &buf->array[buf->top * buf->slot_size];
+  void *entry = &buf->array[buf->top *buf->slot_size];
 
   size_t mask = ((CB_DEF_SIZE << buf->alloc_shft_size) - 1);
   buf->top = (buf->top + 1) & mask;

@@ -192,7 +192,7 @@ typedef struct {
 } EsmsESSourceFileProperties;
 
 typedef struct {
-  lbc * filepath;
+  lbc *filepath;
   BitstreamReaderPtr handle;
   EsmsESSourceFileProperties properties;
 } EsmsESSourceFilesEntry;
@@ -223,7 +223,7 @@ static inline void cleanEsmsESSourceFiles(
 
 static inline bool isPresentEsmsESSourceFiles(
   EsmsESSourceFiles src_files,
-  const lbc * filepath
+  const lbc *filepath
 )
 {
   for (unsigned i = 0; i < src_files.nb_source_files; i++) {
@@ -234,13 +234,13 @@ static inline bool isPresentEsmsESSourceFiles(
 }
 
 int appendEsmsESSourceFiles(
-  EsmsESSourceFiles * dst,
-  const lbc * filepath,
+  EsmsESSourceFiles *dst,
+  const lbc *filepath,
   EsmsESSourceFileProperties properties
 );
 
 int openAllEsmsESSourceFiles(
-  EsmsESSourceFiles * dst
+  EsmsESSourceFiles *dst
 );
 
 /* ### ESMS Directories : ################################################## */
@@ -252,11 +252,11 @@ typedef enum {
   ESMS_DIRECTORY_ID_ES_DATA_BLK_DEF  = 0x04
 } ESMSDirectoryId;
 
-static inline const char * ESMSDirectoryIdStr(
+static inline const char *ESMSDirectoryIdStr(
   ESMSDirectoryId dir_ID
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "unknown",
     "ES Properties",
     "ES PES Cutting",
@@ -290,7 +290,7 @@ typedef struct {
 /* ### ESMS Data Blocks : ################################################## */
 
 typedef struct {
-  uint8_t * data_block;
+  uint8_t *data_block;
   uint32_t data_block_size;
 } EsmsDataBlockEntry;
 
@@ -305,7 +305,7 @@ static inline void cleanEsmsDataBlockEntry(
 #define ESMS_MAX_SUPPORTED_DATA_BLOCKS_ENTRIES 255
 
 typedef struct {
-  EsmsDataBlockEntry * entries;
+  EsmsDataBlockEntry *entries;
   unsigned nb_alloc_data_blocks;
   unsigned nb_data_blocks;
 } EsmsDataBlocks;
@@ -322,13 +322,13 @@ static inline void cleanEsmsDataBlocks(
 }
 
 int appendEsmsDataBlocks(
-  EsmsDataBlocks * dst,
+  EsmsDataBlocks *dst,
   EsmsDataBlockEntry entry,
-  unsigned * idx
+  unsigned *idx
 );
 
 int updateEsmsDataBlocks(
-  EsmsDataBlocks * dst,
+  EsmsDataBlocks *dst,
   EsmsDataBlockEntry newEntry,
   unsigned dstIdx
 );
@@ -346,11 +346,11 @@ typedef enum {
   ESMS_ADD_DATA_BLOCK     /**< Add bytes from a script data section.         */
 } EsmsCommandType;
 
-static inline const char * EsmsCommandTypeStr(
+static inline const char *EsmsCommandTypeStr(
   EsmsCommandType type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Add data",
     "Change byte order",
     "Add payload data",
@@ -379,11 +379,11 @@ typedef enum {
   INSERTION_MODE_INSERT     = 0x1
 } EsmsDataInsertionMode;
 
-static inline const char * EsmsDataInsertionModeStr(
+static inline const char *EsmsDataInsertionModeStr(
   EsmsDataInsertionMode mode
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Overwrite",
     "Insert"
   };
@@ -407,7 +407,7 @@ typedef struct {
   uint32_t insert_offset;
   EsmsDataInsertionMode insert_mode;
 
-  uint8_t * data;
+  uint8_t *data;
   uint16_t data_size;
 } EsmsAddDataCommand;
 
@@ -425,7 +425,7 @@ static inline void cleanEsmsAddDataCommand(
 
 int applyEsmsAddDataCommand(
   EsmsAddDataCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size
 );
 
@@ -443,7 +443,7 @@ typedef struct {
 #define CHANGE_BYTEORDER_COM_LEN  9
 
 static inline int setEsmsChangeByteOrderCommand(
-  EsmsChangeByteOrderCommand * dst,
+  EsmsChangeByteOrderCommand *dst,
   uint8_t unitSize,
   uint32_t offset,
   uint32_t length
@@ -460,7 +460,7 @@ static inline int setEsmsChangeByteOrderCommand(
 
 int applyEsmsChangeByteOrderCommand(
   EsmsChangeByteOrderCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size
 );
 
@@ -491,7 +491,7 @@ static inline uint16_t sizeEsmsAddPesPayloadCommand(
 #define ADD_PAYLOAD_DATA_COM_MIN_LEN  12
 
 static inline int setEsmsAddPesPayloadCommand(
-  EsmsAddPesPayloadCommand * dst,
+  EsmsAddPesPayloadCommand *dst,
   unsigned fileIdx,
   uint32_t dstOffset,
   int64_t srcOffset,
@@ -510,9 +510,9 @@ static inline int setEsmsAddPesPayloadCommand(
 
 int applyEsmsAddPesPayloadCommand(
   EsmsAddPesPayloadCommand command,
-  uint8_t * packetData,
+  uint8_t *packetData,
   uint32_t packetSize,
-  const EsmsESSourceFiles * src_files
+  const EsmsESSourceFiles *src_files
 );
 
 /* ###### ESMS Add Padding command : ####################################### */
@@ -527,7 +527,7 @@ typedef struct {
 #define ADD_PADDING_COM_LEN  10
 
 static inline int setEsmsAddPaddingCommand(
-  EsmsAddPaddingCommand * dst,
+  EsmsAddPaddingCommand *dst,
   uint32_t insert_offset,
   EsmsDataInsertionMode insert_mode,
   uint32_t size,
@@ -546,7 +546,7 @@ static inline int setEsmsAddPaddingCommand(
 
 int applyEsmsAddPaddingCommand(
   EsmsAddPaddingCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size
 );
 
@@ -561,7 +561,7 @@ typedef struct {
 #define ADD_DATA_BLOCK_COM_LEN  6
 
 static inline int setEsmsAddDataBlockCommand(
-  EsmsAddDataBlockCommand * dst,
+  EsmsAddDataBlockCommand *dst,
   uint32_t offset,
   EsmsDataInsertionMode mode,
   uint8_t blockIdx
@@ -587,7 +587,7 @@ static inline int setEsmsAddDataBlockCommand(
  */
 int applyEsmsAddDataBlockCommand(
   EsmsAddDataBlockCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size,
   EsmsDataBlocks data_blocks
 );
@@ -608,7 +608,7 @@ typedef struct {
 } EsmsCommand;
 
 static inline void cleanEsmsCommand(
-  EsmsCommand * com
+  EsmsCommand *com
 )
 {
   switch (com->type) {
@@ -680,7 +680,7 @@ typedef struct {
 } EsmsPesPacket;
 
 static inline void cleanEsmsPesPacketPtr(
-  EsmsPesPacket * pes_packet
+  EsmsPesPacket *pes_packet
 )
 {
   for (unsigned i = 0; i < pes_packet->nb_commands; i++)
@@ -714,19 +714,19 @@ typedef enum {
  * by #ESMSDirectoryFetcherErrorCodes enumeration.
  */
 ESMSDirectoryFetcherErrorCodes getDirectoryOffset(
-  const lbc * essFilename,
+  const lbc *essFilename,
   ESMSDirectoryId id,
-  int64_t * offset
+  int64_t *offset
 );
 
 int isPresentDirectory(
-  const lbc * essFilename,
+  const lbc *essFilename,
   ESMSDirectoryId id
 );
 
 int seekDirectoryOffset(
   BitstreamReaderPtr essHandle,
-  const lbc * essFilename,
+  const lbc *essFilename,
   ESMSDirectoryId id
 );
 
@@ -755,7 +755,7 @@ typedef enum {
   ESMS_FV_OK                   =  0   /**< Script is valid.                  */
 } ESMSFileValidatorRet;
 
-const char * ESMSValidatorErrorStr(
+const char *ESMSValidatorErrorStr(
   const ESMSFileValidatorRet code
 );
 
@@ -770,9 +770,9 @@ const char * ESMSValidatorErrorStr(
  * \return ESMSFileValidatorRet Returned code.
  */
 ESMSFileValidatorRet isAValidESMSFile(
-  const lbc * esms_fp,
+  const lbc *esms_fp,
   uint64_t expected_flags,
-  uint16_t * ESMS_version_ret
+  uint16_t *ESMS_version_ret
 );
 
 #endif

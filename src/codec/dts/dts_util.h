@@ -42,13 +42,13 @@ typedef struct {
 } DtsDcaCoreSSContext;
 
 static inline uint64_t getPTSDtsDcaCoreSSContext(
-  const DtsDcaCoreSSContext * core
+  const DtsDcaCoreSSContext *core
 )
 {
-  const DcaCoreBSHeaderParameters * bsh = &core->cur_frame.bs_header;
+  const DcaCoreBSHeaderParameters *bsh = &core->cur_frame.bs_header;
 
   return
-    (SUB_CLOCK_90KHZ * core->nb_parsed_samples)
+    (SUB_CLOCK_90KHZ *core->nb_parsed_samples)
     / getDcaCoreAudioSampFreqCode(bsh->SFREQ)
   ;
 }
@@ -75,7 +75,7 @@ typedef struct {
 } DtsDcaExtSSFrameContent;
 
 typedef struct {
-  DcaExtSSFrameParameters * curFrames[DCA_EXT_SS_MAX_NB_INDEXES];
+  DcaExtSSFrameParameters *curFrames[DCA_EXT_SS_MAX_NB_INDEXES];
   bool presentIndexes[DCA_EXT_SS_MAX_NB_INDEXES];
   uint8_t currentExtSSIdx;
 
@@ -96,14 +96,14 @@ static inline void cleanDtsDcaExtSSContext(
 }
 
 static inline uint64_t getPTSDtsDcaExtSSContext(
-  const DtsDcaExtSSContext * ext_ss
+  const DtsDcaExtSSContext *ext_ss
 )
 {
-  const DcaExtSSFrameParameters * frame = ext_ss->curFrames[ext_ss->currentExtSSIdx];
-  const DcaExtSSHeaderSFParameters * sf = &frame->header.static_fields;
+  const DcaExtSSFrameParameters *frame = ext_ss->curFrames[ext_ss->currentExtSSIdx];
+  const DcaExtSSHeaderSFParameters *sf = &frame->header.static_fields;
 
   return
-    (SUB_CLOCK_90KHZ * ext_ss->nb_parsed_samples)
+    (SUB_CLOCK_90KHZ *ext_ss->nb_parsed_samples)
     / getDcaExtReferenceClockValue(sf->nuRefClockCode)
   ;
 }
@@ -132,7 +132,7 @@ typedef struct {
   BitstreamReaderPtr bs;
   BitstreamWriterPtr script_bs;
   EsmsHandlerPtr script;
-  const lbc * script_fp;
+  const lbc *script_fp;
 
   DtshdFileHandler dtshd;
   bool is_dtshd_file;
@@ -159,27 +159,27 @@ typedef struct {
 
 /* Handling functions : */
 int initDtsContext(
-  DtsContext * ctx,
-  LibbluESParsingSettings * settings
+  DtsContext *ctx,
+  LibbluESParsingSettings *settings
 );
 
 int completeDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 );
 
 void cleanDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 );
 
 static inline bool isDtshdFileDtsContext(
-  const DtsContext * ctx
+  const DtsContext *ctx
 )
 {
   return ctx->is_dtshd_file;
 }
 
 static inline bool doGenerateScriptDtsContext(
-  const DtsContext * ctx
+  const DtsContext *ctx
 )
 {
   return
@@ -189,14 +189,14 @@ static inline bool doGenerateScriptDtsContext(
 }
 
 static inline bool isFast2nbPassDtsContext(
-  const DtsContext * ctx
+  const DtsContext *ctx
 )
 {
   return DTS_PARSMOD_TWO_PASS_SECOND == ctx->mode;
 }
 
 static inline bool nextPassDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 )
 {
   if (ctx->mode == DTS_PARSMOD_TWO_PASS_FIRST) {
@@ -208,7 +208,7 @@ static inline bool nextPassDtsContext(
 }
 
 int initParsingDtsContext(
-  DtsContext * ctx
+  DtsContext *ctx
 );
 
 typedef enum {
@@ -218,11 +218,11 @@ typedef enum {
 } DtsFrameInitializationRet;
 
 DtsFrameInitializationRet initNextDtsFrame(
-  DtsContext * ctx
+  DtsContext *ctx
 );
 
 int completeDtsFrame(
-  DtsContext * ctx
+  DtsContext *ctx
 );
 
 #endif

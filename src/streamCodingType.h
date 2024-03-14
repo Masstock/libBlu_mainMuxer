@@ -45,7 +45,7 @@ typedef enum {
   STREAM_CODING_TYPE_DTSE_SEC  =  0xA2   /**< DTS-Express secondary audio.   */
 } LibbluStreamCodingType;
 
-const char * LibbluStreamCodingTypeStr(
+const char *LibbluStreamCodingTypeStr(
   LibbluStreamCodingType sct
 );
 
@@ -139,11 +139,11 @@ typedef enum {
   ES_HDMV
 } LibbluESType;
 
-static inline const char * libbluESTypeStr(
+static inline const char *libbluESTypeStr(
   LibbluESType type
 )
 {
-  static const char * types[] = {
+  static const char *types[] = {
     "Video",
     "Audio",
     "HDMV"
@@ -154,7 +154,7 @@ static inline const char * libbluESTypeStr(
 
 static inline int determineLibbluESType(
   LibbluStreamCodingType coding_type,
-  LibbluESType * type_ret
+  LibbluESType *type_ret
 )
 {
   switch (coding_type) {

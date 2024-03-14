@@ -8,19 +8,19 @@
 
 
 int checkAc3SyncInfoCompliance(
-  const Ac3SyncInfoParameters * param
+  const Ac3SyncInfoParameters *param
 );
 
 int checkAc3AddbsiCompliance(
-  const Ac3Addbsi * param
+  const Ac3Addbsi *param
 );
 
 int checkAc3BitStreamInfoCompliance(
-  const Ac3BitStreamInfoParameters * param
+  const Ac3BitStreamInfoParameters *param
 );
 
 int checkAc3AlternateBitStreamInfoCompliance(
-  const Ac3BitStreamInfoParameters * param
+  const Ac3BitStreamInfoParameters *param
 );
 
 #endif

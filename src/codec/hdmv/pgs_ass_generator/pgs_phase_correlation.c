@@ -21,12 +21,12 @@ static inline double _norm(
 }
 
 static int _initPgsPCContext(
-  PgsPCContext * ctx
+  PgsPCContext *ctx
 )
 {
-  fftw_complex * img1 = fftw_alloc_complex(PGS_PC_MAX_SIZE * PGS_PC_MAX_SIZE);
-  fftw_complex * img2 = fftw_alloc_complex(PGS_PC_MAX_SIZE * PGS_PC_MAX_SIZE);
-  fftw_complex * out  = fftw_alloc_complex(PGS_PC_MAX_SIZE * PGS_PC_MAX_SIZE);
+  fftw_complex *img1 = fftw_alloc_complex(PGS_PC_MAX_SIZE *PGS_PC_MAX_SIZE);
+  fftw_complex *img2 = fftw_alloc_complex(PGS_PC_MAX_SIZE *PGS_PC_MAX_SIZE);
+  fftw_complex *out  = fftw_alloc_complex(PGS_PC_MAX_SIZE *PGS_PC_MAX_SIZE);
   if (NULL == img1 || NULL == img2 || NULL == out) {
     fftw_free(img1);
     fftw_free(img2);
@@ -41,14 +41,14 @@ static int _initPgsPCContext(
 }
 
 void cleanPgsPCContext(
-  PgsPCContext * ctx
+  PgsPCContext *ctx
 )
 {
   fftw_free(ctx->img1);
   fftw_free(ctx->img2);
   fftw_free(ctx->out);
   for (unsigned i = 0; i < PGS_PC_NB_PLANS; i++) {
-    PgsPhaseCorrelationDimPlans * plans = &ctx->plans[i];
+    PgsPhaseCorrelationDimPlans *plans = &ctx->plans[i];
     if (NULL != plans->img1_ffft_plan) {
       fftw_destroy_plan(plans->img1_ffft_plan);
       fftw_destroy_plan(plans->img2_ffft_plan);
@@ -59,7 +59,7 @@ void cleanPgsPCContext(
 }
 
 static PgsPhaseCorrelationDimPlans * _getPlansPgsPCContext(
-  PgsPCContext * ctx
+  PgsPCContext *ctx
 )
 {
   unsigned j = ctx->cur_w_log2_min7;
@@ -71,10 +71,10 @@ static PgsPhaseCorrelationDimPlans * _getPlansPgsPCContext(
 #define LB_FFTW_MODE  FFTW_ESTIMATE
 
 static int _checkPlansPgsPCContext(
-  PgsPCContext * ctx
+  PgsPCContext *ctx
 )
 {
-  PgsPhaseCorrelationDimPlans * plans = _getPlansPgsPCContext(ctx);
+  PgsPhaseCorrelationDimPlans *plans = _getPlansPgsPCContext(ctx);
 
   if (NULL == plans->img1_ffft_plan) {
     /* Create FFTW plans */
@@ -103,9 +103,9 @@ static double _getGrayFromRgba(
 }
 
 static void _fillReal(
-  const PgsPCContext * ctx,
-  fftw_complex * dst,
-  const HdmvBitmap * bitmap
+  const PgsPCContext *ctx,
+  fftw_complex *dst,
+  const HdmvBitmap *bitmap
 )
 {
   unsigned dst_width  = (PGS_PC_MIN_SIZE << ctx->cur_w_log2_min7);
@@ -117,8 +117,8 @@ static void _fillReal(
     for (unsigned i = 0; i < dst_width; i++) {
       unsigned x = MIN(i, src_width - 1);
       unsigned y = MIN(j, src_height - 1);
-      uint32_t rgba = bitmap->rgba[y * src_width + x];
-      dst[j * dst_width + i][0] = _getGrayFromRgba(rgba);
+      uint32_t rgba = bitmap->rgba[y *src_width + x];
+      dst[j *dst_width + i][0] = _getGrayFromRgba(rgba);
     }
   }
 
@@ -126,9 +126,9 @@ static void _fillReal(
 }
 
 static int _initInputsPgsPCContext(
-  PgsPCContext * ctx,
-  const HdmvBitmap * bm1,
-  const HdmvBitmap * bm2
+  PgsPCContext *ctx,
+  const HdmvBitmap *bm1,
+  const HdmvBitmap *bm2
 )
 {
   unsigned w_log2 = MAX(PGS_PC_MIN_SIZE_LOG2, lb_fast_log2_32(MAX(bm1->width, bm2->width)));
@@ -156,16 +156,16 @@ static int _initInputsPgsPCContext(
 }
 
 static int _computeShift(
-  PgsPCContext * ctx,
-  int * delta_x,
-  int * delta_y,
-  double * peak
+  PgsPCContext *ctx,
+  int *delta_x,
+  int *delta_y,
+  double *peak
 )
 {
-  PgsPhaseCorrelationDimPlans * plans = _getPlansPgsPCContext(ctx);
-  fftw_complex * img1 = ctx->img1;
-  fftw_complex * img2 = ctx->img2;
-  fftw_complex * out = ctx->out;
+  PgsPhaseCorrelationDimPlans *plans = _getPlansPgsPCContext(ctx);
+  fftw_complex *img1 = ctx->img1;
+  fftw_complex *img2 = ctx->img2;
+  fftw_complex *out = ctx->out;
   unsigned W = PGS_PC_MIN_SIZE << ctx->cur_w_log2_min7;
   unsigned H = PGS_PC_MIN_SIZE << ctx->cur_h_log2_min7;
 
@@ -215,12 +215,12 @@ static int _computeShift(
 }
 
 int computeShiftPgsPCContext(
-  PgsPCContext * ctx,
-  const HdmvBitmap * bm1,
-  const HdmvBitmap * bm2,
-  int * delta_x,
-  int * delta_y,
-  double * peak
+  PgsPCContext *ctx,
+  const HdmvBitmap *bm1,
+  const HdmvBitmap *bm2,
+  int *delta_x,
+  int *delta_y,
+  double *peak
 )
 {
   if (_initInputsPgsPCContext(ctx, bm1, bm2) < 0)

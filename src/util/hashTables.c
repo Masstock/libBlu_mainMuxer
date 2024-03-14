@@ -52,14 +52,14 @@ static uint32_t _hashKey(
 }
 
 static void doNotFreeFunHashTable(
-  void * ptr
+  void *ptr
 )
 {
   (void) ptr;
 }
 
 void setFunHashTable(
-  Hashtable * table,
+  Hashtable *table,
   HashTable_keyHashFun key_hash_fun,
   HashTable_keyCompFun key_comp_fun,
   HashTable_freeFun key_free_fun,
@@ -103,9 +103,9 @@ void cleanHashTable(
 }
 
 static int _setEntryHashTable(
-  Hashtable * table,
+  Hashtable *table,
   HashentryKey entry_key,
-  void * entry_data
+  void *entry_data
 )
 {
   assert((NULL != table->key_hash_fun) ^ table->numeric_key);
@@ -121,7 +121,7 @@ static int _setEntryHashTable(
     ; !_isEmptyKey(table->array[entry_idx].key, table->numeric_key);
     entry_idx = (entry_idx + 1) & table_mask
   ) {
-    Hashentry * entry = &table->array[entry_idx];
+    Hashentry *entry = &table->array[entry_idx];
 
     if (
       0 == _compareKeys(
@@ -148,7 +148,7 @@ static int _setEntryHashTable(
 #define HASH_TABLE_INITIAL_SIZE  32
 
 static int _growHashTable(
-  Hashtable * table
+  Hashtable *table
 )
 {
   size_t new_size = GROW_ALLOCATION(
@@ -158,11 +158,11 @@ static int _growHashTable(
   if (lb_mul_overflow_size_t(new_size, sizeof(Hashentry)))
     return -1; /* Overflow */
 
-  Hashentry * new_array = (Hashentry *) calloc(new_size, sizeof(Hashentry));
+  Hashentry *new_array = (Hashentry *) calloc(new_size, sizeof(Hashentry));
   if (NULL == new_array)
     return -1;
 
-  Hashentry * old_array = table->array;
+  Hashentry *old_array = table->array;
   size_t old_size = table->array_allocated_len;
 
   table->array = new_array;
@@ -170,7 +170,7 @@ static int _growHashTable(
 
   size_t array_used_len = 0;
   for (size_t i = 0; i < old_size; i++) {
-    const Hashentry * entry = &old_array[i];
+    const Hashentry *entry = &old_array[i];
 
     if (!_isEmptyKey(entry->key, table->numeric_key)) {
       /* Add entry to new array */
@@ -194,7 +194,7 @@ static int _growHashTable(
 }
 
 static void * _getHashTable(
-  Hashtable * table,
+  Hashtable *table,
   const HashentryKey entry_key
 )
 {
@@ -209,7 +209,7 @@ static void * _getHashTable(
     ; !_isEmptyKey(table->array[entry_idx].key, table->numeric_key);
     entry_idx = (entry_idx + 1) & table_mask
   ) {
-    Hashentry * entry = &table->array[entry_idx];
+    Hashentry *entry = &table->array[entry_idx];
     if (
       0 == _compareKeys(
         entry_key,
@@ -225,9 +225,9 @@ static void * _getHashTable(
   return NULL; // Not found
 }
 
-void * getHashTable(
-  Hashtable * table,
-  const void * entry_key
+void *getHashTable(
+  Hashtable *table,
+  const void *entry_key
 )
 {
   assert(!table->numeric_key);
@@ -238,8 +238,8 @@ void * getHashTable(
   );
 }
 
-void * getNumHashTable(
-  Hashtable * table,
+void *getNumHashTable(
+  Hashtable *table,
   uint32_t entry_key
 )
 {
@@ -252,9 +252,9 @@ void * getNumHashTable(
 }
 
 static int _putHashTable(
-  Hashtable * table,
+  Hashtable *table,
   HashentryKey entry_key,
-  void * entry_data
+  void *entry_data
 )
 {
   assert(NULL != table);
@@ -280,9 +280,9 @@ static int _putHashTable(
 }
 
 int putHashTable(
-  Hashtable * table,
-  void * entry_key,
-  void * entry_data
+  Hashtable *table,
+  void *entry_key,
+  void *entry_data
 )
 {
   assert(!table->numeric_key);
@@ -295,9 +295,9 @@ int putHashTable(
 }
 
 int putNumHashTable(
-  Hashtable * table,
+  Hashtable *table,
   uint32_t entry_key,
-  void * entry_data
+  void *entry_data
 )
 {
   assert(table->numeric_key);

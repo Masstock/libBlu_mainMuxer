@@ -36,11 +36,11 @@ typedef enum {
   HDMV_STREAM_TYPE_PGS  = 0x1
 } HdmvStreamType;
 
-static inline const char * HdmvStreamTypeStr(
+static inline const char *HdmvStreamTypeStr(
   HdmvStreamType type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "HDMV IGS",
     "HDMV PGS"
   };
@@ -133,14 +133,14 @@ static inline int64_t getHDMVPlaneClearTime(
    * If stream type is Interactive Graphics:
    *
    *   PLANE_CLEAR_TIME =
-   *     ceil(90000 * 8 * (video_width * video_height) / 128000000)
-   * <=> ceil(9 * (video_width * video_height) / 1600)
+   *     ceil(90000 * 8 * (video_width *video_height) / 128000000)
+   * <=> ceil(9 * (video_width *video_height) / 1600)
    *
    * Otherwhise, if stream type is Presentation Graphics:
    *
    *   PLANE_CLEAR_TIME =
-   *     ceil(90000 * 8 * (video_width * video_height) / 256000000)
-   * <=> ceil(9 * (video_width * video_height) / 3200)
+   *     ceil(90000 * 8 * (video_width *video_height) / 256000000)
+   * <=> ceil(9 * (video_width *video_height) / 3200)
    *
    * where:
    *  90000        : PTS/DTS clock frequency (90kHz);
@@ -158,7 +158,7 @@ static inline int64_t getHDMVPlaneClearTime(
   };
 
   return DIV_ROUND_UP(
-    9LL * (video_width * video_height),
+    9LL * (video_width *video_height),
     clearing_rate_divider[stream_type]
   );
 }
@@ -176,7 +176,7 @@ typedef enum {
   HDMV_SEGMENT_TYPE_END   = 0x80
 } HdmvSegmentType;
 
-static inline const char * HdmvSegmentTypeStr(
+static inline const char *HdmvSegmentTypeStr(
   HdmvSegmentType type
 )
 {
@@ -205,7 +205,7 @@ bool isValidHdmvSegmentType(
 int checkHdmvSegmentType(
   uint8_t segment_type_value,
   HdmvStreamType stream_type,
-  HdmvSegmentType * segment_type
+  HdmvSegmentType *segment_type
 );
 
 /* ###### HDMV Common structures : ######################################### */
@@ -276,7 +276,7 @@ static inline int64_t getFrameDurHdmvVDParameters(
 static inline bool isFrameTcAlignedHdmvVDParameters(
   const HdmvVDParameters vd,
   int64_t timestamp,
-  int64_t * aligned_timestamp_ret
+  int64_t *aligned_timestamp_ret
 )
 {
   int64_t frame_dur_27MHz = frameDur27MHzHdmvFrameRateCode(vd.frame_rate);
@@ -315,11 +315,11 @@ typedef enum {
   HDMV_COMPO_STATE_EPOCH_CONTINUE     = 0x3,
 } HdmvCompositionState;
 
-static inline const char * HdmvCompositionStateStr(
+static inline const char *HdmvCompositionStateStr(
   HdmvCompositionState composition_state
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Normal",
     "Acquisition point",
     "Epoch start",
@@ -369,7 +369,7 @@ typedef struct HdmvSequenceDescriptorParameters {
 } HdmvSDParameters;
 
 static inline void setTrueHdmvSequenceDescriptorParameters(
-  HdmvSDParameters * dst
+  HdmvSDParameters *dst
 )
 {
   *dst = (HdmvSDParameters) {
@@ -379,14 +379,14 @@ static inline void setTrueHdmvSequenceDescriptorParameters(
 }
 
 static inline bool isFirstInSequenceHdmvSDParameters(
-  const HdmvSDParameters * sequence_descriptor
+  const HdmvSDParameters *sequence_descriptor
 )
 {
   return sequence_descriptor->first_in_sequence;
 }
 
 static inline bool isLastInSequenceHdmvSDParameters(
-  const HdmvSDParameters * sequence_descriptor
+  const HdmvSDParameters *sequence_descriptor
 )
 {
   return sequence_descriptor->last_in_sequence;
@@ -475,7 +475,7 @@ typedef struct {
 } HdmvWindowInfoParameters;
 
 static inline void initHdmvWindowInfoParameters(
-  HdmvWindowInfoParameters * dst
+  HdmvWindowInfoParameters *dst
 )
 {
   *dst = (HdmvWindowInfoParameters) {
@@ -533,7 +533,7 @@ typedef struct {
 } HdmvCOParameters;
 
 static inline void initHdmvCompositionObjectParameters(
-  HdmvCOParameters * dst
+  HdmvCOParameters *dst
 )
 {
   *dst = (HdmvCOParameters) {
@@ -674,7 +674,7 @@ static inline int64_t getFillDurationHdmvWD(
   int64_t dividend = 0;
   for (uint8_t i = 0; i < window_definition.number_of_windows; i++) {
     HdmvWindowInfoParameters window = window_definition.windows[i];
-    dividend += 9LL * window.window_width * window.window_height;
+    dividend += 9LL *window.window_width *window.window_height;
   }
   return DIV_ROUND_UP(dividend, 3200);
 }
@@ -701,7 +701,7 @@ static inline size_t computeSizeHdmvWD(
   const HdmvWDParameters wd
 )
 {
-  return HDMV_SIZE_WDS_HEADER + (wd.number_of_windows * HDMV_SIZE_WINDOW_INFO);
+  return HDMV_SIZE_WDS_HEADER + (wd.number_of_windows *HDMV_SIZE_WINDOW_INFO);
 }
 
 /* ###### HDMV Interactive Composition Segment : ########################### */
@@ -718,7 +718,7 @@ typedef struct {
 } HdmvEffectInfoParameters;
 
 static inline void initHdmvEffectInfoParameters(
-  HdmvEffectInfoParameters * dst
+  HdmvEffectInfoParameters *dst
 )
 {
   *dst = (HdmvEffectInfoParameters) {
@@ -805,7 +805,7 @@ static inline size_t computeSizeHdmvEffectSequence(
   const HdmvEffectSequenceParameters param
 )
 {
-  size_t size = 2ull + param.number_of_windows * HDMV_SIZE_WINDOW_INFO;
+  size_t size = 2ull + param.number_of_windows *HDMV_SIZE_WINDOW_INFO;
   for (uint8_t i = 0; i < param.number_of_effects; i++)
     size += computeSizeHdmvEffectInfo(param.effects[i]);
   return size;
@@ -836,14 +836,14 @@ static inline bool constantHdmvEffectSequenceParameters(
 /* ######### Navigation Command : ########################################## */
 
 typedef struct HdmvNavigationCommand {
-  // struct HdmvNavigationCommand * next;
+  // struct HdmvNavigationCommand *next;
   uint32_t opcode;
   uint32_t destination;
   uint32_t source;
 } HdmvNavigationCommand;
 
 static inline void initHdmvNavigationCommand(
-  HdmvNavigationCommand * dst
+  HdmvNavigationCommand *dst
 )
 {
   *dst = (HdmvNavigationCommand) {
@@ -873,7 +873,7 @@ typedef struct {
 } HdmvButtonNeighborInfoParam;
 
 static inline void initHdmvButtonNeighborInfoParam(
-  HdmvButtonNeighborInfoParam * dst
+  HdmvButtonNeighborInfoParam *dst
 )
 {
   *dst = (HdmvButtonNeighborInfoParam) {
@@ -908,7 +908,7 @@ typedef struct {
 } HdmvButtonNormalStateInfoParam;
 
 static inline void initHdmvButtonNormalStateInfoParam(
-  HdmvButtonNormalStateInfoParam * dst
+  HdmvButtonNormalStateInfoParam *dst
 )
 {
   *dst = (HdmvButtonNormalStateInfoParam) {
@@ -941,7 +941,7 @@ typedef struct {
 } HdmvButtonSelectedStateInfoParam;
 
 static inline void initHdmvButtonSelectedStateInfoParam(
-  HdmvButtonSelectedStateInfoParam * dst
+  HdmvButtonSelectedStateInfoParam *dst
 )
 {
   *dst = (HdmvButtonSelectedStateInfoParam) {
@@ -974,7 +974,7 @@ typedef struct {
 } HdmvButtonActivatedStateInfoParam;
 
 static inline void initHdmvButtonActivatedStateInfoParam(
-  HdmvButtonActivatedStateInfoParam * dst
+  HdmvButtonActivatedStateInfoParam *dst
 )
 {
   *dst = (HdmvButtonActivatedStateInfoParam) {
@@ -1020,7 +1020,7 @@ typedef struct {
   HdmvButtonActivatedStateInfoParam activated_state_info;
 
   uint16_t number_of_navigation_commands;
-  HdmvNavigationCommand * navigation_commands;
+  HdmvNavigationCommand *navigation_commands;
 
   /* Values computed at check: */
   uint16_t btn_obj_width;   /**< Button objects width.                       */
@@ -1028,7 +1028,7 @@ typedef struct {
 } HdmvButtonParam;
 
 static inline void initHdmvButtonParam(
-  HdmvButtonParam * dst
+  HdmvButtonParam *dst
 )
 {
   *dst = (HdmvButtonParam) {0};
@@ -1046,7 +1046,7 @@ static inline void cleanHdmvButtonParam(
 }
 
 static inline int allocateCommandsHdmvButtonParam(
-  HdmvButtonParam * dst
+  HdmvButtonParam *dst
 )
 {
   if (!dst->number_of_navigation_commands)
@@ -1145,7 +1145,7 @@ typedef struct {
 } HdmvButtonOverlapGroupParameters;
 
 static inline void initHdmvButtonOverlapGroupParameters(
-  HdmvButtonOverlapGroupParameters * dst
+  HdmvButtonOverlapGroupParameters *dst
 )
 {
   *dst = (HdmvButtonOverlapGroupParameters) {
@@ -1162,19 +1162,19 @@ static inline void cleanHdmvButtonOverlapGroupParameters(
 }
 
 static inline int copyHdmvButtonOverlapGroupParameters(
-  HdmvButtonOverlapGroupParameters * dst,
+  HdmvButtonOverlapGroupParameters *dst,
   const HdmvButtonOverlapGroupParameters src
 )
 {
   HdmvButtonOverlapGroupParameters bog_copy = src;
   for (uint8_t i = 0; i < src.number_of_buttons; i++) {
-    HdmvButtonParam * btn = &bog_copy.buttons[i];
+    HdmvButtonParam *btn = &bog_copy.buttons[i];
     if (allocateCommandsHdmvButtonParam(btn) < 0)
       return -1;
     memcpy(
       btn->navigation_commands,
       src.buttons[i].navigation_commands,
-      btn->number_of_navigation_commands * sizeof(HdmvNavigationCommand)
+      btn->number_of_navigation_commands *sizeof(HdmvNavigationCommand)
     );
   }
   *dst = bog_copy;
@@ -1239,11 +1239,11 @@ typedef struct {
   uint8_t palette_id_ref;
 
   uint8_t number_of_BOGs;
-  HdmvButtonOverlapGroupParameters * bogs;
+  HdmvButtonOverlapGroupParameters *bogs;
 } HdmvPageParameters;
 
 static inline void initHdmvPageParameters(
-  HdmvPageParameters * dst
+  HdmvPageParameters *dst
 )
 {
   *dst = (HdmvPageParameters) {
@@ -1256,11 +1256,11 @@ void cleanHdmvPageParameters(
 );
 
 int allocateBogsHdmvPageParameters(
-  HdmvPageParameters * page
+  HdmvPageParameters *page
 );
 
 int copyHdmvPageParameters(
-  HdmvPageParameters * dst,
+  HdmvPageParameters *dst,
   const HdmvPageParameters src
 );
 
@@ -1319,11 +1319,11 @@ typedef enum {
   HDMV_STREAM_MODEL_OOM          = 0x1   /**< Solely constitute the AV clip. */
 } HdmvStreamModel;
 
-static inline const char * HdmvStreamModelStr(
+static inline const char *HdmvStreamModelStr(
   HdmvStreamModel stream_model
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Multiplexed stream",
     "Out of Mux stream"
   };
@@ -1338,11 +1338,11 @@ typedef enum {
   HDMV_UI_MODEL_POP_UP  = 0x1   /**< Pop-Up menu interface type.             */
 } HdmvUserInterfaceModel;
 
-static inline const char * HdmvUserInterfaceModelStr(
+static inline const char *HdmvUserInterfaceModelStr(
   HdmvUserInterfaceModel user_interface_model
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Normal",
     "Pop-Up"
   };
@@ -1379,7 +1379,7 @@ typedef struct HdmvInteractiveCompositionParameters {
   uint32_t user_time_out_duration;
 
   uint8_t number_of_pages;
-  HdmvPageParameters * pages;
+  HdmvPageParameters *pages;
 } HdmvICParameters;
 
 static inline void cleanHdmvICParameters(
@@ -1392,7 +1392,7 @@ static inline void cleanHdmvICParameters(
 }
 
 static inline void resetHdmvICParameters(
-  HdmvICParameters * ic
+  HdmvICParameters *ic
 )
 {
   cleanHdmvICParameters(*ic);
@@ -1400,7 +1400,7 @@ static inline void resetHdmvICParameters(
 }
 
 static inline int allocatePagesHdmvICParameters(
-  HdmvICParameters * dst
+  HdmvICParameters *dst
 )
 {
   if (0 == dst->number_of_pages)
@@ -1412,7 +1412,7 @@ static inline int allocatePagesHdmvICParameters(
 }
 
 static inline int copyHdmvICParameters(
-  HdmvICParameters * dst,
+  HdmvICParameters *dst,
   const HdmvICParameters src
 )
 {
@@ -1537,7 +1537,7 @@ typedef struct {
 } HdmvPaletteEntryParameters;
 
 static inline void initHdmvPaletteEntryParameters(
-  HdmvPaletteEntryParameters * dst
+  HdmvPaletteEntryParameters *dst
 )
 {
   *dst = (HdmvPaletteEntryParameters) {
@@ -1559,8 +1559,8 @@ static inline bool constantHdmvPaletteEntryParameters(
 }
 
 static inline bool constantEntriesHdmvPaletteEntryParameters(
-  HdmvPaletteEntryParameters * first,
-  HdmvPaletteEntryParameters * second,
+  HdmvPaletteEntryParameters *first,
+  HdmvPaletteEntryParameters *second,
   uint16_t nb_pal_entries
 )
 {
@@ -1593,7 +1593,7 @@ static inline bool constantEntriesHdmvPaletteEntryParameters(
 
 #define HDMV_MAX_SIZE_PDS                                                     \
   (HDMV_SIZE_SEGMENT_HEADER + HDMV_SIZE_PALETTE_DESCRIPTOR                    \
-   + HDMV_NB_PAL_ENTRIES * HDMV_SIZE_PALETTE_DEFINITION_ENTRY)
+   + HDMV_NB_PAL_ENTRIES *HDMV_SIZE_PALETTE_DEFINITION_ENTRY)
 
 #define HDMV_MAX_NB_PDS_ENTRIES  255
 
@@ -1686,7 +1686,7 @@ typedef struct HdmvObjectDataParameters {
   uint32_t object_data_length;
   uint16_t object_width;
   uint16_t object_height;
-  uint8_t * encoded_data_string;
+  uint8_t *encoded_data_string;
 } HdmvODParameters;
 
 /** \~english
@@ -1737,11 +1737,11 @@ typedef enum {
   ODS_IN_EFFECT_PAGE0
 } HdmvODSUsage;
 
-static inline const char * HdmvODSUsageStr(
+static inline const char *HdmvODSUsageStr(
   HdmvODSUsage usage
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Unused in Page 0",
     "Used in Page 0 for non-first Display Update",
     "Used for a default valid button activated state of Page 0",
@@ -1771,7 +1771,7 @@ typedef struct {
 static inline bool interpretHdmvVersionNumber(
   uint8_t prev_version_number,
   uint8_t new_version_number,
-  bool * is_same_ret
+  bool *is_same_ret
 )
 {
   assert(NULL != is_same_ret);

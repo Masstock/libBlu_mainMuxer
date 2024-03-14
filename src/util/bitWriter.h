@@ -7,13 +7,13 @@
 #include "crc.h"
 
 typedef struct {
-  uint8_t * buf;  /**< Byte array content.                                   */
+  uint8_t *buf;  /**< Byte array content.                                   */
   size_t offset;  /**< Writing offset in bits.                               */
   size_t size;    /**< Current buffer size in bits.                          */
 } LibbluBitWriter;
 
 static inline void initLibbluBitWriter(
-  LibbluBitWriter * br
+  LibbluBitWriter *br
 )
 {
   *br = (LibbluBitWriter) {
@@ -29,26 +29,26 @@ static inline void cleanLibbluBitWriter(
 }
 
 static inline size_t offsetLibbluBitWriter(
-  const LibbluBitWriter * br
+  const LibbluBitWriter *br
 )
 {
   return br->offset;
 }
 
-static inline const uint8_t * accessLibbluBitWriter(
-  const LibbluBitWriter * br
+static inline const uint8_t *accessLibbluBitWriter(
+  const LibbluBitWriter *br
 )
 {
   return br->buf;
 }
 
 int increaseAllocLibbluBitWriter(
-  LibbluBitWriter * br,
+  LibbluBitWriter *br,
   size_t required_size
 );
 
 static inline int putLibbluBitWriter(
-  LibbluBitWriter * br,
+  LibbluBitWriter *br,
   uint64_t value,
   unsigned bits
 )
@@ -76,14 +76,14 @@ static inline int putLibbluBitWriter(
 }
 
 static inline void padByteLibbluBitWriter(
-  LibbluBitWriter * br
+  LibbluBitWriter *br
 )
 {
   br->offset += (~(br->offset - 1)) & 0x7;
 }
 
 static inline int padBlockBoundaryByteLibbluBitWriter(
-  LibbluBitWriter * br,
+  LibbluBitWriter *br,
   size_t start_offset
 )
 {

@@ -417,8 +417,8 @@ static void printDebugOptions(
 /* ### Windows-API specific ################################################ */
 
 static int argc_wchar;
-static LPWSTR * argv_wchar;
-static lbc * optarg_buf;
+static LPWSTR *argv_wchar;
+static lbc *optarg_buf;
 
 static void _unloadWin32CommandLineArguments(
   void
@@ -443,7 +443,7 @@ static const lbc * _getoptarg(
   const LPWSTR woptarg = argv_wchar[optind-1];
 
   /* Convert string from Windows UTF-16 to UTF-8 */
-  lbc * converted_string = winWideCharToUtf8(woptarg);
+  lbc *converted_string = winWideCharToUtf8(woptarg);
   if (NULL == converted_string)
     return NULL;
 
@@ -500,9 +500,9 @@ int main(
   lbc_printf(lbc_str(LIBBLU_PROJECT_NAME " " LIBBLU_VERSION " (" PROG_ARCH ")\n\n"));
 
   /* Command line options parsing */
-  const lbc * conf_fp   = NULL; // Configuration INI file
-  const lbc * input_fp  = NULL; // Input META file
-  const lbc * output_fp = NULL; // Output M2TS file
+  const lbc *conf_fp   = NULL; // Configuration INI file
+  const lbc *input_fp  = NULL; // Input META file
+  const lbc *output_fp = NULL; // Output M2TS file
 
   bool script_gen_mode_only = false; // Script generation without TS output mode
   bool force_script_regen = false;   // Force scripts (re-)generation
@@ -598,7 +598,7 @@ int main(
     case LOG_FILE:
       if (NULL == optarg)
         LIBBLU_ERROR_RETURN("Expect a log filename after '--log'.\n");
-      const lbc * log_filepath = _getoptarg();
+      const lbc *log_filepath = _getoptarg();
       if (NULL == log_filepath)
         return EXIT_FAILURE;
 
@@ -637,41 +637,53 @@ int main(
     return EXIT_FAILURE;
 #endif
 
-  if (NULL == input_fp)
+  if (NULL == input_fp) // TODO: Enable input from stdin
     LIBBLU_ERROR_FRETURN(
       "Expect a input META filename (see -h/--help).\n"
     );
 
-  LibbluMuxingSettings mux_settings;
-  if (initLibbluMuxingSettings(&mux_settings, output_fp, conf_file) < 0)
+  /* Init options according to configuration file */
+  LibbluMuxingOptions mux_options = {0};
+  if (initLibbluMuxingOptions(&mux_options, conf_file) < 0)
     goto free_return;
 
-  LIBBLU_MUX_SETTINGS_SET_OPTION(
-    &mux_settings,
-    forcedScriptBuilding,
-    force_script_regen
-  );
+  /* Apply options passed by command line */
+  mux_options.force_script_generation |= force_script_regen;
+  if (script_gen_mode_only)
+    mux_options.disable_buffering_model = true;
 
-  if (parseMetaFile(input_fp, &mux_settings) < 0)
+  /* Parse input configuration file */
+  LibbluProjectSettings project_settings = {0};
+  if (parseMetaFile(&project_settings, input_fp, output_fp, mux_options) < 0)
     goto free_return;
 
   if (!script_gen_mode_only) {
-    if (mainMux(mux_settings) < 0)
-      goto free_return;
+    /* Perform mux */
+    if (LIBBLU_SINGLE_MUX == project_settings.type) {
+      /* Single mux */
+      if (mainMux(&project_settings.single_mux_settings) < 0)
+        goto free_return;
+    }
+    else {
+      /* Disc project */
+      LIBBLU_TODO();
+    }
   }
   else {
-    LibbluMuxingContextPtr ctx;
+    /* Only generate scripts */
+    if (LIBBLU_SINGLE_MUX == project_settings.type) {
+      /* Single mux */
 
-    LIBBLU_MUX_SETTINGS_SET_OPTION(
-      &mux_settings,
-      disableBufModel,
-      true
-    );
-
-    /* Create muxing context and destroy it immediately */
-    if (NULL == (ctx = createLibbluMuxingContext(mux_settings)))
-      goto free_return;
-    destroyLibbluMuxingContext(ctx);
+      /* Create muxing context and destroy it immediately */
+      LibbluMuxingContext ctx;
+      if (initLibbluMuxingContext(&ctx, &project_settings.single_mux_settings) < 0)
+        goto free_return;
+      cleanLibbluMuxingContext(ctx);
+    }
+    else {
+      /* Disc project */
+      LIBBLU_TODO();
+    }
   }
 
   clock_t duration = clock() - start;
@@ -680,7 +692,7 @@ int main(
     duration, (1.0 * duration) / CLOCKS_PER_SEC, (long) CLOCKS_PER_SEC
   );
 
-  /* DO NOT clean muxing settings since these has been managed by mainMux(). */
+  cleanLibbluProjectSettings(project_settings);
   cleanIniFileContext(conf_file);
   _unloadWin32CommandLineArguments();
   return EXIT_SUCCESS;
@@ -692,6 +704,7 @@ free_return:
     duration, (1.0 * duration) / CLOCKS_PER_SEC, (long) CLOCKS_PER_SEC
   );
 
+  cleanLibbluProjectSettings(project_settings);
   cleanIniFileContext(conf_file);
   _unloadWin32CommandLineArguments();
   return EXIT_FAILURE;

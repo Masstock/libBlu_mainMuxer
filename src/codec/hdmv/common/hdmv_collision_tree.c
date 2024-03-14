@@ -4,11 +4,11 @@
 #include "hdmv_collision_tree.h"
 
 int insertHdmvCollisionTree(
-  HdmvCollisionTreeNodePtr * tree,
+  HdmvCollisionTreeNodePtr *tree,
   HdmvRectangle rect,
   unsigned user_value,
-  HdmvRectangle * problematic_rect_ret,
-  unsigned * problematic_user_value_ret
+  HdmvRectangle *problematic_rect_ret,
+  unsigned *problematic_user_value_ret
 )
 {
   HdmvCollisionTreeNodePtr node = *tree;

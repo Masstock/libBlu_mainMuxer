@@ -22,9 +22,9 @@ static bool _isPaletteIDInActiveUseHdmvEffectSequence(
 }
 
 static bool _isPaletteIDInActiveUseHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint8_t palette_id,
-  int64_t * latest_pts_ret
+  int64_t *latest_pts_ret
 )
 {
   int64_t latest_pts;
@@ -76,7 +76,7 @@ in_use:
 
 static int _checkAndUpdateHdmvPDSegment(
   const HdmvPDSegmentParameters pal_def,
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 )
 {
   const HdmvPDParameters pal_desc = pal_def.palette_descriptor;
@@ -166,8 +166,8 @@ static int _checkAndUpdateHdmvPDSegment(
 }
 
 static int _checkAndUpdatePDHdmvDSState(
-  const HdmvDSState * ds,
-  HdmvEpochState * epoch_state
+  const HdmvDSState *ds,
+  HdmvEpochState *epoch_state
 )
 {
   LIBBLU_HDMV_CK_DEBUG("   Checking Palette Definition Segments (PDS).\n");
@@ -202,9 +202,9 @@ static int _checkAndUpdatePDHdmvDSState(
 }
 
 static int _checkDuplicatedPDHdmvDSState(
-  const HdmvDSState * prev_ds,
-  const HdmvDSState * cur_ds,
-  HdmvEpochState * epoch_state
+  const HdmvDSState *prev_ds,
+  const HdmvDSState *cur_ds,
+  HdmvEpochState *epoch_state
 )
 {
   HdmvSequencePtr cur_pds_seq = getFirstPDSSequenceHdmvDSState(cur_ds);
@@ -374,9 +374,9 @@ static bool _isObjectIDInActiveUseHdmvPC(
 }
 
 static bool _isObjectIDInActiveUseHdmvEpochState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint16_t object_id,
-  int64_t * latest_pts_ret
+  int64_t *latest_pts_ret
 )
 {
   int64_t latest_pts;
@@ -415,7 +415,7 @@ in_use:
 }
 
 static uint16_t _getObjectMaxWidthHdmvEpochState(
-  const HdmvEpochState * epoch_state
+  const HdmvEpochState *epoch_state
 )
 {
   switch (epoch_state->type) {
@@ -428,7 +428,7 @@ static uint16_t _getObjectMaxWidthHdmvEpochState(
 }
 
 static uint16_t _getObjectMaxHeightHdmvEpochState(
-  const HdmvEpochState * epoch_state
+  const HdmvEpochState *epoch_state
 )
 {
   switch (epoch_state->type) {
@@ -442,7 +442,7 @@ static uint16_t _getObjectMaxHeightHdmvEpochState(
 
 static int _checkDimensionsHdmvODParameters(
   const HdmvODParameters obj_def,
-  const HdmvEpochState * epoch_state
+  const HdmvEpochState *epoch_state
 )
 {
   bool invalid = false;
@@ -532,7 +532,7 @@ static int _checkUpdateDimensionsHdmvODParameters(
 
 static int _checkAndUpdateHdmvODSegment(
   const HdmvODParameters obj_def,
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 )
 {
   const HdmvODescParameters obj_desc = obj_def.object_descriptor;
@@ -642,8 +642,8 @@ static int _checkAndUpdateHdmvODSegment(
 }
 
 static int _checkAndUpdateODHdmvDSState(
-  const HdmvDSState * ds,
-  HdmvEpochState * epoch_state
+  const HdmvDSState *ds,
+  HdmvEpochState *epoch_state
 )
 {
   LIBBLU_HDMV_CK_DEBUG("   Checking Object Definition Segments (ODS).\n");
@@ -677,9 +677,9 @@ static int _checkAndUpdateODHdmvDSState(
 }
 
 static int _checkDuplicatedODHdmvDSState(
-  const HdmvDSState * prev_ds,
-  const HdmvDSState * cur_ds,
-  HdmvEpochState * epoch_state
+  const HdmvDSState *prev_ds,
+  const HdmvDSState *cur_ds,
+  HdmvEpochState *epoch_state
 )
 {
   HdmvSequencePtr cur_ods_seq  = getFirstODSSequenceHdmvDSState(cur_ds);
@@ -746,7 +746,7 @@ static int _checkDuplicatedODHdmvDSState(
 static int _checkWindowInfo(
   const HdmvWindowInfoParameters window,
   HdmvVDParameters video_desc,
-  HdmvRectangle * window_rectangles_arr_ref,
+  HdmvRectangle *window_rectangles_arr_ref,
   unsigned window_idx
 )
 {
@@ -801,12 +801,12 @@ static int _checkWindowInfo(
 
 static int _checkCO(
   const HdmvCOParameters compo_obj,
-  const HdmvWindowInfoParameters * windows_arr,
+  const HdmvWindowInfoParameters *windows_arr,
   uint8_t number_of_windows,
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   bool object_must_be_in_current_DS,
   bool no_display_update,
-  HdmvRectangle * compo_obj_rect_ret
+  HdmvRectangle *compo_obj_rect_ret
 )
 {
 
@@ -943,7 +943,7 @@ static int _checkCO(
 }
 
 static int _checkNonCollidingCO(
-  HdmvRectangle * compo_obj_rectangles_arr_ref,
+  HdmvRectangle *compo_obj_rectangles_arr_ref,
   unsigned compo_obj_idx
 )
 {
@@ -967,7 +967,7 @@ static int _checkNonCollidingCO(
 static int _checkEffectInfo(
   const HdmvEffectSequenceParameters effects_sequence,
   const HdmvEffectInfoParameters effect,
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   bool no_display_update
 )
 {
@@ -995,7 +995,7 @@ static int _checkEffectInfo(
   /* number_of_composition_objects */ // Already checked
 
   const uint8_t nb_win = effects_sequence.number_of_windows;
-  const HdmvWindowInfoParameters * win = effects_sequence.windows;
+  const HdmvWindowInfoParameters *win = effects_sequence.windows;
   HdmvRectangle co_rect[HDMV_MAX_NB_EFFECT_COMPO_OBJ];
 
   for (unsigned idx = 0; idx < effect.number_of_composition_objects; idx++) {
@@ -1012,7 +1012,7 @@ static int _checkEffectInfo(
 
 static int _checkEffectSequence(
   HdmvEffectSequenceParameters effects_sequence,
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   bool no_display_update
 )
 {
@@ -1056,11 +1056,11 @@ static int _checkEffectSequence(
 }
 
 static int _checkBtnStateObj(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint16_t start_object_id_ref,
   uint16_t end_object_id_ref,
-  uint16_t * btn_state_obj_width_ret,
-  uint16_t * btn_state_obj_height_ret,
+  uint16_t *btn_state_obj_width_ret,
+  uint16_t *btn_state_obj_height_ret,
   bool no_display_update
 )
 {
@@ -1133,8 +1133,8 @@ static int _checkBtnStateObj(
 }
 
 static int _checkBtnObjDims(
-  uint16_t * btn_width_ref,
-  uint16_t * btn_height_ref,
+  uint16_t *btn_width_ref,
+  uint16_t *btn_height_ref,
   uint16_t btn_state_width,
   uint16_t btn_state_height
 )
@@ -1157,9 +1157,9 @@ static int _checkBtnObjDims(
 static int _checkBtnNSI(
   const HdmvButtonNormalStateInfoParam normal_state_info,
   uint16_t button_id,
-  const HdmvEpochState * epoch_state,
-  uint16_t * btn_obj_w_ref,
-  uint16_t * btn_obj_h_ref,
+  const HdmvEpochState *epoch_state,
+  uint16_t *btn_obj_w_ref,
+  uint16_t *btn_obj_h_ref,
   bool no_display_update
 )
 {
@@ -1230,9 +1230,9 @@ static int _checkBtnNSI(
 static int _checkBtnSSI(
   const HdmvButtonSelectedStateInfoParam selected_state_info,
   uint16_t button_id,
-  const HdmvEpochState * epoch_state,
-  uint16_t * btn_obj_w_ref,
-  uint16_t * btn_obj_h_ref,
+  const HdmvEpochState *epoch_state,
+  uint16_t *btn_obj_w_ref,
+  uint16_t *btn_obj_h_ref,
   bool no_display_update
 )
 {
@@ -1315,9 +1315,9 @@ static int _checkBtnSSI(
 static int _checkBtnASI(
   const HdmvButtonActivatedStateInfoParam activated_state_info,
   uint16_t button_id,
-  const HdmvEpochState * epoch_state,
-  uint16_t * btn_obj_w_ref,
-  uint16_t * btn_obj_h_ref,
+  const HdmvEpochState *epoch_state,
+  uint16_t *btn_obj_w_ref,
+  uint16_t *btn_obj_h_ref,
   bool no_display_update
 )
 {
@@ -1362,7 +1362,7 @@ static int _checkBtnASI(
 static int _checkHdmvICPage(
   const HdmvICParameters ic,
   uint8_t page_idx,
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   bool no_display_update
 )
 {
@@ -1490,11 +1490,11 @@ static int _checkHdmvICPage(
 
     for (uint8_t bog_idx = 0; bog_idx < page.number_of_BOGs; bog_idx++) {
       LIBBLU_HDMV_CK_IC_DEBUG(" Check BOG %" PRIu8 ".\n", bog_idx);
-      HdmvButtonOverlapGroupParameters * bog = &page.bogs[bog_idx];
+      HdmvButtonOverlapGroupParameters *bog = &page.bogs[bog_idx];
 
       for (uint8_t btn_idx = 0; btn_idx < bog->number_of_buttons; btn_idx++) {
         LIBBLU_HDMV_CK_IC_DEBUG("  Check button %" PRIu8 ".\n", btn_idx);
-        HdmvButtonParam * btn = &bog->buttons[btn_idx];
+        HdmvButtonParam *btn = &bog->buttons[btn_idx];
 
         /* normal_state_info */
         HdmvButtonNormalStateInfoParam nsi = btn->normal_state_info;
@@ -1541,7 +1541,7 @@ static int _checkHdmvICPage(
 
   for (uint8_t bog_idx = 0; bog_idx < page.number_of_BOGs; bog_idx++) {
     LIBBLU_HDMV_CK_IC_DEBUG(" Check BOG %" PRIu8 ".\n", bog_idx);
-    HdmvButtonOverlapGroupParameters * bog = &page.bogs[bog_idx];
+    HdmvButtonOverlapGroupParameters *bog = &page.bogs[bog_idx];
 
     /* default_valid_button_id_ref */
     bool def_valid_button_present =
@@ -1559,7 +1559,7 @@ static int _checkHdmvICPage(
 
     for (uint8_t btn_idx = 0; btn_idx < bog->number_of_buttons; btn_idx++) {
       LIBBLU_HDMV_CK_IC_DEBUG("  Check button %" PRIu8 ".\n", btn_idx);
-      HdmvButtonParam * btn = &bog->buttons[btn_idx];
+      HdmvButtonParam *btn = &bog->buttons[btn_idx];
 
       /* button_id */
       // Range check:
@@ -1804,7 +1804,7 @@ static int _checkHdmvICPage(
 }
 
 static int _checkParametersStreamConstancyIC(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   const HdmvICParameters inter_def
 )
 {
@@ -1845,7 +1845,7 @@ static int _checkParametersStreamConstancyIC(
 }
 
 static void _setIGStreamParametersHdmvEpochState(
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   const HdmvICParameters inter_def
 )
 {
@@ -1931,7 +1931,7 @@ static int _checkParametersEpochConstancyIC(
 
 static int _checkAndUpdateIC(
   const HdmvICParameters ic,
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   bool no_display_update
 )
 {
@@ -2034,7 +2034,7 @@ static int _checkAndUpdateIC(
 }
 
 static int _setUsageODS(
-  HdmvSeqIndexer * ods_indexer,
+  HdmvSeqIndexer *ods_indexer,
   uint32_t object_id_ref,
   HdmvODSUsage usage
 )
@@ -2053,7 +2053,7 @@ static int _setUsageODS(
 }
 
 static int _setUsageODSSequence(
-  HdmvSeqIndexer * ods_indexer,
+  HdmvSeqIndexer *ods_indexer,
   uint16_t start_object_id_ref,
   uint16_t end_object_id_ref,
   HdmvODSUsage usage
@@ -2077,7 +2077,7 @@ static int _setUsageODSSequence(
 }
 
 static int _checkICODSOrderDSState(
-  HdmvDSState * ds,
+  HdmvDSState *ds,
   const HdmvICParameters ic
 )
 {
@@ -2211,8 +2211,8 @@ free_return:
 }
 
 static int _checkAndUpdateICHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state,
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state,
   int64_t pres_time
 )
 {
@@ -2240,8 +2240,8 @@ static int _checkAndUpdateICHdmvDSState(
 }
 
 static int _checkAndUpdateIGHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state,
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state,
   int64_t pres_time
 )
 {
@@ -2295,8 +2295,8 @@ static int _checkWD(
 }
 
 static int _checkAndUpdateWDHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state
 )
 {
   LIBBLU_HDMV_CK_DEBUG("   Checking Window Definition Segment (WDS).\n");
@@ -2339,7 +2339,7 @@ static int _checkAndUpdateWDHdmvDSState(
 
 static int _checkPC(
   const HdmvPCParameters pc,
-  HdmvEpochState * epoch_state,
+  HdmvEpochState *epoch_state,
   bool no_display_update
 )
 {
@@ -2378,7 +2378,7 @@ static int _checkPC(
     );
 
   const uint8_t nb_win = wd.number_of_windows;
-  const HdmvWindowInfoParameters * win = wd.windows;
+  const HdmvWindowInfoParameters *win = wd.windows;
   HdmvRectangle co_rect[HDMV_MAX_NB_PC_COMPO_OBJ];
 
   for (unsigned idx = 0; idx < pc.number_of_composition_objects; idx++) {
@@ -2394,8 +2394,8 @@ static int _checkPC(
 }
 
 static int _checkAndUpdatePCHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state,
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state,
   int64_t pres_time
 )
 {
@@ -2442,8 +2442,8 @@ static int _checkAndUpdatePCHdmvDSState(
 }
 
 static int _checkAndUpdatePGHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state,
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state,
   int64_t pres_time
 )
 {
@@ -2467,8 +2467,8 @@ static int _checkAndUpdatePGHdmvDSState(
 }
 
 int checkAndUpdateHdmvDSState(
-  HdmvDSState * ds,
-  HdmvEpochState * epoch_state,
+  HdmvDSState *ds,
+  HdmvEpochState *epoch_state,
   int64_t pres_time
 )
 {
@@ -2484,7 +2484,7 @@ int checkAndUpdateHdmvDSState(
 }
 
 int checkObjectsBufferingHdmvEpochState(
-  HdmvEpochState * epoch_state
+  HdmvEpochState *epoch_state
 )
 {
   uint32_t decoded_obj_buf_usage = 0u;
@@ -2502,7 +2502,7 @@ int checkObjectsBufferingHdmvEpochState(
 
     HdmvODParameters od = obj_state.def;
     uint32_t obj_coded_size   = od.object_data_length;
-    uint32_t obj_decoded_size = od.object_width * od.object_height;
+    uint32_t obj_decoded_size = od.object_width *od.object_height;
 
     LIBBLU_HDMV_CK_DEBUG(
       "   - Object %u: %ux%u, %" PRIu32 " byte(s) => %" PRIu32 " byte(s).\n",
@@ -2536,9 +2536,9 @@ int checkObjectsBufferingHdmvEpochState(
 }
 
 int checkDuplicatedDSHdmvDSState(
-  const HdmvDSState * prev_ds_state,
-  HdmvDSState * cur_ds_state,
-  HdmvEpochState * epoch_state
+  const HdmvDSState *prev_ds_state,
+  HdmvDSState *cur_ds_state,
+  HdmvEpochState *epoch_state
 )
 {
 #if !defined(NDEBUG)

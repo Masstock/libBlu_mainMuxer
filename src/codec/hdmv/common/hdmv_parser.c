@@ -16,7 +16,7 @@
   } while (0)
 
 static void _initReferenceClockFromHdmvHeader(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   int32_t first_seg_dts_value
 )
 {
@@ -36,8 +36,8 @@ static void _initReferenceClockFromHdmvHeader(
 }
 
 static int _parseHdmvHeader(
-  HdmvContext * ctx,
-  HdmvSegmentParameters * param
+  HdmvContext *ctx,
+  HdmvSegmentParameters *param
 )
 {
   // uint32_t value;
@@ -108,8 +108,8 @@ static int _parseHdmvHeader(
 }
 
 static int _parseHdmvSegmentDescriptor(
-  HdmvContext * ctx,
-  HdmvSegmentDescriptor * ret
+  HdmvContext *ctx,
+  HdmvSegmentDescriptor *ret
 )
 {
   assert(NULL != ret);
@@ -148,8 +148,8 @@ static int _parseHdmvSegmentDescriptor(
 /* ### Palette Definition Segments : ####################################### */
 
 static int _parseHdmvPaletteDescriptor(
-  HdmvContext * ctx,
-  HdmvPDParameters * param
+  HdmvContext *ctx,
+  HdmvPDParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(" Palette_descriptor():\n");
@@ -176,7 +176,7 @@ static int _parseHdmvPaletteDescriptor(
 }
 
 static int _parseHdmvPaletteEntry(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvPaletteEntryParameters entries[static HDMV_NB_PAL_ENTRIES],
   unsigned i
 )
@@ -191,7 +191,7 @@ static int _parseHdmvPaletteEntry(
       "this value shall not be used as it is reserved for transparency.\n"
     );
 
-  HdmvPaletteEntryParameters * entry = &entries[palette_entry_id];
+  HdmvPaletteEntryParameters *entry = &entries[palette_entry_id];
 
   /* [u8 Y_value] */
   READ_VALUE(&entry->y_value, ctx, 1, return -1);
@@ -222,7 +222,7 @@ static int _parseHdmvPaletteEntry(
 }
 
 static int _computeNumberOfPaletteEntries(
-  uint16_t * nb_pal_entries_ret,
+  uint16_t *nb_pal_entries_ret,
   uint16_t segment_size
 )
 {
@@ -250,7 +250,7 @@ static int _computeNumberOfPaletteEntries(
 }
 
 static int _parseHdmvPDS(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -310,8 +310,8 @@ free_return:
 /* ### Object Definition Segments : ######################################## */
 
 static int _parseHdmvObjectDescriptor(
-  HdmvContext * ctx,
-  HdmvODescParameters * param
+  HdmvContext *ctx,
+  HdmvODescParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -340,8 +340,8 @@ static int _parseHdmvObjectDescriptor(
 }
 
 static int _parseHdmvSequenceDescriptor(
-  HdmvContext * ctx,
-  HdmvSDParameters * param
+  HdmvContext *ctx,
+  HdmvSDParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -371,7 +371,7 @@ static int _parseHdmvSequenceDescriptor(
 }
 
 static int _computeSizeHdmvObjectDataFragment(
-  uint16_t * od_frag_length_ret,
+  uint16_t *od_frag_length_ret,
   uint16_t segment_length
 )
 {
@@ -385,7 +385,7 @@ static int _computeSizeHdmvObjectDataFragment(
 }
 
 static int _parseHdmvObjectDataFragment(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment,
   HdmvSequencePtr sequence
 )
@@ -418,7 +418,7 @@ static int _decodeHdmvObjectData(
   HdmvODescParameters object_descriptor
 )
 {
-  HdmvODParameters * od = &sequence->data.od;
+  HdmvODParameters *od = &sequence->data.od;
 
   od->object_descriptor = object_descriptor;
 
@@ -465,7 +465,7 @@ static int _decodeHdmvObjectData(
 
   /* [v<8*(object_data_length-4)> encoded_data_string] */
   uint32_t encoded_data_string_size;
-  const uint8_t * encoded_data_string = getRemDataFragmentHdmvSequence(
+  const uint8_t *encoded_data_string = getRemDataFragmentHdmvSequence(
     sequence,
     &encoded_data_string_size
   );
@@ -509,7 +509,7 @@ static int _decodeHdmvObjectData(
 }
 
 static int _parseHdmvODS(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -569,8 +569,8 @@ free_return:
 /* ### Presentation Composition Segments : ################################# */
 
 static int _parseHdmvVideoDescriptor(
-  HdmvContext * ctx,
-  HdmvVDParameters * param
+  HdmvContext *ctx,
+  HdmvVDParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -614,8 +614,8 @@ static int _parseHdmvVideoDescriptor(
 }
 
 static int _parseHdmvCompositionDescriptor(
-  HdmvContext * ctx,
-  HdmvCDParameters * param
+  HdmvContext *ctx,
+  HdmvCDParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -652,8 +652,8 @@ static int _parseHdmvCompositionDescriptor(
 }
 
 static int _parseHdmvCompositionObject(
-  HdmvContext * ctx,
-  HdmvCOParameters * param
+  HdmvContext *ctx,
+  HdmvCOParameters *param
 )
 {
   /* [u16 object_id_ref] */
@@ -759,8 +759,8 @@ static int _parseHdmvCompositionObject(
 }
 
 static int _parseHdmvPresentationComposition(
-  HdmvContext * ctx,
-  HdmvPCParameters * param
+  HdmvContext *ctx,
+  HdmvPCParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -825,7 +825,7 @@ static int _parseHdmvPresentationComposition(
 }
 
 static int _parseHdmvPCS(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -875,8 +875,8 @@ free_return:
 /* ### Window Definition Segments : ######################################## */
 
 static int _parseHdmvWindowInfo(
-  HdmvContext * ctx,
-  HdmvWindowInfoParameters * param
+  HdmvContext *ctx,
+  HdmvWindowInfoParameters *param
 )
 {
   /* [u8 window_id] */
@@ -928,8 +928,8 @@ static int _parseHdmvWindowInfo(
 }
 
 static int _parseHdmvWindowsDefinition(
-  HdmvContext * ctx,
-  HdmvWDParameters * param
+  HdmvContext *ctx,
+  HdmvWDParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -970,7 +970,7 @@ static int _parseHdmvWindowsDefinition(
 }
 
 static int _parseHdmvWDS(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -1009,7 +1009,7 @@ free_return:
 /* ### Interactive Composition Segments : ################################## */
 
 static int _computeSizeHdmvICDataFragment(
-  uint16_t * dst,
+  uint16_t *dst,
   uint16_t segment_size
 )
 {
@@ -1023,7 +1023,7 @@ static int _computeSizeHdmvICDataFragment(
 }
 
 static int _parseHdmvInteractiveCompositionDataFragment(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment,
   HdmvSequencePtr sequence
 )
@@ -1043,7 +1043,7 @@ static int _parseHdmvInteractiveCompositionDataFragment(
 
 static int _decodeHdmvWindowInfo(
   HdmvSequencePtr sequence,
-  HdmvWindowInfoParameters * param
+  HdmvWindowInfoParameters *param
 )
 {
   /* [u8 window_id] */
@@ -1096,7 +1096,7 @@ static int _decodeHdmvWindowInfo(
 
 static int _decodeHdmvCompositionObject(
   HdmvSequencePtr sequence,
-  HdmvCOParameters * param
+  HdmvCOParameters *param
 )
 {
   /* [u16 object_id_ref] */
@@ -1201,7 +1201,7 @@ static int _decodeHdmvCompositionObject(
 
 static int _decodeHdmvEffectInfo(
   HdmvSequencePtr sequence,
-  HdmvEffectInfoParameters * param
+  HdmvEffectInfoParameters *param
 )
 {
   /* [u24 effect_duration] */
@@ -1261,7 +1261,7 @@ static int _decodeHdmvEffectInfo(
 
 static int _decodeHdmvEffectSequence(
   HdmvSequencePtr sequence,
-  HdmvEffectSequenceParameters * param
+  HdmvEffectSequenceParameters *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -1343,7 +1343,7 @@ static int _decodeHdmvEffectSequence(
 
 static int _decodeHdmvButtonNeighborInfo(
   HdmvSequencePtr sequence,
-  HdmvButtonNeighborInfoParam * param
+  HdmvButtonNeighborInfoParam *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -1391,7 +1391,7 @@ static int _decodeHdmvButtonNeighborInfo(
 
 static int _decodeHdmvButtonNormalStateInfo(
   HdmvSequencePtr sequence,
-  HdmvButtonNormalStateInfoParam * param
+  HdmvButtonNormalStateInfoParam *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -1442,7 +1442,7 @@ static int _decodeHdmvButtonNormalStateInfo(
 
 static int _decodeHdmvButtonSelectedStateInfo(
   HdmvSequencePtr sequence,
-  HdmvButtonSelectedStateInfoParam * param
+  HdmvButtonSelectedStateInfoParam *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -1502,7 +1502,7 @@ static int _decodeHdmvButtonSelectedStateInfo(
 
 static int _decodeHdmvButtonActivatedStateInfo(
   HdmvSequencePtr sequence,
-  HdmvButtonActivatedStateInfoParam * param
+  HdmvButtonActivatedStateInfoParam *param
 )
 {
   LIBBLU_HDMV_PARSER_DEBUG(
@@ -1541,11 +1541,11 @@ static int _decodeHdmvButtonActivatedStateInfo(
 
 static int _decodeHdmvButtonCommands(
   HdmvSequencePtr sequence,
-  HdmvButtonParam * button
+  HdmvButtonParam *button
 )
 {
   for (uint16_t i = 0; i < button->number_of_navigation_commands; i++) {
-    HdmvNavigationCommand * com = &button->navigation_commands[i];
+    HdmvNavigationCommand *com = &button->navigation_commands[i];
 
     /* [u32 opcode] */
     READ_VALUE_SEQ(&com->opcode, sequence, 4, return -1);
@@ -1569,7 +1569,7 @@ static int _decodeHdmvButtonCommands(
 
 static int _decodeHdmvButton(
   HdmvSequencePtr sequence,
-  HdmvButtonParam * btn_dst
+  HdmvButtonParam *btn_dst
 )
 {
   /* [u16 button_id] */
@@ -1672,7 +1672,7 @@ static int _decodeHdmvButton(
 
 static int _decodeHdmvButtonOverlapGroup(
   HdmvSequencePtr sequence,
-  HdmvButtonOverlapGroupParameters * bog_ret
+  HdmvButtonOverlapGroupParameters *bog_ret
 )
 {
   /* [u16 default_valid_button_id_ref] */
@@ -1720,7 +1720,7 @@ static int _decodeHdmvButtonOverlapGroup(
 
 static int _decodeHdmvPage(
   HdmvSequencePtr sequence,
-  HdmvPageParameters * page_ret
+  HdmvPageParameters *page_ret
 )
 {
   /* [u8 page_id] */
@@ -1836,7 +1836,7 @@ static int _decodeHdmvInteractiveCompositionData(
   HdmvSequencePtr sequence
 )
 {
-  HdmvICParameters * ic = &sequence->data.ic;
+  HdmvICParameters *ic = &sequence->data.ic;
 
   LIBBLU_HDMV_PARSER_DEBUG(
     " Interactive_composition(): "
@@ -1948,7 +1948,7 @@ static int _decodeHdmvInteractiveCompositionData(
 }
 
 static int _parseHdmvICS(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -2014,7 +2014,7 @@ free_return:
 /* ### END segments : ###################################################### */
 
 static int _parseHdmvEND(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters segment
 )
 {
@@ -2040,7 +2040,7 @@ static int _parseHdmvEND(
 /* ######################################################################### */
 
 int parseHdmvSegment(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   HdmvSegmentParameters segment;

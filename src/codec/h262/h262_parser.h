@@ -152,11 +152,11 @@ typedef enum {
  H262_ASPECT_RATIO_INF_RES
 } H262AspectRatioInformation;
 
-static inline const char * H262AspectRatioInformationStr(
+static inline const char *H262AspectRatioInformationStr(
   H262AspectRatioInformation aspect_ratio_information
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Forbidden",
     "Square",
     "3:4 DAR",
@@ -225,11 +225,11 @@ static inline unsigned upperBoundFrameRateH262FrameRateCode(
   return 0;
 }
 
-static inline const char * H262FrameRateCodeStr(
+static inline const char *H262FrameRateCodeStr(
   H262FrameRateCode frame_rate_code
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Forbidden",
     "23.976 FPS",
     "24 FPS",
@@ -290,11 +290,11 @@ static inline bool isReservedH262ProfileIdentification(
   ;
 }
 
-static inline const char * H262ProfileIdentificationStr(
+static inline const char *H262ProfileIdentificationStr(
   H262ProfileIdentification profileId
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Reserved",
     "High",
     "Spatially Scalable",
@@ -332,7 +332,7 @@ static inline bool isBdavAllowedH262LevelIdentification(
   ;
 }
 
-static inline const char * H262LevelIdentificationStr(
+static inline const char *H262LevelIdentificationStr(
   H262LevelIdentification levelId
 )
 {
@@ -369,11 +369,11 @@ static inline bool isReservedH262ChromaFormat(
   ;
 }
 
-static inline const char * H262ChromaFormatStr(
+static inline const char *H262ChromaFormatStr(
   H262ChromaFormat chroma_format
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Reserved",
     "4:2:0",
     "4:2:2",
@@ -422,8 +422,8 @@ typedef struct {
 } H262SequenceComputedValues;
 
 static inline unsigned computeHorizontalSizeH262SequenceComputedValues(
-  const H262SequenceHeaderParameters * header,
-  const H262SequenceExtensionParameters * extension
+  const H262SequenceHeaderParameters *header,
+  const H262SequenceExtensionParameters *extension
 )
 {
   return
@@ -433,8 +433,8 @@ static inline unsigned computeHorizontalSizeH262SequenceComputedValues(
 }
 
 static inline unsigned computeVerticalSizeH262SequenceComputedValues(
-  const H262SequenceHeaderParameters * header,
-  const H262SequenceExtensionParameters * extension
+  const H262SequenceHeaderParameters *header,
+  const H262SequenceExtensionParameters *extension
 )
 {
   return
@@ -444,8 +444,8 @@ static inline unsigned computeVerticalSizeH262SequenceComputedValues(
 }
 
 static inline uint32_t computeBitrateH262SequenceComputedValues(
-  const H262SequenceHeaderParameters * header,
-  const H262SequenceExtensionParameters * extension
+  const H262SequenceHeaderParameters *header,
+  const H262SequenceExtensionParameters *extension
 )
 {
   return
@@ -455,8 +455,8 @@ static inline uint32_t computeBitrateH262SequenceComputedValues(
 }
 
 static inline uint32_t computeVbvBufSizeH262SequenceComputedValues(
-  const H262SequenceHeaderParameters * header,
-  const H262SequenceExtensionParameters * extension
+  const H262SequenceHeaderParameters *header,
+  const H262SequenceExtensionParameters *extension
 )
 {
   return
@@ -466,8 +466,8 @@ static inline uint32_t computeVbvBufSizeH262SequenceComputedValues(
 }
 
 static inline float computeFrameRateH262SequenceComputedValues(
-  const H262SequenceHeaderParameters * hdr,
-  const H262SequenceExtensionParameters * ext
+  const H262SequenceHeaderParameters *hdr,
+  const H262SequenceExtensionParameters *ext
 )
 {
   return
@@ -478,9 +478,9 @@ static inline float computeFrameRateH262SequenceComputedValues(
 }
 
 static inline void setH262SequenceComputedValues(
-  H262SequenceComputedValues * dst,
-  const H262SequenceHeaderParameters * hdr,
-  const H262SequenceExtensionParameters * ext
+  H262SequenceComputedValues *dst,
+  const H262SequenceHeaderParameters *hdr,
+  const H262SequenceExtensionParameters *ext
 )
 {
   dst->horizontal_size = computeHorizontalSizeH262SequenceComputedValues(hdr, ext);
@@ -532,11 +532,11 @@ typedef enum {
   H262_PIC_CODING_TYPE_D          = 0x4
 } H262PictureCodingType;
 
-static inline const char * H262PictureCodingTypeStr(
+static inline const char *H262PictureCodingTypeStr(
   H262PictureCodingType picture_coding_type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Forbidden",
     "Intra-coded I-Picture",
     "Predictive-coded P-Picture",
@@ -642,7 +642,7 @@ typedef struct {
 } H262ExtensionParameters;
 
 int analyzeH262(
-  LibbluESParsingSettings * settings
+  LibbluESParsingSettings *settings
 );
 
 #endif

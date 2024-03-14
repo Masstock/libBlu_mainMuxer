@@ -80,11 +80,11 @@ typedef enum {
   NAL_REF_IDC_HIGH   = 3
 } H264NalRefIdcValue;
 
-static inline const char * H264NalRefIdcValueStr(
+static inline const char *H264NalRefIdcValueStr(
   H264NalRefIdcValue nal_ref_idc
 )
 {
-  const char * strings[] = {
+  const char *strings[] = {
     "None",
     "Low",
     "Medium",
@@ -190,11 +190,11 @@ static inline bool isCodedSliceExtensionH264NalUnitTypeValue(
  * \param nal_unit_type Value to represent.
  * \return const char* Constant string representation.
  */
-static inline const char * H264NalUnitTypeStr(
+static inline const char *H264NalUnitTypeStr(
   H264NalUnitTypeValue nal_unit_type
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Unspecified",
     "Coded Slice (non-IDR picture)",
     "Coded Slice data partition A",
@@ -247,11 +247,11 @@ typedef enum {
   H264_PRIM_PIC_TYPE_ALL     = 7
 } H264PrimaryPictureType;
 
-static inline const char * H264PrimaryPictureTypeStr(
+static inline const char *H264PrimaryPictureTypeStr(
   H264PrimaryPictureType val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "I",
     "I, P",
     "I, P, B",
@@ -365,7 +365,7 @@ static inline uint8_t valueH264ContraintFlags(
   ;
 }
 
-const char * H264ProfileIdcValueStr(
+const char *H264ProfileIdcValueStr(
   H264ProfileIdcValue val,
   H264ContraintFlags constraints
 );
@@ -379,11 +379,11 @@ typedef enum {
   H264_CHROMA_FORMAT_444 = 3
 } H264ChromaFormatIdcValue;
 
-static inline const char * H264ChromaFormatIdcValueStr(
+static inline const char *H264ChromaFormatIdcValueStr(
   H264ChromaFormatIdcValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "4:0:0",
     "4:2:0",
     "4:2:2",
@@ -480,11 +480,11 @@ typedef enum {
   H264_ASPECT_RATIO_IDC_EXTENDED_SAR = 255
 } H264AspectRatioIdcValue;
 
-static inline const char * H264AspectRatioIdcValueStr(
+static inline const char *H264AspectRatioIdcValueStr(
   const H264AspectRatioIdcValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Unspecified",
     "1:1",
     "12:11",
@@ -517,11 +517,11 @@ typedef enum {
   H264_OVERSCAN_APPROP_UNSPECIFIED  = 3
 } H264OverscanAppropriateValue;
 
-static inline const char * H264OverscanAppropriateValueStr(
+static inline const char *H264OverscanAppropriateValueStr(
   H264OverscanAppropriateValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Avoid overscan",
     "Use overscan",
     "Unspecified"
@@ -541,11 +541,11 @@ typedef enum {
   H264_VIDEO_FORMAT_UNSPECIFIED  = 5,
 } H264VideoFormatValue;
 
-static inline const char * H264VideoFormatValueStr(
+static inline const char *H264VideoFormatValueStr(
   H264VideoFormatValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Component",
     "PAL",
     "NTSC",
@@ -574,11 +574,11 @@ typedef enum {
   H264_COLOR_PRIM_EBU3213      = 22, /* EBU 3213-E */
 } H264ColourPrimariesValue;
 
-static inline const char * H264ColorPrimariesValueStr(
+static inline const char *H264ColorPrimariesValueStr(
   H264ColourPrimariesValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Unknown",
     "BT.709",
     "Unspecified",
@@ -621,11 +621,11 @@ typedef enum {
   H264_TRANS_CHAR_BT2100       = 18, /* BT.2100-2 HLG      */
 } H264TransferCharacteristicsValue;
 
-static inline const char * H264TransferCharacteristicsValueStr(
+static inline const char *H264TransferCharacteristicsValueStr(
   H264TransferCharacteristicsValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Unknown",
     "BT.709",
     "Unspecified",
@@ -669,11 +669,11 @@ typedef enum {
   H264_MATRX_COEF_ICTCP        = 14, /* BT.2100-2 ICtCp    */
 } H264MatrixCoefficientsValue;
 
-static inline const char * H264MatrixCoefficientsValueStr(
+static inline const char *H264MatrixCoefficientsValueStr(
   H264MatrixCoefficientsValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "sRGB/XYZ",
     "BT.709",
     "Unspecified",
@@ -887,11 +887,11 @@ typedef enum {
   H264_WEIGHTED_PRED_B_SLICES_RESERVED = 3
 } H264WeightedBipredIdc;
 
-static inline const char * H264WeightedBipredIdcStr(
+static inline const char *H264WeightedBipredIdcStr(
   H264WeightedBipredIdc val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Default",
     "Explicit",
     "Implicit"
@@ -989,11 +989,11 @@ typedef enum {
   H264_PIC_STRUCT_TRIPLED_FRAME    =  8  /* Progressive frame displayed three times */
 } H264PicStructValue;
 
-static inline const char * H264PicStructValueStr(
+static inline const char *H264PicStructValueStr(
   H264PicStructValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "(Progressive) Frame",
     "Top field",
     "Bottom field",
@@ -1019,11 +1019,11 @@ typedef enum {
   H264_CT_TYPE_RESERVED    = 3
 } H264CtTypeValue;
 
-static inline const char * H264CtTypeValueStr(
+static inline const char *H264CtTypeValueStr(
   H264CtTypeValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Progressive",
     "Interlaced",
     "Unknown"
@@ -1044,11 +1044,11 @@ typedef enum {
   H264_COUNTING_T_DROP_UNSPECIFIED_NB      = 6
 } H264CountingTypeValue;
 
-static inline const char * H264CountingTypeValueStr(
+static inline const char *H264CountingTypeValueStr(
   H264CountingTypeValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "No dropping of n_frames count values and no use of time_offset",
     "No dropping of n_frames count values",
     "Dropping of individual zero values of n_frames count",
@@ -1126,7 +1126,7 @@ typedef enum {
   H264_SEI_TYPE_RECOVERY_POINT         = 6
 } H264SeiPayloadTypeValue;
 
-static inline const char * H264SEIMessagePayloadTypeStr(
+static inline const char *H264SEIMessagePayloadTypeStr(
   H264SeiPayloadTypeValue payloadType
 )
 {
@@ -1260,11 +1260,11 @@ static inline bool isAllowedH264SliceTypeValue(
   return primPicTypMasks[primary_pic_type] & (1 << slice_type);
 }
 
-static inline const char * H264SliceTypeValueStr(
+static inline const char *H264SliceTypeValueStr(
   H264SliceTypeValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "P Slice Unrestricted",
     "B Slice Unrestricted",
     "I Slice Unrestricted",
@@ -1324,11 +1324,11 @@ typedef enum {
   H264_COLOUR_PLANE_ID_CR  = 2
 } H264ColourPlaneIdValue;
 
-static inline const char * H264ColourPlaneIdValueStr(
+static inline const char *H264ColourPlaneIdValueStr(
   H264ColourPlaneIdValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Y (luma)",
     "Cb (blue differential chroma)",
     "Cr (red differential chroma)"
@@ -1348,11 +1348,11 @@ typedef enum {
   H264_MOD_OF_PIC_IDC_END_LOOP           = 3
 } H264ModificationOfPicNumsIdcValue;
 
-static inline const char * H264ModificationOfPicNumsIdcValueStr(
+static inline const char *H264ModificationOfPicNumsIdcValueStr(
   H264ModificationOfPicNumsIdcValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Difference to subtract from picture number prediction value",
     "Difference to add from picture number prediction value",
     "Long-term picture used as reference picture",
@@ -1422,11 +1422,11 @@ typedef enum {
   H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM             = 6
 } H264MemoryManagementControlOperationValue;
 
-static inline const char * H264MemoryManagementControlOperationValueStr(
+static inline const char *H264MemoryManagementControlOperationValueStr(
   H264MemoryManagementControlOperationValue val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "End of instructions marker",
     "Mark a short-term reference picture as 'unused for reference'",
     "Mark a long-term reference picture as 'unused for reference'",
@@ -1442,7 +1442,7 @@ static inline const char * H264MemoryManagementControlOperationValueStr(
 }
 
 typedef struct H264MemoryManagementControlOperationsBlock {
-  // struct H264MemoryManagementControlOperationsBlock * nextOperation;
+  // struct H264MemoryManagementControlOperationsBlock *nextOperation;
 
   H264MemoryManagementControlOperationValue operation;
   unsigned difference_of_pic_nums_minus1;
@@ -1498,11 +1498,11 @@ typedef enum {
   H264_DEBLOCKING_FILTER_DISABLED_INTER_SLICES = 2
 } H264DeblockingFilterIdc; /* disable_deblocking_filter_idc  */
 
-static inline const char * H264DeblockingFilterIdcStr(
+static inline const char *H264DeblockingFilterIdcStr(
   H264DeblockingFilterIdc val
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Enable",
     "Disable",
     "Disabled at slice boundaries"
@@ -1634,8 +1634,8 @@ typedef struct {
 } H264NalDeserializerContext;
 
 int initH264NalDeserializerContext(
-  H264NalDeserializerContext * dst,
-  const lbc * filepath
+  H264NalDeserializerContext *dst,
+  const lbc *filepath
 );
 
 static inline void cleanH264NalDeserializerContext(
@@ -1800,7 +1800,7 @@ typedef struct {
 
   int64_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
 
-  bool halfPicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
+  bool half_PicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
   int64_t initDecPicNbCntShift;  /**< Initial picture decoding delay in pictures units. */
 
   int64_t PicOrderCnt; /**< PicOrderCnt of current picture. */
@@ -1838,7 +1838,7 @@ typedef struct {
   bool discardUselessSequenceParameterSet;
 
   struct {
-    H264AUNalUnit * nalus;
+    H264AUNalUnit *nalus;
     unsigned nbAllocatedNalus;
     unsigned nbUsedNalus;
     bool inProcessNalu;
@@ -1849,7 +1849,7 @@ typedef struct {
 
 typedef struct {
 #if 0
-  void * linkedParam; /* Type defined by list name */
+  void *linkedParam; /* Type defined by list name */
 
   size_t length;
   unsigned dataSectionIdx;
@@ -1868,7 +1868,7 @@ static inline H264SPSDataParameters spsH264ModifiedNalUnit(
 }
 
 typedef struct {
-  H264ModifiedNalUnit * sequenceParametersSets;
+  H264ModifiedNalUnit *sequenceParametersSets;
   unsigned nbSequenceParametersSet;
 
   bool patchBufferingPeriodSeiPresent;

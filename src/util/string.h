@@ -21,12 +21,12 @@ typedef unsigned int lbc_int;
 #if defined(ARCH_WIN32)
 /* ### Windows-API specific ################################################ */
 
-wchar_t * winUtf8ToWideChar(
-  const lbc * string
+wchar_t *winUtf8ToWideChar(
+  const lbc *string
 );
 
-lbc * winWideCharToUtf8(
-  const wchar_t * string
+lbc *winWideCharToUtf8(
+  const wchar_t *string
 );
 
 #endif
@@ -49,7 +49,7 @@ long double lbc_strtold(
 );
 
 unsigned long lbc_strtoul(
-  const lbc * restrict nptr,
+  const lbc *restrict nptr,
   lbc ** restrict endptr,
   int base
 );
@@ -76,7 +76,7 @@ long long int lbc_strtoll(
 
 #include <stdio.h>
 
-FILE * lbc_fopen(
+FILE *lbc_fopen(
   const lbc *restrict pathname,
   const char *restrict mode
 );
@@ -178,43 +178,43 @@ int lbc_vfscanf(
 /* ### <string.h> ########################################################## */
 
 size_t lbc_strlen(
-  const lbc * str
+  const lbc *str
 );
 
 int lbc_strcmp(
-  const lbc * str1,
-  const lbc * str2
+  const lbc *str1,
+  const lbc *str2
 );
 
 int lbc_strncmp(
-  const lbc * str1,
-  const lbc * str2,
+  const lbc *str1,
+  const lbc *str2,
   size_t size
 );
 
-lbc * lbc_strcpy(
-  lbc * restrict dst,
-  const lbc * restrict src
+lbc *lbc_strcpy(
+  lbc *restrict dst,
+  const lbc *restrict src
 );
 
-lbc * lbc_strncpy(
-  lbc * restrict dst,
-  const lbc * restrict src,
+lbc *lbc_strncpy(
+  lbc *restrict dst,
+  const lbc *restrict src,
   size_t size
 );
 
 void lbc_strncat(
-  lbc * s1,
-  const lbc * s2,
+  lbc *s1,
+  const lbc *s2,
   size_t size
 );
 
-lbc * lbc_strdup(
-  const lbc * str
+lbc *lbc_strdup(
+  const lbc *str
 );
 
-lbc * lbc_strndup(
-  const lbc * str,
+lbc *lbc_strndup(
+  const lbc *str,
   size_t size
 );
 
@@ -440,29 +440,29 @@ enum cwk_path_style lbc_cwk_path_get_style(
 /* ### other ############################################################### */
 
 bool lbc_equal(
-  const lbc * str1,
-  const lbc * str2
+  const lbc *str1,
+  const lbc *str2
 );
 
 bool lbc_equaln(
-  const lbc * str1,
-  const lbc * str2,
+  const lbc *str1,
+  const lbc *str2,
   size_t size
 );
 
 int lbc_atob(
-  bool * dst,
-  const lbc * str
+  bool *dst,
+  const lbc *str
 );
 
 int lbc_access_fp(
-  const lbc * filepath,
-  const char * mode
+  const lbc *filepath,
+  const char *mode
 );
 
 int lbc_asprintf(
   lbc ** string,
-  const lbc * format,
+  const lbc *format,
   ...
 );
 
@@ -470,18 +470,18 @@ int lbc_asprintf(
 
 int lbc_vasprintf(
   lbc ** string,
-  const lbc * format,
+  const lbc *format,
   va_list ap
 );
 
 #endif // defined(LBC_VARIADIC)
 
 int lbc_chdir(
-  const lbc * path
+  const lbc *path
 );
 
-lbc * lbc_getcwd(
-  lbc * buf,
+lbc *lbc_getcwd(
+  lbc *buf,
   size_t size
 );
 

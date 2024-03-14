@@ -10,7 +10,7 @@
 #include "igs_debug.h"
 
 #if ENABLE_IGS_DEBUG
-void printPalette(HdmvPalette * pal)
+void printPalette(HdmvPalette *pal)
 {
   unsigned i;
   assert(NULL != pal);
@@ -24,7 +24,7 @@ void printPalette(HdmvPalette * pal)
     lbc_printf(" - 0x%08" PRIX32 "\n", pal->entries[i].rgba);
 }
 
-void writeHexatreeNode(FILE * f, HdmvQuantHexTreeNodePtr node)
+void writeHexatreeNode(FILE *f, HdmvQuantHexTreeNodePtr node)
 {
   unsigned i;
 
@@ -47,19 +47,19 @@ void writeHexatreeNode(FILE * f, HdmvQuantHexTreeNodePtr node)
   }
 }
 
-void ecrireDebut(FILE * f)
+void ecrireDebut(FILE *f)
 {
   fprintf(f, "digraph arbre {\n");
   fprintf(f, "  node [shape=%s, height=%s]\n", "record", ".1");
   fprintf(f, "  edge [tailclip=%s, arrow=%s, dir=%s];\n", "true", "dot", "forward");
 }
 
-void ecrireFin(FILE * f)
+void ecrireFin(FILE *f)
 {
   fprintf(f, "}\n");
 }
 
-void dessineCode(FILE * f, HdmvQuantHexTreeNodePtr tree)
+void dessineCode(FILE *f, HdmvQuantHexTreeNodePtr tree)
 {
   if (NULL == tree)
     return;
@@ -73,7 +73,7 @@ int creePDFCode(char *dot, char *pdf, HdmvQuantHexTreeNodePtr tree)
 {
   int ret;
 
-  FILE * out;
+  FILE *out;
   char cmd[IGS_DEBUG_MAX_CMD_LEN+1];
 
   if (NULL == tree) {
@@ -101,7 +101,7 @@ int creePNGCode(char *dot, char *png, HdmvQuantHexTreeNodePtr tree)
 {
   int ret;
 
-  FILE * out;
+  FILE *out;
   char cmd[IGS_DEBUG_MAX_CMD_LEN+1];
 
   if (NULL == tree) {
@@ -132,7 +132,7 @@ int writeTestBmp(IgsCompilerInputPicturePtr pic, IgsCompilerColorPalettePtr pal)
 {
   bmp_img img;
   uint32_t color;
-  uint8_t * drawingPnt;
+  uint8_t *drawingPnt;
   size_t y, x;
   uint8_t r, g, b, a;
 

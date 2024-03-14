@@ -9,43 +9,67 @@
 
 #include "metaReader.h"
 
-static size_t _parseString(
-  const lbc * expr,
-  lbc * dst
+static void _skipWhiteSpace(
+  const lbc ** rp
 )
 {
-  int ret;
-  size_t prefixSize;
+  while (lbc_isspace((lbc_int) **rp))
+    (*rp)++;
+}
 
-  switch (*expr) {
-  case lbc_char('"'):
-    ret = lbc_sscanf(expr, lbc_str("\"%" PRI_LBCP "[^\"]"), dst);
-    prefixSize = 2;
-    break;
+static bool _isEndOfLine(
+  const lbc *rp
+)
+{
+  return lbc_iscntrl((lbc_int) *rp) || *rp == '#';
+}
 
-  case lbc_char('\''):
-    ret = lbc_sscanf(expr, lbc_str("'%" PRI_LBCP "[^']"), dst);
-    prefixSize = 2;
-    break;
+static int _parseString(
+  lbc *string,
+  unsigned string_buf_size,
+  const lbc ** rp,
+  const lbc *prefix
+)
+{
+  assert(NULL != string);
+  assert(0 < string_buf_size);
+  assert(NULL != rp);
+  assert(NULL != prefix);
 
-  default:
-    ret = lbc_sscanf(expr, lbc_str("%" PRI_LBCS), dst);
-    prefixSize = 0;
+  unsigned string_size = 0;
+
+  lbc format_double_quote[32];
+  lbc_sprintf(format_double_quote, lbc_str("%s \"%%%u[^\"\r\n]\"%%n"), prefix, string_buf_size-1);
+
+  lbc format_single_quote[32];
+  lbc_sprintf(format_single_quote, lbc_str("%s \'%%%u[^\'\r\n]\'%%n"), prefix, string_buf_size-1);
+
+  lbc format[32];
+  lbc_sprintf(format,              lbc_str("%s %%%u[^\r\n ]%%n"),      prefix, string_buf_size-1);
+
+  LIBBLU_DEBUG_COM("Parse string '%s'.\n", *rp);
+
+  if (
+    !lbc_sscanf(*rp,    format_double_quote, string, &string_size)
+    && !lbc_sscanf(*rp, format_single_quote, string, &string_size)
+    && !lbc_sscanf(*rp, format,              string, &string_size)
+  ) {
+    return -1;
   }
 
-  if (!ret)
-    return 0;
-  return prefixSize + lbc_strlen(dst);
+  *rp += string_size;
+
+  return 0;
 }
 
 /* ### META File option : ################################################## */
 
-LibbluMetaFileOption * createLibbluMetaFileOption(
-  const lbc * name,
-  const lbc * arg
+LibbluMetaFileOption *createLibbluMetaFileOption(
+  const lbc *name,
+  const lbc *arg
 )
 {
-  LibbluMetaFileOption * op;
+  LibbluMetaFileOption *op;
 
   op = (LibbluMetaFileOption *) malloc(sizeof(LibbluMetaFileOption));
   if (NULL == op)
@@ -57,7 +81,7 @@ LibbluMetaFileOption * createLibbluMetaFileOption(
 
   if (NULL == (op->name = lbc_strdup(name)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-  if (NULL != arg) {
+  if (NULL != arg && '\0' != *arg) {
     if (NULL == (op->arg = lbc_strdup(arg)))
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
   }
@@ -70,7 +94,7 @@ free_return:
 }
 
 void destroyLibbluMetaFileOption(
-  LibbluMetaFileOption * option
+  LibbluMetaFileOption *option
 )
 {
   if (NULL == option)
@@ -83,56 +107,49 @@ void destroyLibbluMetaFileOption(
 }
 
 static int _parseOptionsMetaFileStructure(
-  const lbc * line,
+  const lbc *line,
   LibbluMetaFileOption ** dst
 )
 {
-  const lbc * rp;
+  assert(NULL != line);
 
-  LibbluMetaFileOption * prevOption, * option;
+  LibbluMetaFileOption *prev_option = NULL;
 
-  assert(NULL == *dst);
+  for (const lbc *rp = line; *rp != '\0';) {
+    _skipWhiteSpace(&rp);
 
-  prevOption = NULL;
-  for (rp = line; *rp != '\0'; ) {
-    lbc name[STR_BUFSIZE];
-    lbc arg[STR_BUFSIZE];
-    bool argPres;
-
-    while (lbc_isspace((lbc_int) *rp))
-      rp++;
-    if (lbc_iscntrl((lbc_int) *rp) || *rp == '#')
-      break; /* End of line */
+    if (_isEndOfLine(rp))
+      break; // End of line/Commentary
 
     /* Option name */
-    if (!lbc_sscanf(rp, lbc_str(" %1024" PRI_LBCP "[^\n\r= ]"), name))
+    lbc opt_name[STR_BUFSIZE];
+    unsigned opt_arg_size = 0;
+
+    if (!lbc_sscanf(rp, lbc_str(" %1023[^=\r\n ]%n"), opt_name, &opt_arg_size))
       break;
-    rp += lbc_strlen(name);
+    rp += opt_arg_size;
 
     /* Option argument */
-    argPres = false;
-    while (lbc_isspace((lbc_int) *rp))
-      rp++;
-    if (*rp == lbc_char('=')) {
-      size_t size;
+    lbc opt_arg[1024] = {'\0'};
 
-      rp++;
-      while (lbc_isspace((lbc_int) *rp))
-        rp++;
-      if (0 == (size = _parseString(rp, arg)))
-        LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
-      rp += size;
-      argPres = true;
+    _skipWhiteSpace(&rp);
+    if (*rp == lbc_char('=')) {
+      if (_parseString(opt_arg, 1024, &rp, lbc_str("="))) {
+        LIBBLU_ERROR_RETURN(
+          "Invalid META file, unable to parse option argument.\n"
+        );
+      }
     }
 
-    if (NULL == (option = createLibbluMetaFileOption(name, (argPres) ? arg : NULL)))
+    LibbluMetaFileOption *option = createLibbluMetaFileOption(opt_name, opt_arg);
+    if (NULL == option)
       return -1;
 
-    if (NULL == *dst)
+    if (NULL == prev_option)
       *dst = option;
-    if (NULL != prevOption)
-      prevOption->next = option;
-    prevOption = option;
+    else
+      prev_option->next = option;
+    prev_option = option;
   }
 
   return 0;
@@ -140,27 +157,21 @@ static int _parseOptionsMetaFileStructure(
 
 /* ### META File track : ################################################### */
 
-LibbluMetaFileTrack * createLibbluMetaFileTrack(
-  const lbc * codec,
-  const lbc * filepath
+LibbluMetaFileTrack *createLibbluMetaFileTrack(
+  const lbc *codec,
+  const lbc *filepath
 )
 {
-  LibbluMetaFileTrack * track;
-
-  track = (LibbluMetaFileTrack *) malloc(sizeof(LibbluMetaFileTrack));
+  LibbluMetaFileTrack *track = (LibbluMetaFileTrack *) calloc(
+    1, sizeof(LibbluMetaFileTrack)
+  );
   if (NULL == track)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  track->next = NULL;
-  track->codec = NULL;
-  track->filepath = NULL;
-  track->options = NULL;
 
   if (NULL == (track->codec = lbc_strdup(codec)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
   if (NULL == (track->filepath = lbc_strdup(filepath)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-
   return track;
 
 free_return:
@@ -169,7 +180,7 @@ free_return:
 }
 
 void destroyLibbluMetaFileTrack(
-  LibbluMetaFileTrack * track
+  LibbluMetaFileTrack *track
 )
 {
   if (NULL == track)
@@ -182,66 +193,78 @@ void destroyLibbluMetaFileTrack(
   free(track);
 }
 
-static int _parseTrackMetaFileStructure(
-  FILE * input,
-  LibbluMetaFileStructPtr dst
+static LibbluMetaFileTrack * _parseTrackMetaFileStructure(
+  const lbc *line
 )
 {
-  lbc * rp, buf[STR_BUFSIZE];
+  const lbc *rp = line;
 
-  lbc codec[STR_BUFSIZE];
-  lbc filepath[STR_BUFSIZE];
-  size_t size;
+  LIBBLU_DEBUG_COM("Parsing track line '%s'.\n", line);
 
-  LibbluMetaFileTrack * prevTrack, * track;
-
-  if (NULL == lbc_fgets(buf, STR_BUFSIZE, input)) {
-    if (feof(input))
-      return 0;
-    LIBBLU_ERROR_RETURN(
-      "Invalid META file, %s (errno: %d).\n",
-      strerror(errno),
-      errno
-    );
-  }
-
-  rp = buf;
-  while (lbc_isspace((lbc_int) *rp))
-    rp++;
-  if (lbc_iscntrl((lbc_int) *rp) || *rp == lbc_char('#'))
+  _skipWhiteSpace(&rp);
+  if (_isEndOfLine(rp))
     return 0;
 
-  if (!lbc_sscanf(rp, lbc_str(" %" PRI_LBCP "[^,]"), codec))
-    LIBBLU_ERROR_RETURN("Invalid META file, missing codec name.\n");
-  rp += lbc_strlen(codec) + 1;
+  lbc track_type[64];
+  unsigned track_type_size = 0;
+  if (lbc_sscanf(rp, lbc_str(" %63[^, ]%n"), track_type, &track_type_size) <= 0)
+    LIBBLU_ERROR_NRETURN("Invalid META file, missing track type.\n");
+  rp += track_type_size;
 
-  while (lbc_isspace((lbc_int) *rp) || *rp == lbc_char(','))
-    rp++;
-  if (*rp == lbc_char('#'))
-    LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
+  LIBBLU_DEBUG_COM(" Track type: '%s' (%u).\n", track_type, track_type_size);
 
-  if (0 == (size = _parseString(rp, filepath)))
-    LIBBLU_ERROR_RETURN("Invalid META file, missing filepath.\n");
-  rp += size;
+  char sep;
+  unsigned sep_space = 0;
+  if (lbc_sscanf(rp, lbc_str(" %c%n"), &sep, &sep_space) <= 0)
+    LIBBLU_ERROR_NRETURN("Invalid META file, missing track argument (missing separator).\n");
+  if (sep != ',')
+    LIBBLU_ERROR_NRETURN("Invalid META file, missing track argument (wrong separator).\n");
+  rp += sep_space;
+  _skipWhiteSpace(&rp);
 
-  if (NULL == (track = createLibbluMetaFileTrack(codec, filepath)))
-    return -1;
+  lbc track_argument[4096];
+  if (_parseString(track_argument, 4096, &rp, lbc_str("")) < 0)
+    LIBBLU_ERROR_NRETURN("Invalid META file, invalid track argument '%s'.\n", track_argument);
 
-  for (
-    prevTrack = dst->tracks;
-    NULL != prevTrack && NULL != prevTrack->next;
-    prevTrack = prevTrack->next
-  ) {}
+  LIBBLU_DEBUG_COM(" Track argument: '%s'.\n", track_argument);
 
-  if (NULL == dst->tracks)
-    dst->tracks = track;
-  else
-    prevTrack->next = track;
+  LibbluMetaFileTrack *track = createLibbluMetaFileTrack(track_type, track_argument);
+  if (NULL == track)
+    return NULL;
 
   if (_parseOptionsMetaFileStructure(rp, &track->options) < 0)
-    return -1;
+    return NULL;
+  return track;
+}
 
-  return 0;
+/* ### META File section : ################################################# */
+
+static bool _isLibbluMetaFileSectionHeader(
+  const lbc *string,
+  LibbluMetaFileType *file_type_ret,
+  LibbluMetaFileSectionType *section_type_ret
+)
+{
+  static const struct {
+    const lbc *name;
+    LibbluMetaFileType file_type;
+    LibbluMetaFileSectionType section_type;
+  } headers[] = {
+    {LBMETA_MUXOPT_HEADER,  LBMETA_MUXOPT,  LBMETA_HEADER}, /* Single mux */
+    {LBMETA_DISCOPT_HEADER, LBMETA_DISCOPT, LBMETA_HEADER}, /* Disc project */
+  };
+
+  for (size_t i = 0; i < ARRAY_SIZE(headers); i++) {
+    if (lbc_equal(string, headers[i].name)) {
+      if (NULL != file_type_ret)
+        *file_type_ret = headers[i].file_type;
+      if (NULL != section_type_ret)
+        *section_type_ret = headers[i].section_type;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /* ### META File structure : ############################################### */
@@ -250,14 +273,11 @@ LibbluMetaFileStructPtr createLibbluMetaFileStruct(
   void
 )
 {
-  LibbluMetaFileStructPtr meta;
-
-  meta = (LibbluMetaFileStructPtr) malloc(sizeof(LibbluMetaFileStruct));
+  LibbluMetaFileStructPtr meta = (LibbluMetaFileStructPtr) calloc(
+    1, sizeof(LibbluMetaFileStruct)
+  );
   if (NULL == meta)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
-
-  meta->commonOptions = NULL;
-  meta->tracks = NULL;
 
   return meta;
 }
@@ -269,62 +289,117 @@ void destroyLibbluMetaFileStruct(
   if (NULL == meta)
     return;
 
-  destroyLibbluMetaFileOption(meta->commonOptions);
-  destroyLibbluMetaFileTrack(meta->tracks);
+  for (size_t i = 0; i < LBMETA_NB_SECTIONS; i++) {
+    destroyLibbluMetaFileOption(meta->sections[i].common_options);
+    destroyLibbluMetaFileTrack(meta->sections[i].tracks);
+  }
   free(meta);
 }
 
 static int _parseHeaderMetaFileStructure(
-  FILE * input,
-  LibbluMetaFileStructPtr dst
+  LibbluMetaFileStructPtr dst,
+  const lbc *line
 )
 {
-  lbc buf[STR_BUFSIZE];
+  LibbluMetaFileSection *header_section = &dst->sections[LBMETA_HEADER];
+  const lbc *rp = line;
 
-  assert(NULL == dst->commonOptions);
-
-  if (NULL == lbc_fgets(buf, LBMETA_FILE_HEADER_SIZE+1, input))
+  lbc meta_header[10];
+  unsigned meta_header_size = 0;
+  if (!lbc_sscanf(rp, lbc_str(" %9s%n"), meta_header, &meta_header_size))
     LIBBLU_ERROR_RETURN(
-      "Invalid META file, %s (errno: %d).\n",
+      "Unable to read META file header, %s (errno: %d).\n",
       strerror(errno),
       errno
     );
+  rp += meta_header_size;
 
-  if (!lbc_equal(buf, LBMETA_FILE_HEADER))
-    LIBBLU_ERROR_RETURN("Invalid META file, missing 'MUXOPT' keyword.\n");
-
-  if (NULL == lbc_fgets(buf, STR_BUFSIZE, input)) {
-    if (feof(input))
-      return 0;
-    LIBBLU_ERROR_RETURN(
-      "Invalid META file, %s (errno: %d).\n",
-      strerror(errno),
-      errno
-    );
+  LibbluMetaFileSectionType section_type;
+  if (
+    !_isLibbluMetaFileSectionHeader(meta_header, &dst->type, &section_type)
+    || LBMETA_HEADER != section_type
+  ) {
+    LIBBLU_ERROR_RETURN("Invalid META file, expect 'MUXOPT' or 'DISCOPT' keyword.\n");
   }
 
-  if (_parseOptionsMetaFileStructure(buf, &dst->commonOptions) < 0)
-    return -1;
+  assert(NULL == header_section->common_options);
+  assert(NULL == header_section->tracks);
 
+  if (_parseOptionsMetaFileStructure(rp, &header_section->common_options) < 0)
+    return -1;
   return 0;
 }
 
 LibbluMetaFileStructPtr parseMetaFileStructure(
-  FILE * input
+  FILE *input_fd
 )
 {
-  LibbluMetaFileStructPtr meta;
-
-  if (NULL == (meta = createLibbluMetaFileStruct()))
+  LibbluMetaFileStructPtr meta = createLibbluMetaFileStruct();
+  if (NULL == meta)
     return NULL;
 
-  if (_parseHeaderMetaFileStructure(input, meta) < 0)
-    goto free_return;
+  LibbluMetaFileSection *cur_section = NULL;
+  LibbluMetaFileTrack *cur_section_last_track = NULL;
 
-  while (!feof(input)) {
-    if (_parseTrackMetaFileStructure(input, meta) < 0)
-      goto free_return;
-  }
+  do {
+    lbc line[8192];
+    if (NULL == lbc_fgets(line, 8192, input_fd)) {
+      if (!feof(input_fd))
+        LIBBLU_ERROR_FRETURN(
+          "Invalid META file, unable to parse line: %s (errno: %d).\n",
+          strerror(errno),
+          errno
+        );
+      break; // Empty line before EOF
+    }
+
+    if (NULL == cur_section) {
+      /* Header, first section */
+      if (_parseHeaderMetaFileStructure(meta, line) < 0)
+        goto free_return;
+      cur_section = &meta->sections[LBMETA_HEADER];
+      assert(NULL == cur_section_last_track);
+      continue;
+    }
+
+    lbc header[10];
+    unsigned header_size = 0;
+    if (!lbc_sscanf(line, lbc_str(" %9s"), header, &header_size))
+      LIBBLU_ERROR_FRETURN(
+        "Unable to read META file header, %s (errno: %d).\n",
+        strerror(errno),
+        errno
+      );
+
+    LibbluMetaFileType file_type;
+    LibbluMetaFileSectionType section_type;
+    if (_isLibbluMetaFileSectionHeader(header, &file_type, &section_type)) {
+      /* New section */
+      if (file_type < meta->type)
+        LIBBLU_ERROR_FRETURN(
+          "Invalid META file, unexpected %s section in a %s file.\n",
+          LibbluMetaFileSectionTypeStr(section_type),
+          LibbluMetaFileTypeStr(file_type)
+        );
+
+      LIBBLU_TODO();
+
+      cur_section = &meta->sections[LBMETA_HEADER];
+      cur_section_last_track = NULL;
+    }
+    else {
+      /* Track of current section */
+      LibbluMetaFileTrack *track = _parseTrackMetaFileStructure(line);
+      if (NULL == track)
+        goto free_return;
+
+      if (NULL == cur_section_last_track)
+        cur_section->tracks = track;
+      else
+        cur_section_last_track->next = track;
+      cur_section_last_track = track;
+    }
+  } while (!feof(input_fd));
 
   return meta;
 

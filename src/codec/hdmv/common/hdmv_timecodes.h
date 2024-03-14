@@ -26,7 +26,7 @@
  * out) storage.
  */
 typedef struct {
-  int64_t * values;        /**< Timecode values array.                       */
+  int64_t *values;        /**< Timecode values array.                       */
   size_t allocatedValues;  /**< Allocation size of the array.                */
   size_t usedValues;       /**< Number of used (stored) values in array.     */
   size_t readedValues;     /**< Number of stored values readed.              */
@@ -53,7 +53,7 @@ static inline void cleanHdmvTimecodes(
  * an error happen (memory allocation), a negative value is returned.
  */
 int copyHdmvTimecodes(
-  HdmvTimecodes * dst,
+  HdmvTimecodes *dst,
   HdmvTimecodes tm
 );
 
@@ -66,7 +66,7 @@ int copyHdmvTimecodes(
  * an error happen (memory allocation), a negative value is returned.
  */
 int addHdmvTimecodes(
-  HdmvTimecodes * tm,
+  HdmvTimecodes *tm,
   int64_t value
 );
 
@@ -79,8 +79,8 @@ int addHdmvTimecodes(
  * an error happen (out of range), a negative value is returned.
  */
 static inline int getHdmvTimecodes(
-  HdmvTimecodes * tm,
-  int64_t * pres_time_ret
+  HdmvTimecodes *tm,
+  int64_t *pres_time_ret
 )
 {
   assert(NULL != tm);

@@ -5,7 +5,7 @@
 #include "crcLookupTables.h"
 
 typedef struct {
-  const uint32_t * table;
+  const uint32_t *table;
   bool shifted;
   unsigned length;
   uint32_t poly;
@@ -18,7 +18,7 @@ typedef struct {
 } CrcContext;
 
 static inline void resetCrcContext(
-  CrcContext * ctx
+  CrcContext *ctx
 )
 {
   *ctx = (CrcContext) {
@@ -27,7 +27,7 @@ static inline void resetCrcContext(
 }
 
 static inline void initCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   CrcParam param,
   uint32_t initial_value
 )
@@ -43,7 +43,7 @@ static inline void initCrcContext(
 }
 
 static inline void setUseCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   bool use
 )
 {
@@ -51,18 +51,18 @@ static inline void setUseCrcContext(
 }
 
 void applyNoTableShiftedCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   uint8_t byte
 );
 
 void applyNoTableCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   uint8_t byte
 );
 
 static inline void applySingleByteTableCrcContext(
-  CrcContext * ctx,
-  const uint32_t * table,
+  CrcContext *ctx,
+  const uint32_t *table,
   uint8_t byte
 )
 {
@@ -76,7 +76,7 @@ static inline void applySingleByteTableCrcContext(
 }
 
 static inline void applySingleByteCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   uint8_t byte
 )
 {
@@ -96,12 +96,12 @@ static inline void applySingleByteCrcContext(
 }
 
 static inline void applyTableCrcContext(
-  CrcContext * ctx,
-  const uint8_t * array,
+  CrcContext *ctx,
+  const uint8_t *array,
   size_t size
 )
 {
-  const uint32_t * table = ctx->param.table;
+  const uint32_t *table = ctx->param.table;
 
   assert(NULL != table);
 
@@ -114,8 +114,8 @@ static inline void applyTableCrcContext(
 }
 
 static inline void applyCrcContext(
-  CrcContext * ctx,
-  const uint8_t * array,
+  CrcContext *ctx,
+  const uint8_t *array,
   size_t size
 )
 {
@@ -128,7 +128,7 @@ static inline void applyCrcContext(
 }
 
 static inline uint32_t completeCrcContext(
-  CrcContext * ctx
+  CrcContext *ctx
 )
 {
   assert(ctx->in_use);

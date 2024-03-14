@@ -17,22 +17,23 @@
  * and is tracked using #dataUsedLength and #dataAllocatedLength fields.
  */
 typedef struct {
-  uint64_t pts;            /**< PES packet PTS (Presentation Time Stamp) in
-    27MHz clock.                                                             */
-  uint64_t dts;            /**< PES packet DTS (Decoding Time Stamp) in
-    27MHz clock.
-    \note This field is currently only used if #extensionFrame == true.       */
+  uint64_t pts;  /**< PES packet PTS (Presentation TimeStamp) in 27MHz
+    clock ticks unit.                                                        */
+  uint64_t dts;  /**< PES packet DTS (Decoding TimeStamp) in 27MHz clock
+    ticks unit. This field is currently only used if
+    #extension_frame == true.                                                */
 
-  bool extensionFrame;     /**< Is an extension frame (used to set current
+  bool extension_frame;  /**< Is an extension frame (used to set current
     PES frame as a nasted extension sub-stream and use correct timing
     parameters).                                                             */
-  bool dtsPresent;         /**< DTS (Decoding TimeStamp) field presence.     */
-  bool extDataPresent;     /**< PES packet header extension data presence.   */
+  bool dts_present;      /**< DTS (Decoding TimeStamp) field presence.       */
 
-  EsmsPesPacketExtData extData;  /**< PES packet header extension
-    data. Used if #extDataPresent is set to true.                            */
+  EsmsPesPacketExtData extension_data;  /**< PES packet header extension
+    data. Used if #extension_data_pres is set to true.                       */
+  bool extension_data_pres;             /**< PES packet header extension
+    data presence.                                                           */
 
-  size_t payloadSize;
+  size_t payload_size;
 } LibbluESPesPacketProperties;
 
 typedef int (*LibbluPesPacketHeaderPrep_fun) (
@@ -42,68 +43,22 @@ typedef int (*LibbluPesPacketHeaderPrep_fun) (
 );
 
 int prepareLibbluESPesPacketProperties(
-  LibbluESPesPacketProperties * dst,
-  EsmsPesPacket * esms_pes,
+  LibbluESPesPacketProperties *dst,
+  EsmsPesPacket *esms_pes,
   uint64_t initial_STC,
   uint64_t referentialTs
 );
 
 int preparePesHeaderCommon(
-  PesPacketHeaderParam * dst,
+  PesPacketHeaderParam *dst,
   LibbluESPesPacketProperties prop,
   LibbluStreamCodingType codingType
 );
 
-/* ### ES Pes Packet Properties Node : ##################################### */
-
-#if 0
-
-typedef struct LibbluESPesPacketPropertiesNode {
-  struct LibbluESPesPacketPropertiesNode * next;
-
-  LibbluESPesPacketProperties prop;
-  EsmsCommandNodePtr commands;
-  size_t size;
-} LibbluESPesPacketPropertiesNode, *LibbluESPesPacketPropertiesNodePtr;
-
-LibbluESPesPacketPropertiesNodePtr createLibbluESPesPacketPropertiesNode(
-  void
-);
-
-void destroyLibbluESPesPacketPropertiesNode(
-  LibbluESPesPacketPropertiesNodePtr node,
-  bool recursive
-);
-
-LibbluESPesPacketPropertiesNodePtr prepareLibbluESPesPacketPropertiesNode(
-  EsmsPesPacketNodePtr scriptNode,
-  uint64_t initial_STC,
-  uint64_t referentialTs,
-  LibbluPesPacketHeaderPrep_fun preparePesHeader,
-  LibbluStreamCodingType codingType
-);
-
-static inline void attachLibbluESPesPacketPropertiesNode(
-  LibbluESPesPacketPropertiesNodePtr root,
-  const LibbluESPesPacketPropertiesNodePtr sibling
-)
-{
-  assert(NULL != root);
-
-  root->next = sibling;
-}
-
-size_t averageSizeLibbluESPesPacketPropertiesNode(
-  const LibbluESPesPacketPropertiesNodePtr root,
-  unsigned maxNbSamples
-);
-
-#endif
-
 /* ### ES Pes Packet Data : ################################################ */
 
 typedef struct {
-  uint8_t * data;       /**< PES packet data.                                */
+  uint8_t *data;       /**< PES packet data.                                */
   uint32_t alloc_size;  /**< PES packet data array allocated size in bytes.  */
 
   uint32_t offset;  /**< PES packet data writing offset.                     */
@@ -111,7 +66,7 @@ typedef struct {
 } LibbluESPesPacketData;
 
 static inline void initLibbluESPesPacketData(
-  LibbluESPesPacketData * dst
+  LibbluESPesPacketData *dst
 )
 {
   *dst = (LibbluESPesPacketData) {
@@ -127,7 +82,7 @@ static inline void cleanLibbluESPesPacketData(
 }
 
 int allocateLibbluESPesPacketData(
-  LibbluESPesPacketData * dst,
+  LibbluESPesPacketData *dst,
   uint32_t size
 );
 

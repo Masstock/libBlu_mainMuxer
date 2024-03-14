@@ -24,34 +24,34 @@ static inline bool isUsedLibbluAspectRatioMod(
 
 typedef struct {
   IniFileContext conf_hdl;
-  bool forcedScriptBuilding;  /**< Forced script building. */
-  bool dvdMedia;
-  bool secondaryStream;         /**< Set to true if ES must be muxed as a
+  bool force_script_generation;  /**< Forced script building. */
+  bool dvd_media;
+  bool secondary;         /**< Set to true if ES must be muxed as a
     secondary stream.                                                        */
-  bool disableFixes;
+  bool disable_fixes;
 
   struct {
-    bool extractCore;
-    lbc * pbrFilepath;
+    bool extract_core;
+    lbc *pbr_filepath;
   };  /**< Audio codecs related options.                                     */
 
   struct {
-    bool secondPass;  /**< Is the second parsing attempt. */
-    bool halfPicOrderCnt;  /**< Divide by two the computed PicOrderCnt of
+    bool second_pass;  /**< Is the second parsing attempt. */
+    bool half_PicOrderCnt;  /**< Divide by two the computed PicOrderCnt of
       each picture. This option is automatically triggered.                  */
     int64_t initDecPicNbCntShift;  /**< Initial decoding timestamp shifting
       in pictures units (1 / frame-rate). This option is automatically
       adjusted.                                                              */
 
-    HdmvFrameRateCode fpsChange;
-    LibbluAspectRatioMod arChange;
-    uint8_t levelChange;
-    bool forceRebuildSei;
-    bool discardSei;
+    HdmvFrameRateCode fps_mod;
+    LibbluAspectRatioMod ar_mod;
+    uint8_t level_mod;
+    bool force_rebuild_sei;
+    bool discard_sei;
 
-    bool disableHrdVerifier;
-    lbc * hrdCpbStatsFilepath;
-    lbc * hrdDpbStatsFilepath;
+    bool disable_HRD_verifier;
+    lbc *HRD_CPB_stats_log_fp;
+    lbc *HRD_DPB_stats_log_fp;
   };  /**< Video codecs related options.                                     */
 
   struct {
@@ -66,18 +66,18 @@ uint64_t computeFlagsLibbluESSettingsOptions(
 );
 
 int parseFpsChange(
-  const lbc * expr,
-  HdmvFrameRateCode * val
+  const lbc *expr,
+  HdmvFrameRateCode *val
 );
 
 int parseArChange(
-  const lbc * expr,
-  LibbluAspectRatioMod * val
+  const lbc *expr,
+  LibbluAspectRatioMod *val
 );
 
 int parseLevelChange(
-  const lbc * expr,
-  uint8_t * val
+  const lbc *expr,
+  uint8_t *val
 );
 
 #endif

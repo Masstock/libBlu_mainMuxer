@@ -26,11 +26,11 @@ typedef enum {
   HDMV_PAL_CM_BT_2020
 } HdmvPaletteColorMatrix;
 
-static inline const char * HdmvPaletteColorMatrixStr(
+static inline const char *HdmvPaletteColorMatrixStr(
   HdmvPaletteColorMatrix matrix
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "BT.601",
     "BT.709",
     "BT.2020"
@@ -43,9 +43,9 @@ static inline const char * HdmvPaletteColorMatrixStr(
 
 static inline int getCoefficientsHdmvPaletteColorMatrix(
   HdmvPaletteColorMatrix matrix,
-  float * r,
-  float * g,
-  float * b
+  float *r,
+  float *g,
+  float *b
 )
 {
   static const float values[][3] = {
@@ -101,7 +101,7 @@ typedef struct {
 /* ###### Creation / Destruction : ######################################### */
 
 static inline void initHdmvPalette(
-  HdmvPalette * dst,
+  HdmvPalette *dst,
   uint8_t version,
   HdmvPaletteColorMatrix ycbcr_matrix
 )
@@ -130,21 +130,21 @@ static inline unsigned getNbEntriesHdmvPalette(
 /* ###### Operations : ##################################################### */
 
 void sortEntriesHdmvPalette(
-  HdmvPalette * pal
+  HdmvPalette *pal
 );
 
 /* ###### Add Entry : ###################################################### */
 
 int addRgbaEntryHdmvPalette(
-  HdmvPalette * pal,
+  HdmvPalette *pal,
   uint32_t rgba
 );
 
 /* ###### Get Entry : ###################################################### */
 
 static inline int getYCbCrEntryHdmvPalette(
-  const HdmvPalette * pal,
-  uint32_t * ycbcr_ret,
+  const HdmvPalette *pal,
+  uint32_t *ycbcr_ret,
   unsigned id
 )
 {
@@ -157,7 +157,7 @@ static inline int getYCbCrEntryHdmvPalette(
 
 static inline bool getYCbCrEntryIfInUseHdmvPalette(
   const HdmvPalette pal,
-  uint32_t * ycbcr_ret,
+  uint32_t *ycbcr_ret,
   unsigned id
 )
 {

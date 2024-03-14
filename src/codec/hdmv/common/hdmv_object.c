@@ -13,7 +13,7 @@ static uint32_t _maxRleSize(
 }
 
 static int _allocRle(
-  HdmvObject * obj
+  HdmvObject *obj
 )
 {
   assert(0 < obj->pal_bitmap.width);
@@ -24,7 +24,7 @@ static int _allocRle(
     obj->pal_bitmap.height
   );
 
-  uint8_t * rle = malloc(max_rle_size);
+  uint8_t *rle = malloc(max_rle_size);
   if (NULL == rle)
     LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
   obj->rle = rle;
@@ -33,7 +33,7 @@ static int _allocRle(
 }
 
 int initFromPalletizedHdmvObject(
-  HdmvObject * dst,
+  HdmvObject *dst,
   HdmvPalletizedBitmap pal_bitmap
 )
 {
@@ -52,13 +52,13 @@ int initFromPalletizedHdmvObject(
 }
 
 static int _copyRle(
-  HdmvObject * dst,
-  const uint8_t * src_rle,
+  HdmvObject *dst,
+  const uint8_t *src_rle,
   uint32_t src_rle_size
 )
 {
   size_t size = src_rle_size + 1u; // Extra room for error-free optimized decompression
-  uint8_t * rle = calloc(1u, size);
+  uint8_t *rle = calloc(1u, size);
   if (NULL == rle)
     LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
   memcpy(rle, src_rle, src_rle_size);
@@ -69,8 +69,8 @@ static int _copyRle(
 }
 
 int initHdmvObject(
-  HdmvObject * dst,
-  const uint8_t * rle,
+  HdmvObject *dst,
+  const uint8_t *rle,
   uint32_t rle_size,
   uint16_t width,
   uint16_t height
@@ -97,21 +97,21 @@ int initHdmvObject(
 }
 
 int compressRleHdmvObject(
-  HdmvObject * obj,
-  unsigned * longuest_compressed_line_size_ret,
-  uint16_t * longuest_compressed_line_ret
+  HdmvObject *obj,
+  unsigned *longuest_compressed_line_size_ret,
+  uint16_t *longuest_compressed_line_ret
 )
 {
   uint16_t height = obj->pal_bitmap.height;
   uint16_t stride = obj->pal_bitmap.width;
-  uint8_t * src   = obj->pal_bitmap.data;
-  uint8_t * dst   = obj->rle;
+  uint8_t *src   = obj->pal_bitmap.data;
+  uint8_t *dst   = obj->rle;
 
   unsigned max_compr_line_size = 0u;
   uint16_t max_compr_line = 0x0;
 
   for (uint16_t line_i = 0; line_i < height; line_i++) {
-    uint8_t * eol = &src[stride];
+    uint8_t *eol = &src[stride];
     uint16_t run_len = 0u;
     uint8_t run_px = 0x00;
     unsigned off = 0u;
@@ -201,9 +201,9 @@ int compressRleHdmvObject(
 }
 
 int decompressRleHdmvObject(
-  HdmvObject * obj,
-  unsigned * longuest_compressed_line_size_ret,
-  uint16_t * longuest_compressed_line_ret
+  HdmvObject *obj,
+  unsigned *longuest_compressed_line_size_ret,
+  uint16_t *longuest_compressed_line_ret
 )
 {
   assert(0 < obj->rle_size);
@@ -214,21 +214,21 @@ int decompressRleHdmvObject(
   unsigned nb_lines   = obj->pal_bitmap.height;
   unsigned line_width = obj->pal_bitmap.width;
 
-  size_t bitmap_size = (nb_lines * line_width);
-  uint8_t * dst = malloc(bitmap_size);
+  size_t bitmap_size = (nb_lines *line_width);
+  uint8_t *dst = malloc(bitmap_size);
   if (NULL == dst)
     LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
   obj->pal_bitmap.data = dst;
 
-  const uint8_t * src     = obj->rle;
-  const uint8_t * src_end = &obj->rle[obj->rle_size];
+  const uint8_t *src     = obj->rle;
+  const uint8_t *src_end = &obj->rle[obj->rle_size];
   uint8_t       * dst_end = &dst[bitmap_size];
 
   unsigned max_compr_line_size = 0u;
   uint16_t max_compr_line = 0x0;
 
-  const uint8_t * src_line_start = src;
-  const uint8_t * dst_line_end   = &dst[line_width];
+  const uint8_t *src_line_start = src;
+  const uint8_t *dst_line_end   = &dst[line_width];
   unsigned cur_nb_lines = 0;
 
   while (src < src_end && dst < dst_end) {

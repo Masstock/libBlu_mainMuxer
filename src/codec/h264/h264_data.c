@@ -8,7 +8,7 @@
 #include "h264_util.h"
 #include "h264_data.h"
 
-const char * H264ProfileIdcValueStr(
+const char *H264ProfileIdcValueStr(
   H264ProfileIdcValue val,
   H264ContraintFlags constraints
 )
@@ -139,8 +139,8 @@ H264MemMngmntCtrlOpBlkPtr copyH264MemoryManagementControlOperations(
 #endif
 
 int initH264NalDeserializerContext(
-  H264NalDeserializerContext * dst,
-  const lbc * filepath
+  H264NalDeserializerContext *dst,
+  const lbc *filepath
 )
 {
   BitstreamReaderPtr inputFile;
@@ -169,7 +169,7 @@ unsigned getH264BrNal(
     assert(0 < constraints.cpbBrNalFactor);
   }
 
-  return constraints.cpbBrNalFactor * constraints.MaxBR;
+  return constraints.cpbBrNalFactor *constraints.MaxBR;
 }
 
 unsigned getH264MaxMBPS(

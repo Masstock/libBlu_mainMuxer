@@ -32,12 +32,12 @@
 
 /* ### ESMS ES Source Files : ############################################## */
 
-static lbc * checkAndDupFilepathEsmsESSourceFiles(
-  const lbc * filepath
+static lbc *checkAndDupFilepathEsmsESSourceFiles(
+  const lbc *filepath
 )
 {
   size_t size;
-  lbc * copy;
+  lbc *copy;
 
   size = lbc_strlen(filepath);
   if (!size || ESMS_MAX_FILENAME_LEN <= size)
@@ -52,8 +52,8 @@ static lbc * checkAndDupFilepathEsmsESSourceFiles(
 }
 
 int appendEsmsESSourceFiles(
-  EsmsESSourceFiles * dst,
-  const lbc * filepath,
+  EsmsESSourceFiles *dst,
+  const lbc *filepath,
   EsmsESSourceFileProperties properties
 )
 {
@@ -62,7 +62,7 @@ int appendEsmsESSourceFiles(
       "ESMS source files list can no longer be edited after opening them.\n"
     );
 
-  lbc * filepath_copy;
+  lbc *filepath_copy;
   if (NULL == (filepath_copy = checkAndDupFilepathEsmsESSourceFiles(filepath)))
     return -1;
 
@@ -82,7 +82,7 @@ free_return:
 }
 
 int openAllEsmsESSourceFiles(
-  EsmsESSourceFiles * dst
+  EsmsESSourceFiles *dst
 )
 {
 
@@ -92,7 +92,7 @@ int openAllEsmsESSourceFiles(
     LIBBLU_ERROR_RETURN("ESMS source files opening already done.\n");
 
   for (unsigned i = 0; i < dst->nb_source_files; i++) {
-    EsmsESSourceFilesEntry * entry = &dst->entries[i];
+    EsmsESSourceFilesEntry *entry = &dst->entries[i];
     if (NULL == (entry->handle = createBitstreamReaderDefBuf(entry->filepath)))
       return -1;
   }
@@ -105,9 +105,9 @@ int openAllEsmsESSourceFiles(
 /* ### ESMS Data Blocks : ################################################## */
 
 int appendEsmsDataBlocks(
-  EsmsDataBlocks * dst,
+  EsmsDataBlocks *dst,
   EsmsDataBlockEntry entry,
-  unsigned * data_block_id
+  unsigned *data_block_id
 )
 {
   unsigned dst_id;
@@ -125,9 +125,9 @@ int appendEsmsDataBlocks(
 
     if (lb_mul_overflow_size_t(new_size, sizeof(EsmsDataBlockEntry)))
       LIBBLU_ERROR_RETURN("Data Blocks definitions number overflow.\n");
-    size_t alloc_size = new_size * sizeof(EsmsDataBlockEntry);
+    size_t alloc_size = new_size *sizeof(EsmsDataBlockEntry);
 
-    EsmsDataBlockEntry * new_array = realloc(dst->entries, alloc_size);
+    EsmsDataBlockEntry *new_array = realloc(dst->entries, alloc_size);
     if (NULL == new_array)
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -145,7 +145,7 @@ int appendEsmsDataBlocks(
 }
 
 int updateEsmsDataBlocks(
-  EsmsDataBlocks * dst,
+  EsmsDataBlocks *dst,
   EsmsDataBlockEntry updated_entry,
   unsigned dstIdx
 )
@@ -167,7 +167,7 @@ int updateEsmsDataBlocks(
 
 int applyEsmsAddDataCommand(
   EsmsAddDataCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size
 )
 {
@@ -200,7 +200,7 @@ int applyEsmsAddDataCommand(
 
 int applyEsmsChangeByteOrderCommand(
   EsmsChangeByteOrderCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size
 )
 {
@@ -250,9 +250,9 @@ int applyEsmsChangeByteOrderCommand(
 
 int applyEsmsAddPesPayloadCommand(
   EsmsAddPesPayloadCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size,
-  const EsmsESSourceFiles * src_files
+  const EsmsESSourceFiles *src_files
 )
 {
   assert(NULL != payload_dst);
@@ -298,7 +298,7 @@ int applyEsmsAddPesPayloadCommand(
 
 int applyEsmsAddPaddingCommand(
   EsmsAddPaddingCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size
 )
 {
@@ -331,7 +331,7 @@ int applyEsmsAddPaddingCommand(
 
 int applyEsmsAddDataBlockCommand(
   EsmsAddDataBlockCommand command,
-  uint8_t * payload_dst,
+  uint8_t *payload_dst,
   uint32_t payload_size,
   EsmsDataBlocks data_blocks
 )
@@ -345,7 +345,7 @@ int applyEsmsAddDataBlockCommand(
       command.data_block_id
     );
 
-  const EsmsDataBlockEntry * entry = &data_blocks.entries[command.data_block_id];
+  const EsmsDataBlockEntry *entry = &data_blocks.entries[command.data_block_id];
   if (payload_size < command.insert_offset + entry->data_block_size)
     LIBBLU_ERROR_RETURN(
       "Broken script, out of range data block insertion domain "
@@ -431,14 +431,14 @@ void destroyEsmsPesPacketNode(
 /* ### ESMS files utilities : ############################################## */
 
 ESMSDirectoryFetcherErrorCodes getDirectoryOffset(
-  const lbc * esms_filepath,
+  const lbc *esms_filepath,
   ESMSDirectoryId looked_dir_ID,
-  int64_t * offset
+  int64_t *offset
 )
 {
   ESMSDirectoryFetcherErrorCodes ret;
 
-  FILE * esms_fd = lbc_fopen(esms_filepath, "rb");
+  FILE *esms_fd = lbc_fopen(esms_filepath, "rb");
   if (NULL == esms_fd)
     return ESMS_DF_READ_ERROR; // Opening error
 
@@ -487,7 +487,7 @@ read_error:
 }
 
 int isPresentDirectory(
-  const lbc * essFilename,
+  const lbc *essFilename,
   ESMSDirectoryId id
 )
 {
@@ -503,7 +503,7 @@ int isPresentDirectory(
 
 int seekDirectoryOffset(
   BitstreamReaderPtr esms_bs,
-  const lbc * essFilename,
+  const lbc *essFilename,
   ESMSDirectoryId id
 )
 {
@@ -567,7 +567,7 @@ int checkDirectoryMagic(
   return 0;
 }
 
-const char * ESMSValidatorErrorStr(
+const char *ESMSValidatorErrorStr(
   const ESMSFileValidatorRet code
 )
 {
@@ -596,7 +596,7 @@ const char * ESMSValidatorErrorStr(
 }
 
 static ESMSFileValidatorRet isValidESMSFileSourceFile(
-  const lbc * sourceFilepath,
+  const lbc *sourceFilepath,
   unsigned crcControlledSize,
   uint32_t crcExpectedResult
 )
@@ -604,7 +604,7 @@ static ESMSFileValidatorRet isValidESMSFileSourceFile(
   ESMSFileValidatorRet ret;
 
   BitstreamReaderPtr esms_bs;
-  uint8_t * crcBuffer;
+  uint8_t *crcBuffer;
 
   if (lbc_access_fp(sourceFilepath, "rb") < 0)
     return ESMS_FV_INVALID_SOURCE_FILE;
@@ -648,9 +648,9 @@ free_return:
 #define ES_SCRIPTING_FLAGS_FIELD_POS  0x13
 
 ESMSFileValidatorRet isAValidESMSFile(
-  const lbc * esms_fp,
+  const lbc *esms_fp,
   uint64_t expected_flags,
-  uint16_t * ESMS_version_ret
+  uint16_t *ESMS_version_ret
 )
 {
   ESMSFileValidatorRet ret = ESMS_FV_OK;
@@ -659,7 +659,7 @@ ESMSFileValidatorRet isAValidESMSFile(
   if (NULL == esms_fp)
     return ESMS_FV_NO_SCRIPT;
 
-  FILE * esms_fd;
+  FILE *esms_fd;
   if (NULL == (esms_fd = lbc_fopen(esms_fp, "rb"))) {
     ret = (errno == ENOENT) ? ESMS_FV_NO_SCRIPT : ESMS_FV_READ_ERROR;
     errno = 0; /* Clear errno */
@@ -733,7 +733,7 @@ ESMSFileValidatorRet isAValidESMSFile(
       goto free_return;
     }
 
-    uint8_t * src_filepath;
+    uint8_t *src_filepath;
     if (NULL == (src_filepath = calloc(src_filepath_size + 1u, 1))) {
       ret = ESMS_FV_MEMORY_ERROR;
       goto free_return;

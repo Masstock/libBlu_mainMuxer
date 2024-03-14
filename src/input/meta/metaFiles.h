@@ -10,16 +10,13 @@
 #ifndef __LIBBLU_MUXER__INPUT__META_FILES_H__
 #define __LIBBLU_MUXER__INPUT__META_FILES_H__
 
-#include "metaReader.h"
-#include "metaFilesData.h"
-#include "../../streamCodingType.h"
-#include "../../codecsUtilities.h"
-#include "../../muxingSettings.h"
-#include "../../stream.h"
+#include "../../projectSettings.h"
 
 int parseMetaFile(
-  const lbc * filepath,
-  LibbluMuxingSettings * dst
+  LibbluProjectSettings *dst,
+  const lbc *meta_filepath,
+  const lbc *output_filepath,
+  const LibbluMuxingOptions mux_options
 );
 
 #endif

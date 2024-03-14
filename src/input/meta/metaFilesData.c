@@ -80,9 +80,9 @@ static const LibbluMetaOption options[] = {
 };
 
 static int parseLibbluMetaOptionArg(
-  const lbc * string,
+  const lbc *string,
   LibbluMetaOptionArgType expectedType,
-  LibbluMetaOptionArgValue * value
+  LibbluMetaOptionArgValue *value
 )
 {
   LibbluMetaOptionArgValue argVal;
@@ -108,17 +108,17 @@ static int parseLibbluMetaOptionArg(
 }
 
 LibbluMetaOptionId parseLibbluMetaOption(
-  const LibbluMetaFileOption * node,
-  LibbluMetaOption * option,
-  LibbluMetaOptionArgValue * argument,
+  const LibbluMetaFileOption *node,
+  LibbluMetaOption *option,
+  LibbluMetaOptionArgValue *argument,
   LibbluStreamCodingType trackCodingType
 )
 {
   size_t i;
-  const lbc * name;
-  const lbc * arg;
+  const lbc *name;
+  const lbc *arg;
 
-  char * prefix = ""; /* For clear error messages */
+  char *prefix = ""; /* For clear error messages */
 
   name = node->name;
   arg = node->arg;

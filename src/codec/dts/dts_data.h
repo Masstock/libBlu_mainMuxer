@@ -64,11 +64,11 @@ typedef enum {
   DTSHD_TCFR_RESERVED
 } DtshdTCFrameRate;
 
-static inline const char * DtshdTCFrameRateStr(
+static inline const char *DtshdTCFrameRateStr(
   DtshdTCFrameRate TC_Frame_Rate
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not Indicated",
     "23.976",
     "24",
@@ -114,7 +114,7 @@ typedef struct {
 
 typedef struct {
   uint64_t FILEINFO_Text_Byte_Size;
-  char * text;
+  char *text;
 } DtshdFileInfo;
 
 /** \~english
@@ -186,7 +186,7 @@ typedef struct {
   uint64_t Audio_Pres_Info_Text_Byte_Size;
 
   uint8_t Audio_Pres_Info_Text_Index;
-  char * text;
+  char *text;
 } DtshdAudioPresText;
 
 typedef struct {
@@ -213,13 +213,13 @@ typedef struct {
 typedef struct {
   uint64_t BuildVer_Data_Byte_Size;
 
-  char * text;
+  char *text;
 } DtshdBuildVer;
 
 typedef struct {
   uint64_t Blackout_Data_Byte_Size;
 
-  uint8_t * Blackout_Frame;
+  uint8_t *Blackout_Frame;
 } DtshdBlackout;
 
 typedef struct {
@@ -275,7 +275,7 @@ typedef struct {
  * \return false PBRS process is not required or cannot be performed.
  */
 static inline bool shallPBRSPerformedDtshdFileHandler(
-  const DtshdFileHandler * hdlr
+  const DtshdFileHandler *hdlr
 )
 {
   if (!hdlr->DTSHDHDR_count)
@@ -302,10 +302,10 @@ static inline bool shallPBRSPerformedDtshdFileHandler(
  * \return The number of to-be-skipped access units at bitstream start.
  */
 static inline unsigned getInitialSkippingDelayDtshdFileHandler(
-  const DtshdFileHandler * hdlr
+  const DtshdFileHandler *hdlr
 )
 {
-  const DtshdAudioPresPropHeaderMeta * AUPR_HDR = &hdlr->AUPR_HDR;
+  const DtshdAudioPresPropHeaderMeta *AUPR_HDR = &hdlr->AUPR_HDR;
 
   if (!hdlr->AUPR_HDR_count)
     return 0;
@@ -316,11 +316,11 @@ static inline unsigned getInitialSkippingDelayDtshdFileHandler(
 }
 
 static inline unsigned getPBRSmoothingBufSizeKiBDtshdFileHandler(
-  const DtshdFileHandler * hdlr
+  const DtshdFileHandler *hdlr
 )
 {
-  const DtshdFileHeaderChunk * DTSHDHDR = &hdlr->DTSHDHDR;
-  const DtshdExtSubStrmMeta * EXTSS_MD = &hdlr->EXTSS_MD;
+  const DtshdFileHeaderChunk *DTSHDHDR = &hdlr->DTSHDHDR;
+  const DtshdExtSubStrmMeta *EXTSS_MD = &hdlr->EXTSS_MD;
 
   if (!hdlr->DTSHDHDR_count || !hdlr->EXTSS_MD_count)
     return 0;
@@ -382,11 +382,11 @@ static inline unsigned getNbChDcaCoreAudioChannelAssignCode(
  * \param AMODE
  * \return const char*
  */
-static inline const char * DcaCoreAudioChannelAssignCodeStr(
+static inline const char *DcaCoreAudioChannelAssignCodeStr(
   const DcaCoreAudioChannelAssignCode AMODE
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "C (Mono)",
     "C+C (Dual-Mono)",
     "L, R (Stereo 2.)",
@@ -522,7 +522,7 @@ static inline bool isValidDcaCoreExtendedAudioCodingCode(
   ;
 }
 
-static inline const char * DcaCoreExtendedAudioCodingCodeStr(
+static inline const char *DcaCoreExtendedAudioCodingCodeStr(
   DcaCoreExtendedAudioCodingCode EXT_AUDIO_ID
 )
 {
@@ -550,11 +550,11 @@ typedef enum {
   DCA_LFF_INVALID        = 0x3   /**< Invalid value.                         */
 } DcaCoreLowFrequencyEffectsFlag;
 
-static inline const char * DcaCoreLowFrequencyEffectsFlagStr(
+static inline const char *DcaCoreLowFrequencyEffectsFlagStr(
   DcaCoreLowFrequencyEffectsFlag LFF
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Not present",
     "Present, 128 Interpolation Factor",
     "Present, 64 Interpolation Factor"
@@ -580,11 +580,11 @@ typedef enum {
   DCA_CHIST_FREE_COPY   = 0x3
 } DcaCoreCopyrightHistoryCode;
 
-static inline const char * DcaCoreCopyrightHistoryCodeStr(
+static inline const char *DcaCoreCopyrightHistoryCodeStr(
   DcaCoreCopyrightHistoryCode CHIST
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Forbidden copy",
     "First generation",
     "Second generation",
@@ -639,7 +639,7 @@ typedef enum {
   DCA_SUM_ENCODED      = 0x1
 } DcaCoreChPairSumDiffEncodedFlag;
 
-static inline const char * frontChDcaCoreChPairSumDiffEncodedFlagStr(
+static inline const char *frontChDcaCoreChPairSumDiffEncodedFlagStr(
   DcaCoreChPairSumDiffEncodedFlag SUMF
 )
 {
@@ -648,7 +648,7 @@ static inline const char * frontChDcaCoreChPairSumDiffEncodedFlagStr(
   return "Sum/Difference, L=L+R, R=L-R";
 }
 
-static inline const char * surChDcaCoreChPairSumDiffEncodedFlagStr(
+static inline const char *surChDcaCoreChPairSumDiffEncodedFlagStr(
   DcaCoreChPairSumDiffEncodedFlag SUMS
 )
 {
@@ -712,7 +712,7 @@ typedef struct {
 #define DCA_CORE_BSH_MINSIZE  13u
 
 static inline uint32_t getSizeDcaCoreBSHeader(
-  const DcaCoreBSHeaderParameters * bsh
+  const DcaCoreBSHeaderParameters *bsh
 )
 {
   if (bsh->CPF)
@@ -805,11 +805,11 @@ typedef enum {
   DCA_EXT_SS_MIX_ADJ_LVL_RESERVED              = 0x3
 } DcaExtMixMetadataAdjLevel;
 
-static inline const char * dcaExtMixMetadataAjdLevelStr(
+static inline const char *dcaExtMixMetadataAjdLevelStr(
   DcaExtMixMetadataAdjLevel lvl
 )
 {
-  static const char * strings[] = {
+  static const char *strings[] = {
     "Use only bitstream embedded metadata",
     "Allow system to adjust feature 1",
     "Allow system to adjust both feature 1 and feature 2",
@@ -840,11 +840,11 @@ typedef enum {
   DCA_EXT_SS_ASSET_TYPE_DESC_RESERVED                           = 0xF
 } DcaExtAssetTypeDescCode;
 
-static inline const char * dtsExtAssetTypeDescCodeStr(
+static inline const char *dtsExtAssetTypeDescCodeStr(
   const DcaExtAssetTypeDescCode code
 )
 {
-  static const char * typStr[] = {
+  static const char *typStr[] = {
     "Music",
     "Effects",
     "Dialog",
@@ -896,7 +896,7 @@ static inline unsigned buildDcaExtChMaskString(
   uint16_t Channel_Mask
 )
 {
-  static const char * ch_config_str[16] = {
+  static const char *ch_config_str[16] = {
     "C",
     "L, R",
     "Ls, Rs",
@@ -919,9 +919,9 @@ static inline unsigned buildDcaExtChMaskString(
   };
 
   unsigned nb_channels = 0;
-  char * str_ptr = dst;
+  char *str_ptr = dst;
 
-  const char * sep = "";
+  const char *sep = "";
   for (unsigned i = 0; i < 16; i++) {
     if (Channel_Mask & (1 << i)) {
       lb_str_cat(&str_ptr, sep);
@@ -973,11 +973,11 @@ typedef enum {
   DCA_EXT_SS_NOT_APPLICABLE_2        = 0x4,
 } DcaExtRepresentationTypeCode;
 
-static inline const char * dtsExtRepresentationTypeCodeStr(
+static inline const char *dtsExtRepresentationTypeCodeStr(
   const DcaExtRepresentationTypeCode code
 )
 {
-  static const char * typStr[] = {
+  static const char *typStr[] = {
     "Audio Asset for Mixing/Replacement purpose",
     "Not applicable",
     "Lt/Rt Encoded for Matrix Surround",
@@ -1068,11 +1068,11 @@ typedef enum {
   DCA_EXT_SS_CODING_MODE_AUXILIARY_CODING              = 0x3
 } DcaAudioAssetCodingMode;
 
-static inline const char * dtsAudioAssetCodingModeStr(
+static inline const char *dtsAudioAssetCodingModeStr(
   const DcaAudioAssetCodingMode mode
 )
 {
-  static const char * modStr[] = {
+  static const char *modStr[] = {
     "DTS-HD Components Coding Mode",
     "DTS-HD Lossless (without Core) Coding Mode",
     "DTS-HD Low bit-rate (without Core) Coding Mode",
@@ -1227,7 +1227,7 @@ typedef struct {
 } DcaExtSSHeaderSFParameters;
 
 static inline float getExSSFrameDurationDcaExtRefClockCode(
-  const DcaExtSSHeaderSFParameters * sf
+  const DcaExtSSHeaderSFParameters *sf
 )
 {
   unsigned RefClockPeriod_den = getDcaExtReferenceClockValue(
@@ -1235,7 +1235,7 @@ static inline float getExSSFrameDurationDcaExtRefClockCode(
   );
   assert(0 != RefClockPeriod_den);
 
-  return (1.f * sf->nuExSSFrameDurationCode) / RefClockPeriod_den;
+  return (1.f *sf->nuExSSFrameDurationCode) / RefClockPeriod_den;
 }
 
 #define DCA_EXT_SS_CRC_LENGTH 16
@@ -1300,7 +1300,7 @@ typedef struct {
 } DcaXllFrameSFPosition;
 
 static inline int addDcaXllFrameSFPosition(
-  DcaXllFrameSFPosition * dst,
+  DcaXllFrameSFPosition *dst,
   int64_t offset,
   uint32_t size
 )
@@ -1376,11 +1376,11 @@ typedef enum {
   DCA_XLL_CRC16_AT_END_OF_MSB0_LSB0_AND_BANDS  = 0x3
 } DtsXllCommonHeaderCrc16PresenceCode;
 
-static inline const char * dtsXllCommonHeaderCrc16PresenceCodeStr(
+static inline const char *dtsXllCommonHeaderCrc16PresenceCodeStr(
   DtsXllCommonHeaderCrc16PresenceCode code
 )
 {
-  static const char * codeStr[] = {
+  static const char *codeStr[] = {
     "No CRC16 checksum within frequency bands",
     "CRC16 checksum present at the end of frequency band 0's MSB",
     "CRC16 checksums present at the end of frequency band 0's MSB and LSB",

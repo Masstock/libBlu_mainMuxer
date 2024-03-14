@@ -18,7 +18,7 @@
 #endif
 
 void applyNoTableShiftedCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   uint8_t byte
 )
 {
@@ -38,7 +38,7 @@ void applyNoTableShiftedCrcContext(
 }
 
 void applyNoTableCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   uint8_t byte
 )
 {
@@ -59,7 +59,7 @@ void applyNoTableCrcContext(
 
 #if 0
 void applyNoTableCrcContext(
-  CrcContext * ctx,
+  CrcContext *ctx,
   uint8_t byte
 )
 {
@@ -174,16 +174,16 @@ static int _flushBitstreamWriter(
 }
 
 BitstreamReaderPtr createBitstreamReader(
-  const lbc * inputFilename,
-  const size_t bufferSize
+  const lbc *inputFilename,
+  const size_t buffer_size
 )
 {
   BitstreamReaderPtr bitStream;
 
   assert(NULL != inputFilename);
-  assert(32 < bufferSize);
+  assert(32 < buffer_size);
 
-  if (READ_BUFFER_LEN < bufferSize)
+  if (READ_BUFFER_LEN < buffer_size)
     LIBBLU_ERROR_NRETURN("Specified buffering size is too high.\n");
 
   if (NULL == (bitStream = (BitstreamReaderPtr) malloc(sizeof(BitstreamHandler))))
@@ -201,7 +201,7 @@ BitstreamReaderPtr createBitstreamReader(
 
 #if !defined(DISABLE_READ_BUFFER)
   {
-    char * buffer;
+    char *buffer;
 
     if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
       LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
@@ -216,11 +216,11 @@ BitstreamReaderPtr createBitstreamReader(
   }
 #endif
 
-  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
+  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(buffer_size)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
 
-  bitStream->bufferLength = bitStream->byteArraySize = bufferSize;
-  bitStream->byteArrayOff = bufferSize;
+  bitStream->bufferLength = bitStream->byteArraySize = buffer_size;
+  bitStream->byteArrayOff = buffer_size;
   bitStream->bitCount = 8; /* By default, a complete byte can be readed at bit level. */
   resetCrcContext(&bitStream->crcCtx);
 
@@ -251,14 +251,14 @@ void closeBitstreamReader(
 }
 
 BitstreamWriterPtr createBitstreamWriter(
-  const lbc * outputFilename,
-  const size_t bufferSize
+  const lbc *outputFilename,
+  const size_t buffer_size
 )
 {
   BitstreamWriterPtr bitStream;
 
   assert(NULL != outputFilename);
-  assert(32 < bufferSize);
+  assert(32 < buffer_size);
 
   if (NULL == (bitStream = (BitstreamWriterPtr) malloc(sizeof(BitstreamHandler))))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
@@ -274,7 +274,7 @@ BitstreamWriterPtr createBitstreamWriter(
 
 #if !defined(DISABLE_WRITE_BUFFER)
   {
-    char * buffer;
+    char *buffer;
 
     if (NULL == (buffer = (char *) malloc(IO_VBUF_SIZE)))
       LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
@@ -288,10 +288,10 @@ BitstreamWriterPtr createBitstreamWriter(
   }
 #endif
 
-  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(bufferSize)))
+  if (NULL == (bitStream->byteArray = (uint8_t *) malloc(buffer_size)))
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  bitStream->byteArraySize = bufferSize;
+  bitStream->byteArraySize = buffer_size;
   resetCrcContext(&bitStream->crcCtx);
 
   bitStream->identifier = _generatedBistreamIdentifier();
@@ -316,7 +316,7 @@ void closeBitstreamWriter(
 
 int nextBytes(
   BitstreamReaderPtr bitStream,
-  uint8_t * data,
+  uint8_t *data,
   size_t dataLen
 )
 {
@@ -428,7 +428,7 @@ int nextBytes(
 
 int readBit(
   BitstreamReaderPtr bitStream,
-  bool * bit
+  bool *bit
 )
 {
   uint8_t byte;
@@ -464,7 +464,7 @@ int readBit(
 
 int readBits(
   BitstreamReaderPtr bitStream,
-  uint32_t * value,
+  uint32_t *value,
   size_t size
 )
 {
@@ -526,7 +526,7 @@ int readBits(
 
 int readBits(
   BitstreamReaderPtr bitStream,
-  uint32_t * value,
+  uint32_t *value,
   size_t size
 )
 {
@@ -553,7 +553,7 @@ int readBits(
 
 int readByte(
   BitstreamReaderPtr bitStream,
-  uint8_t * data
+  uint8_t *data
 )
 {
   uint8_t byte;
@@ -588,7 +588,7 @@ int readByte(
 
 int readBytes(
   BitstreamReaderPtr bs,
-  uint8_t * data,
+  uint8_t *data,
   size_t size
 )
 {
@@ -617,7 +617,7 @@ int readBytes(
 int readValueBigEndian(
   BitstreamReaderPtr bitStream,
   const size_t length,
-  uint32_t * value
+  uint32_t *value
 )
 {
   size_t idx;
@@ -643,7 +643,7 @@ int readValueBigEndian(
 int readValue64BigEndian(
   BitstreamReaderPtr bs,
   size_t size,
-  uint64_t * value
+  uint64_t *value
 )
 {
   assert(0 < size && size <= 8);
@@ -665,7 +665,7 @@ int readValue64BigEndian(
 int readValue64LittleEndian(
   BitstreamReaderPtr bitStream,
   size_t length,
-  uint64_t * value
+  uint64_t *value
 )
 {
   assert(0 < length && length <= 8);
@@ -675,7 +675,7 @@ int readValue64LittleEndian(
     uint8_t byte;
     if (readByte(bitStream, &byte) < 0)
       return -1;
-    v |= byte << (8ull * idx);
+    v |= byte << (8ull *idx);
   }
 
   if (NULL != value)
@@ -702,7 +702,7 @@ int writeByte(
 
 int writeBytes(
   BitstreamWriterPtr bs,
-  const uint8_t * data,
+  const uint8_t *data,
   size_t size
 )
 {
@@ -761,7 +761,7 @@ void crcTableGenerator(
   /* Usage: crcTableGenerator(param); */
   unsigned length = param.length;
   uint32_t poly   = param.poly;
-  const lbc * eol = lbc_str("");
+  const lbc *eol = lbc_str("");
 
   lbc_printf(lbc_str("{\n"));
   for (unsigned byte = 0; byte < 256; byte++) {
@@ -790,15 +790,15 @@ void crcTableGenerator(
 #if defined(ARCH_WIN32)
 
 int getFileSize(
-  const lbc * filename,
-  int64_t * size_ret
+  const lbc *filename,
+  int64_t *size_ret
 )
 {
   assert(NULL != filename);
   assert(NULL != size_ret);
 
   /* Convert filename to UTF-16 */
-  wchar_t * wc_filename = winUtf8ToWideChar(filename);
+  wchar_t *wc_filename = winUtf8ToWideChar(filename);
   if (NULL == wc_filename)
     return -1;
 
@@ -833,8 +833,8 @@ int getFileSize(
 #else
 
 int getFileSize(
-  const lbc * filename,
-  int64_t * size
+  const lbc *filename,
+  int64_t *size
 )
 {
   struct stat st;

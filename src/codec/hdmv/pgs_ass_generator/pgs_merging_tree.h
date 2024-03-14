@@ -8,19 +8,19 @@
 #include "../common/hdmv_rectangle.h"
 
 typedef struct MTN {
-  struct MTN * left;
-  struct MTN * right;
+  struct MTN *left;
+  struct MTN *right;
   HdmvRectangle box;
 } MergingTreeNode;
 
-MergingTreeNode * createMergingTreeNode(
+MergingTreeNode *createMergingTreeNode(
   HdmvRectangle box,
-  MergingTreeNode * left,
-  MergingTreeNode * right
+  MergingTreeNode *left,
+  MergingTreeNode *right
 );
 
 void destroyMergingTreeNode(
-  MergingTreeNode * node
+  MergingTreeNode *node
 );
 
 int insertMergingTreeNode(
@@ -29,7 +29,7 @@ int insertMergingTreeNode(
 );
 
 static inline bool isSingleZoneMergingTreeNode(
-  const MergingTreeNode * tree
+  const MergingTreeNode *tree
 )
 {
   if (NULL == tree || NULL == tree->left)

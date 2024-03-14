@@ -11,7 +11,7 @@ static int increaseSizeStreamHeap(
 )
 {
   int newSize;
-  StreamHeapNode * newArray;
+  StreamHeapNode *newArray;
 
   assert(heap->allocatedSize <= heap->usedSize);
 
@@ -21,7 +21,7 @@ static int increaseSizeStreamHeap(
 
   newArray = (StreamHeapNode *) realloc(
     heap->content,
-    newSize * sizeof(StreamHeapNode)
+    newSize *sizeof(StreamHeapNode)
   );
   if (NULL == newArray)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
@@ -59,8 +59,8 @@ void destroyStreamHeap(
 }
 
 static int cmpNodesStreamHeap(
-  StreamHeapNode * left,
-  StreamHeapNode * right
+  StreamHeapNode *left,
+  StreamHeapNode *right
 )
 {
   assert(NULL != left);
@@ -192,8 +192,6 @@ int addStreamHeap(
   LibbluStreamPtr stream
 )
 {
-  int idx;
-
   assert(NULL != heap);
   assert(NULL != stream);
 
@@ -204,7 +202,7 @@ int addStreamHeap(
   }
 
   /* Insert stream at queue: */
-  idx = heap->usedSize++;
+  int idx = heap->usedSize++;
   heap->content[idx].timer = timer;
   heap->content[idx].stream = stream;
 
@@ -216,8 +214,8 @@ int addStreamHeap(
 
 void extractStreamHeap(
   StreamHeapPtr heap,
-  StreamHeapTimingInfos * timer,
-  LibbluStreamPtr * stream
+  StreamHeapTimingInfos *timer,
+  LibbluStreamPtr *stream
 )
 {
   assert(NULL != heap);

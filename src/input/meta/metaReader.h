@@ -5,52 +5,100 @@
 
 #include "../../util.h"
 
+/* ### META File header : ################################################## */
+
+#define LBMETA_MUXOPT_HEADER  lbc_str("MUXOPT")
+#define LBMETA_DISCOPT_HEADER  lbc_str("DISCOPT")
+
+typedef enum {
+  LBMETA_MUXOPT,
+  LBMETA_DISCOPT
+} LibbluMetaFileType;
+
+inline static const char *LibbluMetaFileTypeStr(
+  LibbluMetaFileType file_type
+)
+{
+  static const char *strings[] = {
+    "MUXOPT",
+    "DISCOPT"
+  };
+
+  if (ARRAY_SIZE(strings) <= file_type)
+    return "unknown";
+  return strings[file_type];
+}
+
 /* ### META File option : ################################################## */
 
 typedef struct LibbluMetaFileOption {
-  struct LibbluMetaFileOption * next;
+  struct LibbluMetaFileOption *next;
 
-  lbc * name;
-  lbc * arg;
+  lbc *name;
+  lbc *arg;
 } LibbluMetaFileOption;
 
-LibbluMetaFileOption * createLibbluMetaFileOption(
-  const lbc * name,
-  const lbc * arg
+LibbluMetaFileOption *createLibbluMetaFileOption(
+  const lbc *name,
+  const lbc *arg
 );
 
 void destroyLibbluMetaFileOption(
-  LibbluMetaFileOption * option
+  LibbluMetaFileOption *option
 );
 
 /* ### META File track : ################################################### */
 
 typedef struct LibbluMetaFileTrack {
-  struct LibbluMetaFileTrack * next;
+  struct LibbluMetaFileTrack *next;
 
-  lbc * codec;
-  lbc * filepath;
+  lbc *codec;
+  lbc *filepath;
 
-  LibbluMetaFileOption * options;
+  LibbluMetaFileOption *options;
 } LibbluMetaFileTrack;
 
-LibbluMetaFileTrack * createLibbluMetaFileTrack(
-  const lbc * codec,
-  const lbc * filepath
+LibbluMetaFileTrack *createLibbluMetaFileTrack(
+  const lbc *codec,
+  const lbc *filepath
 );
 
 void destroyLibbluMetaFileTrack(
-  LibbluMetaFileTrack * track
+  LibbluMetaFileTrack *track
 );
+
+/* ### META File section : ################################################# */
+
+typedef enum {
+  LBMETA_HEADER
+} LibbluMetaFileSectionType;
+
+#define LBMETA_NB_SECTIONS  1
+
+inline static const char *LibbluMetaFileSectionTypeStr(
+  LibbluMetaFileSectionType section_type
+)
+{
+  static const char *strings[] = {
+    "header"
+  };
+
+  if (ARRAY_SIZE(strings) <= section_type)
+    return "unknown";
+  return strings[section_type];
+}
+
+typedef struct {
+  LibbluMetaFileOption *common_options;
+  LibbluMetaFileTrack *tracks;
+} LibbluMetaFileSection;
 
 /* ### META File structure : ############################################### */
 
-#define LBMETA_FILE_HEADER  lbc_str("MUXOPT")
-#define LBMETA_FILE_HEADER_SIZE  6
-
 typedef struct {
-  LibbluMetaFileOption * commonOptions;
-  LibbluMetaFileTrack * tracks;
+  LibbluMetaFileType type;
+
+  LibbluMetaFileSection sections[LBMETA_NB_SECTIONS];
 } LibbluMetaFileStruct, *LibbluMetaFileStructPtr;
 
 LibbluMetaFileStructPtr createLibbluMetaFileStruct(
@@ -62,7 +110,7 @@ void destroyLibbluMetaFileStruct(
 );
 
 LibbluMetaFileStructPtr parseMetaFileStructure(
-  FILE * input
+  FILE *input
 );
 
 #endif

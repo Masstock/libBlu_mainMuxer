@@ -18,7 +18,7 @@ typedef struct {
 } HdmvPictureLibraries;
 
 static inline void initHdmvPictureLibraries(
-  HdmvPictureLibraries * dst
+  HdmvPictureLibraries *dst
 )
 {
   initHdmvLibpngHandle(&dst->libpng);
@@ -34,9 +34,9 @@ static inline void cleanHdmvPictureLibraries(
 /* ######################################################################### */
 
 int openHdmvBitmap(
-  HdmvBitmap * dst,
-  HdmvPictureLibraries * libs,
-  const lbc * filepath,
+  HdmvBitmap *dst,
+  HdmvPictureLibraries *libs,
+  const lbc *filepath,
   const IniFileContext conf_hdl
 );
 

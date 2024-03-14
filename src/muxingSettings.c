@@ -7,12 +7,12 @@
 
 #include "muxingSettings.h"
 
-static int _readSettingsFromConfigHandle(
-  LibbluMuxingSettings * dst,
+static int _readOptionsFromConfigHandle(
+  LibbluMuxingOptions *dst,
   const IniFileContext conf_hdl
 )
 {
-  lbc * string;
+  lbc *string;
 
   string = lookupIniFile(conf_hdl, "BUFFERINGMODEL.CRASHONERROR");
   if (NULL != string) {
@@ -23,7 +23,7 @@ static int _readSettingsFromConfigHandle(
         "Invalid boolean value setting 'crashOnError' in section "
         "[BufferingModel] of INI file.\n"
       );
-    dst->options.bufModelOptions.abortOnUnderflow = value;
+    dst->buffering_model_options.abort_on_underflow = value;
   }
 
   string = lookupIniFile(conf_hdl, "BUFFERINGMODEL.TIMEOUT");
@@ -35,36 +35,49 @@ static int _readSettingsFromConfigHandle(
         "Invalid integer value setting 'timeout' in section "
         "[BufferingModel] of INI file.\n"
       );
-    dst->options.bufModelOptions.underflowWarnTimeout = value;
+    dst->buffering_model_options.underflow_warn_timeout = value;
   }
 
   return 0;
 }
 
-int initLibbluMuxingSettings(
-  LibbluMuxingSettings * dst,
-  const lbc * outputTsFilename,
+int initLibbluMuxingOptions(
+  LibbluMuxingOptions *dst,
   IniFileContext conf_hdl
+)
+{
+  defaultLibbluMuxingOptions(dst, conf_hdl);
+  if (_readOptionsFromConfigHandle(dst, conf_hdl) < 0)
+    return -1;
+  return 0;
+}
+
+int initLibbluMuxingSettings(
+  LibbluMuxingSettings *dst,
+  const lbc *output_ts_filename,
+  const LibbluMuxingOptions mux_options
 )
 {
   assert(NULL != dst);
 
+  if (NULL == output_ts_filename)
+    output_ts_filename = lbc_str(LIBBLU_DEFAULT_OUTPUT_TS_FILENAME);
+
+  lbc *output_ts_filename_copy = lbc_strdup(output_ts_filename);
+  if (NULL == output_ts_filename_copy)
+    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+
   *dst = (LibbluMuxingSettings) {
-    .targetMuxingRate = LIBBLU_DEFAULT_MUXING_RATE,
-    .initialPresentationTime = LIBBLU_DEFAULT_INIT_PRES_TIME,
-    .initialTStdBufDuration = LIBBLU_DEFAULT_INIT_TSTD_DUR,
+    .output_ts_filename = output_ts_filename_copy,
+
+    .TS_recording_rate       = MUX_DEFAULT_TS_RECORDING_RATE,
+    .presentation_start_time = MUX_DEFAULT_PRES_START_TIME,
+    .initial_STD_STC_delay   = MUX_DEFAULT_INITIAL_STD_STC_DELAY,
+
+    .options = mux_options
   };
 
-  setHdmvDefaultUnencryptedLibbluDtcpSettings(&dst->dtcpParameters);
-  defaultLibbluMuxingOptions(&dst->options, conf_hdl);
-  if (_readSettingsFromConfigHandle(dst, conf_hdl) < 0)
-    return -1;
-
-  if (NULL == outputTsFilename)
-    outputTsFilename = LIBBLU_DEFAULT_OUTPUT_TS_FILENAME;
-
-  if (NULL == (dst->outputTsFilename = lbc_strdup(outputTsFilename)))
-    LIBBLU_ERROR_RETURN("Memory allocation error.\n");
+  setHdmvDefaultUnencryptedLibbluDtcpSettings(&dst->DTCP_parameters);
 
   return 0;
 }

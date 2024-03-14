@@ -14,16 +14,16 @@
 #  include <libloaderapi.h>
 
 struct LibbluLibraryHandleStruct {
-  lbc * name;
+  lbc *name;
   HMODULE lib;
 };
 
 static LibbluLibraryHandlePtr createLibbluLibraryHandle(
-  const lbc * name,
+  const lbc *name,
   HMODULE lib
 )
 {
-  lbc * nameCopy;
+  lbc *nameCopy;
   LibbluLibraryHandlePtr handle;
 
   if (NULL == (nameCopy = lbc_strdup(name)))
@@ -53,13 +53,13 @@ static void destroyLibbluLibraryHandle(
 }
 
 LibbluLibraryHandlePtr loadLibbluLibrary(
-  const lbc * name
+  const lbc *name
 )
 {
-  lbc * err_msg = NULL;
+  lbc *err_msg = NULL;
 
   /* Convert library name to UTF-16 */
-  wchar_t * wc_name = winUtf8ToWideChar(name);
+  wchar_t *wc_name = winUtf8ToWideChar(name);
   if (NULL == wc_name)
     return NULL;
 
@@ -103,16 +103,16 @@ void closeLibbluLibrary(
   destroyLibbluLibraryHandle(handle);
 }
 
-void * resolveSymLibbluLibrary(
+void *resolveSymLibbluLibrary(
   LibbluLibraryHandlePtr handle,
-  const char * name
+  const char *name
 )
 {
-  lbc * err_msg = NULL;
+  lbc *err_msg = NULL;
 
   assert(NULL != handle);
 
-  void * sym = GetProcAddress(handle->lib, name);
+  void *sym = GetProcAddress(handle->lib, name);
   if (NULL == sym) {
     /* Handle error */
     DWORD err_code;
@@ -142,16 +142,16 @@ free_return:
 #  include <dlfcn.h>
 
 struct LibbluLibraryHandleStruct {
-  lbc * name;
-  void * lib;
+  lbc *name;
+  void *lib;
 };
 
 static LibbluLibraryHandlePtr createLibbluLibraryHandle(
-  const lbc * name,
-  void * lib
+  const lbc *name,
+  void *lib
 )
 {
-  lbc * name_copy = lbc_strdup(name);
+  lbc *name_copy = lbc_strdup(name);
   if (NULL == name_copy)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
@@ -181,10 +181,10 @@ static void destroyLibbluLibraryHandle(
 }
 
 LibbluLibraryHandlePtr loadLibbluLibrary(
-  const lbc * name
+  const lbc *name
 )
 {
-  void * lib;
+  void *lib;
   LibbluLibraryHandlePtr handle;
 
   if (NULL == (lib = dlopen((char *) name, RTLD_LAZY)))
@@ -214,12 +214,12 @@ void closeLibbluLibrary(
   destroyLibbluLibraryHandle(handle);
 }
 
-void * resolveSymLibbluLibrary(
+void *resolveSymLibbluLibrary(
   LibbluLibraryHandlePtr handle,
-  const char * name
+  const char *name
 )
 {
-  void * sym;
+  void *sym;
 
   assert(NULL != handle);
 

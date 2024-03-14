@@ -12,10 +12,10 @@ typedef struct {
   HdmvCDParameters composition_descriptor;
   HdmvICParameters interactive_composition;
 
-  const HdmvPalette * palettes;
+  const HdmvPalette *palettes;
   unsigned nb_palettes;
 
-  const HdmvObject * objects;
+  const HdmvObject *objects;
   unsigned nb_objects;
 } HdmvBuilderIGSDSData;
 
@@ -27,10 +27,10 @@ typedef struct {
   HdmvWDParameters window_definition;
   bool window_definition_present;
 
-  const HdmvPalette * palettes;
+  const HdmvPalette *palettes;
   unsigned nb_palettes;
 
-  const HdmvObject * objects;
+  const HdmvObject *objects;
   unsigned nb_objects;
 } HdmvBuilderPGSDSData;
 

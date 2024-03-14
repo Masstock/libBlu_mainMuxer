@@ -22,8 +22,8 @@
 #define BDAV_STD_H264_TBS 512
 
 int createH264BufferingChainBdavStd(
-  BufModelNode * root,
-  LibbluES * stream,
+  BufModelNode *root,
+  LibbluES *stream,
   uint64_t initialTimestamp,
   BufModelBuffersListPtr buffersList
 );

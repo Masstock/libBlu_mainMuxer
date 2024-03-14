@@ -10,8 +10,8 @@
 #include "hdmv_context.h"
 
 static int _initOutputHdmvContext(
-  HdmvContextOutput * output,
-  const LibbluESParsingSettings * settings
+  HdmvContextOutput *output,
+  const LibbluESParsingSettings *settings
 )
 {
   LIBBLU_HDMV_COM_DEBUG(
@@ -19,18 +19,18 @@ static int _initOutputHdmvContext(
   );
 
   /* Copy script filepath */
-  output->filepath = lbc_strdup(settings->scriptFilepath);
-  if (NULL == output->filepath)
+  output->script_fp = lbc_strdup(settings->scriptFilepath);
+  if (NULL == output->script_fp)
     LIBBLU_HDMV_COM_ERROR_RETURN("Memory allocation error.\n");
 
   /* Output script handle */
-  output->script = createEsmsHandler(ES_HDMV, settings->options, FMT_SPEC_INFOS_NONE);
-  if (NULL == output->script)
+  output->script_hdl = createEsmsHandler(ES_HDMV, settings->options, FMT_SPEC_INFOS_NONE);
+  if (NULL == output->script_hdl)
     return -1;
 
   /* Script output file */
-  output->file = createBitstreamWriterDefBuf(settings->scriptFilepath);
-  if (NULL == output->file)
+  output->script_fh = createBitstreamWriterDefBuf(settings->scriptFilepath);
+  if (NULL == output->script_fh)
     return -1;
 
   return 0;
@@ -40,22 +40,22 @@ static bool _isInitializedOutputHdmvContext(
   HdmvContextOutput output
 )
 {
-  return NULL != output.file;
+  return NULL != output.script_fh;
 }
 
 static void _cleanOutputHdmvContext(
   HdmvContextOutput output
 )
 {
-  free(output.filepath);
-  destroyEsmsHandler(output.script);
-  closeBitstreamWriter(output.file); /* This might be already closed */
+  free(output.script_fp);
+  destroyEsmsHandler(output.script_hdl);
+  closeBitstreamWriter(output.script_fh); /* This might be already closed */
 }
 
 static int _initInputHdmvContext(
-  HdmvContextInput * input,
+  HdmvContextInput *input,
   HdmvContextOutput output,
-  const lbc * infilepath
+  const lbc *infilepath
 )
 {
   LIBBLU_HDMV_COM_DEBUG(
@@ -67,7 +67,7 @@ static int _initInputHdmvContext(
     return -1;
 
   /* Input file script index */
-  if (appendSourceFileEsmsHandler(output.script, infilepath, &input->idx) < 0)
+  if (appendSourceFileEsmsHandler(output.script_hdl, infilepath, &input->idx) < 0)
     return -1;
 
   return 0;
@@ -81,7 +81,7 @@ static void _cleanInputHdmvContext(
 }
 
 static void _initSequencesLimit(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   LIBBLU_HDMV_COM_DEBUG(
@@ -113,12 +113,12 @@ static void _initSequencesLimit(
 }
 
 static int _initParsingOptionsHdmvContext(
-  HdmvParsingOptions * options_dst,
-  LibbluESParsingSettings * settings
+  HdmvParsingOptions *options_dst,
+  LibbluESParsingSettings *settings
 )
 {
   const IniFileContext conf_hdl = settings->options.conf_hdl;
-  lbc * string;
+  lbc *string;
 
   /* Default : */
   options_dst->igs_od_decode_delay_factor = 0.f;
@@ -127,7 +127,7 @@ static int _initParsingOptionsHdmvContext(
 
   string = lookupIniFile(conf_hdl, "HDMV.IGSOBJECTDECODEDELAYFACTOR");
   if (NULL != string) {
-    lbc * end_ptr;
+    lbc *end_ptr;
     float value = lbc_strtof(string, &end_ptr);
 
     if (end_ptr == string || errno == ERANGE || value < 0.f || 10.f < value)
@@ -168,9 +168,9 @@ static int _initParsingOptionsHdmvContext(
   return 0;
 }
 
-HdmvContext * createHdmvContext(
-  LibbluESParsingSettings * settings,
-  const lbc * infilepath,
+HdmvContext *createHdmvContext(
+  LibbluESParsingSettings *settings,
+  const lbc *infilepath,
   HdmvStreamType type,
   bool generation_mode
 )
@@ -191,7 +191,7 @@ HdmvContext * createHdmvContext(
     infilepath
   );
 
-  HdmvContext * ctx = malloc(sizeof(HdmvContext));
+  HdmvContext *ctx = malloc(sizeof(HdmvContext));
   if (NULL == ctx)
     LIBBLU_HDMV_COM_ERROR_NRETURN("Memory allocation error.\n");
   *ctx = (HdmvContext) {
@@ -210,7 +210,7 @@ HdmvContext * createHdmvContext(
 
   /* Add script header place holder (empty header): */
   LIBBLU_HDMV_COM_DEBUG(" Write script header place-holder.\n");
-  if (writeEsmsHeader(ctx->output.file) < 0)
+  if (writeEsmsHeader(ctx->output.script_fh) < 0)
     goto free_return;
 
   /* Set options: */
@@ -257,7 +257,7 @@ free_return:
 }
 
 void destroyHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   if (NULL == ctx)
@@ -272,11 +272,11 @@ void destroyHdmvContext(
 }
 
 int addOriginalFileHdmvContext(
-  HdmvContext * ctx,
-  const lbc * filepath
+  HdmvContext *ctx,
+  const lbc *filepath
 )
 {
-  if (appendSourceFileEsmsHandler(ctx->output.script, filepath, NULL) < 0)
+  if (appendSourceFileEsmsHandler(ctx->output.script_hdl, filepath, NULL) < 0)
     return -1;
 
   return 0;
@@ -295,26 +295,26 @@ void _setEsmsHeader(
 }
 
 int closeHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   /* Complete script */
-  _setEsmsHeader(ctx->epoch.type, ctx->param, ctx->output.script);
+  _setEsmsHeader(ctx->epoch.type, ctx->param, ctx->output.script_hdl);
 
-  if (completePesCuttingScriptEsmsHandler(ctx->output.file, ctx->output.script) < 0)
+  if (completePesCuttingScriptEsmsHandler(ctx->output.script_fh, ctx->output.script_hdl) < 0)
     return -1;
-  closeBitstreamWriter(ctx->output.file);
-  ctx->output.file = NULL;
+  closeBitstreamWriter(ctx->output.script_fh);
+  ctx->output.script_fh = NULL;
 
   /* Update header */
-  if (updateEsmsFile(ctx->output.filepath, ctx->output.script) < 0)
+  if (updateEsmsFile(ctx->output.script_fp, ctx->output.script_hdl) < 0)
     return -1;
 
   return 0;
 }
 
 static HdmvSequencePtr _getPendingSequence(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx
 )
 {
@@ -322,7 +322,7 @@ static HdmvSequencePtr _getPendingSequence(
 }
 
 static void _setPendingSequence(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx,
   HdmvSequencePtr seq
 )
@@ -331,9 +331,9 @@ static void _setPendingSequence(
 }
 
 static int _checkNewDisplaySetTransition(
-  const HdmvDSState * prev_ds_state,
+  const HdmvDSState *prev_ds_state,
   HdmvCDParameters new_compo_desc,
-  bool * is_dup_DS_ret
+  bool *is_dup_DS_ret
 )
 {
   HdmvCDParameters prev_compo_desc = prev_ds_state->compo_desc;
@@ -372,7 +372,7 @@ static int _checkNewDisplaySetTransition(
 }
 
 static int _clearEpochHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvCompositionState composition_state
 )
 {
@@ -415,7 +415,7 @@ static int _checkInitialCompositionDescriptor(
 }
 
 static int _checkVideoDescriptorChangeHdmvDSState(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   HdmvVDParameters video_descriptor
 )
 {
@@ -446,7 +446,7 @@ static int _checkVideoDescriptorChangeHdmvDSState(
 }
 
 int initEpochHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvCDParameters composition_descriptor,
   HdmvVDParameters video_descriptor
 )
@@ -461,7 +461,7 @@ int initEpochHdmvContext(
   }
 
   switchCurDSHdmvContext(ctx);
-  HdmvDSState * prev_ds_state = getPrevDSHdmvContext(ctx);
+  HdmvDSState *prev_ds_state = getPrevDSHdmvContext(ctx);
   HdmvDSState *  new_ds_state = getCurDSHdmvContext(ctx);
 
   if (HDMV_DS_INITIALIZED == prev_ds_state->init_usage) {
@@ -508,7 +508,7 @@ int initEpochHdmvContext(
 }
 
 static void _printDisplaySetContent(
-  const HdmvDSState * ds_state,
+  const HdmvDSState *ds_state,
   HdmvStreamType type
 )
 {
@@ -550,7 +550,7 @@ static void _printDisplaySetContent(
 }
 
 static int _checkCompletionOfEachSequence(
-  const HdmvDSState * ds_state
+  const HdmvDSState *ds_state
 )
 {
   bool not_null = false;
@@ -560,13 +560,13 @@ static int _checkCompletionOfEachSequence(
 }
 
 static void _getNonCompletedSequencesNames(
-  char dst[static HDMV_NB_SEGMENT_TYPES * SEGMENT_TYPE_IDX_STR_SIZE],
-  const HdmvDSState * ds_state
+  char dst[static HDMV_NB_SEGMENT_TYPES *SEGMENT_TYPE_IDX_STR_SIZE],
+  const HdmvDSState *ds_state
 )
 {
   for (hdmv_segtype_idx i = 0; i < HDMV_NB_SEGMENT_TYPES; i++) {
     if (NULL != ds_state->sequences[i].pending) {
-      const char * name = segmentTypeIndexStr(i);
+      const char *name = segmentTypeIndexStr(i);
       strcpy(dst, name);
       dst += strlen(name);
     }
@@ -574,11 +574,11 @@ static void _getNonCompletedSequencesNames(
 }
 
 static int _getDisplaySetPresentationTimeCurDS(
-  HdmvContext * ctx,
-  int64_t * pts_ret
+  HdmvContext *ctx,
+  int64_t *pts_ret
 )
 {
-  const HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  const HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
 
   HdmvSequencePtr seq;
   if (HDMV_STREAM_TYPE_IGS == ctx->epoch.type)
@@ -606,7 +606,7 @@ static int _getDisplaySetPresentationTimeCurDS(
 /* Interactive Graphics Stream : */
 
 static int64_t _computeODSDecodeDuration(
-  const HdmvDSState * ds,
+  const HdmvDSState *ds,
   unsigned last_ODS_idx,
   float igs_od_decode_delay_factor
 )
@@ -661,7 +661,7 @@ static int64_t _computeODSDecodeDuration(
 }
 
 static int64_t _computeICAllODSDecodeDuration(
-  const HdmvDSState * ds,
+  const HdmvDSState *ds,
   float igs_od_decode_delay_factor
 )
 {
@@ -677,9 +677,9 @@ static int64_t _computeICAllODSDecodeDuration(
 }
 
 static int _retrieveODSIdxDS(
-  HdmvSeqIndexer * indexer,
+  HdmvSeqIndexer *indexer,
   uint16_t object_id,
-  unsigned * ods_idx_ret
+  unsigned *ods_idx_ret
 )
 {
   if (0xFFFF == object_id)
@@ -703,19 +703,19 @@ static int _retrieveODSIdxDS(
 }
 
 static int _retrieveODSIdxEffectSequence(
-  const HdmvEffectSequenceParameters * effect_seq,
-  HdmvSeqIndexer * indexer,
-  unsigned * last_req_ods_ref,
-  unsigned * nb_objects_ret
+  const HdmvEffectSequenceParameters *effect_seq,
+  HdmvSeqIndexer *indexer,
+  unsigned *last_req_ods_ref,
+  unsigned *nb_objects_ret
 )
 {
   unsigned last_req_ods = *last_req_ods_ref;
   unsigned nb_objects   = 0;
 
   for (uint8_t eff_i = 0; eff_i < effect_seq->number_of_effects; eff_i++) {
-    const HdmvEffectInfoParameters * eff = &effect_seq->effects[eff_i];
+    const HdmvEffectInfoParameters *eff = &effect_seq->effects[eff_i];
     for (uint8_t co_i = 0; co_i < eff->number_of_composition_objects; co_i++) {
-      const HdmvCOParameters * co = &eff->composition_objects[co_i];
+      const HdmvCOParameters *co = &eff->composition_objects[co_i];
 
       unsigned ods_idx;
       int ret = _retrieveODSIdxDS(indexer, co->object_id_ref, &ods_idx);
@@ -735,7 +735,7 @@ static int _retrieveODSIdxEffectSequence(
 }
 
 static const HdmvButtonParam ** _indexBOGsDefaultValidButton(
-  const HdmvPageParameters * page
+  const HdmvPageParameters *page
 )
 {
   const HdmvButtonParam ** list = calloc(
@@ -746,13 +746,13 @@ static const HdmvButtonParam ** _indexBOGsDefaultValidButton(
     LIBBLU_HDMV_COM_ERROR_NRETURN("Memory allocation error.\n");
 
   for (uint8_t bog_i = 0; bog_i < page->number_of_BOGs; bog_i++) {
-    const HdmvButtonOverlapGroupParameters * bog = &page->bogs[bog_i];
+    const HdmvButtonOverlapGroupParameters *bog = &page->bogs[bog_i];
 
     if (0xFFFF == bog->default_valid_button_id_ref)
       continue; // No default valid button for this BOG (NULL)
 
     for (uint8_t btn_i = 0; btn_i < bog->number_of_buttons; btn_i++) {
-      const HdmvButtonParam * btn = &bog->buttons[btn_i];
+      const HdmvButtonParam *btn = &bog->buttons[btn_i];
       if (bog->default_valid_button_id_ref == btn->button_id) {
         list[bog_i] = btn; // Found!
         break;
@@ -768,9 +768,9 @@ static const HdmvButtonParam ** _indexBOGsDefaultValidButton(
 static int _retrieveODSIdxSeq(
   uint16_t start_object_id_ref,
   uint16_t end_object_id_ref,
-  HdmvSeqIndexer * indexer,
-  unsigned * last_req_ods_ref,
-  unsigned * nb_objects_ret
+  HdmvSeqIndexer *indexer,
+  unsigned *last_req_ods_ref,
+  unsigned *nb_objects_ret
 )
 {
   unsigned last_req_ods = *last_req_ods_ref;
@@ -802,9 +802,9 @@ static int _retrieveODSIdxSeq(
 }
 
 static int _findLastReqODSPage0(
-  const HdmvPageParameters * page_0,
-  HdmvSeqIndexer * indexer,
-  unsigned * last_req_ods_idx_ret
+  const HdmvPageParameters *page_0,
+  HdmvSeqIndexer *indexer,
+  unsigned *last_req_ods_idx_ret
 )
 {
   unsigned last_req_ods_idx = 0u;
@@ -836,7 +836,7 @@ static int _findLastReqODSPage0(
   unsigned nb_obj_nml_state = 0u;
 
   for (uint8_t bog_i = 0; bog_i < page_0->number_of_BOGs; bog_i++) {
-    const HdmvButtonParam * btn = bogs_def_btn[bog_i];
+    const HdmvButtonParam *btn = bogs_def_btn[bog_i];
     if (NULL == btn)
       continue; // No button in BOG displayed (valid) by default
 
@@ -859,7 +859,7 @@ static int _findLastReqODSPage0(
   unsigned nb_obj_sel_state = 0u;
 
   for (uint8_t bog_i = 0; bog_i < page_0->number_of_BOGs; bog_i++) {
-    const HdmvButtonParam * btn = bogs_def_btn[bog_i];
+    const HdmvButtonParam *btn = bogs_def_btn[bog_i];
     if (NULL == btn)
       continue; // No button in BOG displayed (valid) by default
 
@@ -912,7 +912,7 @@ free_return:
 }
 
 static const HdmvPageParameters * _getDSICPage0(
-  const HdmvDSState * ds
+  const HdmvDSState *ds
 )
 {
   const HdmvSequencePtr ics_seq = getICSSequenceHdmvDSState(ds);
@@ -925,8 +925,8 @@ static const HdmvPageParameters * _getDSICPage0(
 }
 
 static int _indexODSofDS(
-  HdmvSeqIndexer * indexer,
-  const HdmvDSState * ds
+  HdmvSeqIndexer *indexer,
+  const HdmvDSState *ds
 )
 {
   HdmvSequencePtr seq = getFirstODSSequenceHdmvDSState(ds);
@@ -941,7 +941,7 @@ static int _indexODSofDS(
 }
 
 static int64_t _computeICReqODSDecodeDuration(
-  const HdmvDSState * ds,
+  const HdmvDSState *ds,
   float igs_od_decode_delay_factor
 )
 {
@@ -951,7 +951,7 @@ static int64_t _computeICReqODSDecodeDuration(
   );
 
   // Fetch Interactive Composition first page (page_id == 0)
-  const HdmvPageParameters * page_0 = _getDSICPage0(ds);
+  const HdmvPageParameters *page_0 = _getDSICPage0(ds);
   if (NULL == page_0) {
     LIBBLU_HDMV_TSC_DEBUG("   No page, no object to decode.\n");
     return 0;
@@ -987,8 +987,8 @@ static int64_t _computeICReqODSDecodeDuration(
 }
 
 static int64_t _computeICDecodeDuration(
-  const HdmvDSState * ds,
-  const HdmvEpochState * epoch_state,
+  const HdmvDSState *ds,
+  const HdmvEpochState *epoch_state,
   float dec_delay_factor,
   bool use_earlier_transfer
 )
@@ -1069,7 +1069,7 @@ static int64_t _getButtonSize(
 )
 {
   // Return size in bytes
-  return 1ll * btn.btn_obj_height * btn.btn_obj_width;
+  return 1ll *btn.btn_obj_height *btn.btn_obj_width;
 }
 
 static int64_t _getNormalStateButtonSize(
@@ -1180,7 +1180,7 @@ static int64_t _computeICTransferDuration(
 
     for (unsigned i = 0; i < page_0.in_effects.number_of_windows; i++) {
       HdmvWindowInfoParameters win = page_0.in_effects.windows[i];
-      size += 1LL * win.window_width * win.window_height;
+      size += 1LL *win.window_width *win.window_height;
 
       LIBBLU_HDMV_TSC_DEBUG(
         "   - Window %u: %ux%u.\n",
@@ -1196,7 +1196,7 @@ static int64_t _computeICTransferDuration(
       "  -> Compute PAGE_NO_DEFAULT_TRANSFER_DURATION:\n"
     );
 
-    HdmvButtonParam * largest_btn = NULL;
+    HdmvButtonParam *largest_btn = NULL;
     int64_t largest_btn_size = 0ll;
 
     for (uint8_t i = 0; i < page_0.number_of_BOGs; i++) {
@@ -1264,7 +1264,7 @@ static int64_t _computeICTransferDuration(
     );
   }
 
-  return DIV_ROUND_UP(9LL * size, 1600);
+  return DIV_ROUND_UP(9LL *size, 1600);
 }
 
 /** \~english
@@ -1300,8 +1300,8 @@ static int64_t _computeICTransferDuration(
  * \endcode
  */
 static int64_t _computeIGDisplaySetDecodeDuration(
-  const HdmvDSState * cur_ds,
-  const HdmvEpochState * epoch_state,
+  const HdmvDSState *cur_ds,
+  const HdmvEpochState *epoch_state,
   float dec_delay_factor,
   bool use_earlier_transfer
 )
@@ -1344,7 +1344,7 @@ static int64_t _computeIGDisplaySetDecodeDuration(
 }
 
 static int64_t _computeCurIGDisplaySetDecodeDuration(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   return _computeIGDisplaySetDecodeDuration(
@@ -1356,13 +1356,13 @@ static int64_t _computeCurIGDisplaySetDecodeDuration(
 }
 
 static int _applyTimestampsCurIGDisplaySet(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   int64_t pres_time,
   int64_t decode_duration,
-  int64_t * end_time_ret
+  int64_t *end_time_ret
 )
 {
-  HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
   int64_t decode_time = pres_time - decode_duration;
 
   float decode_delay_factor = ctx->options.igs_od_decode_delay_factor;
@@ -1455,7 +1455,7 @@ static int _applyTimestampsCurIGDisplaySet(
 /* Presentation Graphics Stream : */
 
 static int64_t _computePlaneInitializationTimeCurDS(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   /** Compute PLANE_INITIALIZATION_TIME of current PG Display Set (DS_n) from
@@ -1481,15 +1481,15 @@ static int64_t _computePlaneInitializationTimeCurDS(
    *  PLANE_CLEAR_TIME() : Graphical plane clearing duration compute function.
    *                       Described in #getHDMVPlaneClearTime().
    *  90000     : PTS/DTS clock frequency (90kHz);
-   *  SIZE()    : Size of the window in bits (window_width * window_height * 8).
+   *  SIZE()    : Size of the window in bits (window_width *window_height * 8).
    *  256000000 : Pixel Transfer Rate (256 Mb/s for PG).
    *
    * note: The 1 tick added to init_duration is to avoid WDS DTS being equal
    * to its PTS, which shall not happen according to the MPEG-2 TS standard.
    * \endcode
    */
-  const HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
-  const HdmvEpochState * epoch_state = &ctx->epoch;
+  const HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
+  const HdmvEpochState *epoch_state = &ctx->epoch;
 
   if (isCompoStateHdmvDSState(cur_ds, HDMV_COMPO_STATE_EPOCH_START)) {
     /* Epoch start, clear whole graphical plane */
@@ -1530,7 +1530,7 @@ static int64_t _computePlaneInitializationTimeCurDS(
     if (empty_window) {
       /* Empty window, clear it */
       init_duration += DIV_ROUND_UP(
-        9LL * window.window_width * window.window_height,
+        9LL *window.window_width *window.window_height,
         3200
       );
     }
@@ -1541,7 +1541,7 @@ static int64_t _computePlaneInitializationTimeCurDS(
 }
 
 static int64_t _computeAndSetODSDecodeDuration(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint16_t object_id
 )
 {
@@ -1559,7 +1559,7 @@ static int64_t _computeAndSetODSDecodeDuration(
 }
 
 static int64_t _computeWindowTransferDuration(
-  const HdmvEpochState * epoch_state,
+  const HdmvEpochState *epoch_state,
   uint8_t window_id
 )
 {
@@ -1578,13 +1578,13 @@ static int64_t _computeWindowTransferDuration(
   const HdmvWindowInfoParameters window = wd.windows[window_id];
 
   return DIV_ROUND_UP(
-    9LL * window.window_width * window.window_height,
+    9LL *window.window_width *window.window_height,
     3200
   );
 }
 
 static int64_t _getWindowDrawingDuration(
-  const HdmvEpochState * epoch_state
+  const HdmvEpochState *epoch_state
 )
 {
   HdmvWDParameters wd;
@@ -1596,17 +1596,17 @@ static int64_t _getWindowDrawingDuration(
   int64_t size = 0;
   for (unsigned i = 0; i < wd.number_of_windows; i++) {
     const HdmvWindowInfoParameters window = wd.windows[i];
-    size += window.window_width * window.window_height;
+    size += window.window_width *window.window_height;
   }
 
   /* ceil(90000 * 8 * size / 3200) */
-  int64_t drawing_duration = DIV_ROUND_UP(9LL * size, 3200);
+  int64_t drawing_duration = DIV_ROUND_UP(9LL *size, 3200);
 
   return drawing_duration;
 }
 
 static int64_t _computeCurPGDisplaySetDecodeDuration(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
   /** Compute this PCS from Display Set n (DS_n) PTS-DTS difference required.
@@ -1617,7 +1617,7 @@ static int64_t _computeCurPGDisplaySetDecodeDuration(
    * DS graphical objects from Coded Data Buffer to the Decoded Object Buffer
    * plus to draw the composition windows on the Graphical Plane.
    */
-  const HdmvEpochState * epoch_state = &ctx->epoch;
+  const HdmvEpochState *epoch_state = &ctx->epoch;
 
   LIBBLU_HDMV_TSC_DEBUG(
     "    Compute PG_DECODE_DURATION of PG Display Set:\n"
@@ -1750,13 +1750,13 @@ static int64_t _computeCurPGDisplaySetDecodeDuration(
 }
 
 static int _applyTimestampsCurPGDisplaySet(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   int64_t pres_time,
   int64_t decode_duration,
-  int64_t * end_time_ret
+  int64_t *end_time_ret
 )
 {
-  HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
   int64_t ref_ts = ctx->param.ref_timestamp;
 
   int64_t initial_decode_time = pres_time - decode_duration;
@@ -1866,10 +1866,10 @@ static int _applyTimestampsCurPGDisplaySet(
 }
 
 static void _debugCompareComputedTimestampsCurDS(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
-  const HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  const HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
 
   int64_t ref_timestamp = ctx->param.ref_timestamp;
   int64_t initial_delay = ctx->param.initial_delay;
@@ -2012,7 +2012,7 @@ static int _checkEarliestDTSPTSValue(
 }
 
 static int _checkEarliestDTSPTSValueDS(
-  const HdmvDSState * cur_ds
+  const HdmvDSState *cur_ds
 )
 {
   for (hdmv_segtype_idx idx = 0; idx < HDMV_NB_SEGMENT_TYPES; idx++) {
@@ -2027,12 +2027,12 @@ static int _checkEarliestDTSPTSValueDS(
 }
 
 static int _checkDTSPTSValue(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   const HdmvSequencePtr seq,
   bool earliest_ts_already_checked
 )
 {
-  const HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  const HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
 
   HdmvVDParameters video_desc = ctx->epoch.video_descriptor;
 
@@ -2207,7 +2207,7 @@ static int _checkDTSPTSValue(
 
     if (0 < cur_ds->ds_idx) {
       /* Non first DS */
-      HdmvDSState * prev_ds = getPrevDSHdmvContext(ctx);
+      HdmvDSState *prev_ds = getPrevDSHdmvContext(ctx);
 
       HdmvSequencePtr end_seq = getENDSequenceHdmvDSState(prev_ds);
       if (NULL == end_seq)
@@ -2341,7 +2341,7 @@ static int _checkDTSPTSValue(
         );
 
       if (0 < cur_ds->ds_idx) {
-        HdmvDSState * prev_ds = getPrevDSHdmvContext(ctx);
+        HdmvDSState *prev_ds = getPrevDSHdmvContext(ctx);
         HdmvSequencePtr prev_ics_seq = getICSSequenceHdmvDSState(prev_ds);
         if (NULL == prev_ics_seq)
           return -1; // Unexpected missing prev ICS/PCS
@@ -2394,7 +2394,7 @@ static int _checkDTSPTSValue(
         );
 
       if (0 < cur_ds->ds_idx && isEpochStartHdmvCDParameters(cur_ds->compo_desc)) {
-        HdmvDSState * prev_ds = getPrevDSHdmvContext(ctx);
+        HdmvDSState *prev_ds = getPrevDSHdmvContext(ctx);
         HdmvSequencePtr ics_seq = getICSSequenceHdmvDSState(prev_ds);
         if (NULL == ics_seq)
           return -1; // Unexpected missing prev ICS
@@ -2503,7 +2503,7 @@ static int _checkDTSPTSValue(
         );
 
       if (0 < cur_ds->ds_idx) {
-        HdmvDSState * prev_ds = getPrevDSHdmvContext(ctx);
+        HdmvDSState *prev_ds = getPrevDSHdmvContext(ctx);
 
         HdmvSequencePtr prev_pcs_seq = getPCSSequenceHdmvDSState(prev_ds);
         if (NULL == prev_pcs_seq)
@@ -2610,7 +2610,7 @@ static int _checkDTSPTSValue(
 }
 
 static int _computeTimestampsDisplaySet(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   int64_t pres_time
 )
 {
@@ -2671,7 +2671,7 @@ static int _computeTimestampsDisplaySet(
     return -1;
 
   /* Check timestamps DS overlap conditions */
-  HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
   if (_checkEarliestDTSPTSValueDS(cur_ds) < 0)
     return -1;
 
@@ -2703,10 +2703,10 @@ static int _computeTimestampsDisplaySet(
 }
 
 static int _copySegmentsTimestampsDisplaySetHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
-  const HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  const HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
   int64_t ref_timestamp = ctx->param.ref_timestamp;
   int64_t last_pts      = ctx->param.last_ds_pres_time;
 
@@ -2773,7 +2773,7 @@ static int _copySegmentsTimestampsDisplaySetHdmvContext(
 }
 
 int _setTimestampsDisplaySet(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   int64_t pres_time
 )
 {
@@ -2787,7 +2787,7 @@ int _setTimestampsDisplaySet(
 }
 
 int _insertSegmentInScript(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   HdmvSegmentParameters seg,
   uint64_t pts,
   uint64_t dts
@@ -2806,11 +2806,11 @@ int _insertSegmentInScript(
   assert(0 == (pts >> 33));
   assert(!dts_present || 0 == (dts >> 33));
 
-  if (initHDMVPesPacketEsmsHandler(ctx->output.script, dts_present, pts, dts) < 0)
+  if (initHDMVPesPacketEsmsHandler(ctx->output.script_hdl, dts_present, pts, dts) < 0)
     return -1;
 
   int ret = appendAddPesPayloadCommandEsmsHandler(
-    ctx->output.script,
+    ctx->output.script_hdl,
     ctx->input.idx,
     0x0,
     seg.orig_file_offset,
@@ -2820,14 +2820,14 @@ int _insertSegmentInScript(
     return -1;
 
   return writePesPacketEsmsHandler(
-    ctx->output.file,
-    ctx->output.script
+    ctx->output.script_fh,
+    ctx->output.script_hdl
   );
 }
 
 static int _registeringSegmentsDisplaySet(
-  HdmvContext * ctx,
-  HdmvDSState * epoch
+  HdmvContext *ctx,
+  HdmvDSState *epoch
 )
 {
 
@@ -2851,8 +2851,8 @@ static int _registeringSegmentsDisplaySet(
 }
 
 static int _getCurDSPresentationTime(
-  HdmvContext * ctx,
-  int64_t * pres_time_ret
+  HdmvContext *ctx,
+  int64_t *pres_time_ret
 )
 {
   /**
@@ -2882,10 +2882,10 @@ static int _getCurDSPresentationTime(
 }
 
 int completeCurDSHdmvContext(
-  HdmvContext * ctx
+  HdmvContext *ctx
 )
 {
-  HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
 
   if (cur_ds->init_usage == HDMV_DS_COMPLETED)
     return 0; // This shall only happen at stream end
@@ -2900,7 +2900,7 @@ int completeCurDSHdmvContext(
   /* Check completion of possible sequence of segments. */
   if (_checkCompletionOfEachSequence(cur_ds)) {
     /* Presence of non completed sequences, building list string. */
-    char names[HDMV_NB_SEGMENT_TYPES * SEGMENT_TYPE_IDX_STR_SIZE];
+    char names[HDMV_NB_SEGMENT_TYPES *SEGMENT_TYPE_IDX_STR_SIZE];
     _getNonCompletedSequencesNames(names, cur_ds);
 
     LIBBLU_HDMV_COM_ERROR_RETURN(
@@ -2926,7 +2926,7 @@ int completeCurDSHdmvContext(
   LIBBLU_HDMV_COM_DEBUG(" Checking Display Set.\n");
   if (ctx->is_dup_DS) {
     /* Check non-Display Update DS */
-    const HdmvDSState * prev_ds_state = getPrevDSHdmvContext(ctx);
+    const HdmvDSState *prev_ds_state = getPrevDSHdmvContext(ctx);
     if (checkDuplicatedDSHdmvDSState(prev_ds_state, cur_ds, &ctx->epoch) < 0)
       return -1;
   }
@@ -2965,7 +2965,7 @@ int completeCurDSHdmvContext(
 }
 
 static HdmvSequencePtr _initNewSequenceInCurEpoch(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx,
   HdmvSegmentParameters segment
 )
@@ -2980,7 +2980,7 @@ static HdmvSequencePtr _initNewSequenceInCurEpoch(
     );
   }
 
-  HdmvDSState * cur_ds = getCurDSHdmvContext(ctx);
+  HdmvDSState *cur_ds = getCurDSHdmvContext(ctx);
 
   /* Check the number of already parsed sequences */
   unsigned seq_type_max_nb_DS = ctx->seq_nb_limit_per_DS[idx];
@@ -3011,7 +3011,7 @@ static HdmvSequencePtr _initNewSequenceInCurEpoch(
 }
 
 HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx,
   HdmvSegmentParameters seg_param,
   HdmvSequenceLocation location
@@ -3053,7 +3053,7 @@ HdmvSequencePtr addSegToSeqDisplaySetHdmvContext(
 }
 
 int completeSeqDisplaySetHdmvContext(
-  HdmvContext * ctx,
+  HdmvContext *ctx,
   hdmv_segtype_idx idx
 )
 {

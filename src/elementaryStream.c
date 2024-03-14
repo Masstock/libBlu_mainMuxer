@@ -10,49 +10,49 @@
 /* ### ES settings definition : ############################################ */
 
 int setFpsChangeLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr
+  LibbluESSettings *dst,
+  const lbc *fps_string
 )
 {
   HdmvFrameRateCode idc;
 
-  if (parseFpsChange(expr, &idc) < 0)
+  if (parseFpsChange(fps_string, &idc) < 0)
     return -1;
 
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, fpsChange, idc);
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, fps_mod, idc);
   return 0;
 }
 
 int setArChangeLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr
+  LibbluESSettings *dst,
+  const lbc *ar_string
 )
 {
   LibbluAspectRatioMod values;
 
-  if (parseArChange(expr, &values) < 0)
+  if (parseArChange(ar_string, &values) < 0)
     return -1;
 
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, arChange, values);
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, ar_mod, values);
   return 0;
 }
 
 int setLevelChangeLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * expr
+  LibbluESSettings *dst,
+  const lbc *level_string
 )
 {
   uint8_t idc;
 
-  if (parseLevelChange(expr, &idc) < 0)
+  if (parseLevelChange(level_string, &idc) < 0)
     return -1;
 
-  LIBBLU_ES_SETTINGS_SET_OPTION(dst, levelChange, idc);
+  LIBBLU_ES_SETTINGS_SET_OPTION(dst, level_mod, idc);
   return 0;
 }
 
 int setHdmvInitialTimestampLibbluESSettings(
-  LibbluESSettings * dst,
+  LibbluESSettings *dst,
   uint64_t value
 )
 {
@@ -68,58 +68,62 @@ int setHdmvInitialTimestampLibbluESSettings(
 }
 
 int setMainESFilepathLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * filepath,
-  const lbc * anchorFilepath
+  LibbluESSettings *dst,
+  const lbc *filepath,
+  const lbc *anchor_fp
 )
 {
   assert(NULL != dst);
   assert(NULL != filepath);
 
   return lb_gen_anchor_absolute_fp(
-    &dst->filepath,
-    anchorFilepath,
+    &dst->es_filepath,
+    anchor_fp,
     filepath
   );
 }
 
 int setScriptFilepathLibbluESSettings(
-  LibbluESSettings * dst,
-  const lbc * filepath,
-  const lbc * anchorFilepath
+  LibbluESSettings *dst,
+  const lbc *filepath,
+  const lbc *anchor_fp
 )
 {
   assert(NULL != dst);
   assert(NULL != filepath);
 
   return lb_gen_anchor_absolute_fp(
-    &dst->scriptFilepath,
-    anchorFilepath,
+    &dst->es_script_filepath,
+    anchor_fp,
     filepath
   );
 }
 
 static int _checkScriptFile(
-  LibbluES * checked_es,
-  LibbluESFormatUtilities * es_associated_utils_ret,
-  bool force_rebuild
+  LibbluES *checked_es,
+  LibbluESFormatUtilities *es_associated_utils_ret,
+  bool force_script_build
 )
 {
-  LibbluESSettings * es_sets = checked_es->settings_ref;
+  const LibbluESSettings *es_sets = checked_es->settings_ref;
+  const lbc *script_filepath      = checked_es->script_filepath;
 
   assert(NULL != es_sets);
 
   /* Checking ESMS script file : */
   LIBBLU_SCRIPT_DEBUG(
-    "Check predefined script filepath '%" PRI_LBCS "'.\n",
-    es_sets->scriptFilepath
+    "Check script filepath '%" PRI_LBCS "'.\n",
+    script_filepath
   );
   uint64_t exp_flags = computeFlagsLibbluESSettingsOptions(es_sets->options);
 
   ESMSFileValidatorRet ret;
-  if (force_rebuild || ((ret = isAValidESMSFile(es_sets->scriptFilepath, exp_flags, NULL)) < 0)) {
+  if (
+    force_script_build
+    || (0 > (ret = isAValidESMSFile(script_filepath, exp_flags, NULL)))
+  ) {
     /* Not valid/missing/forced rebuilding */
-    if (force_rebuild)
+    if (force_script_build)
       LIBBLU_SCRIPT_DEBUG("Forced rebuilding enabled, building script.\n");
     else
       LIBBLU_SCRIPT_DEBUG(
@@ -127,23 +131,23 @@ static int _checkScriptFile(
         ESMSValidatorErrorStr(ret)
       );
 
-    if (NULL == es_sets->filepath)
+    if (NULL == es_sets->es_filepath)
       LIBBLU_ERROR_RETURN(
         "Unable to generate script '%" PRI_LBCS "', "
         "no source ES defined.\n",
-        es_sets->scriptFilepath
+        script_filepath
       );
 
     LibbluStreamCodingType exp_coding_type;
-    if (0 <= es_sets->codingType)
-      exp_coding_type = es_sets->codingType;
+    if (0 <= es_sets->coding_type)
+      exp_coding_type = es_sets->coding_type;
     else {
       LIBBLU_SCRIPT_DEBUG("Undefined stream coding type, use guessing.\n");
-      if ((exp_coding_type = guessESStreamCodingType(es_sets->filepath)) < 0)
+      if ((exp_coding_type = guessESStreamCodingType(es_sets->es_filepath)) < 0)
         LIBBLU_ERROR_RETURN(
           "Unable to guess stream coding type of '%" PRI_LBCS "', "
           "file type is not recognized.\n",
-          es_sets->filepath
+          es_sets->es_filepath
         );
     }
 
@@ -157,15 +161,15 @@ static int _checkScriptFile(
     LIBBLU_SCRIPT_DEBUG("Generate script.\n");
     int ret = generateScriptES(
       utilities,
-      es_sets->filepath,
-      es_sets->scriptFilepath,
+      es_sets->es_filepath,
+      script_filepath,
       es_sets->options
     );
     if (ret < 0)
       LIBBLU_ERROR_RETURN(
         "Invalid input file '%" PRI_LBCS "', "
         "unable to generate script.\n",
-        es_sets->filepath
+        es_sets->es_filepath
       );
   }
 
@@ -173,67 +177,69 @@ static int _checkScriptFile(
 }
 
 static int _parseScriptLibbluES(
-  LibbluES * es
+  LibbluES *es
 )
 {
-  LibbluESSettings * es_sets = es->settings_ref;
+  const lbc *script_filepath = es->script_filepath;
 
   /* Open script file */
   LIBBLU_SCRIPTRO_DEBUG("Opening script.\n");
-  BitstreamReaderPtr esms_bs;
-  if (NULL == (esms_bs = createBitstreamReaderDefBuf(es_sets->scriptFilepath)))
+  BitstreamReaderPtr script_bs = createBitstreamReaderDefBuf(
+    script_filepath
+  );
+  if (NULL == script_bs)
     return -1;
 
   LIBBLU_SCRIPTRO_DEBUG("Parsing script properties.\n");
 
   /* ES Properties section : */
   LIBBLU_SCRIPTRO_DEBUG(" Reading ES Properties section.\n");
-  if (seekESPropertiesEsms(es_sets->scriptFilepath, esms_bs) < 0)
+  if (seekESPropertiesEsms(script_filepath, script_bs) < 0)
     goto free_return;
 
   uint64_t PTS_reference, PTS_final;
-  if (parseESPropertiesHeaderEsms(esms_bs, &es->prop, &PTS_reference, &PTS_final) < 0)
+  if (parseESPropertiesHeaderEsms(script_bs, &es->prop, &PTS_reference, &PTS_final) < 0)
     goto free_return;
   es->PTS_reference = PTS_reference;
   es->PTS_final = PTS_final;
 
   /* ES Properties source files : */
   LIBBLU_SCRIPTRO_DEBUG(" Reading ES Properties Source Files section.\n");
-  if (parseESPropertiesSourceFilesEsms(esms_bs, &es->sourceFiles) < 0)
+  if (parseESPropertiesSourceFilesEsms(script_bs, &es->script.es_source_files) < 0)
     goto free_return;
 
   if (isConcernedESFmtPropertiesEsms(es->prop)) {
     /* Reading ES Format Properties section according to stream type. */
     LIBBLU_SCRIPTRO_DEBUG(" Reading ES Format properties section.\n");
-    if (seekESFmtPropertiesEsms(es_sets->scriptFilepath, esms_bs) < 0)
+    if (seekESFmtPropertiesEsms(script_filepath, script_bs) < 0)
       goto free_return;
-    if (parseESFmtPropertiesEsms(esms_bs, &es->prop, &es->fmt_prop) < 0)
+    if (parseESFmtPropertiesEsms(script_bs, &es->prop, &es->fmt_prop) < 0)
       goto free_return;
   }
 
   /* Data blocks definition section : */
-  int ret = isPresentESDataBlocksDefinitionEsms(es_sets->scriptFilepath);
+  int ret = isPresentESDataBlocksDefinitionEsms(script_filepath);
   if (ret < 0)
     goto free_return;
   if (0 < ret) {
      /* Reading ES Data Blocks Definition section if present. */
      LIBBLU_SCRIPTRO_DEBUG(" Reading ES Data Blocks Definition section.\n");
-    if (seekESDataBlocksDefinitionEsms(es_sets->scriptFilepath, esms_bs) < 0)
+    if (seekESDataBlocksDefinitionEsms(script_filepath, script_bs) < 0)
       goto free_return;
-    if (parseESDataBlocksDefinitionEsms(esms_bs, &es->scriptDataSections) < 0)
+    if (parseESDataBlocksDefinitionEsms(script_bs, &es->script.data_sections) < 0)
       goto free_return;
   }
 
   /* Seek to the ES PES Cutting section. */
   LIBBLU_SCRIPTRO_DEBUG(" Seeking ES PES Cutting section.\n");
-  if (seekESPesCuttingEsms(es_sets->scriptFilepath, esms_bs) < 0)
+  if (seekESPesCuttingEsms(script_filepath, script_bs) < 0)
     goto free_return;
 
   LIBBLU_SCRIPTR_DEBUG(
     "PES frames Cutting script section:\n"
   );
 
-  if (checkDirectoryMagic(esms_bs, PES_CUTTING_HEADER_MAGIC, 4) < 0)
+  if (checkDirectoryMagic(script_bs, PES_CUTTING_HEADER_MAGIC, 4) < 0)
     goto free_return;
 
   LIBBLU_SCRIPTR_DEBUG(
@@ -241,24 +247,23 @@ static int _parseScriptLibbluES(
     STR(PES_CUTTING_HEADER_MAGIC) ".\n"
   );
 
-  es->scriptFile = esms_bs;
+  es->script.bs_handle = script_bs;
   return 0;
 
 free_return:
   LIBBLU_ERROR(
     "Error happen during parsing of script \"%" PRI_LBCS "\".\n",
-    es_sets->scriptFilepath
+    script_filepath
   );
-  closeBitstreamReader(esms_bs);
+  closeBitstreamReader(script_bs);
   return -1;
 }
 
 static int setPesPacketsDurationLibbluES(
-  LibbluES * es
+  LibbluES *es
 )
 {
-  LibbluESSettings * es_sets = es->settings_ref;
-  LibbluESProperties * prop = &es->prop;
+  LibbluESProperties *prop = &es->prop;
 
   prop->nb_pes_per_sec = prop->nb_ped_sec_per_sec = 0;
   prop->br_based_on_duration = false;
@@ -269,14 +274,14 @@ static int setPesPacketsDurationLibbluES(
     if ((frame_rate = frameRateCodeToDouble(prop->frame_rate)) <= 0)
       LIBBLU_ERROR_RETURN(
         "Broken script '%" PRI_LBCS "', unknown frame-rate.\n",
-        es_sets->scriptFilepath
+        es->script_filepath
       );
   }
   else if (prop->type == ES_AUDIO) {
     if ((sample_rate = sampleRateCodeToDouble(prop->sample_rate)) <= 0)
       LIBBLU_ERROR_RETURN(
         "Broken script '%" PRI_LBCS "', unknown sample-rate.\n",
-        es_sets->scriptFilepath
+        es->script_filepath
       );
   }
 
@@ -358,15 +363,15 @@ static int setPesPacketsDurationLibbluES(
 }
 
 int prepareLibbluES(
-  LibbluES * es,
-  LibbluESFormatUtilities * esAssociatedUtilities,
-  bool forceRebuild
+  LibbluES *es,
+  LibbluESFormatUtilities *es_utilities_ret,
+  bool force_script_build
 )
 {
 
   /* Check and/or generate ES script */
   LibbluESFormatUtilities utilities = (LibbluESFormatUtilities) {0};
-  if (_checkScriptFile(es, &utilities, forceRebuild) < 0)
+  if (_checkScriptFile(es, &utilities, force_script_build) < 0)
     return -1;
 
   /* Open and parse ES script */
@@ -374,7 +379,7 @@ int prepareLibbluES(
     return -1;
 
   /* Open each source file */
-  if (openAllEsmsESSourceFiles(&es->sourceFiles) < 0)
+  if (openAllEsmsESSourceFiles(&es->script.es_source_files) < 0)
     return -1;
 
   if (!utilities.initialized) {
@@ -388,103 +393,85 @@ int prepareLibbluES(
   if (setPesPacketsDurationLibbluES(es) < 0)
     return -1;
 
-  if (NULL != esAssociatedUtilities)
-    *esAssociatedUtilities = utilities;
+  if (NULL != es_utilities_ret)
+    *es_utilities_ret = utilities;
 
   return 0;
 }
 
-// static EsmsPesPacketNodePtr extractPesPacketScriptsQueueLibbluES(
-//   LibbluES * es
-// )
-// {
-//   EsmsPesPacketNodePtr node;
-
-//   if (NULL != (node = es->pesPacketsScriptsQueue)) {
-//     es->pesPacketsScriptsQueue = node->next;
-//     es->pesPacketsScriptsQueueSize--;
-//   }
-
-//   return node;
-// }
-
 static int _addPesPacketToBdavStdLibbluES(
-  LibbluES * es,
+  LibbluES *es,
   LibbluESPesPacketProperties prop,
   uint32_t pesp_header_size,
   uint16_t pid,
-  uint64_t refPcr
+  uint64_t initial_STC
 )
 {
-  uint64_t removalTimestamp, outputTimestamp;
+  assert(NULL != es->lnkd_tstd_buf_list);
 
-  assert(NULL != es->lnkdBufList);
-
+  uint64_t removal_timestamp = prop.dts;
+  uint64_t output_timestamp  = prop.pts;
   if (
     es->prop.coding_type == STREAM_CODING_TYPE_AVC
-    && prop.extDataPresent
+    && prop.extension_data_pres
   ) {
-    removalTimestamp = prop.extData.h264.cpb_removal_time + refPcr;
-    outputTimestamp = prop.extData.h264.dpb_output_time + refPcr;
-  }
-  else {
-    removalTimestamp = prop.dts;
-    outputTimestamp = prop.pts;
+    removal_timestamp = prop.extension_data.h264.cpb_removal_time + initial_STC;
+    output_timestamp  = prop.extension_data.h264.dpb_output_time  + initial_STC;
   }
 
   LIBBLU_T_STD_VERIF_DECL_DEBUG(
     "Registering %zu+%zu=%zu bytes of PES for PID 0x%04" PRIX16 ", "
     "Remove: %" PRIu64 ", Output: %" PRIu64 ".\n",
     pesp_header_size,
-    prop.payloadSize,
-    pesp_header_size + prop.payloadSize,
+    prop.payload_size,
+    pesp_header_size + prop.payload_size,
     pid,
-    removalTimestamp,
-    outputTimestamp
+    removal_timestamp,
+    output_timestamp
   );
 
   if (es->prop.type == ES_VIDEO) {
     if (
       addFrameToBufferFromList(
-        es->lnkdBufList, MULTIPLEX_BUFFER, NULL,
+        es->lnkd_tstd_buf_list, MULTIPLEX_BUFFER, NULL,
         (BufModelBufferFrame) {
-          .headerSize = pesp_header_size * 8,
-          .dataSize = prop.payloadSize * 8,
-          .removalTimestamp = removalTimestamp,
-          .outputDataSize = 0,
-          .doNotRemove = false
+          .header_size = pesp_header_size * 8,
+          .data_size = prop.payload_size * 8,
+          .removal_timestamp = removal_timestamp,
+          .output_data_size = 0,
+          .do_not_remove = false
         }
       ) < 0
     )
       return -1;
 
     return addFrameToBufferFromList(
-      es->lnkdBufList, ELEMENTARY_BUFFER, NULL,
+      es->lnkd_tstd_buf_list, ELEMENTARY_BUFFER, NULL,
       (BufModelBufferFrame) {
-        .headerSize = 0,
-        .dataSize = prop.payloadSize * 8,
-        .removalTimestamp = outputTimestamp,
-        .outputDataSize = 0,
-        .doNotRemove = false
+        .header_size = 0,
+        .data_size = prop.payload_size * 8,
+        .removal_timestamp = output_timestamp,
+        .output_data_size = 0,
+        .do_not_remove = false
       }
     );
   }
 
   return addFrameToBufferFromList(
-    es->lnkdBufList, MAIN_BUFFER, NULL,
+    es->lnkd_tstd_buf_list, MAIN_BUFFER, NULL,
     (BufModelBufferFrame) {
-      .headerSize = pesp_header_size * 8,
-      .dataSize = prop.payloadSize * 8,
-      .removalTimestamp = removalTimestamp,
-      .outputDataSize = 0,
-      .doNotRemove = false
+      .header_size = pesp_header_size * 8,
+      .data_size = prop.payload_size * 8,
+      .removal_timestamp = removal_timestamp,
+      .output_data_size = 0,
+      .do_not_remove = false
     }
   );
 }
 
 static int _writePesHeader(
-  LibbluESPesPacketData * dst,
-  const PesPacketHeaderParam * prop,
+  LibbluESPesPacketData *dst,
+  const PesPacketHeaderParam *prop,
   size_t expected_size
 )
 {
@@ -501,25 +488,25 @@ static int _writePesHeader(
 }
 
 static int _buildNextPesPacket(
-  LibbluES * es,
+  LibbluES *es,
   uint16_t pid,
-  uint64_t refPcr,
+  uint64_t initial_STC,
   LibbluPesPacketHeaderPrep_fun preparePesHeader
 )
 {
 
   /* Buffer new PES packets from script if required */
-  size_t nb_buf_pes = nbEntriesCircularBuffer(&es->pesPacketsScriptsQueue_);
+  size_t nb_buf_pes = nbEntriesCircularBuffer(&es->script.pes_packets_queue);
   if (
     nb_buf_pes < LIBBLU_ES_MIN_BUF_PES_SCRIPT_PACKETS
-    && !es->endOfScriptReached
+    && !es->script.end_reached
   ) {
     for (unsigned i = 0; i < LIBBLU_ES_INC_BUF_PES_SCRIPT_PACKETS; i++) {
-      if (isEndReachedESPesCuttingEsms(es->scriptFile))
+      if (isEndReachedESPesCuttingEsms(es->script.bs_handle))
         break;
 
-      EsmsPesPacket * esms_pes_packet = newEntryCircularBuffer(
-        &es->pesPacketsScriptsQueue_,
+      EsmsPesPacket *esms_pes_packet = newEntryCircularBuffer(
+        &es->script.pes_packets_queue,
         sizeof(EsmsPesPacket)
       );
       if (NULL == esms_pes_packet)
@@ -527,37 +514,37 @@ static int _buildNextPesPacket(
 
       int ret = parseFrameNodeESPesCuttingEsms(
         esms_pes_packet,
-        es->scriptFile,
+        es->script.bs_handle,
         es->prop.type,
         es->prop.coding_type,
-        &es->commands_data_parsing
+        &es->script.commands_data_parsing
       );
       if (ret < 0)
         return -1;
     }
 
-    if (isEndReachedESPesCuttingEsms(es->scriptFile))
-      es->endOfScriptReached = true;
+    if (isEndReachedESPesCuttingEsms(es->script.bs_handle))
+      es->script.end_reached = true;
   }
 
   /* Try to extract next buffered script PES packet. */
-  EsmsPesPacket * esms_pes_packet = popCircularBuffer(
-    &es->pesPacketsScriptsQueue_
+  EsmsPesPacket *esms_pes_packet = popCircularBuffer(
+    &es->script.pes_packets_queue
   );
   if (NULL == esms_pes_packet)
     return 0; // No more PES packets.
 
   /* Build from it next PES packet. */
   LibbluESPesPacketProperties pesp_prop;
-  if (prepareLibbluESPesPacketProperties(&pesp_prop, esms_pes_packet, refPcr, es->PTS_reference) < 0)
+  if (prepareLibbluESPesPacketProperties(&pesp_prop, esms_pes_packet, initial_STC, es->PTS_reference) < 0)
     return -1;
-  uint32_t payload_size = pesp_prop.payloadSize;
+  uint32_t payload_size = pesp_prop.payload_size;
 
   es->current_pes_packet.pts             = pesp_prop.pts;
   es->current_pes_packet.dts             = pesp_prop.dts;
-  es->current_pes_packet.extension_frame = pesp_prop.extensionFrame;
+  es->current_pes_packet.extension_frame = pesp_prop.extension_frame;
 
-  PesPacketHeaderParam * pesp_header = &es->current_pes_packet.header;
+  PesPacketHeaderParam *pesp_header = &es->current_pes_packet.header;
   if (preparePesHeader(pesp_header, pesp_prop, es->prop.coding_type) < 0)
     return -1;
   uint32_t header_size = computePesPacketHeaderLen(pesp_header);
@@ -565,7 +552,7 @@ static int _buildNextPesPacket(
   setLengthPesPacketHeaderParam(pesp_header, header_size, payload_size);
   uint32_t pesp_size = header_size + payload_size;
 
-  LibbluESPesPacketData * pesp_data = &es->current_pes_packet.data;
+  LibbluESPesPacketData *pesp_data = &es->current_pes_packet.data;
   if (allocateLibbluESPesPacketData(pesp_data, pesp_size) < 0)
     return -1;
   pesp_data->size   = pesp_size;
@@ -573,10 +560,10 @@ static int _buildNextPesPacket(
 
   if (_writePesHeader(pesp_data, pesp_header, header_size) < 0)
     return -1;
-  uint8_t * payload_dst = &pesp_data->data[header_size];
+  uint8_t *payload_dst = &pesp_data->data[header_size];
 
   for (unsigned i = 0; i < esms_pes_packet->nb_commands; i++) {
-    const EsmsCommand * command = &esms_pes_packet->commands[i];
+    const EsmsCommand *command = &esms_pes_packet->commands[i];
 
     int ret = 0;
     switch (command->type) {
@@ -589,7 +576,7 @@ static int _buildNextPesPacket(
       break;
 
     case ESMS_ADD_PAYLOAD_DATA:
-      ret = applyEsmsAddPesPayloadCommand(command->data.add_pes_payload, payload_dst, payload_size, &es->sourceFiles);
+      ret = applyEsmsAddPesPayloadCommand(command->data.add_pes_payload, payload_dst, payload_size, &es->script.es_source_files);
       break;
 
     case ESMS_ADD_PADDING_DATA:
@@ -597,7 +584,7 @@ static int _buildNextPesPacket(
       break;
 
     case ESMS_ADD_DATA_BLOCK:
-      ret = applyEsmsAddDataBlockCommand(command->data.add_data_block, payload_dst, payload_size, es->scriptDataSections);
+      ret = applyEsmsAddDataBlockCommand(command->data.add_data_block, payload_dst, payload_size, es->script.data_sections);
     }
 
     if (ret < 0)
@@ -605,8 +592,8 @@ static int _buildNextPesPacket(
   }
 
   /* Add to stream buffering model chain if used */
-  if (NULL != es->lnkdBufList) {
-    if (_addPesPacketToBdavStdLibbluES(es, pesp_prop, header_size, pid, refPcr) < 0)
+  if (NULL != es->lnkd_tstd_buf_list) {
+    if (_addPesPacketToBdavStdLibbluES(es, pesp_prop, header_size, pid, initial_STC) < 0)
       return -1;
   }
 
@@ -614,145 +601,12 @@ static int _buildNextPesPacket(
   return 1; // Packet builded.
 }
 
-#if 0
-
-size_t averageSizePesPacketLibbluES(
-  const LibbluES * es,
-  unsigned maxNbSamples
-)
-{
-#if 0
-  return averageSizeLibbluESPesPacketPropertiesNode(
-    es->pesPacketsQueueLastNode,
-    maxNbSamples
-  );
-#else
-  unsigned lookup = MIN(
-    nbEntriesCircularBuffer(&es->pesPacketsScriptsQueue_),
-    maxNbSamples
-  );
-  for (unsigned i = 0; i < maxNbSamples; i++) {
-    const EsmsPesPacket * packet = getCircularBuffer(&es->pesPacketsScriptsQueue_, i);
-    packet->length;
-  }
-
-  return 0;
-#endif
-}
-
-#endif
-
-#if 0
-
-int buildPesPacketDataLibbluES(
-  const LibbluES * es,
-  LibbluESPesPacketData * dst,
-  const LibbluESPesPacketPropertiesNodePtr node
-)
-{
-  int ret;
-
-  uint8_t * payload;
-  size_t payloadSize;
-
-  EsmsCommandNodePtr commandNode;
-
-  if (allocateLibbluESPesPacketData(dst, node->size) < 0)
-    return -1;
-  dst->size = dst->offset = 0;
-
-  if (writePesHeaderLibbluESPesPacketData(dst, node->prop.header, node->prop.headerSize) < 0)
-    return -1;
-  payload = dst->data + node->prop.headerSize;
-  payloadSize = node->prop.payloadSize;
-
-  for (
-    commandNode = node->commands;
-    NULL != commandNode;
-    commandNode = commandNode->next
-  ) {
-    EsmsCommand command = commandNode->command;
-
-    ret = 0;
-    switch (command.type) {
-    case ESMS_ADD_DATA:
-      ret = applyEsmsAddDataCommand(
-        command.data.add_data,
-        payload,
-        payloadSize
-      );
-      break;
-
-    case ESMS_CHANGE_BYTEORDER:
-      ret = applyEsmsChangeByteOrderCommand(
-        command.data.change_byte_order,
-        payload,
-        payloadSize
-      );
-      break;
-
-    case ESMS_ADD_PAYLOAD_DATA:
-      ret = applyEsmsAddPesPayloadCommand(
-        command.data.add_pes_payload,
-        payload,
-        payloadSize,
-        &es->sourceFiles
-      );
-      break;
-
-    case ESMS_ADD_PADDING_DATA:
-      ret = applyEsmsAddPaddingCommand(
-        command.data.add_padding,
-        payload,
-        payloadSize
-      );
-      break;
-
-    case ESMS_ADD_DATA_BLOCK:
-      ret = applyEsmsAddDataBlockCommand(
-        command.data.add_data_block,
-        payload,
-        payloadSize,
-        es->scriptDataSections
-      );
-    }
-
-    if (ret < 0)
-      return -1;
-  }
-
-  dst->size = node->prop.headerSize + node->prop.payloadSize;
-  return 0;
-}
-
-#endif
-
 int buildNextPesPacketLibbluES(
-  LibbluES * es,
+  LibbluES *es,
   uint16_t pid,
-  uint64_t refPcr,
+  uint64_t initial_STC,
   LibbluPesPacketHeaderPrep_fun preparePesHeader
 )
 {
-
-#if 0
-  LibbluESPesPacketPropertiesNodePtr node;
-
-  if (es->pesPacketsQueueSize < LIBBLU_ES_MIN_BUF_PES_PACKETS) {
-    unsigned i;
-
-    for (
-      i = 0;
-      i < LIBBLU_ES_INC_BUF_PES_PACKETS
-      && !endOfPesPacketsScriptsQueueLibbluES(*es);
-      i++
-    ) {
-      if (buildAndQueueNextPesPacketPropertiesLibbluES(es, refPcr, preparePesHeader) < 0)
-        return -1;
-    }
-  }
-
-#endif
-
-  return _buildNextPesPacket(es, pid, refPcr, preparePesHeader);
+  return _buildNextPesPacket(es, pid, initial_STC, preparePesHeader);
 }

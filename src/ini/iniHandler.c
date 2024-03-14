@@ -8,16 +8,16 @@
 
 #include "iniHandler.h"
 
-extern FILE * yyin;
-extern int iniparse(IniFileContext * ctx);
+extern FILE *yyin;
+extern int iniparse(IniFileContext *ctx);
 extern int yylex_destroy (void);
 
 int parseIniFile(
-  IniFileContext * dst,
-  const lbc * filepath
+  IniFileContext *dst,
+  const lbc *filepath
 )
 {
-  FILE * fp = lbc_fopen(filepath, "r");
+  FILE *fp = lbc_fopen(filepath, "r");
   if (NULL == fp)
     LIBBLU_ERROR_RETURN(
       "Unable to open INI file '%" PRI_LBCS "', %s (errno: %d).\n",
@@ -49,9 +49,9 @@ free_return:
   return -1;
 }
 
-lbc * lookupIniFile(
+lbc *lookupIniFile(
   const IniFileContext ctx,
-  const char * expr
+  const char *expr
 )
 {
   return lookupIniFileNode(
