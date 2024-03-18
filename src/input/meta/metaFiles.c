@@ -94,19 +94,19 @@ static int _parseMUXOPTSectionTrack(
   /* Codec name */
   LibbluStreamCodingType coding_type;
   const char *coding_type_name;
-  if (parseCodecNameMetaFile(track->codec, &coding_type, &coding_type_name) < 0)
+  if (parseCodecNameMetaFile(track->type, &coding_type, &coding_type_name) < 0)
     return -1;
 
   /* Filepath */
-  if (setMainESFilepathLibbluESSettings(es_settings, track->filepath, meta_filepath) < 0)
+  if (setMainESFilepathLibbluESSettings(es_settings, track->argument, meta_filepath) < 0)
     LIBBLU_ERROR_RETURN(
       "Invalid META file, invalid filepath '%s'.\n",
-      track->filepath
+      track->argument
     );
 
   if (coding_type < 0) {
     /* Guess the stream coding type */
-    if ((coding_type = guessESStreamCodingType(track->filepath)) < 0)
+    if ((coding_type = guessESStreamCodingType(track->argument)) < 0)
       return -1;
   }
 

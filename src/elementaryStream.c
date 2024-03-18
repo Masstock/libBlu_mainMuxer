@@ -265,7 +265,7 @@ static int setPesPacketsDurationLibbluES(
 {
   LibbluESProperties *prop = &es->prop;
 
-  prop->nb_pes_per_sec = prop->nb_ped_sec_per_sec = 0;
+  prop->nb_pes_per_sec = prop->nb_pes_sec_per_sec = 0;
   prop->br_based_on_duration = false;
 
   double frame_rate = -1.f, sample_rate = -1.f;
@@ -317,28 +317,28 @@ static int setPesPacketsDurationLibbluES(
     /* Frame duration: 512 samples (2 consecutive frames) */
     assert(0 < sample_rate);
     prop->nb_pes_per_sec = sample_rate / 512;
-    prop->nb_ped_sec_per_sec = sample_rate / 512;
+    prop->nb_pes_sec_per_sec = sample_rate / 512;
     break;
 
   case STREAM_CODING_TYPE_TRUEHD: /* Dolby TrueHD (+AC-3 Core) */
     /* Frame duration: 1536 samples & 1/200s */
     assert(0 < sample_rate);
     prop->nb_pes_per_sec = sample_rate / 1536;
-    prop->nb_ped_sec_per_sec = 200;
+    prop->nb_pes_sec_per_sec = 200;
     break;
 
   case STREAM_CODING_TYPE_EAC3:  /* EAC-3 (+AC-3 Core) */
     /* Frame duration: 1536 samples (2 consecutive frames) */
     assert(0 < sample_rate);
     prop->nb_pes_per_sec = sample_rate / 1536;
-    prop->nb_ped_sec_per_sec = sample_rate / 1536;
+    prop->nb_pes_sec_per_sec = sample_rate / 1536;
     break;
 
   case STREAM_CODING_TYPE_DTSE_SEC: /* DTS-Express (Secondary track) */
     /* Frame duration: 4096 samples */
     assert(0 < sample_rate);
     prop->nb_pes_per_sec = sample_rate / 4096;
-    prop->nb_ped_sec_per_sec = sample_rate / 4096;
+    prop->nb_pes_sec_per_sec = sample_rate / 4096;
     break;
 
   case STREAM_CODING_TYPE_IG: /* Interactive Graphic Stream (IGS, Menus) */
@@ -404,7 +404,7 @@ static int _addPesPacketToBdavStdLibbluES(
   LibbluESPesPacketProperties prop,
   uint32_t pesp_header_size,
   uint16_t pid,
-  uint64_t initial_STC
+  uint64_t ref_STC_timestamp
 )
 {
   assert(NULL != es->lnkd_tstd_buf_list);
@@ -415,8 +415,8 @@ static int _addPesPacketToBdavStdLibbluES(
     es->prop.coding_type == STREAM_CODING_TYPE_AVC
     && prop.extension_data_pres
   ) {
-    removal_timestamp = prop.extension_data.h264.cpb_removal_time + initial_STC;
-    output_timestamp  = prop.extension_data.h264.dpb_output_time  + initial_STC;
+    removal_timestamp = prop.extension_data.h264.cpb_removal_time + ref_STC_timestamp;
+    output_timestamp  = prop.extension_data.h264.dpb_output_time  + ref_STC_timestamp;
   }
 
   LIBBLU_T_STD_VERIF_DECL_DEBUG(
@@ -490,7 +490,7 @@ static int _writePesHeader(
 static int _buildNextPesPacket(
   LibbluES *es,
   uint16_t pid,
-  uint64_t initial_STC,
+  uint64_t ref_STC_timestamp,
   LibbluPesPacketHeaderPrep_fun preparePesHeader
 )
 {
@@ -536,13 +536,13 @@ static int _buildNextPesPacket(
 
   /* Build from it next PES packet. */
   LibbluESPesPacketProperties pesp_prop;
-  if (prepareLibbluESPesPacketProperties(&pesp_prop, esms_pes_packet, initial_STC, es->PTS_reference) < 0)
+  if (prepareLibbluESPesPacketProperties(&pesp_prop, esms_pes_packet, ref_STC_timestamp, es->PTS_reference) < 0)
     return -1;
   uint32_t payload_size = pesp_prop.payload_size;
 
-  es->current_pes_packet.pts             = pesp_prop.pts;
-  es->current_pes_packet.dts             = pesp_prop.dts;
   es->current_pes_packet.extension_frame = pesp_prop.extension_frame;
+  es->current_pes_packet.PTS             = pesp_prop.pts;
+  es->current_pes_packet.DTS             = pesp_prop.dts;
 
   PesPacketHeaderParam *pesp_header = &es->current_pes_packet.header;
   if (preparePesHeader(pesp_header, pesp_prop, es->prop.coding_type) < 0)
@@ -593,7 +593,7 @@ static int _buildNextPesPacket(
 
   /* Add to stream buffering model chain if used */
   if (NULL != es->lnkd_tstd_buf_list) {
-    if (_addPesPacketToBdavStdLibbluES(es, pesp_prop, header_size, pid, initial_STC) < 0)
+    if (_addPesPacketToBdavStdLibbluES(es, pesp_prop, header_size, pid, ref_STC_timestamp) < 0)
       return -1;
   }
 
@@ -604,9 +604,9 @@ static int _buildNextPesPacket(
 int buildNextPesPacketLibbluES(
   LibbluES *es,
   uint16_t pid,
-  uint64_t initial_STC,
+  uint64_t ref_STC_timestamp,
   LibbluPesPacketHeaderPrep_fun preparePesHeader
 )
 {
-  return _buildNextPesPacket(es, pid, initial_STC, preparePesHeader);
+  return _buildNextPesPacket(es, pid, ref_STC_timestamp, preparePesHeader);
 }

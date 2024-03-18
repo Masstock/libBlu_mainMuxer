@@ -52,8 +52,8 @@ void destroyLibbluMetaFileOption(
 typedef struct LibbluMetaFileTrack {
   struct LibbluMetaFileTrack *next;
 
-  lbc *codec;
-  lbc *filepath;
+  lbc *type;
+  lbc *argument;
 
   LibbluMetaFileOption *options;
 } LibbluMetaFileTrack;

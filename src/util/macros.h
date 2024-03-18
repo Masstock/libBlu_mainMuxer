@@ -110,10 +110,8 @@
  */
 #if !defined(NDEBUG)
 #  define lb_cannot_fail(expr)  assert(expr)
-#  define lb_npd_assert(expr)  \
-  if (!(expr)) {int a = *((int *) NULL); (void) a;}
 #else
-#  define lb_cannot_fail(expr)  if (!(expr)) LIBBLU_ERROR_EXIT("Unexpected failure.\n")
+#  define lb_cannot_fail(expr)  (void) expr
 #endif
 
 /** \~english

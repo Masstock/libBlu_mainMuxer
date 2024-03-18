@@ -381,10 +381,10 @@ typedef struct {
     per second.                                                              */
   double nb_pes_per_sec;              /**< Constant number of PES frames per
     second.  */
-  double nb_ped_sec_per_sec;          /**< Constant number of secondary PES
+  double nb_pes_sec_per_sec;          /**< Constant number of secondary PES
     frames per second used when secStream == true.                           */
   bool br_based_on_duration;          /**< When true, nb_pes_per_sec and
-    nb_ped_sec_per_sec fields are used to define how many PES frames are
+    nb_pes_sec_per_sec fields are used to define how many PES frames are
     present per second. Otherwise, the number of PES frames is estimated
     according to current PES frame size compared to bitrate.                 */
 } LibbluESProperties;

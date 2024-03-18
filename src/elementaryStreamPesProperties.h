@@ -17,16 +17,16 @@
  * and is tracked using #dataUsedLength and #dataAllocatedLength fields.
  */
 typedef struct {
+  bool extension_frame;  /**< Is an extension frame (used to set current
+    PES frame as a nasted extension sub-stream and use correct timing
+    parameters).                                                             */
+  bool dts_present;      /**< DTS (Decoding TimeStamp) field presence.       */
+
   uint64_t pts;  /**< PES packet PTS (Presentation TimeStamp) in 27MHz
     clock ticks unit.                                                        */
   uint64_t dts;  /**< PES packet DTS (Decoding TimeStamp) in 27MHz clock
     ticks unit. This field is currently only used if
     #extension_frame == true.                                                */
-
-  bool extension_frame;  /**< Is an extension frame (used to set current
-    PES frame as a nasted extension sub-stream and use correct timing
-    parameters).                                                             */
-  bool dts_present;      /**< DTS (Decoding TimeStamp) field presence.       */
 
   EsmsPesPacketExtData extension_data;  /**< PES packet header extension
     data. Used if #extension_data_pres is set to true.                       */
@@ -45,7 +45,7 @@ typedef int (*LibbluPesPacketHeaderPrep_fun) (
 int prepareLibbluESPesPacketProperties(
   LibbluESPesPacketProperties *dst,
   EsmsPesPacket *esms_pes,
-  uint64_t initial_STC,
+  uint64_t ref_STC_timestamp,
   uint64_t referentialTs
 );
 

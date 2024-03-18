@@ -11,7 +11,7 @@
 int prepareLibbluESPesPacketProperties(
   LibbluESPesPacketProperties *dst,
   EsmsPesPacket *esms_pes,
-  uint64_t initial_STC,
+  uint64_t ref_STC_timestamp,
   uint64_t PTS_reference
 )
 {
@@ -27,12 +27,12 @@ int prepareLibbluESPesPacketProperties(
   dst->dts_present = esms_pes->prop.dts_present;
   dst->extension_data_pres = esms_pes->prop.ext_data_present;
 
-  dst->pts = (300ull *esms_pes->pts) + initial_STC;
+  dst->pts = (300ull * esms_pes->pts) + ref_STC_timestamp;
   if (dst->pts < zero)
     LIBBLU_ERROR_RETURN("Negative Presentation Time Stamp on a PES header.\n");
   dst->pts -= zero;
 
-  dst->dts = (300ull *esms_pes->dts) + initial_STC;
+  dst->dts = (300ull * esms_pes->dts) + ref_STC_timestamp;
   if (dst->dts < zero)
     LIBBLU_ERROR_RETURN("Negative Decoding Time Stamp on a PES header.\n");
   dst->dts -= zero;

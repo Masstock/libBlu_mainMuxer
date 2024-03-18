@@ -66,14 +66,14 @@ static int cmpNodesStreamHeap(
   assert(NULL != left);
   assert(NULL != right);
 
-  if (left->timer.tsPt == right->timer.tsPt) {
+  if (left->timer.next_TP_pres_time == right->timer.next_TP_pres_time) {
     /* Same timing, check priority */
-    if (left->timer.tsPriority == right->timer.tsPriority)
+    if (left->timer.priority_lvl == right->timer.priority_lvl)
       return 0; /* Equals */
-    return (left->timer.tsPriority > right->timer.tsPriority) ? -1 : 1;
+    return (left->timer.priority_lvl > right->timer.priority_lvl) ? -1 : 1;
   }
 
-  return (left->timer.tsPt < right->timer.tsPt) ? -1 : 1;
+  return (left->timer.next_TP_pres_time < right->timer.next_TP_pres_time) ? -1 : 1;
 }
 
 static int childStreamHeap(

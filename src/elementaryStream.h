@@ -181,10 +181,13 @@ typedef struct {
   struct {
     PesPacketHeaderParam header;
     LibbluESPesPacketData data;
-
-    uint64_t pts;
-    uint64_t dts;
     bool extension_frame;
+
+    uint64_t PTS; /**< PES packet PTS (Presentation TimeStamp) in 27MHz
+    clock ticks unit.                                                        */
+    uint64_t DTS; /**< PES packet DTS (Decoding TimeStamp) in 27MHz clock
+    ticks unit. This field is currently only used if
+    #extension_frame == true.                                                */
   } current_pes_packet;
 } LibbluES;
 

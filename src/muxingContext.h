@@ -80,19 +80,25 @@ typedef struct {
   uint64_t tp_STC_dur_floor;  /**< floor(tp_SRC_dur) */
   uint64_t tp_STC_dur_ceil;  /**< floor(tp_SRC_dur) */
 
-  uint64_t initial_STC;    /* Referential initial STC value in
+  uint64_t ref_STC_timestamp;  /* Referential initial STC value in
     #MAIN_CLOCK_27MHZ ticks.                                                 */
-  uint64_t STD_buf_delay;  /**< STD buffering delay, virtual time between
-    muxer and demuxer STCs. Initial STC value can be retrived with formula
-    'initial_STC' - 'STD_buf_delay'.                                         */
+  uint64_t STD_buf_delay;      /**< STD buffering delay, virtual time
+    between muxer and demuxer STCs. Initial STC value can be retrived with
+    formula 'ref_STC_timestamp' - 'STD_buf_delay'.                           */
+
+  BufModelNode t_STD_model;
+  BufModelBuffersListPtr t_STD_sys_buffers_list;
 
   /* Progression */
   unsigned nb_tp_muxed;     /**< Number of transport packets muxed.          */
   size_t nb_bytes_written;
   double progress;          /**< Progression state between 0 and 1.          */
 
-  BufModelNode t_STD_model;
-  BufModelBuffersListPtr t_STD_sys_buffers_list;
+  uint64_t STC_start;  /**< Initial STC value (@27MHz).                      */
+  uint64_t STC_end;    /**< Final STC value (@27MHz).                        */
+  uint64_t PTS_start;  /**< First video Presentation Unit PTS (@27MHz).      */
+  uint64_t PTS_end;    /**< Last video Presentation Unit PTS (@27MHz).       */
+  uint64_t PU_dur;     /**< Duration of the last video PU (@27MHz).          */
 } LibbluMuxingContext;
 
 /** \~english

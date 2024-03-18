@@ -10,6 +10,22 @@ typedef enum {
   LIBBLU_DISC_PROJECT
 } LibbluProjectType;
 
+
+
+// typedef struct {
+//   union {
+//     BDCLPI prefilled_CLPI;
+//     struct {
+//       uint8_t application_type;
+
+//       uint8_t *following_clips[5];
+//       uint8_t nb_following_clips;
+//     };
+//   };
+
+//   LibbluMuxingSettings mux_settings;
+// } LibbluClipSettings;
+
 typedef struct {
   // TODO
 

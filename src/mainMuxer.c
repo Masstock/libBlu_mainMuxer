@@ -108,6 +108,12 @@ int mainMux(
   if (padAlignedUnitLibbluMuxingContext(&ctx, output) < 0)
     goto free_return;
 
+  fprintf(stderr, "STC_start = %" PRIu64 "\n", ctx.STC_start);
+  fprintf(stderr, "STC_end   = %" PRIu64 "\n", ctx.STC_end);
+  fprintf(stderr, "PTS_start = %" PRIu64 "\n", ctx.PTS_start);
+  fprintf(stderr, "PTS_end   = %" PRIu64 "\n", ctx.PTS_end);
+  fprintf(stderr, "PU_dur    = %" PRIu64 "\n", ctx.PU_dur);
+
   lbc_printf(lbc_str("Multiplexing... [====================] 100%% Finished !\n\n"));
 
   closeBitstreamWriter(output);

@@ -22,6 +22,13 @@ static uint64_t _getMinInitialDelay(
   return 300ull *initial_delay; // Convert to 27MHz
 }
 
+static uint64_t _msTo27MHzClockTicks(
+  unsigned milliseconds
+)
+{
+  return milliseconds * 27000ull;
+}
+
 static int _addSystemStreamToContext(
   LibbluMuxingContext *ctx,
   LibbluStreamPtr sys_stream
@@ -29,50 +36,37 @@ static int _addSystemStreamToContext(
 {
   assert(!isESLibbluStream(sys_stream));
 
-  int priority = 0;
-  uint64_t pes_duration = PAT_DELAY;
-
-  switch (sys_stream->type) {
-  case TYPE_PCR:
-    priority = 1;
-    pes_duration = PCR_DELAY;
-    break;
-
-  case TYPE_SIT:
-    priority = 2;
-    pes_duration = SIT_DELAY;
-    break;
-
-  case TYPE_PMT:
-    priority = 3;
-    pes_duration = PMT_DELAY;
-    break;
-
-  case TYPE_PAT:
-    priority = 4;
-    pes_duration = PAT_DELAY;
-    break;
-
-  default:
-    LIBBLU_WARNING("Use of an unknown type system stream.\n");
-  }
-
   uint64_t pes_nb_tp = MAX(
     1, DIV_ROUND_UP(sys_stream->sys.table_data_length, TP_PAYLOAD_SIZE)
   );
 
+  int priority;
+  uint64_t pes_duration;
+  switch (sys_stream->type) {
+  case TYPE_PCR: priority = 1; pes_duration = _msTo27MHzClockTicks(70u); // TODO: 90ms?
+    break;
+  case TYPE_SIT: priority = 2; pes_duration = _msTo27MHzClockTicks(900u);
+    break;
+  case TYPE_PMT: priority = 3; pes_duration = _msTo27MHzClockTicks(90u);
+    break;
+  case TYPE_PAT: priority = 4; pes_duration = _msTo27MHzClockTicks(90u);
+    break;
+  default:
+    LIBBLU_TODO_MSG("Use of an unknown type system stream %d.\n", sys_stream->type);
+  }
+
   StreamHeapTimingInfos timing = {
-    .tsPt = ctx->current_STC_TS,
-    .tsPriority = priority,
-    .pesDuration = pes_duration,
-    .pesTsNb = pes_nb_tp,
-    .tsDuration = pes_duration / pes_nb_tp
+    .next_TP_pres_time = ctx->current_STC_TS,
+    .priority_lvl      = priority,
+    .PES_packet_dur    = pes_duration,
+    .PES_nb_TP         = pes_nb_tp,
+    .TP_dur            = pes_duration / pes_nb_tp
   };
 
   LIBBLU_DEBUG_COM(
     "Adding to context System stream PID 0x%04x: "
-    "pesTsNb: %" PRIu64 ", tsPt: %" PRIu64 ", tsDuration: %" PRIu64 ".\n",
-    sys_stream->pid, timing.pesTsNb, timing.tsPt, timing.tsDuration
+    "PES_nb_TP: %" PRIu64 ", next_TP_pres_time: %" PRIu64 ", TP_dur: %" PRIu64 ".\n",
+    sys_stream->pid, timing.PES_nb_TP, timing.next_TP_pres_time, timing.TP_dur
   );
 
   return addStreamHeap(
@@ -130,8 +124,8 @@ static int _initPmtSystemStream(
 
   unsigned nb_ES = ctx->nb_elementary_streams;
   LibbluESProperties *ES_props          = malloc(nb_ES * sizeof(LibbluESProperties));
-  LibbluESFmtProp    * ES_fmt_spec_props = malloc(nb_ES * sizeof(LibbluESFmtProp));
-  uint16_t           * ES_pids           = malloc(nb_ES * sizeof(uint16_t));
+  LibbluESFmtProp    *ES_fmt_spec_props = malloc(nb_ES * sizeof(LibbluESFmtProp));
+  uint16_t           *ES_pids           = malloc(nb_ES * sizeof(uint16_t));
   if (NULL == ES_props || NULL == ES_fmt_spec_props || NULL == ES_pids)
     LIBBLU_ERROR_RETURN("Memory allocation error.\n");
 
@@ -308,19 +302,19 @@ static void _updateCurrentStcLibbluMuxingContext(
 )
 {
   assert(0.f <= value && !isinf(value));
-  ctx->current_STC = value;
-  ctx->current_STC_TS = (uint64_t) MAX(0ull, value);
+  ctx->current_STC    = value;
+  ctx->current_STC_TS = ctx->STC_end = (uint64_t) MAX(0ull, value);
 }
 
-static void _computeInitialTimings(
+static int _computeInitialTimings(
   LibbluMuxingContext *ctx
 )
 {
-  uint64_t initial_PT = ctx->settings_ptr->presentation_start_time;
+  uint64_t first_PT = ctx->settings_ptr->presentation_start_time;
 
   LIBBLU_DEBUG_COM(
-    "User requested initial Presentation Time: %" PRIu64 " (27MHz clock).\n",
-    initial_PT
+    "User requested presentation start time: %" PRIu64 " (27MHz clock).\n",
+    first_PT
   );
 
   assert(0 < ctx->settings_ptr->TS_recording_rate);
@@ -342,37 +336,32 @@ static void _computeInitialTimings(
     ctx->settings_ptr->initial_STD_STC_delay * MAIN_CLOCK_27MHZ
   );
 
-  if (initial_PT < initial_decoding_delay + initial_STC_delay) {
-    LIBBLU_WARNING(
-      "Alignment of start PCR to minimal initial stream buffering delay "
-      "to avoid negative PCR values.\n"
+  if (first_PT < initial_decoding_delay + initial_STC_delay)
+    LIBBLU_ERROR_RETURN(
+      "Presentation start time is too low, "
+      "it causes timestamps to wrap into negative values at stream start "
+      "(pre-buffering period).\n"
     );
-    initial_PT = initial_decoding_delay + initial_STC_delay;
-  }
 
   /* Compute initial muxing STC value as user choosen value minus delays. */
   _updateCurrentStcLibbluMuxingContext(
     ctx,
-    ROUND_90KHZ_CLOCK(initial_PT - initial_decoding_delay) - initial_STC_delay
+    ROUND_90KHZ_CLOCK(first_PT - initial_decoding_delay) - initial_STC_delay
   );
 
+  LIBBLU_DEBUG_COM("Initial decoding delay: %" PRIu64 ".\n", initial_decoding_delay);
+  LIBBLU_DEBUG_COM("STC delay: %" PRIu64 ".\n", initial_STC_delay);
   LIBBLU_DEBUG_COM(
-    "Start PCR: %" PRIu64 ", "
-    "initialDecodingDelay: %" PRIu64 ", "
-    "stdBufferDelay: %" PRIu64 ".\n",
-    initial_PT,
-    initial_decoding_delay,
-    initial_STC_delay
-  );
-  LIBBLU_DEBUG_COM(
-    "Initial PCR: %f, Initial PT: %" PRIu64 ".\n",
+    "Initial STC value: %f, rounded: %" PRIu64 ".\n",
     ctx->current_STC,
     ctx->current_STC_TS
   );
 
-  /* Define System Time Clock, added value to default ES timestamps values. */
-  ctx->initial_STC = initial_PT;
-  ctx->STD_buf_delay = initial_STC_delay;
+  ctx->ref_STC_timestamp = first_PT;
+  ctx->STD_buf_delay     = initial_STC_delay;
+  ctx->STC_start         = ctx->current_STC_TS;
+
+  return 0;
 }
 
 static int _initiateElementaryStreamsTStdModel(
@@ -402,13 +391,13 @@ static int _computePesTiming(
   const LibbluMuxingContext *ctx
 )
 {
-  if (es->current_pes_packet.dts < ctx->STD_buf_delay)
+  if (es->current_pes_packet.DTS < ctx->STD_buf_delay)
     LIBBLU_ERROR_RETURN(
       "Broken DTS/STD Buffering delay (%" PRIu64 " < %" PRIu64 ").\n",
-      es->current_pes_packet.dts,
+      es->current_pes_packet.DTS,
       ctx->STD_buf_delay
     );
-  uint64_t dts = es->current_pes_packet.dts - ctx->STD_buf_delay;
+  uint64_t dts_m_buf_delay = es->current_pes_packet.DTS - ctx->STD_buf_delay;
 
   if (0 == (timing->bitrate = es->prop.bitrate))
     LIBBLU_ERROR_RETURN("Unable to get ES bitrate, broken script.");
@@ -417,7 +406,7 @@ static int _computePesTiming(
     if (!es->current_pes_packet.extension_frame)
       timing->nb_pes_per_sec = es->prop.nb_pes_per_sec;
     else
-      timing->nb_pes_per_sec = es->prop.nb_ped_sec_per_sec;
+      timing->nb_pes_per_sec = es->prop.nb_pes_sec_per_sec;
   }
   else {
     /**
@@ -440,25 +429,28 @@ static int _computePesTiming(
   avg_pes_packet_size = remainingPesDataLibbluES(es);
 #endif
 
-  avg_pes_packet_size = MAX(es->prop.bitrate / timing->nb_pes_per_sec / 8, avg_pes_packet_size);
+  avg_pes_packet_size = MAX(
+    es->prop.bitrate / timing->nb_pes_per_sec / 8,
+    avg_pes_packet_size
+  );
 
   /** Compute timing values:
    * NOTE: Performed at each PES frame, preventing introduction
    * of variable parameters issues.
    */
-  timing->pesDuration = floor(MAIN_CLOCK_27MHZ / timing->nb_pes_per_sec);
-  timing->pesTsNb = DIV_ROUND_UP(avg_pes_packet_size, TP_PAYLOAD_SIZE);
-  timing->tsDuration = timing->pesDuration / MAX(1, timing->pesTsNb);
+  timing->PES_packet_dur = floor(MAIN_CLOCK_27MHZ / timing->nb_pes_per_sec);
+  timing->PES_nb_TP = DIV_ROUND_UP(avg_pes_packet_size, TP_PAYLOAD_SIZE);
+  timing->TP_dur = timing->PES_packet_dur / MAX(1, timing->PES_nb_TP);
 
 #if SHIFT_PACKETS_BEFORE_DTS
-  if (timing->pesTsNb * ctx->tp_STC_dur_ceil < dts)
-    timing->tsPt = dts - timing->pesTsNb * ctx->tp_STC_dur_ceil;
+  if (timing->PES_nb_TP * ctx->tp_STC_dur_ceil < dts_m_buf_delay)
+    timing->next_TP_pres_time = dts_m_buf_delay - timing->PES_nb_TP * ctx->tp_STC_dur_ceil;
   else
-    timing->tsPt = dts;
+    timing->next_TP_pres_time = dts_m_buf_delay;
 #else
-  timing->tsPt = dts;
+  timing->next_TP_pres_time = dts;
 #endif
-  timing->tsPriority = 0; /* Normal priority. */
+  timing->priority_lvl = 0; /* Normal priority. */
 
   return 0;
 }
@@ -589,7 +581,7 @@ static int _prepareLibbluESStream(
 
   LibbluESFormatUtilities utilities;
   if (prepareLibbluES(&stream->es, &utilities, do_force_rebuild_script) < 0)
-   goto free_return;
+    goto free_return;
 
   LIBBLU_DEBUG_COM(" Request and set PID value.\n");
 
@@ -682,7 +674,8 @@ int initLibbluMuxingContext(
 
   /* Compute initial timing values in accordance with each ES timings */
   LIBBLU_DEBUG_COM("Computing the initial timing values.\n");
-  _computeInitialTimings(dst);
+  if (_computeInitialTimings(dst) < 0)
+    goto free_return;
 
   /* Init System streams */
   LIBBLU_DEBUG_COM("Initialization of Systeam Streams.\n");
@@ -698,6 +691,8 @@ int initLibbluMuxingContext(
 
   /* Build the first PES packets to set mux priorities */
   LIBBLU_DEBUG_COM("Initial PES packets building.\n");
+
+  bool primary_video_already_seen = false;
   for (unsigned i = 0; i < settings_ptr->nb_used_es; i++) {
     LibbluStreamPtr stream            = dst->elementary_streams[i];
     LibbluESFormatUtilities utilities = dst->elementary_streams_utilities[i];
@@ -706,7 +701,7 @@ int initLibbluMuxingContext(
     int ret = buildNextPesPacketLibbluES(
       &stream->es,
       stream->pid,
-      dst->initial_STC,
+      dst->ref_STC_timestamp,
       utilities.preparePesHeader
     );
     switch (ret) {
@@ -724,17 +719,37 @@ int initLibbluMuxingContext(
 
     LIBBLU_DEBUG_COM(" Use properties to set timestamps.\n");
 
+    if (
+      ES_VIDEO == stream->es.prop.type
+      && !stream->es.settings_ref->options.secondary
+    ) {
+      lb_cannot_fail(!primary_video_already_seen);
+      dst->PTS_start = stream->es.current_pes_packet.PTS;
+
+      int64_t dur = frameDur27MHzHdmvFrameRateCode(stream->es.prop.frame_rate);
+      if (dur < 0)
+        LIBBLU_ERROR_FRETURN(
+          "Unexpected frame rate code 0x%02.\n",
+          stream->es.prop.frame_rate
+        );
+      dst->PU_dur = (uint64_t) dur;
+
+      LIBBLU_DEBUG_COM("First video PTS value: %" PRIu64 ".\n", dst->PTS_start);
+      LIBBLU_DEBUG_COM("Video PU duration: %" PRIu64 ".\n", dst->PU_dur);
+      primary_video_already_seen = true;
+    }
+
     StreamHeapTimingInfos timing;
     if (_computePesTiming(&timing, &stream->es, dst) < 0)
       goto free_return;
 
     LIBBLU_DEBUG_COM(
       "Adding to context ES PID 0x%04" PRIX16 ": "
-      "pesTsNb: %" PRIu64 ", "
-      "tsPt: %" PRIu64 ".\n",
+      "PES_nb_TP: %" PRIu64 ", "
+      "next_TP_pres_time: %" PRIu64 ".\n",
       stream->pid,
-      timing.pesTsNb,
-      timing.tsPt
+      timing.PES_nb_TP,
+      timing.next_TP_pres_time
     );
 
     LIBBLU_DEBUG_COM(" Putting initialized ES in the ES heap.\n");
@@ -1082,7 +1097,7 @@ static int _muxNextESPacket(
 #if 0
         incrementTPTimestampStreamHeapTimingInfos(&tpTimeData);
 #else
-        tp_timings.tsPt += delay;
+        tp_timings.next_TP_pres_time += delay;
 #endif
 
         if (addStreamHeap(ctx->elm_stream_heap, tp_timings, stream) < 0)
@@ -1116,11 +1131,11 @@ static int _muxNextESPacket(
   LIBBLU_DEBUG(
     LIBBLU_DEBUG_MUXER_DECISION, "Muxer decisions",
     "0x%" PRIX64 " - %" PRIu64 ", ES packet muxed "
-    "(0x%04" PRIX16 ", tsPt: %" PRIu64 ").\n",
+    "(0x%04" PRIX16 ", next_TP_pres_time: %" PRIu64 ").\n",
     ctx->current_STC_TS,
     ctx->current_STC_TS,
     stream->pid,
-    tp_timings.tsPt
+    tp_timings.next_TP_pres_time
   );
 
   ctx->nb_tp_muxed++;
@@ -1161,7 +1176,7 @@ static int _muxNextESPacket(
     int ret = buildNextPesPacketLibbluES(
       &stream->es,
       stream->pid,
-      ctx->initial_STC,
+      ctx->ref_STC_timestamp,
       utilities.preparePesHeader
     );
     switch (ret) {
@@ -1180,28 +1195,36 @@ static int _muxNextESPacket(
       "(end of script ? %s, Queued frames nb: %zu).\n",
       stream->pid,
       stream->es.current_pes_packet.data.size,
-      stream->es.current_pes_packet.dts,
-      stream->es.current_pes_packet.pts,
+      stream->es.current_pes_packet.DTS,
+      stream->es.current_pes_packet.PTS,
       ctx->current_STC_TS,
       BOOL_INFO(stream->es.script.end_reached),
       nbEntriesCircularBuffer(&stream->es.script.pes_packets_queue)
     );
+
+    if (
+      ES_VIDEO == stream->es.prop.type
+      && !stream->es.settings_ref->options.secondary
+    ) {
+      ctx->PTS_end = stream->es.current_pes_packet.PTS;
+       // Update last Video PU PTS
+    }
 
     if (_computePesTiming(&tp_timings, &stream->es, ctx) < 0)
       return -1;
 
     LIBBLU_DEBUG(
       LIBBLU_DEBUG_PES_BUILDING, "PES building",
-      " => pesTsNb: %" PRIu64 ", tsPt: %" PRIu64 ".\n",
-      tp_timings.pesTsNb,
-      tp_timings.tsPt
+      " => PES_nb_TP: %" PRIu64 ", next_TP_pres_time: %" PRIu64 ".\n",
+      tp_timings.PES_nb_TP,
+      tp_timings.next_TP_pres_time
     );
   }
   else {
 #if 1
       incrementTPTimestampStreamHeapTimingInfos(&tp_timings);
 #else
-      tpTimeData.tsPt += ctx->tp_STC_dur_floor;
+      tpTimeData.next_TP_pres_time += ctx->tp_STC_dur_floor;
 #endif
   }
 
@@ -1209,8 +1232,8 @@ static int _muxNextESPacket(
     /* Update progression bar : */
     ctx->progress =
       (double) (
-        stream->es.current_pes_packet.pts
-        - ctx->initial_STC
+        stream->es.current_pes_packet.PTS
+        - ctx->ref_STC_timestamp
         + (300ull * stream->es.PTS_reference)
       ) / (300ull * stream->es.PTS_final)
     ;
@@ -1255,21 +1278,21 @@ int muxNextPacketLibbluMuxingContext(
   BitstreamWriterPtr output
 )
 {
-  int nb_muxed_packets;
+  int mux_ret; // 0: No Transport Packet muxed, 1: One TP muxed, -1: Error
 
   assert(NULL != ctx);
   assert(NULL != output);
 
   /* Try to mux System tp */
-  if ((nb_muxed_packets = _muxNextSystemStreamPacket(ctx, output)) < 0)
+  if ((mux_ret = _muxNextSystemStreamPacket(ctx, output)) < 0)
     return -1; /* Error */
-  if (0 < nb_muxed_packets)
+  if (0 < mux_ret)
     goto success; /* System tp muxed with success */
 
   /* Otherwise, try to mux a Elementary Stream tp */
-  if ((nb_muxed_packets = _muxNextESPacket(ctx, output)) < 0)
+  if ((mux_ret = _muxNextESPacket(ctx, output)) < 0)
     return -1; /* Error */
-  if (0 < nb_muxed_packets)
+  if (0 < mux_ret)
     goto success; /* ES tp muxed with success */
 
   /* Otherwise, put a NULL packet to ensure CBR mux (or do nothing if VBR) */

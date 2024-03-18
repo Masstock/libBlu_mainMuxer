@@ -30,18 +30,19 @@
  * Timing values are in #MAIN_CLOCK_27MHZ ticks if unit not precised.
  */
 typedef struct {
-  uint64_t tsPt;   /**< Next Transport Packet presentation time.             */
-  int tsPriority;  /**< Stream priority level, higher means higher priority
-    than other streams sharing same tsPt value.                              */
+  uint64_t next_TP_pres_time;  /**< Next Transport Packet presentation time. */
+  int priority_lvl;            /**< Stream priority level, higher means
+    higher priority than other streams sharing same next_TP_pres_time value. */
 
   /* Used for computation parameters: */
-  uint64_t pesDuration; /**< PES packet duration (commonly frame-rate for
+  uint64_t PES_packet_dur;  /**< PES packet duration (commonly frame-rate for
     video, a fixed number of samples for audio...)                           */
-  double nb_pes_per_sec;         /**< Number of PES frames per second. Rounded up.    */
-  double bitrate;       /**< Stream bit-rate in bps (Max bitrate for VBR,
-    bitrate for CBR streams).                                                */
-  uint64_t pesTsNb;     /**< Maximum number of TP per PES packet.            */
-  uint64_t tsDuration;  /**< Transport Packet duration
+  double nb_pes_per_sec;    /**< Number of PES frames per second.
+    Rounded up.                                                              */
+  double bitrate;           /**< Stream bit-rate in bps (Max bitrate for
+    VBR, bitrate for CBR streams).                                           */
+  uint64_t PES_nb_TP;       /**< Maximum number of TP per PES packet.        */
+  uint64_t TP_dur;          /**< Transport Packet duration
     (PES duration / nb TP per PES).                                          */
 } StreamHeapTimingInfos;
 
@@ -49,7 +50,7 @@ static inline void incrementTPTimestampStreamHeapTimingInfos(
   StreamHeapTimingInfos *dst
 )
 {
-  dst->tsPt += dst->tsDuration;
+  dst->next_TP_pres_time += dst->TP_dur;
 }
 
 /** \~english
@@ -125,7 +126,7 @@ static inline bool streamIsReadyStreamHeap(
 
   return
     (0 < heap->usedSize)
-    && (heap->content[0].timer.tsPt <= current_STC_TS)
+    && (heap->content[0].timer.next_TP_pres_time <= current_STC_TS)
   ;
 }
 

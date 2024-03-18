@@ -158,8 +158,8 @@ static int _parseOptionsMetaFileStructure(
 /* ### META File track : ################################################### */
 
 LibbluMetaFileTrack * createLibbluMetaFileTrack(
-  const lbc *codec,
-  const lbc *filepath
+  const lbc *track_type,
+  const lbc *track_argument
 )
 {
   LibbluMetaFileTrack *track = (LibbluMetaFileTrack *) calloc(
@@ -168,9 +168,9 @@ LibbluMetaFileTrack * createLibbluMetaFileTrack(
   if (NULL == track)
     LIBBLU_ERROR_NRETURN("Memory allocation error.\n");
 
-  if (NULL == (track->codec = lbc_strdup(codec)))
+  if (NULL == (track->type = lbc_strdup(track_type)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
-  if (NULL == (track->filepath = lbc_strdup(filepath)))
+  if (NULL == (track->argument = lbc_strdup(track_argument)))
     LIBBLU_ERROR_FRETURN("Memory allocation error.\n");
   return track;
 
@@ -187,8 +187,8 @@ void destroyLibbluMetaFileTrack(
     return;
 
   destroyLibbluMetaFileTrack(track->next);
-  free(track->codec);
-  free(track->filepath);
+  free(track->type);
+  free(track->argument);
   destroyLibbluMetaFileOption(track->options);
   free(track);
 }

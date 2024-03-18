@@ -11,14 +11,14 @@
 
 int writeTpExtraHeader(
   BitstreamWriterPtr output,
-  uint64_t atc
+  uint64_t arrival_time_clock
 )
 {
   uint8_t tp_extra_header[TP_EXTRA_HEADER_SIZE];
   uint8_t offset = 0;
 
   static const uint8_t copy_perm_idc = 0x0;
-  uint32_t ats = atc & 0x3FFFFFFF;
+  uint32_t ats = arrival_time_clock & 0x3FFFFFFF;
 
   /* [u2 copy_permission_indicator] [u30 arrival_timestamp] */
   WB_ARRAY(tp_extra_header, offset, (copy_perm_idc << 6) | (ats >> 24));
