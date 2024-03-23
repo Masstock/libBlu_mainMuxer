@@ -10,27 +10,45 @@ typedef enum {
   LIBBLU_DISC_PROJECT
 } LibbluProjectType;
 
+typedef struct {
+  lbc *output_path;
+  BDClip_information_file_name output_stem;
 
+  bool has_prefilled_CLPI;
+  union {
+    BDCLPI prefilled_CLPI;
+    struct {
+      uint8_t application_type;  /**< Type of clip usage. One of
+        BD_APPLICATION_TYPE__*. */
 
-// typedef struct {
-//   union {
-//     BDCLPI prefilled_CLPI;
-//     struct {
-//       uint8_t application_type;
+      BDClip_information_file_name *following_clips;  /**< Stem of clips
+        following this one and intended for a seamless connection (for which
+        an ATC delta must be computed). */
+      uint8_t nb_following_clips;   /**< Number of clips following this one
+        and connected seamlessly. */
+    };
+  };
 
-//       uint8_t *following_clips[5];
-//       uint8_t nb_following_clips;
-//     };
-//   };
+  LibbluMuxingSettings mux_settings;
+} LibbluClipSettings;
 
-//   LibbluMuxingSettings mux_settings;
-// } LibbluClipSettings;
+static inline void cleanLibbluClipSettings(
+  LibbluClipSettings clip_settings
+)
+{
+  free(clip_settings.output_path);
+  if (clip_settings.has_prefilled_CLPI)
+    cleanBDCLPI(clip_settings.prefilled_CLPI);
+  else {
+    free(clip_settings.following_clips);
+  }
+  cleanLibbluMuxingSettings(clip_settings.mux_settings);
+}
 
 typedef struct {
   // TODO
 
-  BDCLPI *clip_information_file;
-  LibbluMuxingSettings *clip_mux_settings;
+  LibbluClipSettings *clips;
   unsigned nb_clips;
 
   LibbluMuxingOptions shared_mux_options;
@@ -41,11 +59,9 @@ static inline void cleanLibbluDiscProjectSettings(
 )
 {
   for (unsigned i = 0; i < disc_project_settings.nb_clips; i++) {
-    cleanBDCLPI(disc_project_settings.clip_information_file[i]);
-    cleanLibbluMuxingSettings(disc_project_settings.clip_mux_settings[i]);
+    cleanLibbluClipSettings(disc_project_settings.clips[i]);
   }
-  free(disc_project_settings.clip_information_file);
-  free(disc_project_settings.clip_mux_settings);
+  free(disc_project_settings.clips);
 }
 
 typedef struct {

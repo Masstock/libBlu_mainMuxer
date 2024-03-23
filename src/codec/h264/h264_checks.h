@@ -18,6 +18,7 @@
 /* ### Access Unit Delimiter (AUD) : ####################################### */
 
 int checkH264AccessUnitDelimiterCompliance(
+  H264WarningFlags *warn,
   H264AccessUnitDelimiterParameters param
 );
 

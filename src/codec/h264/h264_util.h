@@ -20,24 +20,27 @@
 /* ### H.264 Context : ##################################################### */
 
 typedef struct {
-  bool presenceOfFillerData;
+  unsigned max_amount;
 
-  bool vuiInvalidOverscan;
-  bool vuiUnexpectedVideoFormat;
-  bool vuiUnexpectedVideoFullRange;
-  bool vuiUnexpectedColourPrimaries;
-  bool vuiUnexpectedTranferCharact;
-  bool vuiUnexpectedMatrixCoeff;
-  bool vuiMissingVideoSignalType;
-  bool vuiMissingColourDesc;
+  unsigned char AU_unexpected_buffering_period_SEI_msg;
+  unsigned char AU_filler_data;
 
-  bool unexpectedPresenceOfBufPeriodSei;
+  unsigned char AUD_wrong_primary_pic_type;
 
-  bool useOfLowEfficientCavlc;
-  bool useOfLowEfficientConstaintIntraPred;
+  unsigned char VUI_wrong_SAR;
+  unsigned char VUI_wrong_video_format;
+  unsigned char VUI_wrong_color_primaries;
+  unsigned char VUI_wrong_transfer_characteristics;
+  unsigned char VUI_wrong_matrix_coefficients;
+  unsigned char VUI_wrong_overscan_appropriate_flag;
+  unsigned char VUI_wrong_video_full_range_flag;
+  unsigned char VUI_missing_video_signal_type;
+  unsigned char VUI_missing_colour_description;
 
-  bool tooMuchMemoryManagementCtrlOp;  /**< The number of present
-    'memory_management_control_operation' exceeds the maximum supported.     */
+  unsigned char slice_wrong_slice_type;
+  unsigned char slice_too_many_memory_management_control_operation; /**<
+    The number of present 'memory_management_control_operation' exceeds the
+    maximum supported.                                                       */
 } H264WarningFlags;
 
 typedef struct {
@@ -74,12 +77,6 @@ typedef struct {
 
   H264WarningFlags warningFlags;
 } H264ParametersHandler, *H264ParametersHandlerPtr;
-
-#define CHECK_H264_WARNING_FLAG(H264ParametersHandlerPtr, warningName)        \
-  (!(H264ParametersHandlerPtr)->warningFlags.warningName)
-
-#define MARK_H264_WARNING_FLAG(H264ParametersHandlerPtr, warningName)         \
-  ((H264ParametersHandlerPtr)->warningFlags.warningName = true)
 
 void updateH264LevelLimits(
   H264ParametersHandlerPtr handle,

@@ -18,6 +18,8 @@
 #include "bd_common.h"
 #include "bd_util.h"
 
+typedef uint8_t BDClip_information_file_name[5];
+
 typedef struct {
   uint16_t length;
 

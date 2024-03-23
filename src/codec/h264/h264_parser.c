@@ -328,15 +328,14 @@ static int32_t calcCurPicOrderCnt(
 
   case 0x1:
     /* TODO */
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_TODO_MSG(
       "Unsupported 'pic_order_cnt_type' mode 0x1, unable to compute "
       "PicOrderCnt.\n"
     );
-    break;
 
   default:
     /* TODO */
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_TODO_MSG(
       "Unsupported 'pic_order_cnt_type' mode %" PRIu8 ", unable to compute "
       "PicOrderCnt.\n",
       sps->pic_order_cnt_type
@@ -588,7 +587,7 @@ static int _initProperties(
     !sps->frame_mbs_only_flag
   );
   if (!videoFormat)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Resolution %ux%u%c is unsupported.\n",
       sps->FrameWidth,
       sps->FrameHeight,
@@ -600,7 +599,7 @@ static int _initProperties(
 
   HdmvFrameRateCode frameRate = getHdmvFrameRateCode(curProgParam->frameRate);
   if (!frameRate)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Frame-rate %.3f is unsupported.\n",
       curProgParam->frameRate
     );
@@ -755,7 +754,7 @@ static int _processPESFrame(
     || !handle->sequenceParametersSetGopValid
     || !handle->slicePresent
   ) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Uncompliant access unit, shall contain at least a AUD, "
       "a SPS and one slice.\n "
     );
@@ -770,7 +769,7 @@ static int _processPESFrame(
   H264CurrentProgressParam *cur = &handle->curProgParam;
 
   if (cur->nbSlicesInPic < handle->constraints.sliceNb) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Pending access unit contains %u slices (at least %u expected).\n",
       cur->nbSlicesInPic,
       handle->constraints.sliceNb
@@ -786,7 +785,7 @@ static int _processPESFrame(
       handle->constraints.consecutiveBPicNb
       < cur->nbConsecutiveBPics
     ) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Too many consecutive B pictures "
         "(found %u pictures, expected no more than %u).\n",
         cur->nbConsecutiveBPics,
@@ -1055,7 +1054,7 @@ int decodeH264AccessUnitDelimiter(
   /* access_unit_delimiter_rbsp() */
   uint32_t value;
 
-  H264AccessUnitDelimiterParameters audParam;
+  H264AccessUnitDelimiterParameters AUD_param;
 
   assert(NULL != handle);
 
@@ -1068,7 +1067,7 @@ int decodeH264AccessUnitDelimiter(
   /* [u3 primary_pic_type] */
   if (readBitsNal(handle, &value, 3) < 0)
     return -1;
-  audParam.primary_pic_type = value;
+  AUD_param.primary_pic_type = value;
 
   /* rbsp_trailing_bits() */
   if (_parseH264RbspTrailingBits(handle) < 0)
@@ -1078,16 +1077,16 @@ int decodeH264AccessUnitDelimiter(
     !handle->accessUnitDelimiterPresent
     || !handle->accessUnitDelimiterValid
   ) {
-    if (checkH264AccessUnitDelimiterCompliance(audParam) < 0)
+    if (checkH264AccessUnitDelimiterCompliance(&handle->warningFlags, AUD_param) < 0)
       return -1;
   }
   else {
     if (5 < handle->curProgParam.lstNaluType) {
-      bool isConstant = constantH264AccessUnitDelimiterCheck(
-        handle->accessUnitDelimiter, audParam
+      bool is_constant = constantH264AccessUnitDelimiterCheck(
+        handle->accessUnitDelimiter, AUD_param
       );
 
-      if (isConstant)
+      if (is_constant)
         handle->curProgParam.presenceOfUselessAccessUnitDelimiter = true;
       else {
         LIBBLU_H264_ERROR_RETURN(
@@ -1098,7 +1097,7 @@ int decodeH264AccessUnitDelimiter(
     }
   }
 
-  handle->accessUnitDelimiter = audParam; /* Update */
+  handle->accessUnitDelimiter = AUD_param; /* Update */
   handle->accessUnitDelimiterPresent = true;
   handle->accessUnitDelimiterValid = true;
 
@@ -1948,7 +1947,7 @@ int decodeH264SequenceParametersSet(
 
   /* Check */
   if (!handle->accessUnitDelimiterValid)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Missing mandatory AUD before SPS.\n"
     );
 
@@ -1971,7 +1970,7 @@ int decodeH264SequenceParametersSet(
         spsData
       );
       if (ret < 0)
-        LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+        LIBBLU_H264_CK_FAIL_RETURN(
           "Fluctuating SPS parameters.\n"
         );
     }
@@ -2299,7 +2298,7 @@ int decodeH264PicParametersSet(
         pps
       );
       if (ret < 0)
-        LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+        LIBBLU_H264_CK_FAIL_RETURN(
           "Forbidden PPS parameters change.\n"
         );
 
@@ -2843,7 +2842,7 @@ int decodeH264SupplementalEnhancementInformation(
 {
   /* sei_rbsp() */
   // int ret;
-  // bool isConstant;
+  // bool is_constant;
 
   H264SeiMessageParameters seiMsg;
 
@@ -2897,13 +2896,13 @@ int decodeH264SupplementalEnhancementInformation(
           return -1;
       }
       else {
-        bool isConstant = constantH264SeiBufferingPeriodCheck(
+        bool is_constant = constantH264SeiBufferingPeriodCheck(
           handle,
           handle->sei.bufferingPeriod,
           seiMsg.bufferingPeriod
         );
 
-        if (!isConstant) {
+        if (!is_constant) {
           int ret = checkH264SeiBufferingPeriodChangeCompliance(
             handle,
             handle->sei.bufferingPeriod,
@@ -2947,11 +2946,11 @@ int decodeH264SupplementalEnhancementInformation(
           return -1;
       }
       else {
-        bool isConstant = constantH264SeiRecoveryPointCheck(
+        bool is_constant = constantH264SeiRecoveryPointCheck(
           handle->sei.recoveryPoint,
           seiMsg.recoveryPoint
         );
-        if (!isConstant) {
+        if (!is_constant) {
           /* Check changes */
           if (checkH264SeiRecoveryPointChangeCompliance(handle, seiMsg.recoveryPoint) < 0)
             return -1;
@@ -3484,7 +3483,7 @@ static int _parseH264SliceHeader(
          * (regardless to gaps_in_frame_num_value_allowed_flag)
          */
 
-        LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+        LIBBLU_H264_CK_FAIL_RETURN(
           "Forbidden gaps in 'frame_num' value "
           "(last: %" PRIu16 ", cur: %" PRIu16 ").\n",
           handle->curProgParam.PrevRefFrameNum,
@@ -3663,9 +3662,7 @@ static int _parseH264SliceHeader(
     /* Annex H */
 
     /* TODO: Add 3D MVC support. */
-    LIBBLU_H264_ERROR_RETURN(
-      "Unsupported 3D MVC bitstream.\n"
-    );
+    LIBBLU_TODO_MSG("Unsupported 3D MVC bitstream.\n");
   }
   else {
     /* ref_pic_list_modification() */
@@ -4090,12 +4087,10 @@ int decodeH264FillerData(
   if (_parseH264RbspTrailingBits(handle) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
 
-  if (CHECK_H264_WARNING_FLAG(handle, presenceOfFillerData)) {
-    LIBBLU_WARNING(
-      "Presence of filling data bytes, reducing compression efficiency.\n"
-    );
-    MARK_H264_WARNING_FLAG(handle, presenceOfFillerData);
-  }
+  LIBBLU_H264_CK_WCOND_WARNING(
+    LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, AU_filler_data),
+    "Presence of filling data bytes, reducing compression efficiency.\n"
+  );
 
   return 0;
 }
@@ -4197,11 +4192,12 @@ int analyzeH264(
     case NAL_UNIT_TYPE_SLICE_PART_A_LAYER: /* 0x02 / 2 */
     case NAL_UNIT_TYPE_SLICE_PART_B_LAYER: /* 0x03 / 3 */
     case NAL_UNIT_TYPE_SLICE_PART_C_LAYER: /* 0x04 / 4 */
-      LIBBLU_ERROR("Unsupported partitioned slice data NALUs.\n");
-      /* handle->constraints.forbiddenSliceDataPartitionLayersNal */
-      LIBBLU_H264_COMPLIANCE_ERROR_FRETURN(
-        "Unsupported partitioned slice data NALUs.\n"
-      );
+      LIBBLU_TODO_MSG("Unsupported partitioned slice data NALUs.\n");
+      // handle->constraints.forbiddenSliceDataPartitionLayersNal
+      // LIBBLU_H264_CK_FAIL_FRETURN(
+      //   "Unsupported partitioned slice data NALUs.\n"
+      // );
+      break;
 
     case NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION: /* 6 - SEI */
       if (settings->options.discard_sei) {

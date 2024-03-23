@@ -1244,7 +1244,7 @@ static inline bool isAllowedH264SliceTypeValue(
   H264PrimaryPictureType primary_pic_type
 )
 {
-  static const unsigned primPicTypMasks[] = {
+  static const unsigned prim_pic_type_masks[] = {
     0x84,
     0xA5,
     0xE7,
@@ -1255,9 +1255,25 @@ static inline bool isAllowedH264SliceTypeValue(
     0xFF
   };
 
-  assert(primary_pic_type < ARRAY_SIZE(primPicTypMasks));
+  assert(primary_pic_type < ARRAY_SIZE(prim_pic_type_masks));
 
-  return primPicTypMasks[primary_pic_type] & (1 << slice_type);
+  return prim_pic_type_masks[primary_pic_type] & (1 << slice_type);
+}
+
+static inline bool isBDAllowedH264SliceTypeValue(
+  H264SliceTypeValue slice_type,
+  H264PrimaryPictureType primary_pic_type
+)
+{
+  static const unsigned prim_pic_type_masks[] = {
+    0x80, // I slices only
+    0x20, // P slices only
+    0x40  // B slices only
+  };
+
+  if (ARRAY_SIZE(prim_pic_type_masks) <= primary_pic_type)
+    return false;
+  return prim_pic_type_masks[primary_pic_type] & (1 << slice_type);
 }
 
 static inline const char *H264SliceTypeValueStr(

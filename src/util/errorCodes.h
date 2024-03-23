@@ -99,9 +99,19 @@
 #define LIBBLU_ERROR_VRETURN(format, ...)                                     \
   __LIBBLU_ERROR_INSTR_(return, format, ##__VA_ARGS__)
 
+
+#define __LIBBLU_WCOND(warn_expr, format, ...)                                \
+  do {                                                                        \
+    if (warn_expr)                                                            \
+      LIBBLU_WARNING(format, ##__VA_ARGS__);                                  \
+  } while (0)
+
+#define LIBBLU_WCOND(warn_expr, format, ...)                                  \
+  __LIBBLU_WCOND(warn_expr, format, ##__VA_ARGS__)
+
 typedef enum {
-  // LIBBLU_EXPLODE_COMPLIANCE,
-  // LIBBLU_EXPLODE_BD_COMPLIANCE,
+  LIBBLU_EXPLODE_COMPLIANCE,
+  LIBBLU_EXPLODE_BD_COMPLIANCE,
   LIBBLU_EXPLODE_STD_COMPLIANCE,
   LIBBLU_EXPLODE_BDAV_STD_COMPLIANCE,
   LIBBLU_EXPLODE_HDMV_TC_COMPLIANCE
@@ -144,6 +154,12 @@ int isDisabledExplodeLevel(
 
 #define LIBBLU_ERROR_BRETURN(format, ...)                                     \
   __LIBBLU_ERROR_INSTR_(return false, format, ##__VA_ARGS__);
+
+#define LIBBLU_WARN_COUNT_CHECK(warn, name)                                   \
+  (((warn)->name) < (warn)->max_amount || 0 == (warn)->max_amount)
+
+#define LIBBLU_WARN_COUNT_CHECK_INC(warn, name)                               \
+  (((warn)->name)++ < (warn)->max_amount || 0 == (warn)->max_amount)
 
 typedef enum {
   LIBBLU_INFO,

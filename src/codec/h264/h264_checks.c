@@ -10,11 +10,12 @@
 #include "h264_checks.h"
 
 int checkH264AccessUnitDelimiterCompliance(
+  H264WarningFlags *warn,
   H264AccessUnitDelimiterParameters param
 )
 {
   LIBBLU_H264_DEBUG_AUD(
-    "  Primary coded picture slices types (primary_pic_type): "
+    "  Primary coded picture slice types (primary_pic_type): "
     "0x%02" PRIX8 ".\n",
     param.primary_pic_type
   );
@@ -25,8 +26,16 @@ int checkH264AccessUnitDelimiterCompliance(
   );
 
   if (H264_PRIM_PIC_TYPE_ALL < param.primary_pic_type)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved 'primary_pic_type' == %u in use.\n",
+      param.primary_pic_type
+    );
+
+  if (H264_PRIM_PIC_TYPE_IPB < param.primary_pic_type)
+    LIBBLU_H264_CK_BD_FAIL_WCOND_RETURN(
+      LIBBLU_WARN_COUNT_CHECK_INC(warn, AUD_wrong_primary_pic_type),
+      "Primary coded picture slice types shall be equal to 0, 1 or 2 "
+      "in Access Unit Delimiter ('primary_pic_type' == %u).\n",
       param.primary_pic_type
     );
 
@@ -90,7 +99,7 @@ static int _checkH264ProfileIdcCompliance(
       "    => Non BD-compliant.\n"
     );
 
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "%s profile is not part of the profiles allowed by BD-specs "
       "('profile_idc' == %d).\n",
       H264ProfileIdcValueStr (
@@ -140,7 +149,7 @@ static int _checkH264LevelIdcCompliance(
       "   => Unknown/Reserved value.\n"
     );
 
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unknown/Reserved 'level_idc' == %d in use.\n",
       level_idc
     );
@@ -148,7 +157,7 @@ static int _checkH264LevelIdcCompliance(
 
   if (level_idc < 30 || 41 < level_idc) {
     /* BDAV unallowed level_idc. */
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Level %" PRIu8 ".%" PRIu8 " is not part of the "
       "levels allowed by BD-specs ('level_idc' == %d).\n",
       level_idc / 10,
@@ -174,7 +183,7 @@ static int _checkH264HrdParametersCompliance(
   );
 
   if (H264_BDAV_ALLOWED_CPB_CNT <= param.cpb_cnt_minus1) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "%u CPB configurations defined, "
       "expect no more than %u configurations "
       "('cpb_cnt_minus1' == %u).\n",
@@ -185,7 +194,7 @@ static int _checkH264HrdParametersCompliance(
   }
 
   if (H264_MAX_CPB_CONFIGURATIONS <= param.cpb_cnt_minus1) {
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Overflow, the number of defined CPB configurations exceed %u "
       "('cpb_cnt_minus1' == 0x%X).\n",
       H264_MAX_CPB_CONFIGURATIONS,
@@ -230,7 +239,7 @@ static int _checkH264HrdParametersCompliance(
         param.schedSel[ShedSelIdx].bit_rate_value_minus1
         <= param.schedSel[ShedSelIdx - 1].bit_rate_value_minus1
       ) {
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Invalid HRD 'bit_rate_value_minus1[SchedSelIdx]' value for "
           "Schedule Selection Index %u, "
           "'bit_rate_value_minus1[SchedSelIdx-1]' == %" PRIu32 " shall be "
@@ -259,7 +268,7 @@ static int _checkH264HrdParametersCompliance(
         param.schedSel[ShedSelIdx].cpb_size_value_minus1
         > param.schedSel[ShedSelIdx - 1].cpb_size_value_minus1
       ) {
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Invalid HRD 'cpb_size_value_minus1[SchedSelIdx]' value for "
           "Schedule Selection Index %u, "
           "'cpb_size_value_minus1[SchedSelIdx-1]' == %" PRIu32 " shall be "
@@ -320,6 +329,7 @@ static int _checkH264HrdParametersCompliance(
 }
 
 static int _checkAspectRatioInfoH264VuiParametersCompliance(
+  H264WarningFlags *warn,
   H264SPSDataParameters sps,
   H264VuiParameters vui
 )
@@ -333,28 +343,32 @@ static int _checkAspectRatioInfoH264VuiParametersCompliance(
 
   if (!isRespectedH264BdavExpectedAspectRatio(expected, vui.aspect_ratio_idc)) {
     if (expected.a != expected.b) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-        "Invalid SAR '%s' in SPS VUI parameters for %ux%u, "
-        "BD-specs require %s or %s for this "
-        "resolution ('aspect_ratio_idc' == %d).\n",
-        H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
+      LIBBLU_H264_CK_BD_FAIL_WCOND_RETURN(
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, VUI_wrong_SAR),
+        "Sample Aspect Ratio in SPS VUI parameters for %ux%u, "
+        "shall be %s or %s for this resolution, not %s "
+        "('aspect_ratio_idc' == %d).\n",
         sps.FrameWidth,
         sps.FrameHeight,
         H264AspectRatioIdcValueStr(expected.a),
         H264AspectRatioIdcValueStr(expected.b),
+        H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
         vui.aspect_ratio_idc
       );
     }
-
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
-      "Invalid SAR '%s' for %ux%u, BD-specs require %s for this "
-      "resolution ('aspect_ratio_idc' == %d).\n",
-      H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
-      sps.FrameWidth,
-      sps.FrameHeight,
-      H264AspectRatioIdcValueStr(expected.a),
-      vui.aspect_ratio_idc
-    );
+    else {
+      LIBBLU_H264_CK_BD_FAIL_WCOND_RETURN(
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, VUI_wrong_SAR),
+        "Sample Aspect Ratio in SPS VUI parameters for %ux%u, "
+        "shall be %s for this resolution, not %s "
+        "('aspect_ratio_idc' == %d).\n",
+        sps.FrameWidth,
+        sps.FrameHeight,
+        H264AspectRatioIdcValueStr(expected.a),
+        H264AspectRatioIdcValueStr(vui.aspect_ratio_idc),
+        vui.aspect_ratio_idc
+      );
+    }
   }
 
   return 0;
@@ -366,29 +380,22 @@ static int _checkVideoFormatH264VuiParametersCompliance(
   H264VuiParameters vui
 )
 {
-  H264VideoFormatValue expected;
-
-  expected = getH264BdavExpectedVideoFormat(
+  H264VideoFormatValue expected = getH264BdavExpectedVideoFormat(
     vui.FrameRate
   );
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFormat)
-    && expected != vui.video_format
-  ) {
-    LIBBLU_WARNING(
-      "Unexpected Video Format '%s' in SPS VUI parameters "
-      "for %ux%u, should be '%s' for this "
-      "resolution ('video_format' == %d).\n",
-      H264VideoFormatValueStr(vui.video_format),
-      sps.FrameWidth,
-      sps.FrameHeight,
+  if (expected != vui.video_format) {
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_wrong_video_format),
+      "Video Format in SPS VUI parameters for %ux%u, should be '%s' for this "
+      "resolution, not '%s' ('video_format' == %d).\n",
+      sps.FrameWidth, sps.FrameHeight,
       H264VideoFormatValueStr(expected),
+      H264VideoFormatValueStr(vui.video_format),
       vui.video_format
     );
 
     handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFormat);
   }
 
   return 0;
@@ -400,26 +407,20 @@ static int _checkColPrimH264VuiParametersCompliance(
   H264VuiColourDescriptionParameters colour_desc
 )
 {
-  H264ColourPrimariesValue used, expected;
-
-  used = colour_desc.colour_primaries;
-  expected = getH264BdavExpectedColorPrimaries(
+  H264ColourPrimariesValue expected = getH264BdavExpectedColorPrimaries(
     sps.FrameHeight
   );
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedColourPrimaries)
-    && expected != used
-  ) {
-    LIBBLU_WARNING(
+  if (expected != colour_desc.colour_primaries) {
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_wrong_color_primaries),
       "Color Primaries in SPS VUI parameters should be defined to '%s', "
       "not '%s' ('colour_primaries' == 0x%X).\n",
       H264ColorPrimariesValueStr(expected),
-      H264ColorPrimariesValueStr(used),
-      used
+      H264ColorPrimariesValueStr(colour_desc.colour_primaries),
+      colour_desc.colour_primaries
     );
     handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedColourPrimaries);
   }
 
   return 0;
@@ -431,27 +432,21 @@ static int _checkTransfCharactH264VuiParametersCompliance(
   H264VuiColourDescriptionParameters colour_desc
 )
 {
-  H264TransferCharacteristicsValue used, expected;
-
-  used = colour_desc.transfer_characteristics;
-  expected = getH264BdavExpectedTransferCharacteritics(
+  H264TransferCharacteristicsValue expected = getH264BdavExpectedTransferCharacteritics(
     sps.FrameHeight
   );
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedTranferCharact)
-    && expected != used
-  ) {
-    LIBBLU_WARNING(
+  if (expected != colour_desc.transfer_characteristics) {
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_wrong_transfer_characteristics),
       "Transfer Characteristics in SPS VUI parameters should "
       "be defined to '%s', not '%s' "
       "('transfer_characteristics' == 0x%X).\n",
       H264TransferCharacteristicsValueStr(expected),
-      H264TransferCharacteristicsValueStr(used),
-      used
+      H264TransferCharacteristicsValueStr(colour_desc.transfer_characteristics),
+      colour_desc.transfer_characteristics
     );
     handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedTranferCharact);
   }
 
   return 0;
@@ -463,26 +458,20 @@ static int _checkMatrixCoeffH264VuiParametersCompliance(
   H264VuiColourDescriptionParameters colour_desc
 )
 {
-  H264MatrixCoefficientsValue used, expected;
-
-  used = colour_desc.matrix_coefficients;
-  expected = getH264BdavExpectedMatrixCoefficients(
+  H264MatrixCoefficientsValue expected = getH264BdavExpectedMatrixCoefficients(
     sps.FrameHeight
   );
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedMatrixCoeff)
-    && expected != used
-  ) {
-    LIBBLU_WARNING(
+  if (expected != colour_desc.matrix_coefficients) {
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_wrong_matrix_coefficients),
       "Matrix coefficients in SPS VUI parameters should "
       "be defined to '%s', not '%s' ('matrix_coefficients' == 0x%X).\n",
       H264MatrixCoefficientsValueStr(expected),
-      H264MatrixCoefficientsValueStr(used),
-      used
+      H264MatrixCoefficientsValueStr(colour_desc.matrix_coefficients),
+      colour_desc.matrix_coefficients
     );
     handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiUnexpectedMatrixCoeff);
   }
 
   return 0;
@@ -554,7 +543,7 @@ static int _checkH264VuiParametersCompliance(
       H264_ASPECT_RATIO_IDC_2_BY_1 < vui.aspect_ratio_idc
       && vui.aspect_ratio_idc != H264_ASPECT_RATIO_IDC_EXTENDED_SAR
     ) {
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Reserved 'aspect_ratio_idc' == %d in use in VUI parameters.\n",
         vui.aspect_ratio_idc
       );
@@ -577,7 +566,7 @@ static int _checkH264VuiParametersCompliance(
     }
 
     /* Check aspect_ratio_idc values */
-    if (_checkAspectRatioInfoH264VuiParametersCompliance(sps, vui) < 0)
+    if (_checkAspectRatioInfoH264VuiParametersCompliance(&handle->warningFlags, sps, vui) < 0)
       return -1;
   }
   else {
@@ -588,7 +577,7 @@ static int _checkH264VuiParametersCompliance(
       vui.aspect_ratio_idc
     );
 
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Missing required 'aspect_ratio_idc' information in SPS VUI parameters "
       "('aspect_ratio_info_present_flag' == 0b0).\n"
     );
@@ -615,16 +604,13 @@ static int _checkH264VuiParametersCompliance(
     );
   }
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiInvalidOverscan)
-    && vui.overscan_appropriate_flag == H264_OVERSCAN_APPROP_CROP
-  ) {
-    LIBBLU_WARNING(
+  if (H264_OVERSCAN_APPROP_CROP == vui.overscan_appropriate_flag) {
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_wrong_overscan_appropriate_flag),
       "Over-scan preference in VUI parameters shouldn't allow cropping "
       "of decoded pictures ('overscan_appropriate_flag' == 0b0).\n"
     );
     handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiInvalidOverscan);
   }
 
   LIBBLU_H264_DEBUG_VUI(
@@ -644,7 +630,7 @@ static int _checkH264VuiParametersCompliance(
     );
 
     if (H264_VIDEO_FORMAT_UNSPECIFIED < vui.video_format)
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Reserved 'video_format' == %d in use.\n",
         vui.video_format
       );
@@ -659,16 +645,13 @@ static int _checkH264VuiParametersCompliance(
       vui.video_full_range_flag
     );
 
-    if (
-      CHECK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFullRange)
-      && vui.video_full_range_flag
-    ) {
-      LIBBLU_WARNING(
+    if (vui.video_full_range_flag) {
+      LIBBLU_H264_CK_BD_WCOND_WARNING(
+        LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_wrong_video_full_range_flag),
         "Video color range shall be set to 'limited' in SPS VUI parameters "
         "according to BD-specs ('video_full_range_flag' == 0b1).\n"
       );
       handle->curProgParam.wrongVuiParameters = true;
-      MARK_H264_WARNING_FLAG(handle, vuiUnexpectedVideoFullRange);
     }
 
     LIBBLU_H264_DEBUG_VUI(
@@ -703,14 +686,12 @@ static int _checkH264VuiParametersCompliance(
       BOOL_PRESENCE(vui.colour_description_present_flag)
     );
 
-    if (CHECK_H264_WARNING_FLAG(handle, vuiMissingVideoSignalType)) {
-      LIBBLU_WARNING(
-        "Video Signal Type parameters shall be present in SPS VUI parameters "
-        "according to BD-specs.\n"
-      );
-      handle->curProgParam.wrongVuiParameters = true;
-      MARK_H264_WARNING_FLAG(handle, vuiMissingVideoSignalType);
-    }
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_missing_video_signal_type),
+      "Video Signal Type parameters shall be present in SPS VUI.\n"
+    );
+
+    handle->curProgParam.wrongVuiParameters = true;
   }
 
   if (!vui.colour_description_present_flag) {
@@ -738,16 +719,13 @@ static int _checkH264VuiParametersCompliance(
     );
   }
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, vuiMissingColourDesc)
-    && !vui.colour_description_present_flag
-  ) {
-    LIBBLU_WARNING(
-      "Color Description parameters shall be present in SPS VUI parameters "
-      "according to BD-specs.\n"
+  if (!vui.colour_description_present_flag) {
+    LIBBLU_H264_CK_BD_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, VUI_missing_colour_description),
+      "Color Description parameters shall be present in SPS VUI.\n"
     );
+
     handle->curProgParam.wrongVuiParameters = true;
-    MARK_H264_WARNING_FLAG(handle, vuiMissingColourDesc);
   }
 
   LIBBLU_H264_DEBUG_VUI(
@@ -781,7 +759,7 @@ static int _checkH264VuiParametersCompliance(
         && vui.chroma_sample_loc_type_bottom_field != 2
       )
     ) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Chroma sample location if present shall be set to 0 or 2 "
         "according to BD-specs ('chroma_sample_loc_type_top_field' == %d / "
         "'chroma_sample_loc_type_bottom_field' == %d).\n",
@@ -810,7 +788,7 @@ static int _checkH264VuiParametersCompliance(
   );
 
   if (!vui.timing_info_present_flag)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Timing information shall be present in SPS VUI parameters "
       "('timing_info_present_flag' == 0b0).\n"
     );
@@ -838,7 +816,7 @@ static int _checkH264VuiParametersCompliance(
     );
 
     if (!vui.fixed_frame_rate_flag) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Forbidden use of a variable frame-rate mode "
         "('fixed_frame_rate_flag' == 0b0).\n"
       );
@@ -891,7 +869,7 @@ static int _checkH264VuiParametersCompliance(
     );
 
     if (vui.low_delay_hrd_flag) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Forbidden use of low delay HRD "
         "('low_delay_hrd_flag' == 0b1).\n"
       );
@@ -911,7 +889,7 @@ static int _checkH264VuiParametersCompliance(
       || param.nal_hrd_parameters.time_offset_length
         != param.vcl_hrd_parameters.time_offset_length
     ) {
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Variable CPB/DPB HRD fields lengths.\n"
       );
     }
@@ -1149,7 +1127,7 @@ int checkH264SequenceParametersSetCompliance(
   }
 
   if (0 == (MaxFS = handle->constraints.MaxFS)) {
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unable to a find a MaxFS value for 'level_idc' == 0x%02" PRIX8 ".\n",
       param.level_idc
     );
@@ -1176,7 +1154,7 @@ int checkH264SequenceParametersSetCompliance(
    * TODO: Enable better check of non multiple SPS ID.
    */
   if (param.seq_parameter_set_id != 0)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unsupported multiple Sequence Parameters Set definitions, "
       "only 'seq_parameter_set_id' == 0x0 supported.\n"
     );
@@ -1189,7 +1167,7 @@ int checkH264SequenceParametersSetCompliance(
     );
 
     if (H264_CHROMA_FORMAT_444 < param.chroma_format_idc)
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Reserved 'chroma_format_idc' == %d in use.\n",
         param.chroma_format_idc
       );
@@ -1214,7 +1192,7 @@ int checkH264SequenceParametersSetCompliance(
           & handle->constraints.restrictedChromaFormatIdc
         )
       ) {
-        LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+        LIBBLU_H264_CK_FAIL_RETURN(
           "Unexpected Chroma sampling format %s "
           "('chroma_format_idc' == %d).\n",
           H264ChromaFormatIdcValueStr(param.chroma_format_idc),
@@ -1277,7 +1255,7 @@ int checkH264SequenceParametersSetCompliance(
       || handle->constraints.maxAllowedBitDepthMinus8
         < param.bit_depth_chroma_minus8
     ) {
-      LIBBLU_ERROR(
+      LIBBLU_H264_CK_ERROR(
         "Luma and/or chroma bit-depth used are not allowed for "
         "bitstream profile conformance.\n"
       );
@@ -1286,7 +1264,7 @@ int checkH264SequenceParametersSetCompliance(
         handle->constraints.maxAllowedBitDepthMinus8
         < param.bit_depth_luma_minus8
       )
-        LIBBLU_ERROR(
+        LIBBLU_H264_CK_ERROR(
           " -> Luma bit-depth: %u bits over %u bits maximal "
           "allowed value.\n",
           param.BitDepthLuma,
@@ -1297,7 +1275,7 @@ int checkH264SequenceParametersSetCompliance(
         handle->constraints.maxAllowedBitDepthMinus8
         < param.bit_depth_chroma_minus8
       )
-        LIBBLU_ERROR(
+        LIBBLU_H264_CK_ERROR(
           " -> Chroma bit-depth: %u bits over %u bits maximal "
           "allowed value.\n",
           param.BitDepthChroma,
@@ -1323,7 +1301,7 @@ int checkH264SequenceParametersSetCompliance(
       param.qpprime_y_zero_transform_bypass_flag
       && handle->constraints.forbiddenQpprimeYZeroTransformBypass
     ) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Transform bypass operation for QP'_Y coefficients equal to "
         "zero is not allowed for bitstream profile conformance "
         "('qpprime_y_zero_transform_bypass_flag' == 0b1).\n"
@@ -1420,7 +1398,7 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   if (12 < param.log2_max_frame_num_minus4) {
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Out of range 'log2_max_frame_num_minus4' == %u, "
       "shall not exceed 12 (Rec. ITU-T H.264 7.4.2.1.1).\n",
       param.log2_max_frame_num_minus4
@@ -1448,7 +1426,7 @@ int checkH264SequenceParametersSetCompliance(
     );
 
     if (12 < param.log2_max_pic_order_cnt_lsb_minus4) {
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Out of range 'log2_max_pic_order_cnt_lsb_minus4' == %u, "
         "shall not exceed 12 (Rec. ITU-T H.264 7.4.2.1.1).\n",
         param.log2_max_pic_order_cnt_lsb_minus4
@@ -1522,7 +1500,7 @@ int checkH264SequenceParametersSetCompliance(
       "   -> Reserved value (Unknown type).\n"
     );
 
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved 'pic_order_cnt_type' == %" PRIu8 " in use, "
       "unknown picture order count type (expect values between 0 and 2).\n",
       param.pic_order_cnt_type
@@ -1537,7 +1515,7 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   if (0 == (MaxDpbMbs = handle->constraints.MaxDpbMbs)) {
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unable to a find a MaxDpbMbs value for 'level_idc' == 0x%02" PRIX8 ".\n",
       param.level_idc
     );
@@ -1550,7 +1528,7 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   if (MaxDpbFrames < param.max_num_ref_frames) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Out of range 'max_num_ref_frames' == %u in SPS, shall not exceed "
       "'MaxDpbFrames' == %u for bitstream level conformance.\n",
       param.max_num_ref_frames, MaxDpbFrames
@@ -1565,7 +1543,7 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   if (param.gaps_in_frame_num_value_allowed_flag) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Unexpected allowed presence of gaps in frame number value "
       "('gaps_in_frame_num_value_allowed_flag' == 0b1).\n"
     );
@@ -1585,7 +1563,7 @@ int checkH264SequenceParametersSetCompliance(
 
   /* Constraint H.264 A.3.1.f) / A.3.2.d) */
   if (MaxFS * 8 < SQUARE(param.PicWidthInMbs)) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Rec. ITU-T H.264 %s constraint is not satisfied "
       "(Sqrt(MaxFS * 8) = %u < PicWidthInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 "), "
@@ -1643,7 +1621,7 @@ int checkH264SequenceParametersSetCompliance(
 
   if (!param.frame_mbs_only_flag) {
     if (handle->constraints.restrictedFrameMbsOnlyFlag) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Possible presence of interlaced pictures is not allowed "
         "for bitstream profile conformance ('frame_mbs_only_flag' == 0b0).\n"
       );
@@ -1662,7 +1640,7 @@ int checkH264SequenceParametersSetCompliance(
         || param.profile_idc == H264_PROFILE_CAVLC_444_INTRA
       )
     ) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Possible presence of interlaced pictures is not allowed "
         "for bitstream level conformance ('frame_mbs_only_flag' == 0b0).\n"
       );
@@ -1676,7 +1654,7 @@ int checkH264SequenceParametersSetCompliance(
 
   /* Constraint Rec. ITU-T H.264 A.3.1.g) / A.3.2.e) */
   if (MaxFS * 8 < SQUARE(param.FrameHeightInMbs)) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Rec. ITU-T H.264 %s constraint is not satisfied "
       "(Sqrt(MaxFS * 8) = %u < FrameHeightInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 ") "
@@ -1696,7 +1674,7 @@ int checkH264SequenceParametersSetCompliance(
 
   /* Constraint Rec. ITU-T H.264 A.3.1.e) / A.3.2.c) */
   if (MaxFS < param.PicWidthInMbs *param.FrameHeightInMbs) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Rec. ITU-T H.264 %s constraint is not satisfied "
       "(MaxFS = %u < PicWidthInMbs *FrameHeightInMbs = %u "
       "for level %" PRIu8 ".%" PRIu8 ") "
@@ -1737,14 +1715,14 @@ int checkH264SequenceParametersSetCompliance(
 
   if (!param.direct_8x8_inference_flag) {
     if (!param.frame_mbs_only_flag) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Derivation process mode flag 'direct_8x8_inference_flag' should be "
         "equal to 0b1 since 'frame_mbs_only_flag' == 0b0.\n"
       );
     }
 
     if (handle->constraints.forcedDirect8x8InferenceFlag) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Derivation process mode flag 'direct_8x8_inference_flag' == 0b0 is "
         "not allowed for bitstream profile conformance.\n"
       );
@@ -1761,7 +1739,7 @@ int checkH264SequenceParametersSetCompliance(
         || param.profile_idc == H264_PROFILE_HIGH_444_PREDICTIVE
       )
     ) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Derivation process mode flag 'direct_8x8_inference_flag' == 0b0 is "
         "not allowed for bitstream level conformance.\n"
       );
@@ -1823,7 +1801,7 @@ int checkH264SequenceParametersSetCompliance(
   );
 
   if (!param.vui_parameters_present_flag) {
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "According to BD-specs, VUI parameters shall be present in SPS "
       "('vui_parameters_present_flag' == 0b0).\n"
     );
@@ -1838,7 +1816,7 @@ int checkH264SequenceParametersSetCompliance(
       return -1;
 
     if (!param.frame_mbs_only_flag && !param.vui_parameters.pic_struct_present_flag) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "According to BD-specs 'pic_struct' shall be present in "
         "Picture Timing SEI for interlaced video "
         "('pic_struct_present_flag' == 0b0).\n"
@@ -1899,7 +1877,7 @@ int checkH264SpsBitstreamCompliance(
 
   frCode = getHdmvFrameRateCode(param.vui_parameters.FrameRate);
   if (!frCode)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Unallowed frame-rate value %.3f, do not form part of BD-specs.\n",
       param.vui_parameters.FrameRate
     );
@@ -1924,23 +1902,25 @@ int checkH264SpsBitstreamCompliance(
     break;
 
   case CHK_VIDEO_CONF_RET_ILL_VIDEO_SIZE:
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Unallowed video definition %ux%u, do not form part of BD-specs.\n",
       param.FrameWidth,
       param.FrameHeight
     );
+    break;
 
   case CHK_VIDEO_CONF_RET_ILL_FRAME_RATE:
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Frame-rate value %.3f is not allowed for video definition %ux%u "
       "according to BD-specs.\n",
       param.vui_parameters.FrameRate,
       param.FrameWidth,
       param.FrameHeight
     );
+    break;
 
   case CHK_VIDEO_CONF_RET_ILL_DISP_MODE:
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "%s display mode is forbidden in the configuration of "
       "video definition %ux%u at frame-rate %.3f "
       "according to BD-specs.\n",
@@ -1949,6 +1929,7 @@ int checkH264SpsBitstreamCompliance(
       param.FrameHeight,
       param.vui_parameters.FrameRate
     );
+    break;
   }
 
   return 0;
@@ -2203,7 +2184,7 @@ int checkH264PicParametersSetCompliance(
   );
 
   if (H264_MAX_PPS <= param.pic_parameter_set_id)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "PPS pic_parameter_set_id overflow ('pic_parameter_set_id' == %u).\n",
       param.pic_parameter_set_id
     );
@@ -2211,7 +2192,7 @@ int checkH264PicParametersSetCompliance(
   if (!handle->picParametersSetIdsPresent[param.pic_parameter_set_id]) {
     /* New PPS entry, check for maximum of allowed PPS */
     if (H264_MAX_ALLOWED_PPS <= handle->picParametersSetIdsPresentNb)
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Too many different PPS present (shall not exceed %d).\n",
         H264_MAX_ALLOWED_PPS
       );
@@ -2223,7 +2204,7 @@ int checkH264PicParametersSetCompliance(
   );
 
   if (param.seq_parameter_set_id != 0x0)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Unallowed multiple-PPS definition.\n"
     );
 
@@ -2233,24 +2214,13 @@ int checkH264PicParametersSetCompliance(
     param.entropy_coding_mode_flag
   );
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, useOfLowEfficientCavlc)
-    && !param.entropy_coding_mode_flag
-  ) {
-    LIBBLU_WARNING(
-      "Usage of a lower efficient entropy coding (CAVLC), "
-      "CABAC is more suitable for Blu-ray Disc authoring.\n"
-    );
-    MARK_H264_WARNING_FLAG(handle, useOfLowEfficientCavlc);
-  }
-
   validEntropyCodingMode = isRespectedH264EntropyCodingModeRestriction(
     handle->constraints.restrEntropyCodingMode,
     param.entropy_coding_mode_flag
   );
 
   if (!validEntropyCodingMode)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "%s entropy coding mode is not allowed for bitstream profile "
       "conformance, 'entropy_coding_mode_flag' shall be fixed to 0b%X.\n",
       (param.entropy_coding_mode_flag) ? "CABAC" : "CAVLC",
@@ -2274,7 +2244,7 @@ int checkH264PicParametersSetCompliance(
     handle->constraints.maxAllowedNumSliceGroups
     <= param.num_slice_groups_minus1
   )
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "bitstream profile does not allow more than %u slice groups "
       "('num_slice_groups_minus1' == %u).\n",
       handle->constraints.maxAllowedNumSliceGroups,
@@ -2310,7 +2280,7 @@ int checkH264PicParametersSetCompliance(
     param.weighted_pred_flag
     && handle->constraints.forbiddenWeightedPredModesUse
   )
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Weighted prediction mode is not allowed for bitstream "
       "profile conformance.\n"
     );
@@ -2323,7 +2293,7 @@ int checkH264PicParametersSetCompliance(
   );
 
   if (H264_WEIGHTED_PRED_B_SLICES_RESERVED <= param.weighted_bipred_idc) {
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved PPS 'weighted_bipred_idc' == %u in use.\n",
       param.weighted_bipred_idc
     );
@@ -2333,7 +2303,7 @@ int checkH264PicParametersSetCompliance(
     param.weighted_bipred_idc != H264_WEIGHTED_PRED_B_SLICES_DEFAULT
     && handle->constraints.forbiddenWeightedPredModesUse
   )
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Weighted prediction mode is not allowed for bitstream profile "
       "conformance.\n"
     );
@@ -2347,7 +2317,7 @@ int checkH264PicParametersSetCompliance(
   );
 
   if (param.pic_init_qp_minus26 < -26 || 25 < param.pic_init_qp_minus26)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved 'pic_init_qp_minus26' == %d in use.\n",
       param.pic_init_qp_minus26
     );
@@ -2360,7 +2330,7 @@ int checkH264PicParametersSetCompliance(
   );
 
   if (param.pic_init_qs_minus26 < -26 || 25 < param.pic_init_qs_minus26)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Reserved 'pic_init_qs_minus26' == %d in use.\n",
       param.pic_init_qs_minus26
     );
@@ -2373,7 +2343,7 @@ int checkH264PicParametersSetCompliance(
   );
 
   if (param.chroma_qp_index_offset < -12 || 12 < param.chroma_qp_index_offset)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Reserved 'chroma_qp_index_offset' == %d in use.\n",
       param.chroma_qp_index_offset
     );
@@ -2396,17 +2366,6 @@ int checkH264PicParametersSetCompliance(
     param.constrained_intra_pred_flag
   );
 
-  if (
-    CHECK_H264_WARNING_FLAG(handle, useOfLowEfficientConstaintIntraPred)
-    && param.constrained_intra_pred_flag
-  ) {
-    LIBBLU_WARNING(
-      "Usage of lower efficient constraint macroblock intra prediction mode, "
-      "which may reduce compression efficiency.\n"
-    );
-    MARK_H264_WARNING_FLAG(handle, useOfLowEfficientConstaintIntraPred);
-  }
-
   LIBBLU_H264_DEBUG_PPS(
     "  Redundant picture counter syntax in B slices "
     "(redundant_pic_cnt_present_flag): %s (0b%X).\n",
@@ -2418,7 +2377,7 @@ int checkH264PicParametersSetCompliance(
     param.redundant_pic_cnt_present_flag
     && handle->constraints.forbiddenRedundantPictures
   )
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Redundant pictures usage is not allowed for bitstream's "
       "profile conformance.\n"
     );
@@ -2430,7 +2389,7 @@ int checkH264PicParametersSetCompliance(
 
   if (param.picParamExtensionPresent) {
     if (handle->constraints.forbiddenPPSExtensionParameters)
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Presence of Fidelity Range Extensions in PPS is not allowed for "
         "bitstream's profile conformance.\n"
       );
@@ -2504,7 +2463,7 @@ int checkH264PicParametersSetCompliance(
       param.second_chroma_qp_index_offset < -12
       || 12 < param.second_chroma_qp_index_offset
     )
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Reserved 'second_chroma_qp_index_offset' == %d in use.\n",
         param.second_chroma_qp_index_offset
       );
@@ -2529,7 +2488,7 @@ int checkH264PicParametersSetChangeCompliance(
 
   /* Check second parameters mandatory parameters changeless : */
   if (first.entropy_coding_mode_flag != second.entropy_coding_mode_flag)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Entropy coding mode ('entropy_coding_mode_flag') change between PPS.\n"
     );
 
@@ -2556,11 +2515,12 @@ int checkH264SeiBufferingPeriodCompliance(
   if (
     !handle->sequenceParametersSetPresent
     || !handle->sequenceParametersSet.data.vui_parameters_present_flag
-  )
-    LIBBLU_H264_ERROR_RETURN(
+  ) {
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Missing mandatory VUI parameters, Buffering Period SEI message "
       "shouldn't be present."
     );
+  }
 
   vuiParam = &handle->sequenceParametersSet.data.vui_parameters;
 
@@ -2568,14 +2528,11 @@ int checkH264SeiBufferingPeriodCompliance(
     !vuiParam->nal_hrd_parameters_present_flag
     && !vuiParam->vcl_hrd_parameters_present_flag
   ) {
-    if (CHECK_H264_WARNING_FLAG(handle, unexpectedPresenceOfBufPeriodSei)) {
-      LIBBLU_WARNING(
-        "Unexpected presence of Buffering Period SEI message, "
-        "'NalHrdBpPresentFlag' and 'VclHrdBpPresentFlag' are equal to 0b0.\n"
-      );
-
-      MARK_H264_WARNING_FLAG(handle, unexpectedPresenceOfBufPeriodSei);
-    }
+    LIBBLU_H264_CK_WCOND_WARNING(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, AU_unexpected_buffering_period_SEI_msg),
+      "Unexpected presence of Buffering Period SEI message, "
+      "'NalHrdBpPresentFlag' and 'VclHrdBpPresentFlag' are equal to 0b0.\n"
+    );
   }
 
   LIBBLU_H264_DEBUG_SEI(
@@ -2585,7 +2542,7 @@ int checkH264SeiBufferingPeriodCompliance(
   );
 
   if (param.seq_parameter_set_id != 0x0)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unallowed multiple SPS definition use "
       "('seq_parameter_set_id' == %u in Buffering Period SEI msg).\n",
       param.seq_parameter_set_id
@@ -2626,7 +2583,7 @@ int checkH264SeiBufferingPeriodCompliance(
       );
 
       if (!hrdBufPerd[SchedSelIdx].initial_cpb_removal_delay)
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Forbidden zero initial CPB removal delay "
           "(initial_cpb_removal_delay).\n"
         );
@@ -2645,7 +2602,7 @@ int checkH264SeiBufferingPeriodCompliance(
         maxDelay
         < hrdBufPerd[SchedSelIdx].initial_cpb_removal_delay / 90.0
       )
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "NAL HRD CPB Removal delay exceed maximal delay (%.2f < %.2f).\n",
           maxDelay,
           hrdBufPerd[SchedSelIdx].initial_cpb_removal_delay / 90.0
@@ -2743,7 +2700,7 @@ int checkH264SeiBufferingPeriodChangeCompliance(
         != second.nal_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay
           + second.nal_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay_offset
       )
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Fluctuating NAL HRD initial CPB removal delay "
           "(initial_cpb_removal_delay/initial_cpb_removal_delay_offset).\n"
         );
@@ -2762,7 +2719,7 @@ int checkH264SeiBufferingPeriodChangeCompliance(
         != second.vcl_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay
           + second.vcl_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay_offset
       )
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Fluctuating VCL HRD initial CPB removal delay "
           "(initial_cpb_removal_delay/initial_cpb_removal_delay_offset).\n"
         );
@@ -2787,7 +2744,7 @@ int checkH264SeiPicTimingCompliance(
     !handle->sequenceParametersSetPresent
     || !handle->sequenceParametersSet.data.vui_parameters_present_flag
   )
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Missing mandatory VUI parameters, Pic Timing SEI message "
       "shouldn't be present.\n"
     );
@@ -2798,7 +2755,7 @@ int checkH264SeiPicTimingCompliance(
     !vuiParam->CpbDpbDelaysPresentFlag
     && !vuiParam->pic_struct_present_flag
   )
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "'CpbDpbDelaysPresentFlag' and 'pic_struct_present_flag' are equal to "
       "0b0, so Pic Timing SEI message shouldn't be present.\n"
     );
@@ -2837,7 +2794,7 @@ int checkH264SeiPicTimingCompliance(
     );
 
     if (H264_PIC_STRUCT_TRIPLED_FRAME < param.pic_struct)
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Reserved 'pic_struct' == %u in use.\n",
         param.pic_struct
       );
@@ -2862,7 +2819,7 @@ int checkH264SeiPicTimingCompliance(
         );
 
         if (H264_CT_TYPE_RESERVED <= param.clock_timestamp[i].ct_type)
-          LIBBLU_H264_ERROR_RETURN(
+          LIBBLU_H264_CK_ERROR_RETURN(
             "Reserved 'ct_type' == %d in use.\n",
             param.clock_timestamp[i].ct_type
           );
@@ -2924,7 +2881,7 @@ int checkH264SeiPicTimingCompliance(
           );
 
           if (vuiParam->MaxFPS <= param.ClockTimestamp[i].n_frames)
-            LIBBLU_H264_ERROR_RETURN(
+            LIBBLU_H264_CK_ERROR_RETURN(
               "Forbidden 'n_frames' == %u in use, shall be less than value "
               "defined by equation D-2 (equal to %u) in Rec. ITU-T H.264.\n",
               vuiParam->MaxFPS
@@ -2975,13 +2932,13 @@ int checkH264SeiRecoveryPointCompliance(
 )
 {
   if (!handle->sequenceParametersSetPresent)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Missing mandatory SPS NALU, Recovery Point SEI message "
       "shouldn't be present."
     );
 
   if (!handle->picParametersSetIdsPresentNb)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Missing mandatory PPS NALU, Recovery Point SEI message "
       "shouldn't be present."
     );
@@ -3002,7 +2959,7 @@ int checkH264SeiRecoveryPointCompliance(
     handle->sequenceParametersSet.data.MaxFrameNum
     <= param.recovery_frame_cnt
   )
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Too high 'recovery_frame_cnt' == %u in Recovery Point SEI message, "
       "shall be less than SPS 'MaxFrameNum'.\n",
       param.recovery_frame_cnt
@@ -3023,7 +2980,7 @@ int checkH264SeiRecoveryPointCompliance(
   );
 
   if (param.broken_link_flag)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unallowed broken link ('broken_link_flag' == 0b1) signaled by "
       "Recovery Point SEI message.\n"
     );
@@ -3063,7 +3020,7 @@ int checkH264SeiRecoveryPointCompliance(
   default:
     LIBBLU_H264_DEBUG_SEI("    -> Reserved value.\n");
 
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved 'changing_slice_group_idc' == %" PRIu8 " in use.\n",
       param.changing_slice_group_idc
     );
@@ -3071,7 +3028,7 @@ int checkH264SeiRecoveryPointCompliance(
 
   if (param.changing_slice_group_idc != 0x0) {
     if (!handle->constraints.maxAllowedNumSliceGroups) {
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "'changing_slice_group_idc' == %" PRIu8 " should not indicate "
         "presence of multiple slice groups.\n",
         param.changing_slice_group_idc
@@ -3079,7 +3036,7 @@ int checkH264SeiRecoveryPointCompliance(
     }
     else {
       /* TODO */
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Multiple slice groups are not supported.\n"
       );
     }
@@ -3221,7 +3178,7 @@ static int _checkH264PredWeightTableCompliance(
   );
 
   if (7 < param.luma_log2_weight_denom)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Out of range 'luma_log2_weight_denom' == %u in use.\n",
       param.luma_log2_weight_denom
     );
@@ -3234,7 +3191,7 @@ static int _checkH264PredWeightTableCompliance(
   );
 
   if (7 < param.chroma_log2_weight_denom)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Out of range 'chroma_log2_weight_denom' == %u in use.\n",
       param.chroma_log2_weight_denom
     );
@@ -3348,18 +3305,16 @@ static int _checkH264DecRefPicMarkingCompliance(
         }
       }
 
-      if (
-        H264_MEM_MGMNT_CTRL_OP_END != operation
-        && CHECK_H264_WARNING_FLAG(handle, tooMuchMemoryManagementCtrlOp)
-      ) {
-        // TODO: Emit warning, more memory_management_control_operation than supported.
-        LIBBLU_WARNING(
+      if (H264_MEM_MGMNT_CTRL_OP_END != operation)
+        LIBBLU_H264_CK_WCOND_WARNING(
+          LIBBLU_WARN_COUNT_CHECK_INC(
+            &handle->warningFlags,
+            slice_too_many_memory_management_control_operation
+          ),
           "More 'memory_management_control_operation' fields present in slice "
           "header than supported, HRD Verifier operations might be "
           "incorrect.\n"
         );
-        MARK_H264_WARNING_FLAG(handle, tooMuchMemoryManagementCtrlOp);
-      }
     }
   }
 
@@ -3379,8 +3334,6 @@ int checkH264SliceHeaderCompliance(
   H264VuiParameters *vuiParam;
   H264PicParametersSetParameters *ppsParam;
 
-  H264PrimaryPictureType allowedSliceTypes;
-
   assert(handle->accessUnitDelimiterPresent);
   assert(handle->sequenceParametersSetPresent);
   assert(handle->sequenceParametersSet.data.vui_parameters_present_flag);
@@ -3389,7 +3342,7 @@ int checkH264SliceHeaderCompliance(
   vuiParam = &handle->sequenceParametersSet.data.vui_parameters;
 
   if (handle->constraints.idrPicturesOnly && !param.isIdrPic)
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Presence of non-IDR picture is not allowed for "
       "bitstream's profile conformance.\n"
     );
@@ -3417,11 +3370,11 @@ int checkH264SliceHeaderCompliance(
        */
 
       if (!vuiParam->nal_hrd_parameters_present_flag)
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Missing NAL HRD parameters in VUI parameters of SPS NALU.\n"
         );
 
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Bit-stream contains more than one picture, "
         "still-picture related compliance tolerance cannot longer be used.\n"
       );
@@ -3447,7 +3400,7 @@ int checkH264SliceHeaderCompliance(
 
     if (!handle->sequenceParametersSetGopValid) {
       if (!handle->sequenceParametersSetValid)
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Missing a valid SPS NALU before slice header.\n"
         );
 
@@ -3461,13 +3414,13 @@ int checkH264SliceHeaderCompliance(
         && !options.force_rebuild_sei
       ) {
 #if 0
-        LIBBLU_ERROR(
+        LIBBLU_H264_CK_ERROR(
           "Missing mandatory buffering_period SEI messages, "
           "add '" FLAG_FORCE_REBUILD_SEI_COM "' parameter.\n"
         );
 #endif
 
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Missing mandatory buffering_period SEI messages.\n"
         );
       }
@@ -3478,7 +3431,7 @@ int checkH264SliceHeaderCompliance(
   else {
     if (handle->constraints.forbiddenArbitrarySliceOrder) {
       if (param.first_mb_in_slice <= handle->curProgParam.lstPic.first_mb_in_slice)
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Broken slices order according to macroblocks addresses, "
           "arbitrary slice order is forbidden for bitstream profile "
           "conformance.\n"
@@ -3486,7 +3439,7 @@ int checkH264SliceHeaderCompliance(
     }
     else {
       /* TODO: Add support of arbitrary slice order. */
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Arbitrary ordered slices structure is not supported.\n"
       );
     }
@@ -3502,35 +3455,49 @@ int checkH264SliceHeaderCompliance(
   );
 
   if (H264_SLICE_TYPE_SI < param.slice_type)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved 'slice_type' == %u in use.\n",
       param.slice_type
     );
 
-  /* Check if slice type is allowed: */
-  allowedSliceTypes = handle->constraints.allowedSliceTypes;
-  if (!isAllowedH264SliceTypeValue(param.slice_type, allowedSliceTypes))
-    LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+  /* Check if slice type is allowed according to Profile/Level constraints */
+  const H264PrimaryPictureType constraints_allowed_slice_types =
+    handle->constraints.allowedSliceTypes
+  ;
+
+  if (!isAllowedH264SliceTypeValue(param.slice_type, constraints_allowed_slice_types))
+    LIBBLU_H264_CK_FAIL_RETURN(
       "Unallowed 'slice_type' == %u in use for bitstream profile "
       "conformance.\n",
       param.slice_type
     );
 
   if (param.isIdrPic && !is_I_H264SliceTypeValue(param.slice_type))
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Non I-slice type value 'slice_type' == %u in use in an IDR picture.\n"
     );
 
-  /* Check Access unit delimiter primary_pic_type */
-  allowedSliceTypes = handle->accessUnitDelimiter.primary_pic_type;
-  if (!isAllowedH264SliceTypeValue(param.slice_type, allowedSliceTypes)) {
-    LIBBLU_H264_ERROR_RETURN(
-      "Wrong Access Unit Delimiter slice type indicator, "
-      "'primary_pic_type' == %u while picture 'slice_type' == %u.\n",
+  /* Check if slice type is allowed according AUD primary_pic_type */
+  const H264PrimaryPictureType AUD_allowed_slice_types =
+    handle->accessUnitDelimiter.primary_pic_type
+  ;
+
+  if (!isAllowedH264SliceTypeValue(param.slice_type, AUD_allowed_slice_types))
+    LIBBLU_H264_CK_ERROR_RETURN(
+      "Mismatch between slice type and Access Unit Delimiter indicator "
+      "('primary_pic_type' == %u while picture 'slice_type' == %u).\n",
       handle->accessUnitDelimiter.primary_pic_type,
       param.slice_type
     );
-  }
+
+  if (!isBDAllowedH264SliceTypeValue(param.slice_type, AUD_allowed_slice_types))
+    LIBBLU_H264_CK_BD_FAIL_WCOND_RETURN(
+      LIBBLU_WARN_COUNT_CHECK_INC(&handle->warningFlags, slice_wrong_slice_type),
+      "Mismatch between slice type and Access Unit Delimiter indicator "
+      "('primary_pic_type' == %u while picture 'slice_type' == %u).\n",
+      handle->accessUnitDelimiter.primary_pic_type,
+      param.slice_type
+    );
 
   LIBBLU_H264_DEBUG_SLICE(
     "   Active Picture Parameter Set id "
@@ -3544,7 +3511,7 @@ int checkH264SliceHeaderCompliance(
     H264_MAX_PPS <= linkedPPSId
     || !handle->picParametersSetIdsPresent[linkedPPSId]
   )
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Reserved/unknown linked PPS id 'pic_parameter_set_id' == %u "
       "in slice header.\n",
       linkedPPSId
@@ -3560,7 +3527,7 @@ int checkH264SliceHeaderCompliance(
     );
 
     if (H264_COLOUR_PLANE_ID_CR < param.colour_plane_id)
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Reserved 'colour_plane_id' == %u in use.\n",
         param.colour_plane_id
       );
@@ -3573,7 +3540,7 @@ int checkH264SliceHeaderCompliance(
   );
 
   if (handle->sequenceParametersSet.data.MaxFrameNum <= param.frame_num)
-    LIBBLU_H264_ERROR_RETURN(
+    LIBBLU_H264_CK_ERROR_RETURN(
       "Unexpected too high frame number 'frame_num' == %" PRIu16 ", "
       "according to SPS, this value shall not exceed %u.\n",
       param.frame_num,
@@ -3583,7 +3550,7 @@ int checkH264SliceHeaderCompliance(
   if (handle->curProgParam.gapsInFrameNum) {
     if (!handle->sequenceParametersSet.data.gaps_in_frame_num_value_allowed_flag) {
       /* Unintentional lost of pictures. */
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Unexpected gaps in 'frame_num' values.\n"
       );
     }
@@ -3598,7 +3565,7 @@ int checkH264SliceHeaderCompliance(
   if (param.isIdrPic) {
     /* IDR picture */
     if (param.frame_num != 0x0) {
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Unexpected 'frame_num' == %" PRIu16 " for IDR picture, "
         "shall be equal to 0.\n",
         param.frame_num
@@ -3768,7 +3735,7 @@ int checkH264SliceHeaderCompliance(
       && 15 < ppsParam->num_ref_idx_l0_default_active_minus1
       && !param.num_ref_idx_active_override_flag
     )
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "'num_ref_idx_active_override_flag' shall be equal to 0b1.\n"
       );
 
@@ -3778,7 +3745,7 @@ int checkH264SliceHeaderCompliance(
       && 15 < ppsParam->num_ref_idx_l1_default_active_minus1
       && !param.num_ref_idx_active_override_flag
     )
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "'num_ref_idx_active_override_flag' shall be equal to 0b1.\n"
       );
 
@@ -3801,7 +3768,7 @@ int checkH264SliceHeaderCompliance(
 
       /* Check value range: */
       if (maxRefIdx < param.num_ref_idx_l0_active_minus1)
-        LIBBLU_H264_ERROR_RETURN(
+        LIBBLU_H264_CK_ERROR_RETURN(
           "Too high 'num_ref_idx_l0_active_minus1' == %u in use.\n",
           param.num_ref_idx_l0_active_minus1
         );
@@ -3816,7 +3783,7 @@ int checkH264SliceHeaderCompliance(
 
         /* Check value range: */
         if (maxRefIdx < param.num_ref_idx_l1_active_minus1)
-          LIBBLU_H264_ERROR_RETURN(
+          LIBBLU_H264_CK_ERROR_RETURN(
             "Too high 'num_ref_idx_l1_active_minus1' == %u in use.\n",
             param.num_ref_idx_l1_active_minus1
           );
@@ -3829,7 +3796,7 @@ int checkH264SliceHeaderCompliance(
     /* Annex H */
 
     /* TODO: Add 3D MVC support. */
-    LIBBLU_H264_ERROR_RETURN("Unsupported 3D MVC format.\n");
+    LIBBLU_H264_CK_ERROR_RETURN("Unsupported 3D MVC format.\n");
   }
   else
     if (_checkH264RefPicListModificationCompliance(param.refPicListMod, param) < 0)
@@ -3871,7 +3838,7 @@ int checkH264SliceHeaderCompliance(
     );
 
     if (2 < param.cabac_init_idc)
-      LIBBLU_H264_ERROR_RETURN(
+      LIBBLU_H264_CK_ERROR_RETURN(
         "Out of range 'cabac_init_idc' == %" PRIu8 ".\n",
         param.cabac_init_idc
       );
@@ -3965,29 +3932,29 @@ int checkH264SliceHeaderChangeCompliance(
       !isUnrestrictedH264SliceTypeValue(first.slice_type)
       || !isUnrestrictedH264SliceTypeValue(second.slice_type)
     ) {
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Unallowed different type of slices in the same picture.\n"
       );
     }
   }
   if (second.first_mb_in_slice != 0x0) {
     if (first.frame_num != second.frame_num)
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Unallowed different 'frame_num' in the same picture.\n"
       );
 
     if (first.field_pic_flag != second.field_pic_flag)
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Unallowed different 'field_pic_flag' in the same picture.\n"
       );
 
     if (first.bottom_field_flag != second.bottom_field_flag)
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Unallowed different 'bottom_field_flag' in the same picture.\n"
       );
 
     if (first.pic_order_cnt_lsb != second.pic_order_cnt_lsb)
-      LIBBLU_H264_COMPLIANCE_ERROR_RETURN(
+      LIBBLU_H264_CK_FAIL_RETURN(
         "Unallowed different 'pic_order_cnt_lsb' in the same picture.\n"
       );
   }

@@ -122,12 +122,6 @@ static int _initH264HrdVerifierOptions(
 }
 #endif
 
-#define WARN_COUNT_CHECK(warn, name)                                          \
-  (((warn)->name) < (warn)->max_amount || 0 == (warn)->max_amount)
-
-#define WARN_COUNT_CHECK_INC(warn, name)                                      \
-  (((warn)->name)++ < (warn)->max_amount || 0 == (warn)->max_amount)
-
 static unsigned _selectSchedSelIdx(
   const H264SPSDataParameters *sps
 )
@@ -167,7 +161,7 @@ static int _checkInitConstaints(
         name = "A.3.3.g)", coeff = "cpbBrNalFactor";
 
       LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-        WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
         "ITU-T Rec. H.264 %s constraint is not satisfied "
         "(%s *MaxBR = %u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
         name, coeff,
@@ -179,7 +173,7 @@ static int _checkInitConstaints(
 
     if (H264_BDAV_MAX_BITRATE < BitRate) {
       LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(
-        WARN_COUNT_CHECK_INC(warn, bdav_maxbr),
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, bdav_maxbr),
         "Bitrate value exceed BDAV limits "
         "(%u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
         H264_BDAV_MAX_BITRATE,
@@ -197,7 +191,7 @@ static int _checkInitConstaints(
         name = "A.3.3.g)", coeff = "cpbBrNalFactor";
 
       LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-        WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
         "ITU-T Rec. H.264 %s constraint is not satisfied "
         "(%s *MaxCPB = %u bits < NAL HRD CpbSize[%u] = %u bits).\n",
         name,
@@ -210,7 +204,7 @@ static int _checkInitConstaints(
 
     if (H264_BDAV_MAX_CPB_SIZE < CpbSize) {
       LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(
-        WARN_COUNT_CHECK_INC(warn, bdav_cpbsize),
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, bdav_cpbsize),
         "Bitrate value exceed BDAV limits "
         "(%u bits < NAL HRD CpbSize[%u] = %u bits).\n",
         H264_BDAV_MAX_CPB_SIZE,
@@ -235,7 +229,7 @@ static int _checkInitConstaints(
           name = "A.3.3.h)", coeff = "cpbBrVclFactor";
 
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
           "ITU-T Rec. H.264 %s constraint is not satisfied"
           "(%s *MaxBR = %u b/s < VCL HRD BitRate[%u] = %u b/s).\n",
           name, coeff,
@@ -254,7 +248,7 @@ static int _checkInitConstaints(
           name = "A.3.3.h)", coeff = "cpbBrVclFactor";
 
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
           "ITU-T Rec. H.264 %s constraint is not satisfied"
           "(%s *MaxCPB = %u b/s < VCL HRD CpbSize[%u] = %u b/s).\n",
           name, coeff,
@@ -641,7 +635,7 @@ static int _addDecodedPictureToH264HrdContext(
 
   if (H264_MAX_DPB_SIZE <= ctx->nb_au_dpb_content) {
     LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-      WARN_COUNT_CHECK_INC(&ctx->warnings, dpb_au_overflow),
+      LIBBLU_WARN_COUNT_CHECK_INC(&ctx->warnings, dpb_au_overflow),
       "More pictures in DPB than supported (%u).\n",
       H264_MAX_DPB_SIZE
     );
@@ -877,7 +871,7 @@ static int _manageSlidingWindowProcessDPBH264Context(
   if (MAX(ctx->max_num_ref_frames, 1) <= ctx->numShortTerm + ctx->numLongTerm) {
     if (!ctx->numShortTerm)
       LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-        WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
+        LIBBLU_WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
         "DPB reference pictures shall no be only used as long-term reference "
         "(Not enought space available).\n"
       );
@@ -1199,12 +1193,12 @@ static int _applyDecodedReferencePictureMarkingProcess(
       /* => MAX(max_num_ref_frames, 1) < numLongTerm */
       if (MAX(ctx->max_num_ref_frames, 1) <= ctx->numLongTerm) {
         LIBBLU_H264_HRDV_FAIL_WCOND(
-          WARN_COUNT_CHECK(&ctx->warnings, invalid_memmng),
+          LIBBLU_WARN_COUNT_CHECK(&ctx->warnings, invalid_memmng),
           "Parameter 'adaptive_ref_pic_marking_mode_flag' shall be defined "
           "to 0b1 (Max(max_num_ref_frames, 1) <= numLongTerm).\n"
         );
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
+          LIBBLU_WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
           " -> Too many long-term pictures in DPB, causing an overflow "
           "(%u over %u max ref frames).\n",
           ctx->numLongTerm,
@@ -1227,12 +1221,12 @@ static int _applyDecodedReferencePictureMarkingProcess(
 
   if (MAX(ctx->max_num_ref_frames, 1) < ctx->numShortTerm + ctx->numLongTerm) {
     LIBBLU_H264_HRDV_FAIL_WCOND(
-      WARN_COUNT_CHECK(&ctx->warnings, invalid_memmng),
+      LIBBLU_WARN_COUNT_CHECK(&ctx->warnings, invalid_memmng),
       "DPB reference pictures shall be less than "
       "Max(max_num_ref_frames, 1).\n"
     );
     LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-      WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
+      LIBBLU_WARN_COUNT_CHECK_INC(&ctx->warnings, invalid_memmng),
       " => Currently: %u (Max: %u).\n",
       ctx->numShortTerm + ctx->numLongTerm,
       MAX(ctx->max_num_ref_frames, 1)
@@ -1408,7 +1402,7 @@ static int _checkH264CpbHrdConformanceTests(
       double ceil_delta_tg90 = ceil(delta_tg90);
       if (ceil_delta_tg90 < init_cpb_rem_d) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, C_15__C_16_ceil),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, C_15__C_16_ceil),
           "ITU-T Rec. H.264 %s equation is not satisfied "
           "(ceil(delta_tg90) = %.0f "
           "< initial_cpb_removal_delay = %" PRIu64 ").\n",
@@ -1423,7 +1417,7 @@ static int _checkH264CpbHrdConformanceTests(
         double floor_delta_tg90 = floor(delta_tg90);
         if (init_cpb_rem_d < floor_delta_tg90) {
           LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-            WARN_COUNT_CHECK_INC(warn, C_16_floor),
+            LIBBLU_WARN_COUNT_CHECK_INC(warn, C_16_floor),
             "ITU-T Rec. H.264 C-16 equation is not satisfied (initial_cpb_"
             "removal_delay = %" PRIu64 " < floor(delta_tg90) = %.0f, "
             "Tr,n(n) = %u ms; Taf(n-1) = %u ms).\n",
@@ -1458,7 +1452,7 @@ static int _checkH264CpbHrdConformanceTests(
           name = "A.3.1.a)";
 
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_1_A__A_3_2_A),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_A__A_3_2_A),
           "ITU-T Rec. H.264 %s constraint is not satisfied "
           "(t_r,n(n) - t_t(n-1) = %f < Max(PicSizeInMbs / MaxMBPS, fR) = %f).\n",
           name, _dTimeH264HrdVerifierContext(ctx, Tr_n - Tr_n_mo),
@@ -1486,7 +1480,7 @@ static int _checkH264CpbHrdConformanceTests(
 
       if (MaxNumBytesInAU < NumBytesInAU) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_1_D),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_D),
           "ITU-T Rec. H.264 A.3.1.d) constraint is not satisfied "
           "(MaxNumBytesInNALunit = %" PRId64 " "
           "< NumBytesInNALunit = %" PRId64 ").\n",
@@ -1510,7 +1504,7 @@ static int _checkH264CpbHrdConformanceTests(
 
       if (floor(MaxNumSlices) < 1.0 * NumSlicesAU) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_3_B),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_3_B),
           "ITU-T Rec. H.264 A.3.3.b) constraint is not satisfied "
           "(maxNbSlices = %f < nbSlices = %u).\n",
           MaxNumSlices,
@@ -1540,7 +1534,7 @@ static int _checkH264CpbHrdConformanceTests(
 
       if (MaxNumBytesInFirstAU < NumBytesInAU) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_1_C),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_C),
           "ITU-T Rec. H.264 A.3.1.c) constraint is not satisfied "
           "(MaxNumBytesInFirstAU = %" PRId64
           " < NumBytesInFirstAU = %" PRId64 ").\n",
@@ -1566,7 +1560,7 @@ static int _checkH264CpbHrdConformanceTests(
 
       if (MaxNumSlices < 1.0 * NumSlicesAU) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, A_3_3_A),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_3_A),
           "ITU-T Rec. H.264 A.3.3.a) constraint is not satisfied "
           "(maxNbSlices = %.0f < nbSlices = %u).\n",
           MaxNumSlices,
@@ -1674,7 +1668,7 @@ int processAUH264HrdContext(
     );
 
     LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-      WARN_COUNT_CHECK_INC(&ctx->warnings, C_3_3),
+      LIBBLU_WARN_COUNT_CHECK_INC(&ctx->warnings, C_3_3),
       "ITU-T Rec. H.264 C.3.3 constraint is not satisfied "
       "(CPB Underflow, Tr_n = %u ms < Taf_n = %u ms "
       "on Access Unit %u, initial arrival time: %u ms).\n",
@@ -1710,14 +1704,14 @@ int processAUH264HrdContext(
       /* exceed CPB size. => Buffer overflow */
 
       LIBBLU_H264_HRDV_FAIL_WCOND(
-        WARN_COUNT_CHECK(warn, C_3_2),
+        LIBBLU_WARN_COUNT_CHECK(warn, C_3_2),
         "ITU-T Rec. H.264 C.3.2 constraint is not satisfied "
         "(CPB Overflow happen, CPB size = %" PRId64 " bits < %" PRId64 " bits).\n",
         ctx->cpb_size,
         ctx->cpb_occupancy + already_transfered_bits
       );
       LIBBLU_H264_HRDV_FAIL_WCOND(
-        WARN_COUNT_CHECK(warn, C_3_2),
+        LIBBLU_WARN_COUNT_CHECK(warn, C_3_2),
         " => Affect while trying to remove Access Unit %u, "
         "at removal time: %u ms.\n",
         cpb_removed_AU->AU_idx,
@@ -1726,7 +1720,7 @@ int processAUH264HrdContext(
 
       if (Tai_n < ctx->clock_time) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, C_3_2),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, C_3_2),
           " => Access Unit %u was in transfer "
           "(%.0f bits already in CPB over %" PRId64 " total bits).\n",
           ctx->nbProcessedAU,
@@ -1736,7 +1730,7 @@ int processAUH264HrdContext(
       }
       else if (0 < ctx->nbProcessedAU) {
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, C_3_2),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, C_3_2),
           " => Happen during final arrival time of Access Unit %u "
           "and initial arrival time of Access Unit %u interval.\n",
           ctx->nbProcessedAU - 1,
@@ -1745,7 +1739,7 @@ int processAUH264HrdContext(
       }
       else
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-          WARN_COUNT_CHECK_INC(warn, C_3_2),
+          LIBBLU_WARN_COUNT_CHECK_INC(warn, C_3_2),
           " => Happen at stream start.\n"
         );
     }
@@ -1806,13 +1800,13 @@ int processAUH264HrdContext(
 
     if (ctx->dpb_size < ctx->nb_au_dpb_content) {
       LIBBLU_H264_HRDV_FAIL_WCOND(
-        WARN_COUNT_CHECK(warn, C_3_5),
+        LIBBLU_WARN_COUNT_CHECK(warn, C_3_5),
         "ITU-T Rec. H.264 C.3.5 constraint is not satisfied "
         "(DPB Overflow happen, DPB size = %u pictures < %u pictures).\n",
         ctx->dpb_size, ctx->nb_au_dpb_content
       );
       LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-        WARN_COUNT_CHECK_INC(warn, C_3_5),
+        LIBBLU_WARN_COUNT_CHECK_INC(warn, C_3_5),
         " => Affect while trying to add Access Unit %u, at removal time: %u ms.\n",
         cpb_removed_AU->AU_idx,
         _msTimeH264HrdVerifierContext(ctx, ctx->clock_time)
@@ -1899,14 +1893,14 @@ int processAUH264HrdContext(
     /* => Buffer overflow */
 
     LIBBLU_H264_HRDV_FAIL_WCOND(
-      WARN_COUNT_CHECK(warn, C_3_2),
+      LIBBLU_WARN_COUNT_CHECK(warn, C_3_2),
       "ITU-T Rec. H.264 C.3.2 constraint is not satisfied "
       "(CPB Overflow happen, CPB size = %" PRId64 " bits < %" PRId64 " bits).\n",
       ctx->cpb_size,
       ctx->cpb_occupancy
     );
     LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
-      WARN_COUNT_CHECK_INC(warn, C_3_2),
+      LIBBLU_WARN_COUNT_CHECK_INC(warn, C_3_2),
       " => Affect while trying to append Access Unit %u, "
       "at final arrival time: %u ms.\n",
       ctx->nbProcessedAU,
