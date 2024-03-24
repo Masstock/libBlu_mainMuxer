@@ -33,27 +33,22 @@
 #define H264_DPB_HRD_MSG_PREFIX  H264_DPB_HRD_MSG_NAME  lbc_str(": ")
 
 static inline bool checkH264CpbHrdVerifierAvailablity(
-  const H264CurrentProgressParam *cur_state,
   const LibbluESSettingsOptions *options,
-  const H264SPSDataParameters *sps
+  const H264SPSDataParameters *SPS
 )
 {
-
-  if (cur_state->stillPictureTolerance) // TODO: Check still pictures.
-    LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of still pictures.\n");
-
   if (options->discard_sei)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI discarding.\n");
   if (options->force_rebuild_sei)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by SEI rebuilding.\n");
 
-  if (!sps->vui_parameters_present_flag)
+  if (!SPS->vui_parameters_present_flag)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing VUI parameters.\n");
-  if (!sps->vui_parameters.nal_hrd_parameters_present_flag)
+  if (!SPS->vui_parameters.nal_hrd_parameters_present_flag)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing NAL HRD parameters.\n");
-  if (sps->vui_parameters.low_delay_hrd_flag)  // TODO: Low Delay not supported
+  if (SPS->vui_parameters.low_delay_hrd_flag)  // TODO: Low Delay not supported
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by use of Low Delay.\n");
-  if (!sps->vui_parameters.timing_info_present_flag)
+  if (!SPS->vui_parameters.timing_info_present_flag)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing timing info in VUI parameters.\n");
 
   return true; /* Available */

@@ -69,20 +69,20 @@ HdmvVideoFormat getHdmvVideoFormat(
 }
 
 HdmvFrameRateCode getHdmvFrameRateCode(
-  float frameRate
+  float frame_rate
 )
 {
-  if (FLOAT_COMPARE(frameRate, 24000.0f / 1001.0f))
+  if (FLOAT_COMPARE(frame_rate, 24000.0f / 1001.0f))
     return FRAME_RATE_CODE_23976;
-  if (FLOAT_COMPARE(frameRate, 24.0f))
+  if (FLOAT_COMPARE(frame_rate, 24.0f))
     return FRAME_RATE_CODE_24;
-  if (FLOAT_COMPARE(frameRate, 25.0f))
+  if (FLOAT_COMPARE(frame_rate, 25.0f))
     return FRAME_RATE_CODE_25;
-  if (FLOAT_COMPARE(frameRate, 30000.0f / 1001.0f))
+  if (FLOAT_COMPARE(frame_rate, 30000.0f / 1001.0f))
     return FRAME_RATE_CODE_29970;
-  if (FLOAT_COMPARE(frameRate, 50.0f))
+  if (FLOAT_COMPARE(frame_rate, 50.0f))
     return FRAME_RATE_CODE_50;
-  if (FLOAT_COMPARE(frameRate, 50000.0f / 1001.0f))
+  if (FLOAT_COMPARE(frame_rate, 50000.0f / 1001.0f))
     return FRAME_RATE_CODE_59940;
 
   return FRAME_RATE_CODE_UNSPC;
@@ -95,43 +95,37 @@ HdmvFrameRateCode getHdmvFrameRateCode(
 static CheckVideoConfigurationRet _checkVideoConfiguration(
   unsigned width,
   unsigned height,
-  HdmvFrameRateCode frameRate,
+  HdmvFrameRateCode frame_rate,
   bool interlaced,
 
-  unsigned nbConfigs,
-  const unsigned screenSizeConfigs[][2],
-  const unsigned allowedFrameRates[][4],
-  const unsigned interlacingMode[][4]
+  unsigned nb_configs,
+  const unsigned screen_size_configs[][2],
+  const unsigned allowed_frame_rates[][4],
+  const unsigned interlace_modes[][4]
 )
 {
-  unsigned i;
-
-  unsigned configId, frId, displayMode;
-
-  for (i = 0; i < nbConfigs; i++) {
-    if (CHECK_ARRAY_2VALS(screenSizeConfigs[i], width, height))
+  unsigned i = 0;
+  for (; i < nb_configs; i++) {
+    if (CHECK_ARRAY_2VALS(screen_size_configs[i], width, height))
       break;
   }
 
-  if (nbConfigs <= i)
+  if (nb_configs <= i)
     return CHK_VIDEO_CONF_RET_ILL_VIDEO_SIZE;
-  configId = i;
+  unsigned screen_size_config_idx = i;
 
   for (i = 0; i < 4; i++) {
-    if (allowedFrameRates[configId][i] == frameRate)
+    if (allowed_frame_rates[screen_size_config_idx][i] == frame_rate)
       break;
   }
 
   if (4 <= i)
     return CHK_VIDEO_CONF_RET_ILL_FRAME_RATE;
-  frId = i;
+  unsigned frame_rate_idx = i;
 
-  displayMode = 1 << (interlaced);
-  /**
-   * NOTE: According to ISO/IEC 9899:1999, bool type value is 0 or 1.
-   */
+  unsigned interlace_mode_idx = 1u << (interlaced);
 
-  if (0 == (interlacingMode[configId][frId] & displayMode))
+  if (0 == (interlace_modes[screen_size_config_idx][frame_rate_idx] & interlace_mode_idx))
     return CHK_VIDEO_CONF_RET_ILL_DISP_MODE;
 
   return CHK_VIDEO_CONF_RET_OK;
@@ -140,11 +134,11 @@ static CheckVideoConfigurationRet _checkVideoConfiguration(
 CheckVideoConfigurationRet checkPrimVideoConfiguration(
   unsigned width,
   unsigned height,
-  HdmvFrameRateCode frameRate,
+  HdmvFrameRateCode frame_rate,
   bool interlaced
 )
 {
-  static const unsigned screenSizeConfigs[][2] = {
+  static const unsigned screen_size_configs[][2] = {
     {1920, 1080},
     {1440, 1080},
     {1280, 720},
@@ -152,7 +146,7 @@ CheckVideoConfigurationRet checkPrimVideoConfiguration(
     {720, 480}
   };
 
-  static const HdmvFrameRateCode allowedFrameRates[][4] = {
+  static const HdmvFrameRateCode allowed_frame_rates[][4] = {
     {
       FRAME_RATE_CODE_23976,
       FRAME_RATE_CODE_24,
@@ -206,18 +200,18 @@ CheckVideoConfigurationRet checkPrimVideoConfiguration(
     }
   };
 
-  assert(ARRAY_SIZE(allowedFrameRates) == ARRAY_SIZE(screenSizeConfigs));
-  assert(ARRAY_SIZE(allowedDisplayModes) == ARRAY_SIZE(screenSizeConfigs));
+  assert(ARRAY_SIZE(allowed_frame_rates) == ARRAY_SIZE(screen_size_configs));
+  assert(ARRAY_SIZE(allowedDisplayModes) == ARRAY_SIZE(screen_size_configs));
 
   return _checkVideoConfiguration(
     width,
     height,
-    frameRate,
+    frame_rate,
     interlaced,
 
-    ARRAY_SIZE(screenSizeConfigs),
-    screenSizeConfigs,
-    allowedFrameRates,
+    ARRAY_SIZE(screen_size_configs),
+    screen_size_configs,
+    allowed_frame_rates,
     allowedDisplayModes
   );
 }
@@ -225,11 +219,11 @@ CheckVideoConfigurationRet checkPrimVideoConfiguration(
 CheckVideoConfigurationRet checkSecVideoConfiguration(
   unsigned width,
   unsigned height,
-  HdmvFrameRateCode frameRate,
+  HdmvFrameRateCode frame_rate,
   bool interlaced
 )
 {
-  static const unsigned screenSizeConfigs[][2] = {
+  static const unsigned screen_size_configs[][2] = {
     {1920, 1080},
     {1440, 1080},
     {1280, 720},
@@ -237,7 +231,7 @@ CheckVideoConfigurationRet checkSecVideoConfiguration(
     {720, 480}
   };
 
-  static const HdmvFrameRateCode allowedFrameRates[][4] = {
+  static const HdmvFrameRateCode allowed_frame_rates[][4] = {
     {
       FRAME_RATE_CODE_23976,
       FRAME_RATE_CODE_24,
@@ -292,18 +286,18 @@ CheckVideoConfigurationRet checkSecVideoConfiguration(
     }
   };
 
-  assert(ARRAY_SIZE(allowedFrameRates) == ARRAY_SIZE(screenSizeConfigs));
-  assert(ARRAY_SIZE(allowedDisplayModes) == ARRAY_SIZE(screenSizeConfigs));
+  assert(ARRAY_SIZE(allowed_frame_rates) == ARRAY_SIZE(screen_size_configs));
+  assert(ARRAY_SIZE(allowedDisplayModes) == ARRAY_SIZE(screen_size_configs));
 
   return _checkVideoConfiguration(
     width,
     height,
-    frameRate,
+    frame_rate,
     interlaced,
 
-    ARRAY_SIZE(screenSizeConfigs),
-    screenSizeConfigs,
-    allowedFrameRates,
+    ARRAY_SIZE(screen_size_configs),
+    screen_size_configs,
+    allowed_frame_rates,
     allowedDisplayModes
   );
 }

@@ -240,9 +240,7 @@
  * \return bool False Values are not equal.
  */
 #define FLOAT_COMPARE(x, y)                                                   \
-  (                                                                           \
-    ABS((x) - (y)) < EPSILON                                                  \
-  )
+  (ABS((x) - (y)) < EPSILON)
 
 /** \~english
  * \brief

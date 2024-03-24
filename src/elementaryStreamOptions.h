@@ -39,9 +39,9 @@ typedef struct {
     bool second_pass;  /**< Is the second parsing attempt. */
     bool half_PicOrderCnt;  /**< Divide by two the computed PicOrderCnt of
       each picture. This option is automatically triggered.                  */
-    int64_t initDecPicNbCntShift;  /**< Initial decoding timestamp shifting
-      in pictures units (1 / frame-rate). This option is automatically
-      adjusted.                                                              */
+    int64_t init_dec_pic_nb_cnt_shift;  /**< Initial decoding timestamp
+      shifting in pictures units (1 / frame-rate). This option is
+      automatically adjusted.                                                */
 
     HdmvFrameRateCode fps_mod;
     LibbluAspectRatioMod ar_mod;

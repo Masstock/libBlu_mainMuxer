@@ -26,6 +26,10 @@ typedef struct {
   unsigned char AU_filler_data;
 
   unsigned char AUD_wrong_primary_pic_type;
+  unsigned char AUD_duplicated;
+
+  unsigned char SPS_value_change;
+  unsigned char SPS_duplicated;
 
   unsigned char VUI_wrong_SAR;
   unsigned char VUI_wrong_video_format;
@@ -37,6 +41,8 @@ typedef struct {
   unsigned char VUI_missing_video_signal_type;
   unsigned char VUI_missing_colour_description;
 
+  unsigned char PPS_entropy_coding_mode_flag_change;
+
   unsigned char slice_wrong_slice_type;
   unsigned char slice_too_many_memory_management_control_operation; /**<
     The number of present 'memory_management_control_operation' exceeds the
@@ -44,38 +50,40 @@ typedef struct {
 } H264WarningFlags;
 
 typedef struct {
-  EsmsHandlerPtr esms;
-  BitstreamWriterPtr esmsFile;
+  EsmsHandlerPtr script;
+  BitstreamWriterPtr script_file;
 
   H264NalDeserializerContext file;
-  uint8_t esmsSrcFileIdx;
+  uint8_t script_src_file_idx;
 
-  H264AccessUnitDelimiterParameters accessUnitDelimiter;
-  bool accessUnitDelimiterPresent;
-  bool accessUnitDelimiterValid;
+  H264AccessUnitDelimiterParameters access_unit_delimiter;
+  bool access_unit_delimiter_present;
+  bool access_unit_delimiter_valid;
 
-  H264SequenceParametersSetParameters sequenceParametersSet;
-  bool sequenceParametersSetPresent;
-  bool sequenceParametersSetGopValid;
-  bool sequenceParametersSetValid;
+  H264SequenceParametersSetParameters sequence_parameter_set;
+  bool sequence_parameter_set_present;
+  bool sequence_parameter_set_GOP_valid;
+  bool sequence_parameter_set_valid;
 
-  H264PicParametersSetParameters *picParametersSet[H264_MAX_PPS];
-  bool picParametersSetIdsPresent[H264_MAX_PPS];
-  bool picParametersSetIdsValid[H264_MAX_PPS];
-  unsigned picParametersSetIdsPresentNb;
+  H264PicParametersSetParameters *picture_parameter_set[H264_MAX_PPS];
+  bool picture_parameter_set_id_present[H264_MAX_PPS];
+  bool picture_parameter_set_id_valid[H264_MAX_PPS];
+  unsigned highest_picture_parameter_set_id_present;
 
   H264SupplementalEnhancementInformationParameters sei;
 
   H264SliceLayerWithoutPartitioningParameters slice;
-  bool slicePresent;
+  bool slice_present;
 
   H264ConstraintsParam constraints;
+  H264BDConstraintsParam bd_constraints;
+  bool bd_constraints_initialized;
 
-  H264CurrentProgressParam curProgParam;
+  H264CurrentProgressParam cur_prog_param;
 
-  H264ModifiedNalUnitsList modNalLst;
+  H264ModifiedNalUnitsList modified_NALU_list;
 
-  H264WarningFlags warningFlags;
+  H264WarningFlags warning_flags;
 } H264ParametersHandler, *H264ParametersHandlerPtr;
 
 void updateH264LevelLimits(
@@ -86,8 +94,13 @@ void updateH264LevelLimits(
 void updateH264ProfileLimits(
   H264ParametersHandlerPtr handle,
   H264ProfileIdcValue profile_idc,
-  H264ContraintFlags constraintsFlags,
-  bool applyBdavConstraints
+  H264ContraintFlags constraints_flags
+);
+
+void updateH264BDConstraints(
+  H264ParametersHandlerPtr handle,
+  uint8_t level_idc,
+  const H264VuiParameters *vui_parameters
 );
 
 /* Handling functions : */
@@ -202,7 +215,7 @@ static inline H264NalUnitTypeValue getNalUnitType(
 /* Reading functions : */
 static inline int readBitNal(
   H264ParametersHandlerPtr handle,
-  bool *bit
+  bool *bit_ret
 )
 {
   assert(NULL != handle);
@@ -212,10 +225,10 @@ static inline int readBitNal(
       return -1;
   }
 
-  if (NULL == bit)
+  if (NULL == bit_ret)
     handle->file.remainingRbspCellBits--;
   else
-    *bit = (
+    *bit_ret = (
       handle->file.currentRbspCellBits
        >> (--handle->file.remainingRbspCellBits)
     ) & 0x1;
@@ -225,26 +238,23 @@ static inline int readBitNal(
 
 static inline int readBitsNal(
   H264ParametersHandlerPtr handle,
-  uint32_t *value,
+  uint32_t *value_ret,
   size_t length
 )
 {
-  bool bit;
-
   assert(NULL != handle);
-  assert(NULL != value);
   assert(length <= 32);
 
-  if (NULL != value)
-    *value = 0;
-
+  uint32_t value = 0;
   while (length--) {
+    bool bit;
     if (readBitNal(handle, &bit) < 0)
       return -1;
-
-    if (NULL != value)
-      *value = (*value << 1) | bit;
+    value = (value << 1) | bit;
   }
+
+  if (NULL != value_ret)
+    *value_ret = value;
 
   return 0;
 }
@@ -278,60 +288,64 @@ static inline int readBytesNal(
 /** \~english
  * \brief
  *
- * \param handle
- * \param value
- * \param maxLength Max size of decoded value field in bits. If equal to -1,
- * size is unrestricted (32 bits max, size of an uint32_t).
+ * \param handle H.264 parsing context handle.
+ * \param value_ret Parsed value return pointer.
+ * \param max_bit_size Max size of decoded value field in bits. If equal to -1,
+ * size is unrestricted and might overflow maximum range.
  * \return int
  *
  * From Rec.ITU-T H.264 (06/2019) - 9.1 Parsing process for Exp-Golomb codes.
  */
 static inline int readExpGolombCodeNal(
   H264ParametersHandlerPtr handle,
-  uint32_t *value,
-  int maxLength
+  uint32_t *value_ret,
+  int max_bit_size
 )
 {
-  /*  */
-  /* maxLength can be -1 (unrestricted) */
-  uint32_t endValue, maxValue;
-  int nbLeadingZeroBits;
-  bool bit;
-
   assert(NULL != handle);
-  assert(NULL != value);
+  assert(NULL != value_ret);
+  assert(-1 == max_bit_size || (0 < max_bit_size && max_bit_size <= 32));
 
-  nbLeadingZeroBits = -1;
-  for (bit = false; !bit; nbLeadingZeroBits++) {
+  // Parse prefix
+  int nb_leading_zeros = -1;
+  for (bool bit = false; !bit; nb_leading_zeros++) {
     if (readBitNal(handle, &bit) < 0)
       return -1;
   }
 
-  if (nbLeadingZeroBits == -1 || 32 < nbLeadingZeroBits)
+  // Check prefix
+  if (nb_leading_zeros < 0 || 32 < nb_leading_zeros)
     LIBBLU_H264_ERROR_RETURN(
-      "Corrupted/invalid Exp-Golomb code.\n"
+      "Corrupted/invalid Exp-Golomb code, invalid prefix length (%d).\n",
+      nb_leading_zeros
     );
 
-  if (nbLeadingZeroBits == 0) {
-    *value = 0;
-    return 0;
-  }
+  // Interpret prefix
+  uint64_t value = (1ull << nb_leading_zeros) - 1ull;
+  if (!nb_leading_zeros)
+    goto success;
 
-  *value = (1 << nbLeadingZeroBits) - 1;
-
-  if (readBitsNal(handle, &endValue, nbLeadingZeroBits) < 0)
+  // Parse suffix
+  uint32_t suffix;
+  if (readBitsNal(handle, &suffix, (size_t) nb_leading_zeros) < 0)
     return -1;
-  *value += endValue;
+  value += suffix;
 
-  if (0 < maxLength) {
-    maxLength = MIN(32, maxLength);
-    maxValue = (maxLength == 32) ? 0xFFFFFFFF : (unsigned) (1 << maxLength) - 1;
+  // Check parsed value range
+  if (0 < max_bit_size) {
+    uint64_t max_value = (1ull << max_bit_size) - 1ull;
 
-    if (maxValue < *value)
+    if (max_value < value)
       LIBBLU_H264_ERROR_RETURN(
-        "Invalid Exp-Golomb code, overflow occurs.\n"
+        "Invalid Exp-Golomb code, overflow occurs (%" PRIu32 " < %" PRIu32 ").\n",
+        max_value,
+        value
       );
   }
+
+success:
+  if (NULL != value_ret)
+    *value_ret = (uint32_t) value;
 
   return 0;
 }
@@ -350,21 +364,18 @@ static inline int readExpGolombCodeNal(
  */
 static inline int readSignedExpGolombCodeNal(
   H264ParametersHandlerPtr handle,
-  uint32_t *value,
-  int maxLength
+  uint32_t *value_ret,
+  int max_bit_size
 )
 {
-  uint32_t unsignedValue, convValue;
+  uint32_t u_value;
+  if (readExpGolombCodeNal(handle, &u_value, max_bit_size) < 0)
+    return -1;
 
-  if (readExpGolombCodeNal(handle, &unsignedValue, maxLength) < 0)
-    return -1; /* Error during normal parsing. */
-
-  /* Conversion : */
-  convValue = (unsignedValue >> 1) + (unsignedValue & 0x1);
-  if (unsignedValue & 0x1)
-    *value = convValue;
-  else
-    *value = - convValue;
+  if (NULL != value_ret) {
+    uint32_t e_value = (u_value >> 1) + (u_value & 0x1); // Extend
+    *value_ret = (u_value & 0x1) ? e_value : -e_value;
+  }
 
   return 0;
 }

@@ -92,7 +92,7 @@ int buildH264HrdParameters(
   H264HrdParameters *param
 )
 {
-  H264SchedSel *schedSel; /* Alias for readability */
+  H264SchedSel *SchedSel; /* Alias for readability */
   unsigned SchedSelIdx;
 
   assert(NULL != nal);
@@ -111,18 +111,18 @@ int buildH264HrdParameters(
     return -1;
 
   for (SchedSelIdx = 0; SchedSelIdx <= param->cpb_cnt_minus1; SchedSelIdx++) {
-    schedSel = &param->schedSel[SchedSelIdx];
+    SchedSel = &param->SchedSel[SchedSelIdx];
 
     /* [ue bit_rate_value_minus1[SchedSelIdx]] */
-    if (writeH264NalByteArrayExpGolombCode(nal, schedSel->bit_rate_value_minus1) < 0)
+    if (writeH264NalByteArrayExpGolombCode(nal, SchedSel->bit_rate_value_minus1) < 0)
       return -1;
 
     /* [ue cpb_size_value_minus1[SchedSelIdx]] */
-    if (writeH264NalByteArrayExpGolombCode(nal, schedSel->cpb_size_value_minus1) < 0)
+    if (writeH264NalByteArrayExpGolombCode(nal, SchedSel->cpb_size_value_minus1) < 0)
       return -1;
 
     /* [b1 cbr_flag[SchedSelIdx]] */
-    if (writeH264NalByteArrayBits(nal, schedSel->cbr_flag, 1) < 0)
+    if (writeH264NalByteArrayBits(nal, SchedSel->cbr_flag, 1) < 0)
       return -1;
   }
 
@@ -168,9 +168,9 @@ size_t appendH264SequenceParametersSet(
   assert(NULL != param);
   assert(insertingOffset <= 0xFFFFFFFF);
 
-  for (i = 0; i < handle->modNalLst.nbSequenceParametersSet; i++) {
+  for (i = 0; i < handle->modified_NALU_list.nbSequenceParametersSet; i++) {
     H264ModifiedNalUnit modNalUnit =
-      handle->modNalLst.sequenceParametersSets[i]
+      handle->modified_NALU_list.sequenceParametersSets[i]
     ;
 
     /* Checking if an identical pre-builded SPS Nal is available. */
@@ -182,7 +182,7 @@ size_t appendH264SequenceParametersSet(
     if (constantSps) {
       /* Compatible, write pre-builded Nal. */
       ret = appendAddDataBlockCommandEsmsHandler(
-        handle->esms,
+        handle->script,
         insertingOffset,
         INSERTION_MODE_OVERWRITE,
         modNalUnit.dataSectionIdx
@@ -567,21 +567,21 @@ size_t appendH264SequenceParametersSet(
    */
 
 #if !DISABLE_NAL_REPLACEMENT_DATA_OPTIMIZATION
-  if (!isDataBlocksNbLimitReachedEsmsHandler(handle->esms)) {
+  if (!isDataBlocksNbLimitReachedEsmsHandler(handle->script)) {
     H264ModifiedNalUnit *modNalUnit;
 
-    handle->modNalLst.sequenceParametersSets =
+    handle->modified_NALU_list.sequenceParametersSets =
       (H264ModifiedNalUnit *) realloc(
-        handle->modNalLst.sequenceParametersSets,
-        (++handle->modNalLst.nbSequenceParametersSet)
+        handle->modified_NALU_list.sequenceParametersSets,
+        (++handle->modified_NALU_list.nbSequenceParametersSet)
         * sizeof(H264ModifiedNalUnit)
       )
     ;
-    if (NULL == handle->modNalLst.sequenceParametersSets)
+    if (NULL == handle->modified_NALU_list.sequenceParametersSets)
       LIBBLU_H264_ERROR_RETURN("Memory allocation error.\n");
 
-    modNalUnit = &handle->modNalLst.sequenceParametersSets[
-      handle->modNalLst.nbSequenceParametersSet-1
+    modNalUnit = &handle->modified_NALU_list.sequenceParametersSets[
+      handle->modified_NALU_list.nbSequenceParametersSet-1
     ];
 
 #if 0
@@ -602,7 +602,7 @@ size_t appendH264SequenceParametersSet(
     modNalUnit->dataSectionSize = nbBytesH264NalByteArrayHandler(spsNal);
 
     ret = appendDataBlockEsmsHandler(
-      handle->esms,
+      handle->script,
       spsNal->array,
       nbBytesH264NalByteArrayHandler(spsNal),
       &modNalUnit->dataSectionIdx
@@ -611,7 +611,7 @@ size_t appendH264SequenceParametersSet(
       goto free_return;
 
     ret = appendAddDataBlockCommandEsmsHandler(
-      handle->esms,
+      handle->script,
       insertingOffset, INSERTION_MODE_OVERWRITE,
       modNalUnit->dataSectionIdx
     );
@@ -619,7 +619,7 @@ size_t appendH264SequenceParametersSet(
   else {
     /* Direct NAL injection : */
     ret = appendAddDataCommandEsmsHandler(
-      handle->esms,
+      handle->script,
       insertingOffset,
       INSERTION_MODE_OVERWRITE,
       spsNal->array,
@@ -663,21 +663,21 @@ int rebuildH264SPSNalVuiParameters(
   assert(NULL != handle);
 
   assert(spsParam->vui_parameters_present_flag);
-  assert(handle->sequenceParametersSetPresent);
+  assert(handle->sequence_parameter_set_present);
 
   vuiParam = &spsParam->vui_parameters;
   colourDesc = &vuiParam->colour_description;
 
   LIBBLU_DEBUG_COM("Applying SPS Nal VUI parameters updating.\n");
 
-  if (handle->curProgParam.useVuiRebuilding) {
+  if (handle->cur_prog_param.rebuild_VUI) {
     vuiParam->video_signal_type_present_flag = true;
     vuiParam->video_format = H264_VIDEO_FORMAT_NTSC;
     vuiParam->video_full_range_flag = false;
     vuiParam->colour_description_present_flag = true;
 
     /* Set VUI Color Description parameters : */
-    switch (handle->sequenceParametersSet.data.FrameHeight) {
+    switch (handle->sequence_parameter_set.data.FrameHeight) {
     case 576: /* SD PAL */
       colourDesc->colour_primaries = H264_COLOR_PRIM_BT470BG;
       colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT470BG;
@@ -697,7 +697,7 @@ int rebuildH264SPSNalVuiParameters(
     }
   }
 
-  if (handle->curProgParam.useVuiUpdate) {
+  if (handle->cur_prog_param.useVuiUpdate) {
     switch (options.fps_mod) {
     case 0x0: /* No change */
       break;
@@ -750,7 +750,7 @@ int rebuildH264SPSNalVuiParameters(
     if (0x00 != options.level_mod) {
       if (
         options.level_mod < spsParam->level_idc
-        && !handle->curProgParam.usageOfLowerLevel
+        && !handle->cur_prog_param.usageOfLowerLevel
       ) {
         LIBBLU_WARNING(
           "Usage of a lower level than initial one, stream may not respect "
@@ -758,7 +758,7 @@ int rebuildH264SPSNalVuiParameters(
         );
 
         /* updateH264LevelLimits(handle, spsParam->level_idc); */
-        handle->curProgParam.usageOfLowerLevel = true;
+        handle->cur_prog_param.usageOfLowerLevel = true;
       }
 
       spsParam->level_idc = options.level_mod;
@@ -836,16 +836,16 @@ int patchH264SequenceParametersSet(
   H264SPSDataParameters updatedSpsDataParam;
 
   assert(NULL != handle);
-  assert(handle->sequenceParametersSetPresent);
+  assert(handle->sequence_parameter_set_present);
 
   update = false;
 
   if (
-    handle->curProgParam.useVuiRebuilding
-    || handle->curProgParam.useVuiUpdate
+    handle->cur_prog_param.rebuild_VUI
+    || handle->cur_prog_param.useVuiUpdate
   ) {
     /* SPS VUI parameters fix/updating */
-    updatedSpsDataParam = handle->sequenceParametersSet.data;
+    updatedSpsDataParam = handle->sequence_parameter_set.data;
 
     if (!updatedSpsDataParam.vui_parameters_present_flag)
       LIBBLU_ERROR_RETURN(
@@ -864,7 +864,7 @@ int patchH264SequenceParametersSet(
   if (options.force_rebuild_sei) {
     /* SPS HRD parameters check (updating fields lengths) */
     if (!update)
-      updatedSpsDataParam = handle->sequenceParametersSet.data;
+      updatedSpsDataParam = handle->sequence_parameter_set.data;
 
     if (rebuildH264SPSNalVuiHRDParameters(&updatedSpsDataParam) < 0)
       return -1;
@@ -1140,8 +1140,8 @@ size_t appendH264SeiBufferingPeriodPlaceHolder(
   assert(NULL != param);
   assert(insertingOffset <= 0xFFFFFFFF);
 
-  seiModNalUnit = &handle->modNalLst.bufferingPeriodSeiMsg;
-  seiModNalUnitPres = &handle->modNalLst.patchBufferingPeriodSeiPresent;
+  seiModNalUnit = &handle->modified_NALU_list.bufferingPeriodSeiMsg;
+  seiModNalUnitPres = &handle->modified_NALU_list.patchBufferingPeriodSeiPresent;
 
   if (!*seiModNalUnitPres) {
     assert(NULL == seiModNalUnit->linkedParam);
@@ -1346,7 +1346,7 @@ int completeH264SeiBufferingPeriodComputation(
   EsmsHandlerPtr handle->esms
 )
 {
-  /* Only support first one schedSel. */
+  /* Only support first one SchedSel. */
   /* BUG: Computed values are broken, wrong method. */
   int ret;
 
@@ -1375,7 +1375,7 @@ int completeH264SeiBufferingPeriodComputation(
 
   assert(NULL != handle);
 
-  if (!handle->modNalLst.patchBufferingPeriodSeiPresent)
+  if (!handle->modified_NALU_list.patchBufferingPeriodSeiPresent)
     return 0; /* Nothing to do. */
 
   /* All AU in stream cannot be zero-size... */
@@ -1397,7 +1397,7 @@ int completeH264SeiBufferingPeriodComputation(
     cpbRemovalDelayFieldLength = vuiParam->nal_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1;
     maxAllowedCpbRemovalDelayValue = (2 << (cpbRemovalDelayFieldLength - 1)) - 1; /* Quick pow(2, cpbRemovalDelayFieldLength) - 1 */
 
-    nalBitRate = vuiParam->nal_hrd_parameters.schedSel[0].BitRate;
+    nalBitRate = vuiParam->nal_hrd_parameters.SchedSel[0].BitRate;
 
     nalMaxCpbBufferingDelay = handle->curProgParam.largestAUSize * 8l / nalBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", nalMaxCpbBufferingDelay);
@@ -1405,7 +1405,7 @@ int completeH264SeiBufferingPeriodComputation(
     nalResultInitCpbRemovalDelay = ceil(nalMaxCpbBufferingDelay * 90000);
     lbc_printf("Result computed initial CPB removal delay: %f.\n", nalResultInitCpbRemovalDelay);
 
-    nalCpbSize = vuiParam->nal_hrd_parameters.schedSel[0].CpbSize;
+    nalCpbSize = vuiParam->nal_hrd_parameters.SchedSel[0].CpbSize;
 
     if (nalCpbSize < nalResultInitCpbRemovalDelay *nalBitRate / 90000)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
@@ -1432,7 +1432,7 @@ int completeH264SeiBufferingPeriodComputation(
     else
       assert(cpbRemovalDelayFieldLength == vuiParam->vcl_hrd_parameters.initial_cpb_removal_delay_length_minus1 + 1);
 
-    vclBitRate = vuiParam->vcl_hrd_parameters.schedSel[0].BitRate;
+    vclBitRate = vuiParam->vcl_hrd_parameters.SchedSel[0].BitRate;
 
     vclMaxCpbBufferingDelay = handle->curProgParam.largestAUSize * 8l / vclBitRate;
     lbc_printf("Max CPB Buffering delay: %f.\n", vclMaxCpbBufferingDelay);
@@ -1440,7 +1440,7 @@ int completeH264SeiBufferingPeriodComputation(
     vclResultInitCpbRemovalDelay = ceil(vclMaxCpbBufferingDelay * 90000);
     lbc_printf("Result computed initial CPB removal delay: %f.\n", vclResultInitCpbRemovalDelay);
 
-    vclCpbSize = vuiParam->vcl_hrd_parameters.schedSel[0].CpbSize;
+    vclCpbSize = vuiParam->vcl_hrd_parameters.SchedSel[0].CpbSize;
 
     if (vclCpbSize < vclResultInitCpbRemovalDelay *vclBitRate / 90000)
       LIBBLU_ERROR_RETURN("Global CPB overflow occurs during NAL-HRD initial_cpb_removal_delay computation.\n");
@@ -1494,7 +1494,7 @@ int completeH264SeiBufferingPeriodComputation(
   if (buildH264SupplementalEnhancementInformation(handle, seiNal, &newSeiNalParam) < 0)
     return -1;
 
-  seiModNalUnit = &handle->modNalLst.bufferingPeriodSeiMsg;
+  seiModNalUnit = &handle->modified_NALU_list.bufferingPeriodSeiMsg;
 
   if (seiModNalUnit->length < nbBytesH264NalByteArrayHandler(seiNal))
     LIBBLU_H264_ERROR_RETURN(

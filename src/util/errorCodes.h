@@ -156,10 +156,10 @@ int isDisabledExplodeLevel(
   __LIBBLU_ERROR_INSTR_(return false, format, ##__VA_ARGS__);
 
 #define LIBBLU_WARN_COUNT_CHECK(warn, name)                                   \
-  (((warn)->name) < (warn)->max_amount || 0 == (warn)->max_amount)
+  (0 == (warn)->max_amount || ((warn)->name) < (warn)->max_amount)
 
 #define LIBBLU_WARN_COUNT_CHECK_INC(warn, name)                               \
-  (((warn)->name)++ < (warn)->max_amount || 0 == (warn)->max_amount)
+  (0 == (warn)->max_amount || (((warn)->name) < (warn)->max_amount && ++((warn)->name)))
 
 typedef enum {
   LIBBLU_INFO,

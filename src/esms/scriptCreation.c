@@ -489,6 +489,11 @@ int appendAddDataCommandEsmsHandler(
     return -1;
   }
 
+  LIBBLU_SCRIPTW_DEBUG("Appending command 'Add data bytes'.\n");
+  LIBBLU_SCRIPTW_DEBUG(" insert_offset: 0x%08" PRIX32 ".\n", insert_offset);
+  LIBBLU_SCRIPTW_DEBUG(" insert_mode: %s.\n", EsmsDataInsertionModeStr(insert_mode));
+  LIBBLU_SCRIPTW_DEBUG(" data_size: %" PRIu16 ".\n", data_size);
+
   *com = (EsmsCommand) {
     .type = ESMS_ADD_DATA,
     .data.add_data = {
@@ -524,6 +529,11 @@ int appendChangeByteOrderCommandEsmsHandler(
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
 
+  LIBBLU_SCRIPTW_DEBUG("Appending command 'Change byte-order'.\n");
+  LIBBLU_SCRIPTW_DEBUG(" unit_size: " PRIu8 ".\n", unit_size);
+  LIBBLU_SCRIPTW_DEBUG(" section_offset: 0x%08" PRIX32 ".\n", section_offset);
+  LIBBLU_SCRIPTW_DEBUG(" section_size: %" PRIu32 ".\n", section_size);
+
   *com = (EsmsCommand) {
     .type = ESMS_CHANGE_BYTEORDER,
     .data.change_byte_order = {
@@ -555,6 +565,12 @@ int appendAddPesPayloadCommandEsmsHandler(
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
 
+  LIBBLU_SCRIPTW_DEBUG("Appending command 'Add payload data'.\n");
+  LIBBLU_SCRIPTW_DEBUG(" src_file_id: %" PRIu8 ".\n", src_file_id);
+  LIBBLU_SCRIPTW_DEBUG(" insert_offset: 0x%08" PRIX32 ".\n", insert_offset);
+  LIBBLU_SCRIPTW_DEBUG(" src_offset: 0x%016" PRIX64 ".\n", src_offset);
+  LIBBLU_SCRIPTW_DEBUG(" size: %" PRIu32 ".\n", size);
+
   *com = (EsmsCommand) {
     .type = ESMS_ADD_PAYLOAD_DATA,
     .data.add_pes_payload = {
@@ -583,6 +599,12 @@ int appendPaddingDataCommandEsmsHandler(
   EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
+
+  LIBBLU_SCRIPTW_DEBUG("Appending command 'Add padding data'.\n");
+  LIBBLU_SCRIPTW_DEBUG(" insert_offset: 0x%08" PRIX32 ".\n", insert_offset);
+  LIBBLU_SCRIPTW_DEBUG(" insert_mode: 0x%08" PRIX32 ".\n", EsmsDataInsertionModeStr(insert_mode));
+  LIBBLU_SCRIPTW_DEBUG(" size: %" PRIu32 ".\n", size);
+  LIBBLU_SCRIPTW_DEBUG(" filling_byte: 0x%02" PRIX8 ".\n", filling_byte);
 
   *com = (EsmsCommand) {
     .type = ESMS_ADD_PADDING_DATA,
@@ -613,6 +635,11 @@ int appendAddDataBlockCommandEsmsHandler(
   EsmsCommand *com;
   if (NULL == (com = _newCommand(esms_hdl)))
     return -1;
+
+  LIBBLU_SCRIPTW_DEBUG("Appending command 'Add data block'.\n");
+  LIBBLU_SCRIPTW_DEBUG(" insert_offset: 0x%08" PRIX32 ".\n", insert_offset);
+  LIBBLU_SCRIPTW_DEBUG(" insert_mode: 0x%08" PRIX32 ".\n", EsmsDataInsertionModeStr(insert_mode));
+  LIBBLU_SCRIPTW_DEBUG(" data_block_id: %" PRIu8 ".\n", data_block_id);
 
   *com = (EsmsCommand) {
     .type = ESMS_ADD_DATA_BLOCK,

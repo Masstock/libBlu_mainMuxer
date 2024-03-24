@@ -172,6 +172,8 @@ unsigned getH264BrNal(
   return constraints.cpbBrNalFactor *constraints.MaxBR;
 }
 
+/* ### H.264 Profile / Level constraints : ################################# */
+
 unsigned getH264MaxMBPS(
   uint8_t level_idc
 )
@@ -613,4 +615,119 @@ unsigned getH264cpbBrNalFactor(
   }
 
   return 0; /* Unconcerned profile. */
+}
+
+/* ### BD constraints : #################################################### */
+
+unsigned getH264BDMinNbSlices(
+  uint8_t level_idc
+)
+{
+  return (41 == level_idc) ? 4u : 1u;
+}
+
+unsigned getH264BDMaxGOPLength(
+  const H264VuiParameters *vui_parameters
+)
+{
+  if (FLOAT_COMPARE(vui_parameters->FrameRate, 23.976) || vui_parameters->FrameRate == 24)
+    return 24u;
+  if (FLOAT_COMPARE(vui_parameters->FrameRate, 29.970))
+    return 30u;
+  if (vui_parameters->FrameRate == 25)
+    return 25u;
+  if (FLOAT_COMPARE(vui_parameters->FrameRate, 59.940))
+    return 60u;
+  return 50u; // 50
+}
+
+H264BdavExpectedAspectRatioRet getH264BDExpectedAspectRatioIdc(
+  unsigned frame_width,
+  unsigned frame_height
+)
+{
+  switch (frame_width) {
+  case 1920u:
+  case 1280u:
+    return (H264BdavExpectedAspectRatioRet) {
+      H264_ASPECT_RATIO_IDC_1_BY_1,
+      H264_ASPECT_RATIO_IDC_1_BY_1
+    };
+
+  case 1440u:
+    return (H264BdavExpectedAspectRatioRet) {
+      H264_ASPECT_RATIO_IDC_4_BY_3,
+      H264_ASPECT_RATIO_IDC_4_BY_3
+    };
+
+  case 720u:
+    if (frame_height == 576u) {
+      return (H264BdavExpectedAspectRatioRet) {
+        H264_ASPECT_RATIO_IDC_12_BY_11,
+        H264_ASPECT_RATIO_IDC_16_BY_11
+      };
+    }
+    return (H264BdavExpectedAspectRatioRet) {
+      H264_ASPECT_RATIO_IDC_10_BY_11,
+      H264_ASPECT_RATIO_IDC_40_BY_33
+    };
+  }
+
+  return (H264BdavExpectedAspectRatioRet) {
+    H264_ASPECT_RATIO_IDC_12_BY_11,
+    H264_ASPECT_RATIO_IDC_16_BY_11
+  };
+}
+
+bool isIncludedH264BdavExpectedAspectRatio(
+  H264BdavExpectedAspectRatioRet ar_restrictions,
+  H264AspectRatioIdcValue aspect_ratio_idc
+)
+{
+  return (
+    ar_restrictions.a == aspect_ratio_idc
+    || ar_restrictions.b == aspect_ratio_idc
+  );
+}
+
+H264VideoFormatValue getH264BDExpectedVideoFormat(
+  double frame_rate
+)
+{
+  if (FLOAT_COMPARE(frame_rate, 25.0) || FLOAT_COMPARE(frame_rate, 50.0))
+    return H264_VIDEO_FORMAT_PAL;
+  return H264_VIDEO_FORMAT_NTSC;
+}
+
+H264ColourPrimariesValue getH264BDExpectedColorPrimaries(
+  unsigned frame_height
+)
+{
+  switch (frame_height) {
+  case 576: return H264_COLOR_PRIM_BT470BG;
+  case 480: return H264_COLOR_PRIM_SMPTE170M;
+  default:  return H264_COLOR_PRIM_BT709;
+  }
+}
+
+H264TransferCharacteristicsValue getH264BDExpectedTransferCharacteritics(
+  unsigned frame_height
+)
+{
+  switch (frame_height) {
+  case 576: return H264_TRANS_CHAR_BT470BG;
+  case 480: return H264_TRANS_CHAR_SMPTE170M;
+  }
+  return H264_TRANS_CHAR_BT709;
+}
+
+H264MatrixCoefficientsValue getH264BDExpectedMatrixCoefficients(
+  unsigned frame_height
+)
+{
+  switch (frame_height) {
+  case 576: return H264_MATRX_COEF_BT470M;
+  case 480: return H264_MATRX_COEF_SMPTE170M;
+  }
+  return H264_MATRX_COEF_BT709;
 }

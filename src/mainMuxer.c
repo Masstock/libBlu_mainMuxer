@@ -108,12 +108,6 @@ int mainMux(
   if (padAlignedUnitLibbluMuxingContext(&ctx, output) < 0)
     goto free_return;
 
-  fprintf(stderr, "STC_start = %" PRIu64 "\n", ctx.STC_start);
-  fprintf(stderr, "STC_end   = %" PRIu64 "\n", ctx.STC_end);
-  fprintf(stderr, "PTS_start = %" PRIu64 "\n", ctx.PTS_start);
-  fprintf(stderr, "PTS_end   = %" PRIu64 "\n", ctx.PTS_end);
-  fprintf(stderr, "PU_dur    = %" PRIu64 "\n", ctx.PU_dur);
-
   lbc_printf(lbc_str("Multiplexing... [====================] 100%% Finished !\n\n"));
 
   closeBitstreamWriter(output);
@@ -139,6 +133,16 @@ int mainMux(
     lbc_str(" - System packets : %d packets (%.1f%%).\n"),
     nb_sys_tp, 100.f * nb_sys_tp / ctx.nb_tp_muxed
   );
+
+  lbc_printf(
+    lbc_str("---------------------------------------------------------------------------------------\n")
+  );
+
+  lbc_printf(lbc_str("STC_start = %" PRIu64 "\n"), ctx.STC_start);
+  lbc_printf(lbc_str("STC_end   = %" PRIu64 "\n"), ctx.STC_end);
+  lbc_printf(lbc_str("PTS_start = %" PRIu64 "\n"), ctx.PTS_start);
+  lbc_printf(lbc_str("PTS_end   = %" PRIu64 "\n"), ctx.PTS_end);
+  lbc_printf(lbc_str("PU_dur    = %" PRIu64 "\n"), ctx.PU_dur);
 
   lbc_printf(
     lbc_str("=======================================================================================\n")

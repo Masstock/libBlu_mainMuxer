@@ -50,7 +50,8 @@ bool constantH264SequenceParametersSetCheck(
   H264SPSDataParameters second
 );
 
-int checkH264SequenceParametersSetChangeCompliance(
+int checkH264SPSChangeBDCompliance(
+  H264WarningFlags *warn,
   H264SPSDataParameters first,
   H264SPSDataParameters second
 );

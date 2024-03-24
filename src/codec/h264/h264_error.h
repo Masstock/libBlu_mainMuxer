@@ -59,6 +59,9 @@
 #define LIBBLU_H264_CK_ERROR_RETURN(format, ...)                              \
   LIBBLU_ERROR_RETURN(LIBBLU_H264_CK_PREFIX format, ##__VA_ARGS__)
 
+#define LIBBLU_H264_CK_ERROR_BRETURN(format, ...)                             \
+  LIBBLU_ERROR_BRETURN(LIBBLU_H264_CK_PREFIX format, ##__VA_ARGS__)
+
 #define LIBBLU_H264_CK_FAIL_RETURN(format, ...)                               \
   LIBBLU_FAIL_RETURN(                                                         \
     LIBBLU_EXPLODE_COMPLIANCE,                                                \
@@ -69,6 +72,13 @@
 #define LIBBLU_H264_CK_FAIL_FRETURN(format, ...)                              \
   LIBBLU_FAIL_FRETURN(                                                        \
     LIBBLU_EXPLODE_COMPLIANCE,                                                \
+    LIBBLU_H264_CK_BD_PREFIX format,                                          \
+    ##__VA_ARGS__                                                             \
+  )
+
+#define LIBBLU_H264_CK_BD_FAIL_RETURN(format, ...)                            \
+  LIBBLU_FAIL_RETURN(                                                         \
+    LIBBLU_EXPLODE_BD_COMPLIANCE,                                             \
     LIBBLU_H264_CK_BD_PREFIX format,                                          \
     ##__VA_ARGS__                                                             \
   )

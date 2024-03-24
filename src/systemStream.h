@@ -340,7 +340,7 @@ static inline void cleanPmtParameters(
   for (uint8_t i = 0; i < pmt.nb_descriptors; i++)
     cleanDescriptor(pmt.descriptors[i]);
   free(pmt.descriptors);
-  for (uint8_t i = 0; i < pmt.nb_descriptors; i++)
+  for (uint8_t i = 0; i < pmt.nb_elements; i++)
     cleanPmtProgramElement(pmt.elements[i]);
   free(pmt.elements);
 }

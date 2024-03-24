@@ -1348,7 +1348,7 @@ static int _checkH264CpbHrdConformanceTests(
   /* ITU-T Rec. H.264 - Annex C.3 Bitstream conformance */
   H264HrdVerifierWarnings *warn = &ctx->warnings;
 
-  const H264SPSDataParameters *sps     = &handle->sequenceParametersSet.data;
+  const H264SPSDataParameters *sps     = &handle->sequence_parameter_set.data;
   const H264VuiParameters *vui         = &sps->vui_parameters;
   const H264SliceHeaderParameters *sh  = &handle->slice.header;
   const H264SeiBufferingPeriod *sei_bp = &handle->sei.bufferingPeriod;
@@ -1358,11 +1358,11 @@ static int _checkH264CpbHrdConformanceTests(
 
   unsigned SchedSelIdx = _selectSchedSelIdx(sps);
   bool first_au_in_buf_period = handle->sei.bufferingPeriodValid;
-  unsigned NumSlicesAU = handle->curProgParam.nbSlicesInPic;
+  unsigned NumSlicesAU = handle->cur_prog_param.nb_slices_in_pic;
   int64_t NumBytesInAU = DIV_ROUND_UP(au_size, 8);
 
   // NAL HRD parameters
-  const H264SchedSel *nalhrd = &vui->nal_hrd_parameters.schedSel[SchedSelIdx];
+  const H264SchedSel *nalhrd = &vui->nal_hrd_parameters.SchedSel[SchedSelIdx];
   const H264SeiBufferingPeriodSchedSel *nalhrd_bp = &sei_bp->nal_hrd_parameters[SchedSelIdx];
 
   // initial_cpb_removal_delay
@@ -1581,7 +1581,7 @@ int processAUH264HrdContext(
 {
   H264HrdVerifierWarnings *warn = &ctx->warnings;
 
-  const H264SPSDataParameters *sps     = &handle->sequenceParametersSet.data;
+  const H264SPSDataParameters *sps     = &handle->sequence_parameter_set.data;
   const H264HrdParameters *hrd         = &sps->vui_parameters.nal_hrd_parameters;
   const H264SliceHeaderParameters *sh  = &handle->slice.header;
   const H264DecRefPicMarking *dec_ref_pic_marking = &sh->dec_ref_pic_marking;
@@ -1591,7 +1591,7 @@ int processAUH264HrdContext(
 
   // NAL HRD parameters
   unsigned SchedSelIdx = _selectSchedSelIdx(sps);
-  const H264SchedSel *nalhrd = &hrd->schedSel[SchedSelIdx];
+  const H264SchedSel *nalhrd = &hrd->SchedSel[SchedSelIdx];
   const H264SeiBufferingPeriodSchedSel *nalhrd_bp = &bp_sei->nal_hrd_parameters[SchedSelIdx];
 
   /* Parse required parameters from signal : */
@@ -1617,11 +1617,11 @@ int processAUH264HrdContext(
 
   /* Saving CPB removal time */
   ctx->removalTimeAU = (uint64_t) ceil(_dTimeH264HrdVerifierContext(ctx, Tr_n) * MAIN_CLOCK_27MHZ);
-  handle->curProgParam.auCpbRemovalTime = ctx->removalTimeAU;
+  handle->cur_prog_param.auCpbRemovalTime = ctx->removalTimeAU;
 
   uint64_t To_dpb_n = Tr_n + ctx->t_c *dpb_output_delay;
   ctx->outputTimeAU = (uint64_t) ceil(_dTimeH264HrdVerifierContext(ctx, To_dpb_n) * MAIN_CLOCK_27MHZ);
-  handle->curProgParam.auDpbOutputTime = ctx->outputTimeAU;
+  handle->cur_prog_param.auDpbOutputTime = ctx->outputTimeAU;
 
   if (first_au_in_buf_period) /* n_b = n */
     ctx->nominalRemovalTimeFirstAU = Tr_n; /* Saving new t_r(n_b) */
@@ -1819,7 +1819,7 @@ int processAUH264HrdContext(
 
   /* Adding current AU : */
   H264DpbHrdPicInfos infos = (H264DpbHrdPicInfos) {
-    .frame_display_num = handle->curProgParam.PicOrderCnt,
+    .frame_display_num = handle->cur_prog_param.PicOrderCnt,
     .frame_num = sh->frame_num,
     .field_pic_flag = sh->field_pic_flag,
     .bottom_field_flag = sh->bottom_field_flag,

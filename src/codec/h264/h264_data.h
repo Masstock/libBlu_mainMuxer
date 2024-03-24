@@ -44,32 +44,6 @@
 #define H264_MAX_ALLOWED_SLICE_GROUPS  8
 
 /** \~english
- * \brief Maximum allowed number of consecutive B pictures according to BDAV
- * specifications.
- *
- */
-#define H264_BDAV_MAX_CONSECUTIVE_B_PICTURES  3
-
-/** \~english
- * \brief Maximum allowed bit-rate value according to BDAV specifications in
- * bits per second.
- *
- * \note This value is the same for BD-UHD.
- *
- * Defined to 40 Mb/s.
- */
-#define H264_BDAV_MAX_BITRATE  40000000
-
-/** \~english
- * \brief Maximum allowed CPB size according to BDAV specifications in bits.
- *
- * \note This value is the same for BD-UHD.
- *
- * Defined to 30 Mb.
- */
-#define H264_BDAV_MAX_CPB_SIZE  30000000
-
-/** \~english
  * \brief NAL Unit nal_ref_idc, Reference Indicator value.
  *
  */
@@ -419,7 +393,7 @@ typedef struct {
   uint8_t bit_rate_scale;
   uint8_t cpb_size_scale;
 
-  H264SchedSel schedSel[H264_MAX_CPB_CONFIGURATIONS];
+  H264SchedSel SchedSel[H264_MAX_CPB_CONFIGURATIONS];
 
   uint8_t initial_cpb_removal_delay_length_minus1;
   uint8_t cpb_removal_delay_length_minus1;
@@ -434,7 +408,7 @@ static inline int64_t BitRateH264HrdParameters(
 {
   assert(SchedSelIdx <= hrd_parameters.cpb_cnt_minus1);
 
-  return hrd_parameters.schedSel[SchedSelIdx].BitRate;
+  return hrd_parameters.SchedSel[SchedSelIdx].BitRate;
 }
 
 static inline int64_t CpbSizeH264HrdParameters(
@@ -444,7 +418,7 @@ static inline int64_t CpbSizeH264HrdParameters(
 {
   assert(SchedSelIdx <= hrd_parameters.cpb_cnt_minus1);
 
-  return hrd_parameters.schedSel[SchedSelIdx].CpbSize;
+  return hrd_parameters.SchedSel[SchedSelIdx].CpbSize;
 }
 
 static inline bool cbr_flagH264HrdParameters(
@@ -454,7 +428,7 @@ static inline bool cbr_flagH264HrdParameters(
 {
   assert(SchedSelIdx <= hrd_parameters.cpb_cnt_minus1);
 
-  return hrd_parameters.schedSel[SchedSelIdx].cbr_flag;
+  return hrd_parameters.SchedSel[SchedSelIdx].cbr_flag;
 }
 
 typedef enum {
@@ -1326,10 +1300,10 @@ typedef enum {
 
 static inline bool isAllowedH264SliceTypeValue(
   H264SliceTypeValue slice_type,
-  H264AllowedSliceTypes allowedSliceTypes
+  H264AllowedSliceTypes allowed_slice_types
 )
 {
-  return (allowedSliceTypes | allowedSliceTypes << 5) & (1 << slice_type);
+  return (allowed_slice_types | allowed_slice_types << 5) & (1 << slice_type);
 }
 
 #endif
@@ -1614,7 +1588,7 @@ typedef struct {
 
 typedef struct {
   H264SliceHeaderParameters header;
-  /* H264SliceDataParameters sliceData; */
+  // H264SliceDataParameters sliceData;
 } H264SliceLayerWithoutPartitioningParameters;
 
 typedef union {
@@ -1728,7 +1702,7 @@ typedef struct {
 
   /* Profile related restricted settings */
   bool idrPicturesOnly; /* Implies max_num_ref_frames, max_num_reorder_frames, max_dec_frame_buffering and dpb_output_delay == 0 */
-  H264PrimaryPictureType allowedSliceTypes;
+  H264PrimaryPictureType allowed_slice_types;
   bool forbiddenSliceDataPartitionLayersNal;
   bool forbiddenArbitrarySliceOrder;
   H264ChromaFormatIdcRestriction restrictedChromaFormatIdc;
@@ -1750,16 +1724,21 @@ typedef struct {
   size_t maxBitsPerPic; /* Warning: In bits. */
   size_t maxBitsPerMb;
 
-  unsigned sliceNb;
-
-  unsigned gopMaxLength;
-  unsigned consecutiveBPicNb;
+  // unsigned sliceNb;
+  // unsigned gopMaxLength;
+  // unsigned consecutiveBPicNb;
 } H264ConstraintsParam;
 
 unsigned getH264BrNal(
   H264ConstraintsParam constraints,
   H264ProfileIdcValue profile_idc
 );
+
+typedef struct {
+  unsigned min_nb_slices;
+  unsigned max_GOP_length;
+  unsigned max_nb_consecutive_B_pictures;
+} H264BDConstraintsParam;
 
 /** \~english
  * \brief Last picture properties.
@@ -1790,7 +1769,7 @@ typedef struct {
 
 typedef struct {
   bool initializedParam;  /**< Are bit-stream parameters initialized. */
-  bool restartRequired; /**< Some parsing parameters must be modified,
+  bool restart_required; /**< Some parsing parameters must be modified,
     requiring restart of parsing. A threshold fixed by
     #H264_PICTURES_BEFORE_RESTART defines the number of parsed pictures to
     reach before cancelling parsing. This reduce the number of restarts when
@@ -1806,26 +1785,26 @@ typedef struct {
   unsigned nbPics;  /**< Current number of parsed complete pictures. */
   unsigned nbConsecutiveBPics;  /**< Current number of consecutive B-pictures. */
 
-  unsigned nbSlicesInPic;  /**< Current number of slices in current parsed picture. */
+  unsigned nb_slices_in_pic;  /**< Current number of slices in current parsed picture. */
 
   double frameRate;  /**< Video frame-rate. */
   int64_t frameDuration;  /**< Duration of one video frame in #MAIN_CLOCK_27MHZ ticks. */
   int64_t fieldDuration;  /**< Duration of one video field in #MAIN_CLOCK_27MHZ ticks. */
 
-  bool reachVclNaluOfaPrimCodedPic;  /**< Is the first VCL NALU of the current Access Unit reached. Used to determine start of a new access unit and completion of the previous one. */
+  bool is_VCL_NALU_reached;  /**< Has a VCL NAL unit of the current Access Unit been reached. Used to determine whether prefix non-VCL NALUs are part of the current or next access unit. */
+  bool is_new_prim_coded_pic_first_VCL_NALU_reached;  /**< Has the first VCL NAL unit of the next Access Unit been reached. Used to determine whether a new access without prefix has been reached. */
 
   int64_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
 
   bool half_PicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
-  int64_t initDecPicNbCntShift;  /**< Initial picture decoding delay in pictures units. */
+  int64_t init_dec_pic_nb_cnt_shift;  /**< Initial picture decoding delay in pictures units. */
 
-  int64_t PicOrderCnt; /**< PicOrderCnt of current picture. */
-
-  int64_t LastMaxStreamPicOrderCnt;
-  int64_t MaxStreamPicOrderCnt;
+  int64_t PicOrderCnt;                  /**< PicOrderCnt of current picture. */
+  int64_t last_max_stream_PicOrderCnt;
+  int64_t max_stream_PicOrderCnt;
 
   H264NalUnitTypeValue lstNaluType;  /**< Last parsed NALU nal_unit_type. */
-  H264LastPictureProperties lstPic;  /**< Last picture values.           */
+  H264LastPictureProperties last_pic;  /**< Last picture values.           */
 
   /* Frames sizes parsing : */
   size_t largestAUSize;  /**< Largest parsed Access Unit in bytes. */
@@ -1837,30 +1816,28 @@ typedef struct {
 
   /* Specific informations spotted in stream : */
   bool gapsInFrameNum; /* Presence of gaps in frame numbers */
-  bool missingVSTVuiParameters;  /**< Missing of Video Signal Type from SPS VUI parameters. */
-  bool wrongVuiParameters;
-  bool spsPresentInSubAU; /* Presence of SPS in subsequent access units in GOP */
+  bool missing_VUI_video_signal_type;  /**< Missing of Video Signal Type from SPS VUI parameters. */
+  bool wrong_VUI;
   bool usageOfLowerLevel;
-  bool presenceOfUselessAccessUnitDelimiter;
-  bool presenceOfUselessSequenceParameterSet;
+  bool presence_of_unnecessary_AUD;
+  bool presence_of_unnecessary_SPS;
 
   bool picOrderCntType2use; /**< TODO: Forbiddens presence of two consecutive non-referential frames/non-complementary fields. */
 
   /* Triggered options : */
-  bool useVuiRebuilding;
+  bool rebuild_VUI;
   bool useVuiUpdate;
-  bool stillPictureTolerance;
-  bool discardUselessAccessUnitDelimiter;
-  bool discardUselessSequenceParameterSet;
+  // bool discardUselessAccessUnitDelimiter;
+  // bool discardUselessSequenceParameterSet;
 
   struct {
-    H264AUNalUnit *nalus;
-    unsigned nbAllocatedNalus;
-    unsigned nbUsedNalus;
-    bool inProcessNalu;
+    H264AUNalUnit *NALUs;
+    unsigned nb_allocated_NALUs;
+    unsigned nb_used_NALUs;
+    bool is_in_process_NALU;
 
     int64_t size; // In bytes.
-  } curAccessUnit;
+  } cur_access_unit;
 } H264CurrentProgressParam;
 
 typedef struct {
@@ -1891,7 +1868,9 @@ typedef struct {
   H264ModifiedNalUnit bufferingPeriodSeiMsg;
 } H264ModifiedNalUnitsList;
 
-/* Spec data functions : */
+
+/* ### H.264 Profile / Level constraints : ################################# */
+
 unsigned getH264MaxMBPS(
   uint8_t level_idc
 );
@@ -1940,7 +1919,15 @@ unsigned getH264cpbBrNalFactor(
   H264ProfileIdcValue profile_idc
 );
 
-/* ### Blu-ray specifications : ############################################ */
+/* ### BD constraints : #################################################### */
+
+unsigned getH264BDMinNbSlices(
+  uint8_t level_idc
+);
+
+unsigned getH264BDMaxGOPLength(
+  const H264VuiParameters *vui_parameters
+);
 
 /** \~english
  * \brief Blu-ray specifications expected aspect_ratio_idc values.
@@ -1953,95 +1940,31 @@ typedef struct {
   H264AspectRatioIdcValue b;  /**< Second valid aspect_ratio_idc value.      */
 } H264BdavExpectedAspectRatioRet;
 
-static inline H264BdavExpectedAspectRatioRet getH264BdavExpectedAspectRatioIdc(
-  unsigned frameWidth,
-  unsigned frameHeight
-)
-{
-  switch (frameWidth) {
-  case 1920:
-  case 1280:
-    return (H264BdavExpectedAspectRatioRet) {
-      H264_ASPECT_RATIO_IDC_1_BY_1,
-      H264_ASPECT_RATIO_IDC_1_BY_1
-    };
+H264BdavExpectedAspectRatioRet getH264BDExpectedAspectRatioIdc(
+  unsigned frame_width,
+  unsigned frame_height
+);
 
-  case 1440:
-    return (H264BdavExpectedAspectRatioRet) {
-      H264_ASPECT_RATIO_IDC_4_BY_3,
-      H264_ASPECT_RATIO_IDC_4_BY_3
-    };
-
-  case 720:
-    if (frameHeight == 576) {
-      return (H264BdavExpectedAspectRatioRet) {
-        H264_ASPECT_RATIO_IDC_12_BY_11,
-        H264_ASPECT_RATIO_IDC_16_BY_11
-      };
-    }
-    return (H264BdavExpectedAspectRatioRet) {
-      H264_ASPECT_RATIO_IDC_10_BY_11,
-      H264_ASPECT_RATIO_IDC_40_BY_33
-    };
-  }
-
-  return (H264BdavExpectedAspectRatioRet) {
-    H264_ASPECT_RATIO_IDC_12_BY_11,
-    H264_ASPECT_RATIO_IDC_16_BY_11
-  };
-}
-
-static inline bool isRespectedH264BdavExpectedAspectRatio(
-  H264BdavExpectedAspectRatioRet restr,
+bool isIncludedH264BdavExpectedAspectRatio(
+  H264BdavExpectedAspectRatioRet ar_restrictions,
   H264AspectRatioIdcValue aspect_ratio_idc
-)
-{
-  return restr.a == aspect_ratio_idc || restr.b == aspect_ratio_idc;
-}
+);
 
-static inline H264VideoFormatValue getH264BdavExpectedVideoFormat(
-  double frameRate
-)
-{
-  if (FLOAT_COMPARE(frameRate, 25.0) || FLOAT_COMPARE(frameRate, 50.0))
-    return H264_VIDEO_FORMAT_PAL;
-  return H264_VIDEO_FORMAT_NTSC;
-}
+H264VideoFormatValue getH264BDExpectedVideoFormat(
+  double frame_rate
+);
 
-static inline H264ColourPrimariesValue getH264BdavExpectedColorPrimaries(
-  unsigned frameHeight
-)
-{
-  switch (frameHeight) {
-  case 576: return H264_COLOR_PRIM_BT470BG;
-  case 480: return H264_COLOR_PRIM_SMPTE170M;
-  }
-  return H264_COLOR_PRIM_BT709;
-}
+H264ColourPrimariesValue getH264BDExpectedColorPrimaries(
+  unsigned frame_height
+);
 
-static inline H264TransferCharacteristicsValue
-getH264BdavExpectedTransferCharacteritics(
-  unsigned frameHeight
-)
-{
-  switch (frameHeight) {
-  case 576: return H264_TRANS_CHAR_BT470BG;
-  case 480: return H264_TRANS_CHAR_SMPTE170M;
-  }
-  return H264_TRANS_CHAR_BT709;
-}
+H264TransferCharacteristicsValue getH264BDExpectedTransferCharacteritics(
+  unsigned frame_height
+);
 
-static inline H264MatrixCoefficientsValue
-getH264BdavExpectedMatrixCoefficients(
-  unsigned frameHeight
-)
-{
-  switch (frameHeight) {
-  case 576: return H264_MATRX_COEF_BT470M;
-  case 480: return H264_MATRX_COEF_SMPTE170M;
-  }
-  return H264_MATRX_COEF_BT709;
-}
+H264MatrixCoefficientsValue getH264BDExpectedMatrixCoefficients(
+  unsigned frame_height
+);
 
 /** \~english
  * \brief Max allowed number of CPB configurations.
@@ -2049,6 +1972,32 @@ getH264BdavExpectedMatrixCoefficients(
  * This value may be fixed to a value equal or greater than 32 to disable
  * limitation (32 is the maximum value allowed by H.264 specifications).
  */
-#define H264_BDAV_ALLOWED_CPB_CNT 1
+#define H264_BD_ALLOWED_CPB_CNT 1
+
+/** \~english
+ * \brief Maximum allowed number of consecutive B pictures according to BD
+ * specifications.
+ *
+ */
+#define H264_BD_MAX_CONSECUTIVE_B_PICTURES  3
+
+/** \~english
+ * \brief Maximum allowed bit-rate value according to BD specifications in
+ * bits per second.
+ *
+ * \note This value is the same for BD-UHD.
+ *
+ * Defined to 40 Mb/s.
+ */
+#define H264_BDAV_MAX_BITRATE  40000000
+
+/** \~english
+ * \brief Maximum allowed CPB size according to BD specifications in bits.
+ *
+ * \note This value is the same for BD-UHD.
+ *
+ * Defined to 30 Mb.
+ */
+#define H264_BDAV_MAX_CPB_SIZE  30000000
 
 #endif
