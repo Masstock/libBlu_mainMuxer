@@ -47,6 +47,12 @@ configure_file(
   "${PROJECT_BINARY_DIR}/util/config.h"
 )
 
+configure_file(
+  "${PROJECT_SOURCE_DIR}/settings.ini"
+  "${PROJECT_BINARY_DIR}/settings.ini"
+  COPYONLY
+)
+
 # Required packages
 list(APPEND CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindFLEX.cmake) # Remove 'fl' library dependency

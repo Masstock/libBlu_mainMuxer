@@ -182,8 +182,8 @@ static inline bool _completePicturePresent(
   const H264CurrentProgressParam *param = &handle->cur_prog_param;
 
   return
-    (param->auContent.bottomFieldPresent && param->auContent.topFieldPresent)
-    || param->auContent.framePresent
+    (param->au_content.bottom_field_present && param->au_content.top_field_present)
+    || param->au_content.frame_present
   ;
 }
 
@@ -194,8 +194,8 @@ static inline bool _complementaryFieldPairPresent(
   const H264CurrentProgressParam *param = &handle->cur_prog_param;
 
   return
-    param->auContent.bottomFieldPresent
-    && param->auContent.topFieldPresent
+    param->au_content.bottom_field_present
+    && param->au_content.top_field_present
   ;
 }
 
@@ -205,39 +205,36 @@ static int32_t _computePicOrderCntType0(
 {
   /* Mode 0 - 8.2.1.1 Decoding process for picture order count type 0 */
   /* Input: PicOrderCntMsb of previous picture */
-  int32_t MaxPicOrderCntLsb;
-  int32_t prevPicOrderCntMsb, prevPicOrderCntLsb;
-  int32_t PicOrderCntMsb;
-  int32_t TopFieldOrderCnt, BottomFieldOrderCnt;
-  int32_t PicOrderCnt;
 
   const H264SPSDataParameters *sps       = &handle->sequence_parameter_set.data;
   const H264SliceHeaderParameters *slice = &handle->slice.header;
-  H264LastPictureProperties *lstPic      = &handle->cur_prog_param.last_pic;
+  H264LastPictureProperties *last_pic    = &handle->cur_prog_param.last_pic;
 
-  MaxPicOrderCntLsb = (int32_t) sps->MaxPicOrderCntLsb;
+  int32_t MaxPicOrderCntLsb = (int32_t) sps->MaxPicOrderCntLsb;
 
   /* Derivation of variables prevPicOrderCntMsb and prevPicOrderCntLsb : */
-  if (slice->isIdrPic) {
+  int32_t prevPicOrderCntMsb, prevPicOrderCntLsb;
+  if (slice->is_IDR_pic) {
     prevPicOrderCntMsb = prevPicOrderCntLsb = 0;
   }
   else {
-    if (lstPic->presenceOfMemManCtrlOp5) {
-      if (!lstPic->isBottomField) {
+    if (last_pic->pres_of_mem_man_ctrl_op_5) {
+      if (!last_pic->bottom_field_flag) {
         prevPicOrderCntMsb = 0;
-        prevPicOrderCntLsb = lstPic->TopFieldOrderCnt;
+        prevPicOrderCntLsb = last_pic->TopFieldOrderCnt;
       }
       else {
         prevPicOrderCntMsb = prevPicOrderCntLsb = 0;
       }
     }
     else {
-      prevPicOrderCntMsb = lstPic->PicOrderCntMsb;
-      prevPicOrderCntLsb = lstPic->pic_order_cnt_lsb;
+      prevPicOrderCntMsb = last_pic->PicOrderCntMsb;
+      prevPicOrderCntLsb = last_pic->pic_order_cnt_lsb;
     }
   }
 
   /* Derivation of PicOrderCntMsb of the current picture ([1] 8-3) : */
+  int32_t PicOrderCntMsb;
   if (
     (slice->pic_order_cnt_lsb < prevPicOrderCntLsb)
     && (
@@ -261,8 +258,8 @@ static int32_t _computePicOrderCntType0(
   }
 
   /* Derivation of TopFieldOrderCnt/BottomFieldOrderCnt ([1] 8-4, 8-5): */
-  TopFieldOrderCnt = lstPic->TopFieldOrderCnt;
-  BottomFieldOrderCnt = 0;
+  int32_t TopFieldOrderCnt    = last_pic->TopFieldOrderCnt;
+  int32_t BottomFieldOrderCnt = 0;
 
   if (!slice->bottom_field_flag)
     TopFieldOrderCnt = PicOrderCntMsb + slice->pic_order_cnt_lsb;
@@ -273,7 +270,7 @@ static int32_t _computePicOrderCntType0(
     BottomFieldOrderCnt = PicOrderCntMsb + slice->pic_order_cnt_lsb;
 
   /* Derivation of PicOrderCnt for the current picture ([1] 8.2.1, 8-1) */
-  /* TODO: Check in case of complementary field pictures */
+  int32_t PicOrderCnt;
   if (!slice->field_pic_flag || _complementaryFieldPairPresent(handle))
     PicOrderCnt = MIN(TopFieldOrderCnt, BottomFieldOrderCnt);
   else if (!slice->bottom_field_flag)
@@ -282,13 +279,13 @@ static int32_t _computePicOrderCntType0(
     PicOrderCnt = BottomFieldOrderCnt;
 
   /* Update last picture properties */
-  lstPic->TopFieldOrderCnt  = TopFieldOrderCnt;
-  lstPic->PicOrderCntMsb    = PicOrderCntMsb;
-  lstPic->pic_order_cnt_lsb = slice->pic_order_cnt_lsb;
+  last_pic->TopFieldOrderCnt  = TopFieldOrderCnt;
+  last_pic->PicOrderCntMsb    = PicOrderCntMsb;
+  last_pic->pic_order_cnt_lsb = slice->pic_order_cnt_lsb;
 
   /* fprintf(
-    stderr, "isIdrPic: %d, PicOrderCnt: %d, MaxPicOrderCntLsb: %d, BottomFieldOrderCnt: %d, TopFieldOrderCnt: %d, PicOrderCntMsb: %d, pic_order_cnt_lsb: %d\n",
-    slice->isIdrPic,
+    stderr, "is_IDR_pic: %d, PicOrderCnt: %d, MaxPicOrderCntLsb: %d, BottomFieldOrderCnt: %d, TopFieldOrderCnt: %d, PicOrderCntMsb: %d, pic_order_cnt_lsb: %d\n",
+    slice->is_IDR_pic,
     PicOrderCnt,
     MaxPicOrderCntLsb,
     BottomFieldOrderCnt,
@@ -300,7 +297,7 @@ static int32_t _computePicOrderCntType0(
   return PicOrderCnt;
 }
 
-static int32_t calcCurPicOrderCnt(
+static int32_t _calcCurPicOrderCnt(
   H264ParametersHandlerPtr handle
 )
 {
@@ -313,7 +310,7 @@ static int32_t calcCurPicOrderCnt(
   if (
     !handle->access_unit_delimiter_valid
     || !handle->sequence_parameter_set_GOP_valid
-    || !handle->slice_present
+    || !handle->slice_valid
   ) {
     LIBBLU_H264_ERROR_RETURN(
       "Unable to compute Picture Order Counter (PicOrderCnt) without"
@@ -345,9 +342,9 @@ static int32_t calcCurPicOrderCnt(
 
   if (PicOrderCnt < 0) {
     LIBBLU_H264_ERROR_RETURN(
-      "Broken Picture Order Count on picture %" PRId64 ", "
+      "Broken Picture Order Count on field/picture %" PRId64 ", "
       "computation result is negative (PicOrderCnt = %" PRId32 ").\n",
-      handle->cur_prog_param.nbPics,
+      handle->cur_prog_param.nb_pictures,
       PicOrderCnt
     );
   }
@@ -355,19 +352,15 @@ static int32_t calcCurPicOrderCnt(
   return PicOrderCnt;
 }
 
-static int _computeAuPicOrderCnt(
+static int64_t _computeAUPicOrderCnt(
   H264ParametersHandlerPtr handle,
   LibbluESSettingsOptions options
 )
 {
-  int64_t PicOrderCnt;
-
-  H264SliceHeaderParameters slice_header;
-  H264LastPictureProperties *lastPicProp;
-
   assert(NULL != handle);
 
-  if ((PicOrderCnt = calcCurPicOrderCnt(handle)) < 0)
+  int64_t PicOrderCnt = _calcCurPicOrderCnt(handle);
+  if (PicOrderCnt < 0)
     return -1;
 
   if (
@@ -387,8 +380,6 @@ static int _computeAuPicOrderCnt(
     LIBBLU_H264_DEBUG_AU_TIMINGS("DISABLE HALF\n");
   }
 
-  slice_header = handle->slice.header;
-
   int64_t DivPicOrderCnt = PicOrderCnt >> handle->cur_prog_param.half_PicOrderCnt;
 
   LIBBLU_H264_DEBUG_AU_TIMINGS(
@@ -397,14 +388,9 @@ static int _computeAuPicOrderCnt(
     DivPicOrderCnt
   );
 
-  lastPicProp = &handle->cur_prog_param.last_pic;
-  lastPicProp->presenceOfMemManCtrlOp5 = slice_header.presenceOfMemManCtrlOp5;
-  lastPicProp->isBottomField = slice_header.bottom_field_flag;
-  lastPicProp->PicOrderCnt = PicOrderCnt;
-
   handle->cur_prog_param.PicOrderCnt = DivPicOrderCnt;
 
-  return 0;
+  return PicOrderCnt;
 }
 
 static int _setBufferingInformationsAccessUnit(
@@ -526,10 +512,10 @@ static int64_t _computeDtsIncrement(
   int64_t frame_duration = handle->cur_prog_param.frameDuration;
   int64_t field_duration = handle->cur_prog_param.fieldDuration;
 
-  if (handle->sei.picTimingValid) {
+  if (handle->sei.pic_timing_valid) {
     /* Presence of picture timing SEI message */
 
-    switch (handle->sei.picTiming.pic_struct) {
+    switch (handle->sei.pic_timing.pic_struct) {
     case H264_PIC_STRUCT_TOP_FLWD_BOT_TOP:
     case H264_PIC_STRUCT_BOT_FLWD_TOP_BOT:
       return frame_duration + field_duration;
@@ -575,7 +561,7 @@ static int64_t _computeStreamPicOrderCnt(
   H264CurrentProgressParam *cp = &handle->cur_prog_param;
 
   if (
-    /* handle->slice.header.isIdrPic && */ 0 == cp->PicOrderCnt
+    /* handle->slice.header.is_IDR_pic && */ 0 == cp->PicOrderCnt
     && 0 < cp->last_max_stream_PicOrderCnt
   ) {
     cp->max_stream_PicOrderCnt = cp->last_max_stream_PicOrderCnt + 1;
@@ -639,14 +625,11 @@ static int _initProperties(
 
   LibbluESH264SpecProperties *param = esms->fmt_prop.h264;
   param->constraint_flags = valueH264ContraintFlags(sps->constraint_set_flags);
-  if (
-    sps->vui_parameters_present_flag
-    && sps->vui_parameters.nal_hrd_parameters_present_flag
-  ) {
+  if (sps->NalHrdBpPresentFlag) {
     const H264HrdParameters *hrd = &sps->vui_parameters.nal_hrd_parameters;
     param->CpbSize = hrd->SchedSel[hrd->cpb_cnt_minus1].CpbSize;
-    param->BitRate = hrd->SchedSel[0].BitRate;
-    esms->bitrate = hrd->SchedSel[0].BitRate;
+    param->BitRate = hrd->SchedSel[hrd->cpb_cnt_minus1].BitRate;
+    esms->bitrate  = hrd->SchedSel[hrd->cpb_cnt_minus1].BitRate;
   }
   else {
     /**
@@ -658,8 +641,8 @@ static int _initProperties(
      * H.264 Annex E.
      */
     param->CpbSize = 1200 * constraints.MaxCPB;
-    param->BitRate = constraints.brNal;
-    esms->bitrate = constraints.brNal;
+    param->BitRate = constraints.max_bit_rate;
+    esms->bitrate  = constraints.max_bit_rate;
   }
 
   curProgParam->frameDuration = MAIN_CLOCK_27MHZ / curProgParam->frameRate;
@@ -766,72 +749,6 @@ static int _registerAccessUnitNALUs(
   return 0;
 }
 
-static int _checkAccessUnitContent(
-  const H264ParametersHandlerPtr handle
-)
-{
-  bool invalid_content = false;
-
-  char missing_NALUs_names[4 * 30] = {'\0'};
-  char *mn_ptr = missing_NALUs_names;
-
-  if (!handle->access_unit_delimiter_valid) {
-    lb_str_cat_comma(&mn_ptr, "Access Unit Delimiter", invalid_content);
-    invalid_content = true;
-  }
-
-  if (!handle->sequence_parameter_set_GOP_valid) {
-    lb_str_cat_comma(&mn_ptr, "Sequence Parameter Set", invalid_content);
-    invalid_content = true;
-  }
-
-  if (!handle->slice_present) {
-    lb_str_cat_comma(&mn_ptr, "Slice", invalid_content);
-    invalid_content = true;
-  }
-
-  if (invalid_content)
-    LIBBLU_H264_CK_BD_FAIL_RETURN(
-      "Incomplete access unit, following NAL units are missing: %s.\n",
-      missing_NALUs_names
-    );
-
-  if (!handle->sequence_parameter_set.data.vui_parameters_present_flag)
-    LIBBLU_H264_CK_BD_FAIL_RETURN(
-      "Unable to complete access unit, "
-      "missing VUI parameters from Sequence Parameter Set.\n"
-    );
-
-  return 0;
-}
-
-static int _checkAccessUnitBDConstraints(
-  const H264ParametersHandlerPtr handle
-)
-{
-  const H264CurrentProgressParam *cur = &handle->cur_prog_param;
-  const H264BDConstraintsParam *constraints = &handle->bd_constraints;
-
-  assert(handle->bd_constraints_initialized);
-
-  if (cur->nb_slices_in_pic < constraints->min_nb_slices)
-    LIBBLU_H264_CK_BD_FAIL_RETURN(
-      "Pending access unit contains %u slices (at least %u expected).\n",
-      cur->nb_slices_in_pic,
-      constraints->min_nb_slices
-    );
-
-  if (constraints->max_nb_consecutive_B_pictures < cur->nbConsecutiveBPics)
-    LIBBLU_H264_CK_BD_FAIL_RETURN(
-      "Too many consecutive B pictures "
-      "(found %u pictures, expected no more than %u).\n",
-      cur->nbConsecutiveBPics,
-      constraints->max_nb_consecutive_B_pictures
-    );
-
-  return 0;
-}
-
 static int _processPESFrame(
   H264ParametersHandlerPtr handle,
   LibbluESSettingsOptions options
@@ -840,26 +757,18 @@ static int _processPESFrame(
   assert(NULL != handle);
 
   /* Check Access Unit content : */
-  if (_checkAccessUnitContent(handle) < 0)
+  if (checkContentH264AccessUnit(handle) < 0)
     return -1;
-
-  H264CurrentProgressParam *cur = &handle->cur_prog_param;
-
-  /* Count B pictures */
-  if (is_B_H264SliceTypeValue(handle->slice.header.slice_type)) {
-    if (handle->slice.header.bottom_field_flag)
-      cur->nbConsecutiveBPics++;
-  }
-  else
-    cur->nbConsecutiveBPics = 0;
 
   /* Check BD constraints : */
   if (handle->bd_constraints_initialized) {
-    if (_checkAccessUnitBDConstraints(handle) < 0)
+    if (checkBDConstraintsH264AccessUnit(handle) < 0)
       return -1;
   }
 
-  if (!cur->initializedParam) {
+  H264CurrentProgressParam *cur = &handle->cur_prog_param;
+
+  if (!cur->initialized_param) {
     /* Set pictures counting mode (apply correction if 2nd pass) */
     if (!options.second_pass) {
       cur->half_PicOrderCnt = true;
@@ -874,12 +783,12 @@ static int _processPESFrame(
     if (_initProperties(handle->script, &handle->cur_prog_param, sps, handle->constraints) < 0)
       return -1;
 
-    cur->initializedParam = true;
+    cur->initialized_param = true;
   }
 
   int64_t stream_PicOrderCnt = _computeStreamPicOrderCnt(handle);
   int64_t pts_diff_shift = (
-    stream_PicOrderCnt - cur->decPicNbCnt
+    stream_PicOrderCnt - cur->decoding_PicOrderCnt
     + cur->init_dec_pic_nb_cnt_shift
   );
 
@@ -915,7 +824,7 @@ static int _processPESFrame(
 
   cur->last_pic.dts += cur->last_pic.duration;
   cur->last_pic.duration = _computeDtsIncrement(handle);
-  cur->decPicNbCnt++;
+  cur->decoding_PicOrderCnt++;
 
   int ret = initVideoPesPacketEsmsHandler(
     handle->script,
@@ -947,9 +856,6 @@ static int _processPESFrame(
   cur->cur_access_unit.size = 0;
   cur->cur_access_unit.nb_used_NALUs = 0;
 
-  /* Reset settings for the next Access Unit : */
-  resetH264ParametersHandler(handle);
-
   handle->script->PTS_final = pts_90kHz;
 
   return 0;
@@ -962,13 +868,13 @@ static bool _areEnoughDataToInitHrdVerifier(
   if (!handle->sequence_parameter_set_GOP_valid)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing valid SPS.\n");
 
-  if (!handle->slice_present)
+  if (!handle->slice_valid)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing slice header.\n");
 
-  if (!handle->sei.picTimingValid)
+  if (!handle->sei.pic_timing_valid)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing Picture Timing SEI message.\n");
 
-  if (!handle->sei.bufferingPeriodGopValid)
+  if (!handle->sei.buffering_period_GOP_valid)
     LIBBLU_H264_HRDV_INFO_BRETURN("Disabled by missing Buffering Period SEI message.\n");
 
   return true;
@@ -1073,6 +979,7 @@ static int _processAccessUnit(
 
   /* Processing PES frame cutting */
   if (_completePicturePresent(handle)) {
+    LIBBLU_H264_DEBUG_AU_PROCESSING("Got a complete picture, processing to PES frame cutting.\n");
     if (_processPESFrame(handle, settings->options) < 0)
       return -1;
 
@@ -1081,14 +988,10 @@ static int _processAccessUnit(
 
     if (
       handle->cur_prog_param.restart_required
-      && H264_PICTURES_BEFORE_RESTART <= handle->cur_prog_param.nbPics
+      && H264_PICTURES_BEFORE_RESTART <= handle->cur_prog_param.nb_frames
     ) {
       settings->askForRestart = true;
     }
-  }
-  else {
-    handle->sei.bufferingPeriodValid = false;
-    handle->sei.picTimingValid = false;
   }
 
   return 0;
@@ -1125,7 +1028,7 @@ int decodeH264AccessUnitDelimiter(
       return -1;
   }
   else {
-    if (5 < handle->cur_prog_param.lstNaluType) {
+    if (5 < handle->cur_prog_param.last_NALU_type) {
       bool is_constant = constantH264AccessUnitDelimiterCheck(
         handle->access_unit_delimiter, AUD_param
       );
@@ -1488,10 +1391,10 @@ static int _parseH264VuiParameters(
       return -1;
   }
 
-  param->CpbDpbDelaysPresentFlag =
+  param->CpbDpbDelaysPresentFlag = (
     param->nal_hrd_parameters_present_flag
     || param->vcl_hrd_parameters_present_flag
-  ;
+  );
 
   if (param->CpbDpbDelaysPresentFlag) {
     /* [b1 low_delay_hrd_flag] */
@@ -1960,6 +1863,9 @@ static int _parseH264SequenceParametersSetData(
     )
   ;
 
+  param->NalHrdBpPresentFlag = param->vui_parameters.nal_hrd_parameters_present_flag;
+  param->VclHrdBpPresentFlag = param->vui_parameters.vcl_hrd_parameters_present_flag;
+
   /* Use computed values to update missing VUI fields and handle */
   _updateH264VuiParameters(handle, param);
 
@@ -2029,8 +1935,8 @@ int decodeH264SequenceParametersSet(
 
   handle->sequence_parameter_set_present   = true;
   handle->sequence_parameter_set_GOP_valid = true;
-  handle->sequence_parameter_set_valid     = true; /* All checks succeed. */
-  handle->sequence_parameter_set.data      = SPS_data; /* Update */
+  handle->sequence_parameter_set_valid     = true;
+  handle->sequence_parameter_set.data      = SPS_data; // Update
 
   return 0;
 }
@@ -2041,9 +1947,6 @@ int decodeH264PicParametersSet(
 {
   /* pic_parameter_set_rbsp() */
   uint32_t value;
-
-  unsigned ppsId;
-  bool updatePps;
 
   H264PicParametersSetParameters pps; /* Output structure */
 
@@ -2060,13 +1963,6 @@ int decodeH264PicParametersSet(
       "Missing mandatory AUD NALU before PPS NALU.\n"
     );
 
-  if (!handle->sequence_parameter_set_present) {
-    /* Required or 'chroma_format_idc' */
-    LIBBLU_H264_ERROR_RETURN(
-      "Missing mandatory SPS NALU before PPS NALU.\n"
-    );
-  }
-
   /* [ue pic_parameter_set_id] */
   if (readExpGolombCodeNal(handle, &value, 8) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
@@ -2081,6 +1977,16 @@ int decodeH264PicParametersSet(
   if (readExpGolombCodeNal(handle, &value, 8) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
   pps.seq_parameter_set_id = value;
+
+  /* Checking SPS id */ // TODO: Support more than one SPS
+  if (0x00 != pps.seq_parameter_set_id || !handle->sequence_parameter_set_GOP_valid)
+    LIBBLU_H264_ERROR_RETURN(
+      "The Picture Parameter Set references an invalid SPS or one that has not been "
+      "communicated since the last IDR access unit "
+      "('seq_parameter_set_id' == %u).\n",
+      pps.seq_parameter_set_id
+    );
+  const H264SPSDataParameters *sps = &handle->sequence_parameter_set.data;
 
   /* [b1 entropy_coding_mode_flag] */
   if (readBitsNal(handle, &value, 1) < 0)
@@ -2252,22 +2158,18 @@ int decodeH264PicParametersSet(
     pps.pic_scaling_matrix_present_flag = value;
 
     if (pps.pic_scaling_matrix_present_flag) {
-      H264SequenceParametersSetDataParameters *sps =
-        &handle->sequence_parameter_set.data
-      ;
-      pps.nbScalingMatrix =
+      pps.nbScalingMatrix = (
         6
         + ((sps->chroma_format_idc != H264_CHROMA_FORMAT_444) ? 2 : 6)
         * pps.transform_8x8_mode_flag
-      ;
-      unsigned i;
+      );
 
       /* Initialization */
       memset(&pps.pic_scaling_list_present_flag, false, 12 * sizeof(bool));
       memset(&pps.UseDefaultScalingMatrix4x4Flag, true, 6 * sizeof(bool));
       memset(&pps.UseDefaultScalingMatrix8x8Flag, true, 6 * sizeof(bool));
 
-      for (i = 0; i < pps.nbScalingMatrix; i++) {
+      for (unsigned i = 0; i < pps.nbScalingMatrix; i++) {
         /* [b1 pic_scaling_list_present_flag[i]] */
         if (readBitsNal(handle, &value, 1) < 0)
           LIBBLU_H264_READING_FAIL_RETURN();
@@ -2317,50 +2219,41 @@ int decodeH264PicParametersSet(
     LIBBLU_H264_READING_FAIL_RETURN();
 
   /* Checks : */
-  ppsId = pps.pic_parameter_set_id; /* For readability */
-  updatePps = false;
-
-  if (H264_MAX_PPS <= ppsId)
-    LIBBLU_ERROR_RETURN("Internal error, unexpected PPS id %u.\n", ppsId);
-
-  if (!handle->picture_parameter_set_id_present[ppsId]) {
-    /* Newer PPS */
-    if (checkH264PicParametersSetCompliance(handle, pps) < 0)
-      return -1;
-
-    handle->highest_picture_parameter_set_id_present++;
-    handle->picture_parameter_set_id_present[ppsId] = true;
-    updatePps = true;
-  }
-  else {
-    /* Already present PPS */
-    bool constantPps = constantH264PicParametersSetCheck(
-      *(handle->picture_parameter_set[ppsId]),
-      pps
+  if (H264_MAX_PPS <= pps.pic_parameter_set_id)
+    LIBBLU_ERROR_RETURN(
+      "Internal error, unexpected PPS id %u.\n",
+      pps.pic_parameter_set_id
     );
 
-    if (!constantPps) {
-      /* PPS if unconstant, check if changes are allowed */
-      int ret = checkH264PicParametersSetChangeCompliance(
-        handle,
-        *(handle->picture_parameter_set[ppsId]),
-        pps
+  if (checkH264PicParametersSetCompliance(handle, pps) < 0)
+    return -1;
+
+  if (!handle->picture_parameter_set_present[pps.pic_parameter_set_id]) {
+    /* Newer PPS */
+    handle->picture_parameter_set_present  [pps.pic_parameter_set_id] = true;
+    handle->nb_picture_parameter_set_present++;
+  }
+
+  if (1 < handle->nb_picture_parameter_set_present) {
+    /* Checking constant parameters between PPS */
+    if (handle->cur_prog_param.entropy_coding_mode_flag != pps.entropy_coding_mode_flag)
+      LIBBLU_H264_CK_BD_FAIL_WCOND_RETURN(
+        LIBBLU_WARN_COUNT_CHECK_INC(&handle->warning_flags, PPS_entropy_coding_mode_flag_change),
+        "Entropy coding mode ('entropy_coding_mode_flag') in Picture Parameter "
+        "Set shall remain the same accross all PPS.\n"
       );
-      if (ret < 0)
-        LIBBLU_H264_CK_FAIL_RETURN(
-          "Forbidden PPS parameters change.\n"
-        );
-
-      updatePps = true;
-    }
+  }
+  else {
+    /* Init constant PPS parameters */
+    handle->cur_prog_param.entropy_coding_mode_flag = pps.entropy_coding_mode_flag;
   }
 
-  if (updatePps) {
-    if (updatePPSH264Parameters(handle, &pps, ppsId) < 0)
-      return -1;
-  }
+  handle->picture_parameter_set_GOP_valid[pps.pic_parameter_set_id] = true;
+  handle->picture_parameter_set_valid    [pps.pic_parameter_set_id] = true;
+  handle->nb_picture_parameter_set_valid++;
 
-  handle->picture_parameter_set_id_valid[ppsId] = true;
+  if (updatePPSH264Parameters(handle, &pps, pps.pic_parameter_set_id) < 0)
+    return -1;
 
   return 0;
 }
@@ -2373,32 +2266,8 @@ static int _parseH264SeiBufferingPeriod(
   /* buffering_period(payloadSize) - Annex D.1.2 */
   uint32_t value;
 
-  H264SPSDataParameters *spsData;
-
   assert(NULL != handle);
   assert(NULL != param);
-
-  if (
-    !handle->sequence_parameter_set_present
-    || !handle->sequence_parameter_set.data.vui_parameters_present_flag
-  )
-    LIBBLU_H264_ERROR_RETURN(
-      "Missing mandatory VUI parameters in SPS, "
-      "Buffering Period SEI message shouldn't be present.\n"
-    );
-
-  spsData = &handle->sequence_parameter_set.data;
-
-#if 0 /* Verification in checks */
-  if (
-    !spsData->vui_parameters.nal_hrd_parameters_present_flag
-    && !spsData->vui_parameters.vcl_hrd_parameters_present_flag
-  )
-    LIBBLU_H264_ERROR_RETURN(
-      "NalHrdBpPresentFlag and VclHrdBpPresentFlag are equal to 0b0, "
-      "so Buffering Period SEI message shouldn't be present.\n"
-    );
-#endif
 
   /* Pre-init values for check purpose : */
   memset(
@@ -2415,39 +2284,47 @@ static int _parseH264SeiBufferingPeriod(
     LIBBLU_H264_READING_FAIL_RETURN();
   param->seq_parameter_set_id = value;
 
-  if (spsData->vui_parameters.nal_hrd_parameters_present_flag) {
-    H264HrdParameters *hrd = &spsData->vui_parameters.nal_hrd_parameters;
-    unsigned SchedSelIdx;
+  /* Checking SPS id */ // TODO: Support more than one SPS
+  if (0x00 != param->seq_parameter_set_id || !handle->sequence_parameter_set_GOP_valid)
+    LIBBLU_H264_ERROR_RETURN(
+      "The Buffering Period SEI message references an invalid SPS or one "
+      "that has not been communicated since the last IDR access unit "
+      "('seq_parameter_set_id' == %u).\n",
+      param->seq_parameter_set_id
+    );
+  const H264SPSDataParameters *sps = &handle->sequence_parameter_set.data;
 
-    for (SchedSelIdx = 0; SchedSelIdx <= hrd->cpb_cnt_minus1; SchedSelIdx++) {
-      unsigned fieldSize = hrd->initial_cpb_removal_delay_length_minus1 + 1;
+  if (sps->NalHrdBpPresentFlag) {
+    const H264HrdParameters *sps_hrd = &sps->vui_parameters.nal_hrd_parameters;
+
+    for (unsigned SchedSelIdx = 0; SchedSelIdx <= sps_hrd->cpb_cnt_minus1; SchedSelIdx++) {
+      unsigned fld_size = sps_hrd->initial_cpb_removal_delay_length_minus1 + 1;
 
       /* [u<initial_cpb_removal_delay_length_minus1+1> initial_cpb_removal_delay[SchedSelIdx]] */
-      if (readBitsNal(handle, &value, fieldSize) < 0)
+      if (readBitsNal(handle, &value, fld_size) < 0)
         LIBBLU_H264_READING_FAIL_RETURN();
       param->nal_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay = value;
 
       /* [u<initial_cpb_removal_delay_length_minus1+1> initial_cpb_removal_delay_offset[SchedSelIdx]] */
-      if (readBitsNal(handle, &value, fieldSize) < 0)
+      if (readBitsNal(handle, &value, fld_size) < 0)
         LIBBLU_H264_READING_FAIL_RETURN();
       param->nal_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay_offset = value;
     }
   }
 
-  if (spsData->vui_parameters.vcl_hrd_parameters_present_flag) {
-    H264HrdParameters *hrd = &spsData->vui_parameters.vcl_hrd_parameters;
-    unsigned SchedSelIdx;
+  if (sps->VclHrdBpPresentFlag) {
+    const H264HrdParameters *sps_hrd = &sps->vui_parameters.vcl_hrd_parameters;
 
-    for (SchedSelIdx = 0; SchedSelIdx <= hrd->cpb_cnt_minus1; SchedSelIdx++) {
-      unsigned fieldSize = hrd->initial_cpb_removal_delay_length_minus1 + 1;
+    for (unsigned SchedSelIdx = 0; SchedSelIdx <= sps_hrd->cpb_cnt_minus1; SchedSelIdx++) {
+      unsigned fld_size = sps_hrd->initial_cpb_removal_delay_length_minus1 + 1;
 
       /* [u<initial_cpb_removal_delay_length_minus1+1> initial_cpb_removal_delay[SchedSelIdx]] */
-      if (readBitsNal(handle, &value, fieldSize) < 0)
+      if (readBitsNal(handle, &value, fld_size) < 0)
         LIBBLU_H264_READING_FAIL_RETURN();
       param->vcl_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay = value;
 
       /* [u<initial_cpb_removal_delay_length_minus1+1> initial_cpb_removal_delay_offset[SchedSelIdx]] */
-      if (readBitsNal(handle, &value, fieldSize) < 0)
+      if (readBitsNal(handle, &value, fld_size) < 0)
         LIBBLU_H264_READING_FAIL_RETURN();
       param->vcl_hrd_parameters[SchedSelIdx].initial_cpb_removal_delay_offset = value;
     }
@@ -2818,14 +2695,14 @@ static int _parseH264SupplementalEnhancementInformationMessage(
   case H264_SEI_TYPE_BUFFERING_PERIOD:
     ret = _parseH264SeiBufferingPeriod(
       handle,
-      &param->bufferingPeriod
+      &param->buffering_period
     );
     break;
 
   case H264_SEI_TYPE_PIC_TIMING:
     ret = _parseH264SeiPicTiming(
       handle,
-      &param->picTiming
+      &param->pic_timing
     );
     break;
 
@@ -2840,7 +2717,7 @@ static int _parseH264SupplementalEnhancementInformationMessage(
   case H264_SEI_TYPE_RECOVERY_POINT:
     ret = _parseH264SeiRecoveryPoint(
       handle,
-      &param->recoveryPoint
+      &param->recovery_point
     );
     break;
 
@@ -2887,10 +2764,7 @@ int decodeH264SupplementalEnhancementInformation(
 )
 {
   /* sei_rbsp() */
-  // int ret;
-  // bool is_constant;
-
-  H264SeiMessageParameters seiMsg;
+  H264SeiMessageParameters msg;
 
   assert(NULL != handle);
 
@@ -2906,10 +2780,10 @@ int decodeH264SupplementalEnhancementInformation(
 
   do {
     /* Parsing SEI_message() : */
-    if (_parseH264SupplementalEnhancementInformationMessage(handle, &seiMsg) < 0)
+    if (_parseH264SupplementalEnhancementInformationMessage(handle, &msg) < 0)
       return -1;
 
-    if (seiMsg.tooEarlyEnd) {
+    if (msg.tooEarlyEnd) {
       /* x264 fix */
       LIBBLU_H264_DEBUG(
         "Warning: Too early end of NAL unit "
@@ -2920,98 +2794,98 @@ int decodeH264SupplementalEnhancementInformation(
 
     LIBBLU_H264_DEBUG_SEI(
       " SEI Message payload - %s.\n",
-      H264SEIMessagePayloadTypeStr(seiMsg.payloadType)
+      H264SEIMessagePayloadTypeStr(msg.payloadType)
     );
     LIBBLU_H264_DEBUG_SEI(
       "  => Type (payloadType): %zu.\n",
-      seiMsg.payloadType
+      msg.payloadType
     );
     LIBBLU_H264_DEBUG_SEI(
       "  => Size (payloadSize): %zu byte(s).\n",
-      seiMsg.payloadSize
+      msg.payloadSize
     );
     LIBBLU_H264_DEBUG_SEI(
       "  Content:\n"
     );
 
     /* Compliance checks and parameters saving : */
-    switch (seiMsg.payloadType) {
-    case H264_SEI_TYPE_BUFFERING_PERIOD:
-      if (!handle->sei.bufferingPeriodPresent) {
-        if (checkH264SeiBufferingPeriodCompliance(handle, seiMsg.bufferingPeriod) < 0)
+    switch (msg.payloadType) {
+    case H264_SEI_TYPE_BUFFERING_PERIOD: /* 0 - buffering_period() */
+      if (!handle->sei.buffering_period_present) {
+        if (checkH264SeiBufferingPeriodCompliance(handle, msg.buffering_period) < 0)
           return -1;
       }
       else {
         bool is_constant = constantH264SeiBufferingPeriodCheck(
           handle,
-          handle->sei.bufferingPeriod,
-          seiMsg.bufferingPeriod
+          handle->sei.buffering_period,
+          msg.buffering_period
         );
 
         if (!is_constant) {
           int ret = checkH264SeiBufferingPeriodChangeCompliance(
             handle,
-            handle->sei.bufferingPeriod,
-            seiMsg.bufferingPeriod
+            handle->sei.buffering_period,
+            msg.buffering_period
           );
           if (ret < 0)
             return -1;
         }
       }
 
-      handle->sei.bufferingPeriod = seiMsg.bufferingPeriod; /* Update */
-      handle->sei.bufferingPeriodPresent = true;
-      handle->sei.bufferingPeriodValid = true;
+      handle->sei.buffering_period_present   = true;
+      handle->sei.buffering_period_GOP_valid = true;
+      handle->sei.buffering_period_valid     = true;
+      handle->sei.buffering_period           = msg.buffering_period; // Update
       break;
 
-    case H264_SEI_TYPE_PIC_TIMING:
+    case H264_SEI_TYPE_PIC_TIMING: /* 1 - pic_timing() */
       /* Always update */
-      if (checkH264SeiPicTimingCompliance(handle, seiMsg.picTiming) < 0)
+      if (checkH264SeiPicTimingCompliance(handle, msg.pic_timing) < 0)
         return -1;
 
-      if (handle->sei.picTimingPresent) {
+      if (handle->sei.pic_timing_present) {
         /* Check changes */
 #if 0
         ret = checkH264SeiPicTimingChangeCompliance(
           handle,
-          &handle->sei.picTiming,
-          &seiMsg.picTiming
+          &handle->sei.pic_timing,
+          &msg.pic_timing
         );
 #endif
       }
 
-      handle->sei.picTiming = seiMsg.picTiming; /* Always update */
-      handle->sei.picTimingPresent = true;
-      handle->sei.picTimingValid = true;
+      handle->sei.pic_timing_present = true;
+      handle->sei.pic_timing_valid   = true;
+      handle->sei.pic_timing         = msg.pic_timing; // Update
       break;
 
-    case H264_SEI_TYPE_RECOVERY_POINT:
+    case H264_SEI_TYPE_RECOVERY_POINT: /* 6 - recovery_point() */
 
-      if (!handle->sei.recoveryPointPresent) {
-        if (checkH264SeiRecoveryPointCompliance(handle, seiMsg.recoveryPoint) < 0)
+      if (!handle->sei.recovery_point_present) {
+        if (checkH264SeiRecoveryPointCompliance(handle, msg.recovery_point) < 0)
           return -1;
       }
       else {
         bool is_constant = constantH264SeiRecoveryPointCheck(
-          handle->sei.recoveryPoint,
-          seiMsg.recoveryPoint
+          handle->sei.recovery_point,
+          msg.recovery_point
         );
         if (!is_constant) {
           /* Check changes */
-          if (checkH264SeiRecoveryPointChangeCompliance(handle, seiMsg.recoveryPoint) < 0)
+          if (checkH264SeiRecoveryPointChangeCompliance(handle, msg.recovery_point) < 0)
             return -1;
         }
       }
 
-      handle->sei.recoveryPoint = seiMsg.recoveryPoint; /* Update */
-      handle->sei.recoveryPointPresent = true;
-      handle->sei.recoveryPointValid = true;
+      handle->sei.recovery_point_present = true;
+      handle->sei.recovery_point_valid   = true;
+      handle->sei.recovery_point         = msg.recovery_point; // Update
       break;
 
     default:
       LIBBLU_H264_DEBUG_SEI("  NOTE: Unchecked SEI message type.\n");
     }
-
   } while (moreRbspDataNal(handle));
 
   /* rbsp_trailing_bits() */
@@ -3282,12 +3156,12 @@ static int _checkAndSetPresentOperationsH264DecRefPicMarking(
     break;
 
   case H264_MEM_MGMNT_CTRL_OP_ALL_UNUSED:
-    if (param->presenceOfMemManCtrlOp5)
+    if (param->pres_of_mem_man_ctrl_op_5)
       LIBBLU_H264_ERROR_RETURN(
         "Presence of multiple 'memory_management_control_operation' "
         "equal to 5 in a slice header.\n"
       );
-    param->presenceOfMemManCtrlOp5 = true;
+    param->pres_of_mem_man_ctrl_op_5 = true;
     break;
 
   case H264_MEM_MGMNT_CTRL_OP_USED_LONG_TERM:
@@ -3409,6 +3283,20 @@ static int _parseH264DecRefPicMarking(
   return 0;
 }
 
+static unsigned _calcPrevRefFrameNum(
+  const H264SliceHeaderParameters *slice_header,
+  const H264CurrentProgressParam *cur
+)
+{
+  if (slice_header->is_IDR_pic)
+    return 0u;
+
+  if (cur->gaps_in_frame_num_since_prev_ref_prim_coded_pic)
+    return cur->last_non_existing_frame_num;
+
+  return cur->prev_ref_prim_coded_pic.frame_num;
+}
+
 static int _parseH264SliceHeader(
   H264ParametersHandlerPtr handle,
   H264SliceHeaderParameters *param
@@ -3417,12 +3305,9 @@ static int _parseH264SliceHeader(
   /* slice_header() - 7.3.3 Slice header syntax */
   uint32_t value;
 
-  H264SequenceParametersSetDataParameters *sps;
-  H264PicParametersSetParameters *pps;
-
-  bool isRefPic = isReferencePictureH264NalRefIdcValue(getNalRefIdc(handle));
-  bool IdrPicFlag = isIdrPictureH264NalUnitTypeValue(getNalUnitType(handle));
-  bool isExt = isCodedSliceExtensionH264NalUnitTypeValue(getNalUnitType(handle));
+  bool is_ref_pic         = isReferencePictureH264NalRefIdcValue(getNalRefIdc(handle));
+  bool is_IDR_pic         = isIDRPictureH264NalUnitTypeValue(getNalUnitType(handle)); // IdrPicFlag
+  bool is_coded_slice_ext = isCodedSliceExtensionH264NalUnitTypeValue(getNalUnitType(handle));
 
   /* bool frameNumEqualPrevRefFrameNum; */  /* TODO */
 
@@ -3433,9 +3318,11 @@ static int _parseH264SliceHeader(
     LIBBLU_H264_ERROR_RETURN(
       "Missing mandatory SPS parameters, Unable to decode slice_header().\n"
     );
-  sps = &handle->sequence_parameter_set.data;
+  const H264SequenceParametersSetDataParameters *sps =
+    &handle->sequence_parameter_set.data
+  ;
 
-  if (0 == handle->highest_picture_parameter_set_id_present)
+  if (!handle->nb_picture_parameter_set_present)
     LIBBLU_H264_ERROR_RETURN(
       "Missing mandatory PPS parameters, Unable to decode slice_header().\n"
     );
@@ -3466,18 +3353,16 @@ static int _parseH264SliceHeader(
   param->pic_parameter_set_id = value;
 
   /* Checking PPS id */
-#if 0
-  if (H264_MAX_PPS <= param->pic_parameter_set_id)
+  if (!handle->picture_parameter_set_GOP_valid[param->pic_parameter_set_id])
     LIBBLU_H264_ERROR_RETURN(
-      "Slice header pic_parameter_set_id value overflow.\n"
-    );
-#endif
-  if (!handle->picture_parameter_set_id_present[param->pic_parameter_set_id])
-    LIBBLU_H264_ERROR_RETURN(
-      "Slice header referring unknown PPS id %u.\n",
+      "The slice header references an invalid PPS or one that has not been "
+      "communicated since the last IDR access unit "
+      "('pic_parameter_set_id' == %u).\n",
       param->pic_parameter_set_id
     );
-  pps = handle->picture_parameter_set[param->pic_parameter_set_id];
+  const H264PicParametersSetParameters *pps = handle->picture_parameter_set[
+    param->pic_parameter_set_id
+  ];
 
   if (sps->separate_colour_plane_flag) {
     /* [u2 colour_plane_id] */
@@ -3492,65 +3377,6 @@ static int _parseH264SliceHeader(
   if (readBitsNal(handle, &value, sps->log2_max_frame_num_minus4 + 4) < 0)
     LIBBLU_H264_READING_FAIL_RETURN();
   param->frame_num = value;
-
-#if 0
-  if (IdrPicFlag) {
-    if (0 != param->frame_num) {
-      LIBBLU_H264_ERROR_RETURN(
-        "Broken picture identifier, unexpected value 'frame_num' == %u for "
-        "an IDR picture, shall be equal to 0.\n"
-      );
-    }
-
-    handle->curProgParam.PrevRefFrameNum = 0;
-  }
-  else {
-    /* Non-IDR pict */
-    frameNumEqualPrevRefFrameNum =
-      (param->frame_num == handle->curProgParam.PrevRefFrameNum)
-    ;
-
-    if (frameNumEqualPrevRefFrameNum) {
-
-    }
-
-    if (!frameNumEqualPrevRefFrameNum) {
-      handle->curProgParam.gapsInFrameNum = (
-        param->frame_num
-        != (
-          (handle->curProgParam.PrevRefFrameNum + 1)
-          % spsData->MaxFrameNum
-        )
-      );
-
-      if (handle->curProgParam.gapsInFrameNum) {
-        /**
-         * Invoke 8.2.5.2 Decoding process for gaps in frame_num
-         * (regardless to gaps_in_frame_num_value_allowed_flag)
-         */
-
-        LIBBLU_H264_CK_FAIL_RETURN(
-          "Forbidden gaps in 'frame_num' value "
-          "(last: %" PRIu16 ", cur: %" PRIu16 ").\n",
-          handle->curProgParam.PrevRefFrameNum,
-          param->frame_num
-        );
-      }
-    }
-
-#if 0
-    else if (param->frame_num != handle->curProgParam.PrevRefFrameNum) {
-      /* Update if required PrevRefFrameNum */
-      /* Next picture to the last referential one is marked as the new one. */
-      handle->curProgParam.PrevRefFrameNum =
-        (handle->curProgParam.PrevRefFrameNum + 1) %
-        spsData->MaxFrameNum
-      ;
-    }
-#endif
-  }
-#endif
-  handle->cur_prog_param.gapsInFrameNum = false;
 
   if (!sps->frame_mbs_only_flag) {
     /* [b1 field_pic_flag] */
@@ -3572,7 +3398,7 @@ static int _parseH264SliceHeader(
     param->bottom_field_flag = false;
   }
 
-  if (IdrPicFlag) {
+  if (is_IDR_pic) {
     /* [ue idr_pic_id] */
     if (readExpGolombCodeNal(handle, &value, 16) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
@@ -3702,7 +3528,7 @@ static int _parseH264SliceHeader(
     }
   }
 
-  if (isExt) {
+  if (is_coded_slice_ext) {
     /* Present if nal_unit_type is equal to 20 or 21. */
     /* ref_pic_list_mvc_modification() */
     /* Annex H */
@@ -3748,7 +3574,7 @@ static int _parseH264SliceHeader(
 
   if (param->decRefPicMarkingPresent) {
     /* dec_ref_pic_marking() */
-    if (_parseH264DecRefPicMarking(handle, &param->dec_ref_pic_marking, IdrPicFlag) < 0)
+    if (_parseH264DecRefPicMarking(handle, &param->dec_ref_pic_marking, is_IDR_pic) < 0)
       return -1;
   }
 
@@ -3780,12 +3606,16 @@ static int _parseH264SliceHeader(
         LIBBLU_H264_READING_FAIL_RETURN();
       param->sp_for_switch_flag = value;
     }
+    else
+      param->sp_for_switch_flag = 0;
 
     /* [se slice_qs_delta] */
     if (readSignedExpGolombCodeNal(handle, &value, 16) < 0)
       LIBBLU_H264_READING_FAIL_RETURN();
     param->slice_qs_delta = (int) value;
   }
+  else
+    param->slice_qs_delta = param->sp_for_switch_flag = 0;
 
   if (pps->deblocking_filter_control_present_flag) {
     /* [ue disable_deblocking_filter_idc] */
@@ -3835,34 +3665,27 @@ static int _parseH264SliceHeader(
         LIBBLU_H264_READING_FAIL_RETURN();
       param->slice_group_change_cycle = value;
     }
+    else
+      param->slice_group_change_cycle = 0;
   }
+  else
+    param->slice_group_change_cycle = 0;
 
   /* Computed parameters: */
-  param->isRefPic = isRefPic;
-  param->isIdrPic = IdrPicFlag;
-  param->isCodedSliceExtension = isExt;
-  param->sps_pic_order_cnt_type = sps->pic_order_cnt_type;
-  param->presenceOfMemManCtrlOp5 = param->dec_ref_pic_marking.presenceOfMemManCtrlOp5;
+  param->is_ref_pic                = is_ref_pic;
+  param->is_IDR_pic                = is_IDR_pic;
+  param->is_coded_slice_ext        = is_coded_slice_ext;
+  param->sps_pic_order_cnt_type    = sps->pic_order_cnt_type;
+  param->pres_of_mem_man_ctrl_op_5 = param->dec_ref_pic_marking.pres_of_mem_man_ctrl_op_5;
 
-  param->MbaffFrameFlag =
-    sps->mb_adaptive_frame_field_flag
-    && !param->field_pic_flag
-  ;
-  param->PicHeightInMbs =
-    sps->FrameHeightInMbs
-    / (1 + param->field_pic_flag)
-  ;
-  param->PicHeightInSamplesL =
-    param->PicHeightInMbs * 16
-  ;
-  param->PicHeightInSamplesC =
-    param->PicHeightInMbs
-    * sps->MbHeightC
-  ;
-  param->PicSizeInMbs =
-    param->PicHeightInMbs
-    * sps->PicWidthInMbs
-  ;
+  param->MbaffFrameFlag = sps->mb_adaptive_frame_field_flag && !param->field_pic_flag;
+
+  param->PicHeightInMbs      = sps->FrameHeightInMbs / (1 + param->field_pic_flag);
+  param->PicHeightInSamplesL = param->PicHeightInMbs * 16;
+  param->PicHeightInSamplesC = param->PicHeightInMbs * sps->MbHeightC;
+  param->PicSizeInMbs        = param->PicHeightInMbs * sps->PicWidthInMbs;
+
+  param->PrevRefFrameNum = _calcPrevRefFrameNum(param, &handle->cur_prog_param);
 
   return 0;
 }
@@ -3875,11 +3698,12 @@ typedef enum {
     first VCL NALU of a primary coded picture.                               */
 } H264FirstVclNaluPCPRet;
 
-static H264FirstVclNaluPCPRet _detectFirstVclNalUnitOfPrimCodedPicture(
+static H264FirstVclNaluPCPRet _detectFirstVCLNalUnitOfPrimCodedPicture(
   H264SliceHeaderParameters last,
   H264SliceHeaderParameters cur
 )
 {
+  /* [1] 7.4.1.2.4 Detection of the first VCL NAL unit of a primary coded picture */
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'frame_num' differs in value ? : %u => %u.\n",
     last.frame_num, cur.frame_num
@@ -3914,11 +3738,11 @@ static H264FirstVclNaluPCPRet _detectFirstVclNalUnitOfPrimCodedPicture(
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'nal_ref_idc' == 0 (IDR-pic) differs in value ? : %s => %s.\n",
-    BOOL_STR(last.isRefPic),
-    BOOL_STR(cur.isRefPic)
+    BOOL_STR(last.is_ref_pic),
+    BOOL_STR(cur.is_ref_pic)
   );
 
-  if (last.isRefPic ^ cur.isRefPic)
+  if (last.is_ref_pic ^ cur.is_ref_pic)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
@@ -3972,14 +3796,14 @@ static H264FirstVclNaluPCPRet _detectFirstVclNalUnitOfPrimCodedPicture(
 
   LIBBLU_H264_DEBUG_AU_PROCESSING(
     " -> Does 'IdrPicFlag' differs in value ? : %u => %u.\n",
-    last.isIdrPic,
-    cur.isIdrPic
+    last.is_IDR_pic,
+    cur.is_IDR_pic
   );
 
-  if (last.isIdrPic != cur.isIdrPic)
+  if (last.is_IDR_pic != cur.is_IDR_pic)
     return H264_FRST_VCL_NALU_PCP_RET_TRUE;
 
-  if (cur.isIdrPic) {
+  if (cur.is_IDR_pic) {
     LIBBLU_H264_DEBUG_AU_PROCESSING(
       "  -> Does 'idr_pic_id' differs in value ? : %u => %u.\n",
       last.idr_pic_id, cur.idr_pic_id
@@ -3993,8 +3817,7 @@ static H264FirstVclNaluPCPRet _detectFirstVclNalUnitOfPrimCodedPicture(
 }
 
 int decodeH264SliceLayerWithoutPartitioning(
-  H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options
+  H264ParametersHandlerPtr handle
 )
 {
   H264SliceLayerWithoutPartitioningParameters slice;
@@ -4018,13 +3841,14 @@ int decodeH264SliceLayerWithoutPartitioning(
    * NOTE: If no Coded Slice VCL NALU is present before, this NALU is necessary
    * the start of a new primary coded picture.
    */
-  H264FirstVclNaluPCPRet is_first_VCL_NALU_ret = H264_FRST_VCL_NALU_PCP_RET_TRUE;
-  if (handle->slice_present) {
-    is_first_VCL_NALU_ret = _detectFirstVclNalUnitOfPrimCodedPicture(
-      slice.header,
-      handle->slice.header
-    );
-  }
+  H264FirstVclNaluPCPRet is_first_VCL_NALU_ret = (
+    (!handle->slice_valid)
+    ? H264_FRST_VCL_NALU_PCP_RET_TRUE
+    : _detectFirstVCLNalUnitOfPrimCodedPicture(
+        slice.header,
+        handle->slice.header
+      )
+  );
 
   switch (is_first_VCL_NALU_ret) {
   case H264_FRST_VCL_NALU_PCP_RET_FALSE:
@@ -4054,39 +3878,16 @@ int decodeH264SliceLayerWithoutPartitioning(
   LIBBLU_H264_DEBUG_SLICE("  Slice header:\n");
 
   int ret = 0;
-  if (!handle->slice_present) {
-    ret = checkH264SliceLayerWithoutPartitioningCompliance(
-      handle, options, slice
-    );
-  }
-  else {
-    ret = checkH264SliceLayerWithoutPartitioningChangeCompliance(
-      handle, options, handle->slice, slice
-    );
-  }
+  if (is_first_VCL_NALU_ret)
+    ret = checkH264SliceLayerWithoutPartitioningCompliance(handle, slice);
+  else
+    ret = checkH264SliceLayerWithoutPartitioningChangeCompliance(handle, handle->slice, slice);
   if (ret < 0)
     return -1;
 
   /* Update current slice : */
-#if 0
-  if (
-    handle->slice_present
-    && handle->slice.header.decRefPicMarkingPresent
-  ) {
-    /* Free previous memory_management_control_operation storage structures : */
-    if (
-      !handle->slice.header.dec_ref_pic_marking.IdrPicFlag
-      && handle->slice.header.dec_ref_pic_marking.adaptive_ref_pic_marking_mode_flag
-    ) {
-      closeH264MemoryManagementControlOperations(
-        handle->slice.header.dec_ref_pic_marking.MemMngmntCtrlOp
-      );
-    }
-  }
-#endif
-
+  handle->slice_valid  = true;
   handle->slice.header = slice.header;
-  handle->slice_present = true;
 
   return 0;
 }
@@ -4100,7 +3901,7 @@ int decodeH264FillerData(
 
   assert(NULL != handle);
 
-  if (!handle->slice_present)
+  if (!handle->slice_valid)
     LIBBLU_H264_ERROR_RETURN(
       "Presence of Filler data NAL before first slice NAL unit.\n"
     );
@@ -4173,23 +3974,21 @@ int analyzeH264(
       goto free_return;
 
     H264NalUnitTypeValue nal_unit_type = getNalUnitType(handle);
+    H264NalRefIdcValue   nal_ref_idc   = getNalUnitRefIdc(handle);
 
     if (_isStartOfANewAU(&handle->cur_prog_param, nal_unit_type)) {
       if (_processAccessUnit(handle, &hrd_verif_ctx, settings) < 0)
         goto free_return;
+
+      /* Reset settings for the next Access Unit : */
+      resetH264ParametersHandler(handle, isIDRPictureH264NalUnitTypeValue(nal_unit_type));
     }
 
     switch (nal_unit_type) {
     case NAL_UNIT_TYPE_NON_IDR_SLICE: /* 0x01 / 1 */
     case NAL_UNIT_TYPE_IDR_SLICE:     /* 0x05 / 5 */
-      if (decodeH264SliceLayerWithoutPartitioning(handle, settings->options) < 0)
+      if (decodeH264SliceLayerWithoutPartitioning(handle) < 0)
         goto free_return;
-
-      /* Compute PicOrderCnt: */
-      if (_computeAuPicOrderCnt(handle, settings->options) < 0)
-        goto free_return;
-
-      handle->cur_prog_param.is_VCL_NALU_reached = true;
       break;
 
     case NAL_UNIT_TYPE_SLICE_PART_A_LAYER: /* 0x02 / 2 */
@@ -4220,7 +4019,7 @@ int analyzeH264(
 
         if (
           settings->options.force_rebuild_sei
-          && (handle->sei.bufferingPeriodValid || handle->sei.picTimingValid)
+          && (handle->sei.buffering_period_valid || handle->sei.pic_timing_valid)
         ) {
           LIBBLU_H264_DEBUG_SEI(
             " ### SEI NAL unit contains buffering_period or "
@@ -4235,8 +4034,8 @@ int analyzeH264(
           if (discardCurNalCell(handle) < 0)
             goto free_return;
 
-          handle->sei.bufferingPeriodValid = false;
-          handle->sei.picTimingValid = false;
+          handle->sei.buffering_period_valid = false;
+          handle->sei.pic_timing_valid = false;
 
           if (reachNextNal(handle) < 0)
             goto free_return;
@@ -4321,6 +4120,32 @@ int analyzeH264(
       );
     }
 
+    if (isVCLH264NalUnitTypeValue(nal_unit_type)) {
+      /* Compute Access Unit PicOrderCnt: */
+      int64_t PicOrderCnt = _computeAUPicOrderCnt(handle, settings->options);
+      if (PicOrderCnt < 0)
+        goto free_return;
+
+      /* Save slice properties */
+      const H264SliceHeaderParameters *slice_header = &handle->slice.header;
+      H264CurrentProgressParam *cur = &handle->cur_prog_param;
+
+      /* Picture */
+      H264LastPictureProperties *last_pic = &cur->last_pic;
+      last_pic->pres_of_mem_man_ctrl_op_5 = slice_header->pres_of_mem_man_ctrl_op_5;
+      last_pic->bottom_field_flag         = slice_header->bottom_field_flag;
+      last_pic->PicOrderCnt               = PicOrderCnt;
+
+      if (isReferencePictureH264NalRefIdcValue(nal_ref_idc)) {
+        /* Reference picture */
+        H264PrevRefPrimCodedPictureProperties *prev_ref_pic = &cur->prev_ref_prim_coded_pic;
+        prev_ref_pic->field_picture_number = handle->cur_prog_param.nb_pictures;
+        prev_ref_pic->frame_num            = slice_header->frame_num;
+      }
+
+      handle->cur_prog_param.is_VCL_NALU_reached = true;
+    }
+
     if (addNalCellToAccessUnit(handle) < 0)
       goto free_return;
 
@@ -4336,7 +4161,7 @@ int analyzeH264(
         if (insertH264SeiBufferingPeriodPlaceHolder(handle) < 0)
           goto free_return;
 
-        handle->sei.bufferingPeriodValid = true;
+        handle->sei.buffering_period_valid = true;
 #else
         LIBBLU_H264_ERROR_FRETURN(
           "SEI rebuilding option is currently broken.\n"
@@ -4364,17 +4189,18 @@ int analyzeH264(
     return 0;
   }
 
-  if (0 < handle->cur_prog_param.nb_slices_in_pic) {
+  if (0 < handle->cur_prog_param.nb_slices_in_picture) {
     /* Process remaining pending slices. */
     if (_processPESFrame(handle, settings->options) < 0)
       goto free_return;
   }
 
-  if (!handle->cur_prog_param.nbPics)
+  if (!handle->cur_prog_param.nb_frames)
     LIBBLU_ERROR_FRETURN("No picture in bitstream.\n");
 
-  if (handle->cur_prog_param.nbPics == 1) {
+  if (handle->cur_prog_param.nb_frames == 1) {
     /* Only one picture = Still picture. */
+    // TODO: Improve detection of still pictures
     LIBBLU_INFO("Stream is detected as still picture.\n");
     setStillPictureEsmsHandler(handle->script);
   }

@@ -615,8 +615,7 @@ int initLibbluMuxingContext(
   /* Set default fields to avoid undefined behaviour in case of error leading
   to a free_return escape. */
   *dst = (LibbluMuxingContext) {
-    .settings_ptr          = settings_ptr,
-    .nb_elementary_streams = nb_ES
+    .settings_ptr = settings_ptr
   };
 
   initLibbluPIDValues(&dst->PID_values, setBDAVStdLibbluNumberOfESTypes);
@@ -662,11 +661,12 @@ int initLibbluMuxingContext(
   bool force_script_generation = dst->settings_ptr->options.force_script_generation;
     // General setting
 
-  for (unsigned i = 0; i < settings_ptr->nb_used_es; i++) {
+  for (unsigned i = 0; i < nb_ES; i++) {
     if (_prepareLibbluESStream(dst, script_filepath_array, i, force_script_generation) < 0) {
       free(script_filepath_array);
       goto free_return;
     }
+    dst->nb_elementary_streams++;
   }
 
   free(script_filepath_array); // Free the temporary filenames array
@@ -693,7 +693,7 @@ int initLibbluMuxingContext(
   LIBBLU_DEBUG_COM("Initial PES packets building.\n");
 
   bool primary_video_already_seen = false;
-  for (unsigned i = 0; i < settings_ptr->nb_used_es; i++) {
+  for (unsigned i = 0; i < nb_ES; i++) {
     LibbluStreamPtr stream            = dst->elementary_streams[i];
     LibbluESFormatUtilities utilities = dst->elementary_streams_utilities[i];
 

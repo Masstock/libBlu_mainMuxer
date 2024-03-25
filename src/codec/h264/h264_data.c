@@ -169,7 +169,7 @@ unsigned getH264BrNal(
     assert(0 < constraints.cpbBrNalFactor);
   }
 
-  return constraints.cpbBrNalFactor *constraints.MaxBR;
+  return constraints.cpbBrNalFactor * constraints.MaxBR;
 }
 
 /* ### H.264 Profile / Level constraints : ################################# */
@@ -627,18 +627,19 @@ unsigned getH264BDMinNbSlices(
 }
 
 unsigned getH264BDMaxGOPLength(
-  const H264VuiParameters *vui_parameters
+  const H264VuiParameters *vui_parameters,
+  bool max_BR_15_mbps
 )
 {
   if (FLOAT_COMPARE(vui_parameters->FrameRate, 23.976) || vui_parameters->FrameRate == 24)
-    return 24u;
+    return 24u << max_BR_15_mbps;
   if (FLOAT_COMPARE(vui_parameters->FrameRate, 29.970))
-    return 30u;
+    return 30u << max_BR_15_mbps;
   if (vui_parameters->FrameRate == 25)
-    return 25u;
+    return 25u << max_BR_15_mbps;
   if (FLOAT_COMPARE(vui_parameters->FrameRate, 59.940))
-    return 60u;
-  return 50u; // 50
+    return 60u << max_BR_15_mbps;
+  return 50u << max_BR_15_mbps; // 50
 }
 
 H264BdavExpectedAspectRatioRet getH264BDExpectedAspectRatioIdc(

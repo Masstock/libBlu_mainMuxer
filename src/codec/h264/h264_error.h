@@ -36,13 +36,13 @@
 /* ### H.264 Checks : ###################################################### */
 
 #define LIBBLU_H264_CK_NAME  LIBBLU_H264_KEYWORD "/Checks"
-#define LIBBLU_H264_CK_PREFIX  LIBBLU_H264_COM_NAME ": "
-#define LIBBLU_H264_CK_BD_PREFIX  LIBBLU_H264_COM_NAME " BD Compliance: "
+#define LIBBLU_H264_CK_PREFIX  LIBBLU_H264_CK_NAME ": "
+#define LIBBLU_H264_CK_BD_PREFIX  LIBBLU_H264_CK_NAME " BD Compliance: "
 
 #define LIBBLU_H264_CK_WCOND_WARNING(expr, format, ...)                       \
   LIBBLU_WCOND(                                                               \
     expr,                                                                     \
-    LIBBLU_H264_CK_BD_PREFIX format,                                          \
+    LIBBLU_H264_CK_PREFIX format,                                             \
     ##__VA_ARGS__                                                             \
   )
 
@@ -62,17 +62,32 @@
 #define LIBBLU_H264_CK_ERROR_BRETURN(format, ...)                             \
   LIBBLU_ERROR_BRETURN(LIBBLU_H264_CK_PREFIX format, ##__VA_ARGS__)
 
+#define LIBBLU_H264_CK_FAIL(format, ...)                                      \
+  LIBBLU_FAIL(                                                                \
+    LIBBLU_EXPLODE_COMPLIANCE,                                                \
+    LIBBLU_H264_CK_PREFIX format,                                             \
+    ##__VA_ARGS__                                                             \
+  )
+
 #define LIBBLU_H264_CK_FAIL_RETURN(format, ...)                               \
   LIBBLU_FAIL_RETURN(                                                         \
     LIBBLU_EXPLODE_COMPLIANCE,                                                \
-    LIBBLU_H264_CK_BD_PREFIX format,                                          \
+    LIBBLU_H264_CK_PREFIX format,                                             \
     ##__VA_ARGS__                                                             \
   )
 
 #define LIBBLU_H264_CK_FAIL_FRETURN(format, ...)                              \
   LIBBLU_FAIL_FRETURN(                                                        \
     LIBBLU_EXPLODE_COMPLIANCE,                                                \
-    LIBBLU_H264_CK_BD_PREFIX format,                                          \
+    LIBBLU_H264_CK_PREFIX format,                                             \
+    ##__VA_ARGS__                                                             \
+  )
+
+#define LIBBLU_H264_CK_FAIL_WCOND_RETURN(expr, format, ...)                   \
+  LIBBLU_FAIL_WCOND_RETURN(                                                   \
+    LIBBLU_EXPLODE_COMPLIANCE,                                                \
+    expr,                                                                     \
+    LIBBLU_H264_CK_PREFIX format,                                             \
     ##__VA_ARGS__                                                             \
   )
 
@@ -88,6 +103,18 @@
     LIBBLU_EXPLODE_BD_COMPLIANCE,                                             \
     expr,                                                                     \
     LIBBLU_H264_CK_BD_PREFIX format,                                          \
+    ##__VA_ARGS__                                                             \
+  )
+
+/* ### H.264 Patcher : ##################################################### */
+
+#define LIBBLU_H264_PCH_NAME  LIBBLU_H264_KEYWORD "/Patcher"
+#define LIBBLU_H264_PCH_PREFIX  LIBBLU_H264_COM_NAME ": "
+
+#define LIBBLU_H264_PCH_WCOND_WARNING(expr, format, ...)                      \
+  LIBBLU_WCOND(                                                               \
+    expr,                                                                     \
+    LIBBLU_H264_PCH_PREFIX format,                                            \
     ##__VA_ARGS__                                                             \
   )
 

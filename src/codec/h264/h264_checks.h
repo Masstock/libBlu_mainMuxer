@@ -150,35 +150,28 @@ int checkH264SeiRecoveryPointChangeCompliance(
 
 /* ### Slices : ############################################################ */
 
-/* ###### Slice header : ################################################### */
-
-int checkH264SliceHeaderCompliance(
-  const H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options,
-  H264SliceHeaderParameters param
-);
-
-int checkH264SliceHeaderChangeCompliance(
-  const H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options,
-  H264SliceHeaderParameters first,
-  H264SliceHeaderParameters second
-);
-
 /* ###### Slice layer without partitioning : ############################### */
 
 /* slice_layer_without_partitioning_rbsp() NAL */
 int checkH264SliceLayerWithoutPartitioningCompliance(
   const H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options,
   H264SliceLayerWithoutPartitioningParameters param
 );
 
 int checkH264SliceLayerWithoutPartitioningChangeCompliance(
   const H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options,
   H264SliceLayerWithoutPartitioningParameters first,
   H264SliceLayerWithoutPartitioningParameters second
+);
+
+/* ### Access Unit : ####################################################### */
+
+int checkContentH264AccessUnit(
+  const H264ParametersHandlerPtr handle
+);
+
+int checkBDConstraintsH264AccessUnit(
+  const H264ParametersHandlerPtr handle
 );
 
 #endif

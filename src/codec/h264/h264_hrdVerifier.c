@@ -152,9 +152,9 @@ static int _checkInitConstaints(
     assert(0 < cnstr->cpbBrNalFactor);
 
     /* ITU-T Rec. H.264 A.3.1.j) / A.3.3.g) */
-    if (cnstr->MaxBR *cnstr->cpbBrNalFactor < BitRate) {
+    if (cnstr->MaxBR * cnstr->cpbBrNalFactor < BitRate) {
 
-      const char *name, * coeff;
+      const char *name, *coeff;
       if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
         name = "A.3.1.j)", coeff = "1200";
       else // isHighH264ProfileIdcValue
@@ -163,27 +163,27 @@ static int _checkInitConstaints(
       LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
         LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
         "ITU-T Rec. H.264 %s constraint is not satisfied "
-        "(%s *MaxBR = %u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
+        "(%s * MaxBR = %u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
         name, coeff,
-        cnstr->MaxBR *cnstr->cpbBrNalFactor,
+        cnstr->MaxBR * cnstr->cpbBrNalFactor,
         SchedSelIdx,
         BitRate
       );
     }
 
-    if (H264_BDAV_MAX_BITRATE < BitRate) {
+    if (H264_BD_MAX_BITRATE < BitRate) {
       LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(
         LIBBLU_WARN_COUNT_CHECK_INC(warn, bdav_maxbr),
         "Bitrate value exceed BDAV limits "
         "(%u b/s < NAL HRD BitRate[%u] = %u b/s).\n",
-        H264_BDAV_MAX_BITRATE,
+        H264_BD_MAX_BITRATE,
         SchedSelIdx,
         BitRate
       );
     }
 
-    if (cnstr->MaxCPB *cnstr->cpbBrNalFactor < CpbSize) {
-      const char *name, * coeff;
+    if (cnstr->MaxCPB * cnstr->cpbBrNalFactor < CpbSize) {
+      const char *name, *coeff;
 
       if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
         name = "A.3.1.j)", coeff = "1200";
@@ -193,21 +193,21 @@ static int _checkInitConstaints(
       LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
         LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_j__A_3_3_g),
         "ITU-T Rec. H.264 %s constraint is not satisfied "
-        "(%s *MaxCPB = %u bits < NAL HRD CpbSize[%u] = %u bits).\n",
+        "(%s * MaxCPB = %u bits < NAL HRD CpbSize[%u] = %u bits).\n",
         name,
         coeff,
-        cnstr->MaxCPB *cnstr->cpbBrNalFactor,
+        cnstr->MaxCPB * cnstr->cpbBrNalFactor,
         SchedSelIdx,
         CpbSize
       );
     }
 
-    if (H264_BDAV_MAX_CPB_SIZE < CpbSize) {
+    if (H264_BD_MAX_CPB_SIZE < CpbSize) {
       LIBBLU_H264_HRDV_BD_FAIL_WCOND_RETURN(
         LIBBLU_WARN_COUNT_CHECK_INC(warn, bdav_cpbsize),
         "Bitrate value exceed BDAV limits "
         "(%u bits < NAL HRD CpbSize[%u] = %u bits).\n",
-        H264_BDAV_MAX_CPB_SIZE,
+        H264_BD_MAX_CPB_SIZE,
         SchedSelIdx,
         CpbSize
       );
@@ -220,9 +220,9 @@ static int _checkInitConstaints(
 
       assert(0 < cnstr->cpbBrVclFactor);
 
-      if (cnstr->MaxBR *cnstr->cpbBrVclFactor < BitRate) {
+      if (cnstr->MaxBR * cnstr->cpbBrVclFactor < BitRate) {
 
-        const char *name, * coeff;
+        const char *name, *coeff;
         if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
           name = "A.3.1.i)", coeff = "1000";
         else
@@ -231,16 +231,16 @@ static int _checkInitConstaints(
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
           LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
           "ITU-T Rec. H.264 %s constraint is not satisfied"
-          "(%s *MaxBR = %u b/s < VCL HRD BitRate[%u] = %u b/s).\n",
+          "(%s * MaxBR = %u b/s < VCL HRD BitRate[%u] = %u b/s).\n",
           name, coeff,
-          cnstr->MaxBR *cnstr->cpbBrVclFactor,
+          cnstr->MaxBR * cnstr->cpbBrVclFactor,
           SchedSelIdx,
           BitRate
         );
       }
 
-      if (cnstr->MaxCPB *cnstr->cpbBrVclFactor < CpbSize) {
-        const char *name, * coeff;
+      if (cnstr->MaxCPB * cnstr->cpbBrVclFactor < CpbSize) {
+        const char *name, *coeff;
 
         if (isBaselineMainExtendedH264ProfileIdcValue(sps->profile_idc))
           name = "A.3.1.i)", coeff = "1000";
@@ -250,9 +250,9 @@ static int _checkInitConstaints(
         LIBBLU_H264_HRDV_FAIL_WCOND_RETURN(
           LIBBLU_WARN_COUNT_CHECK_INC(warn, A_3_1_i__A_3_3_h),
           "ITU-T Rec. H.264 %s constraint is not satisfied"
-          "(%s *MaxCPB = %u b/s < VCL HRD CpbSize[%u] = %u b/s).\n",
+          "(%s * MaxCPB = %u b/s < VCL HRD CpbSize[%u] = %u b/s).\n",
           name, coeff,
-          cnstr->MaxCPB *cnstr->cpbBrVclFactor,
+          cnstr->MaxCPB * cnstr->cpbBrVclFactor,
           SchedSelIdx,
           CpbSize
         );
@@ -1351,14 +1351,14 @@ static int _checkH264CpbHrdConformanceTests(
   const H264SPSDataParameters *sps     = &handle->sequence_parameter_set.data;
   const H264VuiParameters *vui         = &sps->vui_parameters;
   const H264SliceHeaderParameters *sh  = &handle->slice.header;
-  const H264SeiBufferingPeriod *sei_bp = &handle->sei.bufferingPeriod;
+  const H264SeiBufferingPeriod *sei_bp = &handle->sei.buffering_period;
   const H264ConstraintsParam *cnstr    = &handle->constraints;
 
   const H264HrdVerifierAUProperties *prev_au = &ctx->prev_AU;
 
   unsigned SchedSelIdx = _selectSchedSelIdx(sps);
-  bool first_au_in_buf_period = handle->sei.bufferingPeriodValid;
-  unsigned NumSlicesAU = handle->cur_prog_param.nb_slices_in_pic;
+  bool first_au_in_buf_period = handle->sei.buffering_period_valid;
+  unsigned NumSlicesAU = handle->cur_prog_param.nb_slices_in_picture;
   int64_t NumBytesInAU = DIV_ROUND_UP(au_size, 8);
 
   // NAL HRD parameters
@@ -1585,9 +1585,9 @@ int processAUH264HrdContext(
   const H264HrdParameters *hrd         = &sps->vui_parameters.nal_hrd_parameters;
   const H264SliceHeaderParameters *sh  = &handle->slice.header;
   const H264DecRefPicMarking *dec_ref_pic_marking = &sh->dec_ref_pic_marking;
-  const H264SeiBufferingPeriod *bp_sei = &handle->sei.bufferingPeriod;
-  const H264SeiPicTiming *pt_sei       = &handle->sei.picTiming;
-  bool first_au_in_buf_period           = handle->sei.bufferingPeriodValid;
+  const H264SeiBufferingPeriod *bp_sei = &handle->sei.buffering_period;
+  const H264SeiPicTiming *pt_sei       = &handle->sei.pic_timing;
+  bool first_au_in_buf_period           = handle->sei.buffering_period_valid;
 
   // NAL HRD parameters
   unsigned SchedSelIdx = _selectSchedSelIdx(sps);
@@ -1824,13 +1824,13 @@ int processAUH264HrdContext(
     .field_pic_flag = sh->field_pic_flag,
     .bottom_field_flag = sh->bottom_field_flag,
     .IdrPicFlag = (
-      sh->isIdrPic
+      sh->is_IDR_pic
       && !dec_ref_pic_marking->no_output_of_prior_pics_flag
     ),
     .dpb_output_delay = dpb_output_delay
   };
 
-  if (sh->isIdrPic) {
+  if (sh->is_IDR_pic) {
     if (dec_ref_pic_marking->long_term_reference_flag)
       infos.usage = H264_USED_AS_LONG_TERM_REFERENCE;
     else
@@ -1844,7 +1844,7 @@ int processAUH264HrdContext(
       infos.usage = H264_USED_AS_LONG_TERM_REFERENCE;
     }
     else {
-      if (sh->isRefPic)
+      if (sh->is_ref_pic)
         infos.usage = H264_USED_AS_SHORT_TERM_REFERENCE;
       else
         infos.usage = H264_NOT_USED_AS_REFERENCE;
@@ -1852,7 +1852,7 @@ int processAUH264HrdContext(
   }
 
   if (
-    !sh->isIdrPic
+    !sh->is_IDR_pic
     && dec_ref_pic_marking->adaptive_ref_pic_marking_mode_flag
   ) {
     memcpy(

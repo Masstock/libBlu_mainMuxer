@@ -30,6 +30,7 @@ typedef struct {
 
   unsigned char SPS_value_change;
   unsigned char SPS_duplicated;
+  unsigned char SPS_patch_lower_level;
 
   unsigned char VUI_wrong_SAR;
   unsigned char VUI_wrong_video_format;
@@ -42,6 +43,9 @@ typedef struct {
   unsigned char VUI_missing_colour_description;
 
   unsigned char PPS_entropy_coding_mode_flag_change;
+
+  unsigned char SEI_buf_period_initial_cpb_removal_delay_is_zero;
+  unsigned char SEI_buf_period_initial_cpb_removal_delay_exceeds;
 
   unsigned char slice_wrong_slice_type;
   unsigned char slice_too_many_memory_management_control_operation; /**<
@@ -66,14 +70,16 @@ typedef struct {
   bool sequence_parameter_set_valid;
 
   H264PicParametersSetParameters *picture_parameter_set[H264_MAX_PPS];
-  bool picture_parameter_set_id_present[H264_MAX_PPS];
-  bool picture_parameter_set_id_valid[H264_MAX_PPS];
-  unsigned highest_picture_parameter_set_id_present;
+  bool picture_parameter_set_present[H264_MAX_PPS];
+  bool picture_parameter_set_GOP_valid[H264_MAX_PPS];
+  bool picture_parameter_set_valid[H264_MAX_PPS];
+  unsigned char nb_picture_parameter_set_present;
+  unsigned char nb_picture_parameter_set_valid;
 
   H264SupplementalEnhancementInformationParameters sei;
 
   H264SliceLayerWithoutPartitioningParameters slice;
-  bool slice_present;
+  bool slice_valid;
 
   H264ConstraintsParam constraints;
   H264BDConstraintsParam bd_constraints;
@@ -100,7 +106,8 @@ void updateH264ProfileLimits(
 void updateH264BDConstraints(
   H264ParametersHandlerPtr handle,
   uint8_t level_idc,
-  const H264VuiParameters *vui_parameters
+  const H264VuiParameters *vui_parameters,
+  bool max_BR_15_mbps
 );
 
 /* Handling functions : */
@@ -109,7 +116,8 @@ H264ParametersHandlerPtr initH264ParametersHandler(
 );
 
 void resetH264ParametersHandler(
-  H264ParametersHandlerPtr handle
+  H264ParametersHandlerPtr handle,
+  bool is_IDR_access_unit
 );
 
 int completeH264ParametersHandler(
@@ -206,10 +214,16 @@ static inline H264NalUnitTypeValue getNalUnitType(
   const H264ParametersHandlerPtr handle
 )
 {
-  /* Returns current nal type (or last parsed nal type, 0x0 if none) */
   assert(NULL != handle);
-
   return handle->file.nal_unit_type;
+}
+
+static inline H264NalRefIdcValue getNalUnitRefIdc(
+  const H264ParametersHandlerPtr handle
+)
+{
+  assert(NULL != handle);
+  return handle->file.nal_ref_idc;
 }
 
 /* Reading functions : */

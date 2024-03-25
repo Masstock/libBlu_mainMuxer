@@ -64,8 +64,7 @@ int decodeH264SupplementalEnhancementInformation(
 
 /* slice_layer_without_partitioning_rbsp() NAL */
 int decodeH264SliceLayerWithoutPartitioning(
-  H264ParametersHandlerPtr handle,
-  LibbluESSettingsOptions options
+  H264ParametersHandlerPtr handle
 );
 
 /* filler_data_rbsp() NAL */

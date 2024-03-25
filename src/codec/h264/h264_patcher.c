@@ -651,85 +651,82 @@ free_return:
 }
 
 int rebuildH264SPSNalVuiParameters(
-  H264SPSDataParameters *spsParam,
+  H264SPSDataParameters *sps,
   H264ParametersHandlerPtr handle,
   const LibbluESSettingsOptions options
 )
 {
-  H264VuiParameters *vuiParam;
-  H264VuiColourDescriptionParameters *colourDesc;
-
-  assert(NULL != spsParam);
+  assert(NULL != sps);
   assert(NULL != handle);
 
-  assert(spsParam->vui_parameters_present_flag);
+  assert(sps->vui_parameters_present_flag);
   assert(handle->sequence_parameter_set_present);
 
-  vuiParam = &spsParam->vui_parameters;
-  colourDesc = &vuiParam->colour_description;
+  H264VuiParameters *vui                          = &sps->vui_parameters;
+  H264VuiColourDescriptionParameters *colour_desc = &vui->colour_description;
 
   LIBBLU_DEBUG_COM("Applying SPS Nal VUI parameters updating.\n");
 
   if (handle->cur_prog_param.rebuild_VUI) {
-    vuiParam->video_signal_type_present_flag = true;
-    vuiParam->video_format = H264_VIDEO_FORMAT_NTSC;
-    vuiParam->video_full_range_flag = false;
-    vuiParam->colour_description_present_flag = true;
+    vui->video_signal_type_present_flag = true;
+    vui->video_format = H264_VIDEO_FORMAT_NTSC;
+    vui->video_full_range_flag = false;
+    vui->colour_description_present_flag = true;
 
     /* Set VUI Color Description parameters : */
     switch (handle->sequence_parameter_set.data.FrameHeight) {
     case 576: /* SD PAL */
-      colourDesc->colour_primaries = H264_COLOR_PRIM_BT470BG;
-      colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT470BG;
-      colourDesc->matrix_coefficients = H264_MATRX_COEF_BT470BG;
+      colour_desc->colour_primaries = H264_COLOR_PRIM_BT470BG;
+      colour_desc->transfer_characteristics = H264_TRANS_CHAR_BT470BG;
+      colour_desc->matrix_coefficients = H264_MATRX_COEF_BT470BG;
       break;
 
     case 480: /* SD NTSC */
-      colourDesc->colour_primaries = H264_COLOR_PRIM_SMPTE170M;
-      colourDesc->transfer_characteristics = H264_TRANS_CHAR_SMPTE170M;
-      colourDesc->matrix_coefficients = H264_MATRX_COEF_SMPTE170M;
+      colour_desc->colour_primaries = H264_COLOR_PRIM_SMPTE170M;
+      colour_desc->transfer_characteristics = H264_TRANS_CHAR_SMPTE170M;
+      colour_desc->matrix_coefficients = H264_MATRX_COEF_SMPTE170M;
       break;
 
     default: /* HD */
-      colourDesc->colour_primaries = H264_COLOR_PRIM_BT709;
-      colourDesc->transfer_characteristics = H264_TRANS_CHAR_BT709;
-      colourDesc->matrix_coefficients = H264_MATRX_COEF_BT709;
+      colour_desc->colour_primaries = H264_COLOR_PRIM_BT709;
+      colour_desc->transfer_characteristics = H264_TRANS_CHAR_BT709;
+      colour_desc->matrix_coefficients = H264_MATRX_COEF_BT709;
     }
   }
 
-  if (handle->cur_prog_param.useVuiUpdate) {
+  if (handle->cur_prog_param.update_VUI) {
     switch (options.fps_mod) {
     case 0x0: /* No change */
       break;
 
     case FRAME_RATE_CODE_23976: /* 23.976 */
-      vuiParam->num_units_in_tick = 1001;
-      vuiParam->time_scale = 48000;
+      vui->num_units_in_tick = 1001;
+      vui->time_scale = 48000;
       break;
 
     case FRAME_RATE_CODE_24: /* 24 */
-      vuiParam->num_units_in_tick = 1000;
-      vuiParam->time_scale = 48000;
+      vui->num_units_in_tick = 1000;
+      vui->time_scale = 48000;
       break;
 
     case FRAME_RATE_CODE_25: /* 25 */
-      vuiParam->num_units_in_tick = 1000;
-      vuiParam->time_scale = 50000;
+      vui->num_units_in_tick = 1000;
+      vui->time_scale = 50000;
       break;
 
     case FRAME_RATE_CODE_29970: /* 29.970 */
-      vuiParam->num_units_in_tick = 1001;
-      vuiParam->time_scale = 60000;
+      vui->num_units_in_tick = 1001;
+      vui->time_scale = 60000;
       break;
 
     case FRAME_RATE_CODE_50: /* 50 */
-      vuiParam->num_units_in_tick = 1000;
-      vuiParam->time_scale = 100000;
+      vui->num_units_in_tick = 1000;
+      vui->time_scale = 100000;
       break;
 
     case FRAME_RATE_CODE_59940: /* 59.940 */
-      vuiParam->num_units_in_tick = 1001;
-      vuiParam->time_scale = 120000;
+      vui->num_units_in_tick = 1001;
+      vui->time_scale = 120000;
       break;
 
     default:
@@ -740,31 +737,28 @@ int rebuildH264SPSNalVuiParameters(
 
     if (isUsedLibbluAspectRatioMod(options.ar_mod)) {
       /* vuiParam->aspect_ratio_info_present_flag = true; */
-      vuiParam->aspect_ratio_idc = options.ar_mod.idc;
+      vui->aspect_ratio_idc = options.ar_mod.idc;
       if (options.ar_mod.idc == H264_ASPECT_RATIO_IDC_EXTENDED_SAR) {
-        vuiParam->sar_width = options.ar_mod.x;
-        vuiParam->sar_height = options.ar_mod.y;
+        vui->sar_width  = options.ar_mod.x;
+        vui->sar_height = options.ar_mod.y;
       }
     }
 
     if (0x00 != options.level_mod) {
-      if (
-        options.level_mod < spsParam->level_idc
-        && !handle->cur_prog_param.usageOfLowerLevel
-      ) {
-        LIBBLU_WARNING(
+      if (options.level_mod < sps->level_idc) {
+        LIBBLU_H264_PCH_WCOND_WARNING(
+          LIBBLU_WARN_COUNT_CHECK_INC(&handle->warning_flags, SPS_patch_lower_level),
           "Usage of a lower level than initial one, stream may not respect "
           "new level-related constraints.\n"
         );
 
         /* updateH264LevelLimits(handle, spsParam->level_idc); */
-        handle->cur_prog_param.usageOfLowerLevel = true;
       }
 
-      spsParam->level_idc = options.level_mod;
+      sps->level_idc = options.level_mod;
     }
 
-  } /* if (handle->curProgParam.useVuiUpdate) */
+  } /* if (handle->curProgParam.update_VUI) */
 
   return 0; /* OK */
 }
@@ -842,7 +836,7 @@ int patchH264SequenceParametersSet(
 
   if (
     handle->cur_prog_param.rebuild_VUI
-    || handle->cur_prog_param.useVuiUpdate
+    || handle->cur_prog_param.update_VUI
   ) {
     /* SPS VUI parameters fix/updating */
     updatedSpsDataParam = handle->sequence_parameter_set.data;
@@ -1009,7 +1003,7 @@ int buildH264SeiMessage(
   switch (param->payloadType) {
   case H264_SEI_TYPE_BUFFERING_PERIOD:
     ret = buildH264SeiBufferingPeriodMessage(
-      handle, seiNal, &param->bufferingPeriod
+      handle, seiNal, &param->buffering_period
     );
     break;
 
@@ -1036,7 +1030,7 @@ int buildH264SupplementalEnhancementInformation(
   assert(NULL != seiNal);
   assert(NULL != param);
 
-  for (msgIdx = 0; msgIdx < param->messagesNb; msgIdx++) {
+  for (msgIdx = 0; msgIdx < param->messages_count; msgIdx++) {
     /* sei_message() */
     if (buildH264SeiMessage(handle, seiNal, &param->messages[msgIdx]) < 0)
       return -1;
@@ -1056,7 +1050,7 @@ bool isH264SeiBufferingPeriodPatchMessage(
   assert(NULL != param);
 
   return
-    param->messagesNb == 1
+    param->messages_count == 1
     && param->messages[0].payloadType == H264_SEI_TYPE_BUFFERING_PERIOD
   ;
 }
@@ -1253,7 +1247,7 @@ int patchH264SeiBufferingPeriodMessageParameters(
     );
 
   seiMessage->payloadType = H264_SEI_TYPE_BUFFERING_PERIOD;
-  param = &seiMessage->bufferingPeriod;
+  param = &seiMessage->buffering_period;
 
   messageLen = 0;
 
@@ -1309,7 +1303,7 @@ int insertH264SeiBufferingPeriodPlaceHolder(
     .initial_cpb_removal_delay = 0,
     .initial_cpb_removal_delay_offset = 0,
   };
-  newSeiNalParam.messagesNb = 1;
+  newSeiNalParam.messages_count = 1;
 
   /* Build H264SeiRbspParameters structure : */
   ret = patchH264SeiBufferingPeriodMessageParameters(
@@ -1471,7 +1465,7 @@ int completeH264SeiBufferingPeriodComputation(
   nalHrd[0].initial_cpb_removal_delay_offset = 0;
   vclHrd[0].initial_cpb_removal_delay = vclResultInitCpbRemovalDelay;
   vclHrd[0].initial_cpb_removal_delay_offset = 0;
-  newSeiNalParam.messagesNb = 1;
+  newSeiNalParam.messages_count = 1;
 
   if (
     patchH264SeiBufferingPeriodMessageParameters(

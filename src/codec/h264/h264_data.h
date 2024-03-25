@@ -26,14 +26,7 @@
  *
  * This value is defined according to the Rec. ITU-T H.264 7.4.2.2 syntax.
  */
-#define H264_MAX_PPS  256
-
-/** \~english
- * \brief Maximum allowed number of Picture Parameters Sets.
- *
- * This value may be restrained if required.
- */
-#define H264_MAX_ALLOWED_PPS  H264_MAX_PPS
+#define H264_MAX_PPS  256u
 
 /** \~english
  * \brief Maximum supported number of slice groups in PPS NALUs.
@@ -130,11 +123,26 @@ typedef enum {
  * \return true NALU is a coded slice of an IDR picture NALU.
  * \return false NALU is a coded slice of an non-IDR picture NALU.
  */
-static inline bool isIdrPictureH264NalUnitTypeValue(
+static inline bool isIDRPictureH264NalUnitTypeValue(
   H264NalUnitTypeValue nal_unit_type
 )
 {
-  return (NAL_UNIT_TYPE_IDR_SLICE == nal_unit_type);
+  return (
+    NAL_UNIT_TYPE_IDR_SLICE == nal_unit_type
+  );
+}
+
+static inline bool isVCLH264NalUnitTypeValue(
+  H264NalUnitTypeValue nal_unit_type
+)
+{
+  return (
+    NAL_UNIT_TYPE_NON_IDR_SLICE         == nal_unit_type
+    || NAL_UNIT_TYPE_SLICE_PART_A_LAYER == nal_unit_type
+    || NAL_UNIT_TYPE_SLICE_PART_B_LAYER == nal_unit_type
+    || NAL_UNIT_TYPE_SLICE_PART_C_LAYER == nal_unit_type
+    || NAL_UNIT_TYPE_IDR_SLICE          == nal_unit_type
+  );
 }
 
 /** \~english
@@ -152,10 +160,10 @@ static inline bool isCodedSliceExtensionH264NalUnitTypeValue(
   H264NalUnitTypeValue nal_unit_type
 )
 {
-  return
-    NAL_UNIT_TYPE_CODED_SLICE_EXT == nal_unit_type
+  return (
+    NAL_UNIT_TYPE_CODED_SLICE_EXT          == nal_unit_type
     || NAL_UNIT_TYPE_CODED_SLICE_DEPTH_EXT == nal_unit_type
-  ;
+  );
 }
 
 /** \~english
@@ -239,6 +247,21 @@ static inline const char *H264PrimaryPictureTypeStr(
   if (val < ARRAY_SIZE(strings))
     return strings[val];
   return "Unknown";
+}
+
+static inline const char *bdAllowedH264PrimaryPictureTypeStr(
+  H264PrimaryPictureType val
+)
+{
+  static const char *strings[] = {
+    "I", // I slices only
+    "P", // P slices only
+    "B"  // B slices only
+  };
+
+  if (val < ARRAY_SIZE(strings))
+    return strings[val];
+  return "-";
 }
 
 typedef struct {
@@ -827,6 +850,9 @@ typedef struct {
 
   unsigned FrameWidth;
   unsigned FrameHeight;
+
+  bool NalHrdBpPresentFlag;
+  bool VclHrdBpPresentFlag;
 } H264SequenceParametersSetDataParameters, H264SPSDataParameters;
 
 typedef struct {
@@ -1123,33 +1149,47 @@ typedef struct {
   size_t payloadSize;
   bool tooEarlyEnd; /* x264 related error (0 bytes length message). */
 
-  H264SeiBufferingPeriod bufferingPeriod;
-  H264SeiPicTiming picTiming;
+  H264SeiBufferingPeriod buffering_period;
+  H264SeiPicTiming pic_timing;
   H264SeiUserDataUnregistered userDataUnregistered;
-  H264SeiRecoveryPoint recoveryPoint;
+  H264SeiRecoveryPoint recovery_point;
 } H264SeiMessageParameters;
 
 #define H264_MAX_SUPPORTED_RBSP_SEI_MESSAGES 3
 
 typedef struct {
   H264SeiMessageParameters messages[H264_MAX_SUPPORTED_RBSP_SEI_MESSAGES];
-  unsigned messagesNb;
+  unsigned messages_count;
 } H264SeiRbspParameters;
 
 typedef struct {
-  bool bufferingPeriodPresent;
-  bool bufferingPeriodValid;
-  bool bufferingPeriodGopValid;
-  H264SeiBufferingPeriod bufferingPeriod;
+  bool buffering_period_present;
+  bool buffering_period_valid;
+  bool buffering_period_GOP_valid;
+  H264SeiBufferingPeriod buffering_period;
 
-  bool picTimingPresent;
-  bool picTimingValid;
-  H264SeiPicTiming picTiming;
+  bool pic_timing_present;
+  bool pic_timing_valid;
+  H264SeiPicTiming pic_timing;
 
-  bool recoveryPointPresent;
-  bool recoveryPointValid;
-  H264SeiRecoveryPoint recoveryPoint;
-} H264SupplementalEnhancementInformationParameters;
+  bool recovery_point_present;
+  bool recovery_point_valid;
+  H264SeiRecoveryPoint recovery_point;
+} H264SupplementalEnhancementInformationParameters, H264SEIParameters;
+
+static inline void invalidateH264SEIParameters(
+  H264SEIParameters *sei_param,
+  bool is_IDR_access_unit
+)
+{
+  sei_param->buffering_period_valid = false;
+  sei_param->pic_timing_valid       = false;
+  sei_param->recovery_point_valid   = false;
+
+  if (is_IDR_access_unit) {
+    sei_param->buffering_period_GOP_valid = false;
+  }
+}
 
 typedef enum {
   H264_SLICE_TYPE_P_UNRESCTRICTED   = 0,
@@ -1478,7 +1518,7 @@ typedef struct {
   };
 
   bool presenceOfMemManCtrlOp4;
-  bool presenceOfMemManCtrlOp5;
+  bool pres_of_mem_man_ctrl_op_5;
   bool presenceOfMemManCtrlOp6;
 } H264DecRefPicMarking;
 
@@ -1559,31 +1599,27 @@ typedef struct {
   uint32_t slice_group_change_cycle;
 
   /* Computed parameters: */
-  bool isRefPic; /**< Obtained using #isReferencePictureH264NalRefIdcValue()
+  bool is_ref_pic; /**< Obtained using #isReferencePictureH264NalRefIdcValue()
     with slice header NALU nal_ref_idc value.                                */
-  bool isIdrPic; /**< Obtained using #isIdrPictureH264NalUnitTypeValue()
+  bool is_IDR_pic; /**< Obtained using #isIDRPictureH264NalUnitTypeValue()
     with slice header NALU nal_unit_type value. Equal to IdrPicFlag.         */
-  bool isCodedSliceExtension; /**< Obtained using
+  bool is_coded_slice_ext; /**< Obtained using
     #isCodedSliceExtensionH264NalUnitTypeValue() with slice header NALU
     nal_unit_type value.                                                     */
   unsigned sps_pic_order_cnt_type;  /**< Copy of the active SPS
     pic_order_cnt_type field.                                                */
-  bool presenceOfMemManCtrlOp5;  /**< Presence of
+  bool pres_of_mem_man_ctrl_op_5;  /**< Presence of
     memory_management_control_operation equal to 5 in dec_ref_pic_marking.
     If the section dec_ref_pic_marking is not present, this value is false.  */
 
-  // bool refPic;
-  // bool IdrPicFlag;
-  // bool isSliceExt;
-
-  // unsigned pic_order_cnt_type; /* Copy from active SPS */
-
   bool MbaffFrameFlag;
+
   unsigned PicHeightInMbs;
   unsigned PicHeightInSamplesL;
   unsigned PicHeightInSamplesC;
-
   unsigned PicSizeInMbs;
+
+  unsigned PrevRefFrameNum;
 } H264SliceHeaderParameters;
 
 typedef struct {
@@ -1698,7 +1734,7 @@ typedef struct {
   bool frame_mbs_only_flag;
   unsigned MaxSubMbRectSize;
 
-  unsigned brNal;  /**< Computed maximum NAL HRD BitRate value.              */
+  unsigned max_bit_rate;  /**< Computed maximum NAL HRD BitRate value. Equal to 1200 * MaxBR for Baseline, Main and Extended profiles or cpbBrNalFactor * MaxBR for other profiles. */
 
   /* Profile related restricted settings */
   bool idrPicturesOnly; /* Implies max_num_ref_frames, max_num_reorder_frames, max_dec_frame_buffering and dpb_output_delay == 0 */
@@ -1723,10 +1759,6 @@ typedef struct {
   bool constrainedMotionVectors;
   size_t maxBitsPerPic; /* Warning: In bits. */
   size_t maxBitsPerMb;
-
-  // unsigned sliceNb;
-  // unsigned gopMaxLength;
-  // unsigned consecutiveBPicNb;
 } H264ConstraintsParam;
 
 unsigned getH264BrNal(
@@ -1737,7 +1769,7 @@ unsigned getH264BrNal(
 typedef struct {
   unsigned min_nb_slices;
   unsigned max_GOP_length;
-  unsigned max_nb_consecutive_B_pictures;
+  unsigned max_nb_consecutive_B_frames;
 } H264BDConstraintsParam;
 
 /** \~english
@@ -1745,9 +1777,9 @@ typedef struct {
  *
  */
 typedef struct {
-  bool presenceOfMemManCtrlOp5;  /**< Presence of a
+  bool pres_of_mem_man_ctrl_op_5;  /**< Presence of a
     memory_management_control_operation equal to 5 in slice header.          */
-  bool isBottomField;            /**< Is a bottom field.                     */
+  bool bottom_field_flag;            /**< Is a bottom field.                     */
 
   uint32_t first_mb_in_slice;    /**< Slice header first_mb_in_slice field.  */
 
@@ -1764,12 +1796,18 @@ typedef struct {
   int64_t duration;  /**< Picture duration in #MAIN_CLOCK_27MHZ ticks. Next picture DTS value is set equal to last picture DTS plus this duration value. This computation manner is inspired from tsMuxer. */
 } H264LastPictureProperties;
 
+typedef struct {
+  unsigned field_picture_number;  /**< Picture number (in decoding order). */
+
+  uint16_t frame_num;
+} H264PrevRefPrimCodedPictureProperties;
+
 #define H264_PICTURES_BEFORE_RESTART  20
 #define H264_AU_DEFAULT_NB_NALUS  8
 
 typedef struct {
-  bool initializedParam;  /**< Are bit-stream parameters initialized. */
-  bool restart_required; /**< Some parsing parameters must be modified,
+  bool initialized_param;  /**< Are bit-stream parameters initialized. */
+  bool restart_required;   /**< Some parsing parameters must be modified,
     requiring restart of parsing. A threshold fixed by
     #H264_PICTURES_BEFORE_RESTART defines the number of parsed pictures to
     reach before cancelling parsing. This reduce the number of restarts when
@@ -1777,15 +1815,17 @@ typedef struct {
     structure.                                                               */
 
   struct {
-    bool bottomFieldPresent;
-    bool topFieldPresent;
-    bool framePresent;
-  } auContent;  /**< Current Access content. Used to merge complementary field pair pictures. */
+    bool bottom_field_present;
+    bool top_field_present;
+    bool frame_present;
+  } au_content;  /**< Current Access content. Used to merge complementary field pair pictures. */
 
-  unsigned nbPics;  /**< Current number of parsed complete pictures. */
-  unsigned nbConsecutiveBPics;  /**< Current number of consecutive B-pictures. */
+  unsigned nb_pictures;  /**< Current number of fields or frames parsed. */
+  unsigned nb_frames;  /**< Current number of frames (or ) parsed. */
+  unsigned nb_GOP_frames;  /**< Current number of pictures in pending GOP. */
+  unsigned nb_consecutive_B_frames;  /**< Current number of consecutive B-pictures. */
 
-  unsigned nb_slices_in_pic;  /**< Current number of slices in current parsed picture. */
+  unsigned nb_slices_in_picture;  /**< Current number of slices in current parsed picture. */
 
   double frameRate;  /**< Video frame-rate. */
   int64_t frameDuration;  /**< Duration of one video frame in #MAIN_CLOCK_27MHZ ticks. */
@@ -1794,7 +1834,7 @@ typedef struct {
   bool is_VCL_NALU_reached;  /**< Has a VCL NAL unit of the current Access Unit been reached. Used to determine whether prefix non-VCL NALUs are part of the current or next access unit. */
   bool is_new_prim_coded_pic_first_VCL_NALU_reached;  /**< Has the first VCL NAL unit of the next Access Unit been reached. Used to determine whether a new access without prefix has been reached. */
 
-  int64_t decPicNbCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
+  int64_t decoding_PicOrderCnt;  /**< "Decoding PicOrderCnt", picture number in decoding order modulo active SPS MaxPicOrderCntLsb value. */
 
   bool half_PicOrderCnt;  /**< Divide by two picture PicOrderCnt values. */
   int64_t init_dec_pic_nb_cnt_shift;  /**< Initial picture decoding delay in pictures units. */
@@ -1803,8 +1843,14 @@ typedef struct {
   int64_t last_max_stream_PicOrderCnt;
   int64_t max_stream_PicOrderCnt;
 
-  H264NalUnitTypeValue lstNaluType;  /**< Last parsed NALU nal_unit_type. */
+  H264NalUnitTypeValue last_NALU_type;  /**< Last parsed NALU nal_unit_type. */
   H264LastPictureProperties last_pic;  /**< Last picture values.           */
+
+  H264PrevRefPrimCodedPictureProperties prev_ref_prim_coded_pic;  /**< Last primary coded picture containing a reference picture. */
+  bool gaps_in_frame_num_since_prev_ref_prim_coded_pic;
+  unsigned last_non_existing_frame_num;
+
+  bool entropy_coding_mode_flag;
 
   /* Frames sizes parsing : */
   size_t largestAUSize;  /**< Largest parsed Access Unit in bytes. */
@@ -1815,20 +1861,15 @@ typedef struct {
   uint64_t auDpbOutputTime; /* Current AU DPB output time in #MAIN_CLOCK_27MHZ ticks */
 
   /* Specific informations spotted in stream : */
-  bool gapsInFrameNum; /* Presence of gaps in frame numbers */
+  bool gaps_in_frame_num; /* Presence of gaps in frame numbers */
   bool missing_VUI_video_signal_type;  /**< Missing of Video Signal Type from SPS VUI parameters. */
   bool wrong_VUI;
-  bool usageOfLowerLevel;
   bool presence_of_unnecessary_AUD;
   bool presence_of_unnecessary_SPS;
 
-  bool picOrderCntType2use; /**< TODO: Forbiddens presence of two consecutive non-referential frames/non-complementary fields. */
-
   /* Triggered options : */
   bool rebuild_VUI;
-  bool useVuiUpdate;
-  // bool discardUselessAccessUnitDelimiter;
-  // bool discardUselessSequenceParameterSet;
+  bool update_VUI;
 
   struct {
     H264AUNalUnit *NALUs;
@@ -1926,7 +1967,8 @@ unsigned getH264BDMinNbSlices(
 );
 
 unsigned getH264BDMaxGOPLength(
-  const H264VuiParameters *vui_parameters
+  const H264VuiParameters *vui_parameters,
+  bool max_BR_15_mbps
 );
 
 /** \~english
@@ -1975,11 +2017,11 @@ H264MatrixCoefficientsValue getH264BDExpectedMatrixCoefficients(
 #define H264_BD_ALLOWED_CPB_CNT 1
 
 /** \~english
- * \brief Maximum allowed number of consecutive B pictures according to BD
+ * \brief Maximum allowed number of consecutive B frames according to BD
  * specifications.
  *
  */
-#define H264_BD_MAX_CONSECUTIVE_B_PICTURES  3
+#define H264_BD_MAX_CONSECUTIVE_B_FRAMES  3
 
 /** \~english
  * \brief Maximum allowed bit-rate value according to BD specifications in
@@ -1989,7 +2031,7 @@ H264MatrixCoefficientsValue getH264BDExpectedMatrixCoefficients(
  *
  * Defined to 40 Mb/s.
  */
-#define H264_BDAV_MAX_BITRATE  40000000
+#define H264_BD_MAX_BITRATE  40000000
 
 /** \~english
  * \brief Maximum allowed CPB size according to BD specifications in bits.
@@ -1998,6 +2040,22 @@ H264MatrixCoefficientsValue getH264BDExpectedMatrixCoefficients(
  *
  * Defined to 30 Mb.
  */
-#define H264_BDAV_MAX_CPB_SIZE  30000000
+#define H264_BD_MAX_CPB_SIZE  30000000
+
+/** \~english
+ * \brief Maximum allowed number of different Picture Parameter Sets according
+ * to BD specifications.
+ *
+ * \todo Is this value the same as HEVC from White Book?
+ */
+#define H264_BD_MAX_ALLOWED_GOP_PPS  32
+
+/** \~english
+ * \brief Maximum allowed number of different Picture Parameter Sets according
+ * to BD specifications.
+ *
+ * \todo Is this value the same as HEVC from White Book?
+ */
+#define H264_BD_MAX_ALLOWED_SUBSEQUENT_AU_PPS  1
 
 #endif

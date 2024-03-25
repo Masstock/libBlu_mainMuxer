@@ -47,10 +47,10 @@ int readSettingsExplodeLevels(
 )
 {
   for (size_t i = 0; i < ARRAY_SIZE(explode_lvls); i++) {
-    char optionPath[1024];
-    snprintf(optionPath, 1024, "DISABLEDERRORS.%s", explode_lvls[i].name);
+    char option_path[1024];
+    snprintf(option_path, 1024, "DISABLEDERRORS.%s", explode_lvls[i].name);
 
-    lbc *string = lookupIniFile(conf_hdl, optionPath);
+    lbc *string = lookupIniFile(conf_hdl, option_path);
     if (NULL != string) {
       bool value;
 

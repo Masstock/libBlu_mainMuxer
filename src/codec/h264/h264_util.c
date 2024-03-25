@@ -191,14 +191,15 @@ void updateH264ProfileLimits(
 void updateH264BDConstraints(
   H264ParametersHandlerPtr handle,
   uint8_t level_idc,
-  const H264VuiParameters *vui_parameters
+  const H264VuiParameters *vui_parameters,
+  bool max_BR_15_mbps
 )
 {
   assert(NULL != handle);
 
-  handle->bd_constraints.min_nb_slices                 = getH264BDMinNbSlices(level_idc);
-  handle->bd_constraints.max_GOP_length                = getH264BDMaxGOPLength(vui_parameters);
-  handle->bd_constraints.max_nb_consecutive_B_pictures = H264_BD_MAX_CONSECUTIVE_B_PICTURES;
+  handle->bd_constraints.min_nb_slices               = getH264BDMinNbSlices(level_idc);
+  handle->bd_constraints.max_GOP_length              = getH264BDMaxGOPLength(vui_parameters, max_BR_15_mbps);
+  handle->bd_constraints.max_nb_consecutive_B_frames = H264_BD_MAX_CONSECUTIVE_B_FRAMES;
 
   handle->bd_constraints_initialized = true;
 }
@@ -253,7 +254,7 @@ H264ParametersHandlerPtr initH264ParametersHandler(
     goto free_return;
 
   handle->cur_prog_param = (H264CurrentProgressParam) {
-    .useVuiUpdate =
+    .update_VUI =
       0x00 != settings->options.fps_mod
       || isUsedLibbluAspectRatioMod(settings->options.ar_mod)
       || 0x00 != settings->options.level_mod
@@ -272,20 +273,31 @@ free_return:
 }
 
 void resetH264ParametersHandler(
-  H264ParametersHandlerPtr handle
+  H264ParametersHandlerPtr handle,
+  bool is_IDR_access_unit
 )
 {
   assert(NULL != handle);
 
-  handle->access_unit_delimiter_valid = false;
-  handle->sequence_parameter_set_valid = false;
-  handle->sei.bufferingPeriodValid = false;
-  handle->sei.picTimingValid = false;
-  handle->cur_prog_param.nb_slices_in_pic = 0;
-  handle->cur_prog_param.auContent.bottomFieldPresent = false;
-  handle->cur_prog_param.auContent.topFieldPresent = false;
-  handle->cur_prog_param.auContent.framePresent = false;
-  handle->cur_prog_param.lstNaluType = NAL_UNIT_TYPE_UNSPECIFIED;
+  /* Invalidate active NAL units */
+  handle->access_unit_delimiter_valid    = false;
+  handle->sequence_parameter_set_valid   = false;
+  memset(handle->picture_parameter_set_valid, false, H264_MAX_PPS);
+  handle->nb_picture_parameter_set_valid = 0;
+  handle->slice_valid                    = false;
+
+  if (is_IDR_access_unit) {
+    handle->sequence_parameter_set_GOP_valid = false;
+    memset(handle->picture_parameter_set_GOP_valid, false, H264_MAX_PPS);
+  }
+
+  invalidateH264SEIParameters(&handle->sei, is_IDR_access_unit);
+
+  handle->cur_prog_param.nb_slices_in_picture            = 0;
+  handle->cur_prog_param.au_content.bottom_field_present = false;
+  handle->cur_prog_param.au_content.top_field_present    = false;
+  handle->cur_prog_param.au_content.frame_present        = false;
+  handle->cur_prog_param.last_NALU_type                  = NAL_UNIT_TYPE_UNSPECIFIED;
 }
 
 int completeH264ParametersHandler(
@@ -309,8 +321,6 @@ void destroyH264ParametersHandler(
   H264ParametersHandlerPtr handle
 )
 {
-  unsigned i;
-
   if (NULL == handle)
     return;
 
@@ -318,7 +328,7 @@ void destroyH264ParametersHandler(
   closeBitstreamWriter(handle->script_file);
   cleanH264NalDeserializerContext(handle->file);
 
-  for (i = 0; i < H264_MAX_PPS; i++)
+  for (unsigned i = 0; i < H264_MAX_PPS; i++)
     free(handle->picture_parameter_set[i]);
   free(handle->cur_prog_param.cur_access_unit.NALUs);
   free(handle->modified_NALU_list.sequenceParametersSets);
@@ -331,28 +341,22 @@ int updatePPSH264Parameters(
   unsigned id
 )
 {
-  H264PicParametersSetParameters *newPps;
-
   assert(NULL != handle);
   assert(id < H264_MAX_PPS);
 
   if (NULL == handle->picture_parameter_set[id]) {
     /* Need allocation */
-    newPps = (H264PicParametersSetParameters *) malloc(
-      sizeof(H264PicParametersSetParameters)
+    H264PicParametersSetParameters *new_pps = calloc(
+      1, sizeof(H264PicParametersSetParameters)
     );
-    if (NULL == newPps)
+    if (NULL == new_pps)
       LIBBLU_H264_ERROR_RETURN("Memory allocation error.\n");
 
-    handle->picture_parameter_set[id] = newPps;
+    handle->picture_parameter_set[id] = new_pps;
   }
 
   /* Copy PPS */
-  memcpy(
-    handle->picture_parameter_set[id],
-    param,
-    sizeof(H264PicParametersSetParameters)
-  );
+  memcpy(handle->picture_parameter_set[id], param, sizeof(H264PicParametersSetParameters));
 
   return 0;
 }
@@ -545,7 +549,7 @@ int addNalCellToAccessUnit(
   H264AUNalUnit *nalUnit = _retrieveCurrentNalCell(handle);
   nalUnit->length = tellPos(handle->file.inputFile) - nalUnit->startOffset;
 
-  handle->cur_prog_param.lstNaluType = getNalUnitType(handle);
+  handle->cur_prog_param.last_NALU_type = getNalUnitType(handle);
 
   handle->cur_prog_param.cur_access_unit.nb_used_NALUs++;
   handle->cur_prog_param.cur_access_unit.is_in_process_NALU = false;
@@ -553,7 +557,7 @@ int addNalCellToAccessUnit(
   if (
     (getNalUnitType(handle) == NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET
     || getNalUnitType(handle) == NAL_UNIT_TYPE_PIC_PARAMETER_SET)
-    && 0 == handle->cur_prog_param.nbPics
+    && 0 == handle->cur_prog_param.nb_pictures
   ) {
     /* StreamEye fix */
     handle->cur_prog_param.cur_access_unit.size += nalUnit->length;
