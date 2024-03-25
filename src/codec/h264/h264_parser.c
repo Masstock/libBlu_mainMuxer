@@ -829,12 +829,15 @@ static int _processPESFrame(
   int ret = initVideoPesPacketEsmsHandler(
     handle->script,
     handle->slice.header.slice_type,
-    pts_90kHz != dts_90kHz,
-    pts_90kHz,
-    dts_90kHz
+    pts_90kHz
   );
   if (ret < 0)
     return -1;
+
+  if (pts_90kHz != dts_90kHz) {
+    if (setDecodingTimeStampPesPacketEsmsHandler(handle->script, dts_90kHz) < 0)
+      return -1;
+  }
 
   if (_setBufferingInformationsAccessUnit(handle, options, pts_90kHz, dts_90kHz) < 0)
     return -1;

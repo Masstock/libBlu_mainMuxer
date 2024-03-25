@@ -65,7 +65,7 @@ int writeEsmsHeader(
   /** Reserved paddding
    * [u8 flags_byte] [u8 nb_directory] [v<7*ESMS_MAX_ALLOWED_DIR> reserved]
    */
-  size_t pad_size = ESMS_DIRECTORY_IDX_LENGTH *ESMS_MAX_ALLOWED_DIR + 2;
+  size_t pad_size = 2u + ESMS_DIRECTORY_IDX_LENGTH * ESMS_MAX_ALLOWED_DIR;
   for (size_t i = 0; i < pad_size; i++)
     WRITE(esms_bs, 0x00, 1, return -1);
 
@@ -339,9 +339,7 @@ static int _initEsmsPesPacket(
 int initVideoPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   uint8_t picture_type,
-  bool dts_present,
-  uint64_t pts,
-  uint64_t dts
+  uint64_t pts
 )
 {
   if (esms_hdl->type != ES_VIDEO)
@@ -352,11 +350,9 @@ int initVideoPesPacketEsmsHandler(
     (EsmsPesPacket) {
       .prop = {
         .type = esms_hdl->type,
-        .prefix.video.picture_type = picture_type,
-        .dts_present = dts_present
+        .prefix.video.picture_type = picture_type
       },
-      .pts = pts,
-      .dts = dts
+      .pts = pts
     }
   );
 }
@@ -365,9 +361,7 @@ int initVideoPesPacketEsmsHandler(
 int initAudioPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   bool extension_frame,
-  bool dts_present,
-  uint64_t pts,
-  uint64_t dts
+  uint64_t pts
 )
 {
   if (esms_hdl->type != ES_AUDIO)
@@ -378,11 +372,9 @@ int initAudioPesPacketEsmsHandler(
     (EsmsPesPacket) {
       .prop = {
         .type = esms_hdl->type,
-        .prefix.audio.extension_frame = extension_frame,
-        .dts_present = dts_present
+        .prefix.audio.extension_frame = extension_frame
       },
-      .pts = pts,
-      .dts = dts
+      .pts = pts
     }
   );
 }
@@ -390,25 +382,52 @@ int initAudioPesPacketEsmsHandler(
 
 int initHDMVPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  bool dts_present,
-  uint64_t pts,
-  uint64_t dts
+  uint64_t pts
 )
 {
   if (esms_hdl->type != ES_HDMV)
     LIBBLU_ERROR_RETURN("Can't create HDMV PES frame in non-HDMV stream.\n");
 
   assert(0 == (pts >> 33));
-  assert(0 == (dts >> 33) || !dts_present);
 
   return _initEsmsPesPacket(
     esms_hdl,
     (EsmsPesPacket) {
-      .prop.dts_present = dts_present,
-      .pts = pts,
-      .dts = dts
+      .pts = pts
     }
   );
+}
+
+
+int setDecodingTimeStampPesPacketEsmsHandler(
+  EsmsHandlerPtr esms_hdl,
+  uint64_t dts
+)
+{
+  if (!esms_hdl->commands_pipeline.initialized_frame)
+    LIBBLU_ERROR_RETURN(
+      "Unable to set Decoding Time Stamp, "
+      "no ESMS PES frame is currently initialized.\n"
+    );
+
+  EsmsPesPacket *cur_frame = &esms_hdl->commands_pipeline.cur_frame;
+
+  if (cur_frame->pts == dts)
+    LIBBLU_ERROR_RETURN(
+      "Unable to set Decoding Time Stamp, "
+      "value is equal to the Presentation Time Stamp.\n"
+    );
+
+  if (0 < (dts >> 33))
+    LIBBLU_ERROR_RETURN(
+      "Unable to set Decoding Time Stamp, "
+      "value exceed 33 bits (%" PRIu64 ").\n",
+      dts
+    );
+
+  cur_frame->prop.dts_present = true;
+  cur_frame->dts = dts;
+  return 0;
 }
 
 
@@ -450,6 +469,30 @@ int setExtensionDataPesPacketEsmsHandler(
 
   pipeline->cur_frame.ext_data = data;
   pipeline->cur_frame.prop.ext_data_present = true;
+  return 0;
+}
+
+
+int markAsEntryPointPesPacketEsmsHandler(
+  EsmsHandlerPtr esms_hdl
+)
+{
+  if (!esms_hdl->commands_pipeline.initialized_frame)
+    LIBBLU_ERROR_RETURN(
+      "Unable to mark as entry point, "
+      "no ESMS PES frame is currently initialized.\n"
+    );
+
+  EsmsPesPacket *cur_frame = &esms_hdl->commands_pipeline.cur_frame;
+
+  if (cur_frame->prop.is_entry_point)
+    LIBBLU_ERROR_RETURN(
+      "Unable to mark as entry point, "
+      "value is equal to the Presentation Time Stamp.\n"
+    );
+
+  cur_frame->prop.is_entry_point  = true;
+  esms_hdl->prop.has_entry_points = true; // Mark also the ES properties
   return 0;
 }
 
@@ -1151,15 +1194,15 @@ static int _setPesPacketProperties(
 )
 {
   /* Compute and set size : */
-  uint32_t size;
-  if (0 == (size = _computePesPacketSize(pes, &esms_hdl->data_blocks)))
+  uint32_t size = _computePesPacketSize(pes, &esms_hdl->data_blocks);
+  if (0 == size)
     LIBBLU_ERROR_RETURN("Unable to compute ESMS PES packet size.\n");
   pes->size = size;
 
   /* Update properties : */
   pes->prop.type            = esms_hdl->type;
-  pes->prop.pts_33bit       = (pes->pts  >> 32) & 0x1;
-  pes->prop.dts_33bit       = (pes->dts  >> 32) & 0x1;
+  pes->prop.pts_32bit       = (pes->pts  >> 32) & 0x1;
+  pes->prop.dts_32bit       = (pes->dts  >> 32) & 0x1;
   pes->prop.size_long_field = (pes->size >> 16);
 
   return 0;
@@ -1212,19 +1255,21 @@ static uint16_t _getPesPacketPropWord(
   assert(0x0 == (prefix & 0x1)); // Ensure presence of '0' marker_bit.
 
   /** [v8 frame_prop_flags]
-   * -> b1: pts_33bit
+   * -> b1: pts_32bit
    * -> b1: dts_present
-   * -> b1: dts_33bit
+   * -> b1: dts_32bit
    * -> b1: size_long_field
    * -> b1: ext_data_present
-   * -> v3: reserved
+   * -> b1: is_entry_point
+   * -> v2: reserved
    */
   uint8_t frame_prop_flags = (
-    (pes_packet_prop->pts_33bit          << 7)
+    (pes_packet_prop->pts_32bit          << 7)
     | (pes_packet_prop->dts_present      << 6)
-    | (pes_packet_prop->dts_33bit        << 5)
+    | (pes_packet_prop->dts_32bit        << 5)
     | (pes_packet_prop->size_long_field  << 4)
     | (pes_packet_prop->ext_data_present << 3)
+    | (pes_packet_prop->is_entry_point   << 2)
   );
 
   LIBBLU_SCRIPTW_DEBUG(
@@ -1232,11 +1277,12 @@ static uint16_t _getPesPacketPropWord(
     frame_prop_flags
   );
 #define _P(s, v)  LIBBLU_SCRIPTW_DEBUG("    " s ": %s;\n", BOOL_STR(v))
-  _P("PTS 33rd bit value", pes_packet_prop->pts_33bit);
-  _P("DTS field presence", pes_packet_prop->dts_present);
-  _P("DTS 33rd bit value", pes_packet_prop->dts_33bit);
-  _P("Long size field", pes_packet_prop->size_long_field);
+  _P("PTS 33rd bit value     ", pes_packet_prop->pts_32bit);
+  _P("DTS field presence     ", pes_packet_prop->dts_present);
+  _P("DTS 33rd bit value     ", pes_packet_prop->dts_32bit);
+  _P("Long size field        ", pes_packet_prop->size_long_field);
   _P("Extension data presence", pes_packet_prop->ext_data_present);
+  _P("Is an entry point      ", pes_packet_prop->ext_data_present);
 #undef _P
 
   return (prefix << 8) | frame_prop_flags;
@@ -1421,12 +1467,18 @@ static int _writeEsmsEsPropertiesSection(
     esms_hdl->prop.coding_type
   );
 
-  /* [b1 PTS_reference_33bit] [b1 PTS_final_33bit] [v6 reserved] */
-  uint8_t byte = (
+  /** [v8 ES_properties_flags]
+   * -> b1: PTS_reference_32bit
+   * -> b1: PTS_final_32bit
+   * -> b1: has_entry_points
+   * -> v5: reserved
+   */
+  uint8_t ES_properties_flags = (
     (((esms_hdl->PTS_reference >> 32) & 0x1) << 7)
     | (((esms_hdl->PTS_final   >> 32) & 0x1) << 6)
+    | (esms_hdl->prop.has_entry_points       << 5)
   );
-  WRITE(esms_bs, byte, 1, return -1);
+  WRITE(esms_bs, ES_properties_flags, 1, return -1);
 
   /* [u32 PTS_reference] */
   WRITE(esms_bs, esms_hdl->PTS_reference, 4, return -1);

@@ -377,6 +377,10 @@ typedef struct {
     };  /**< If type == AUDIO.                                               */
   };
 
+  bool has_entry_points;  /**< True if at least one PES frame from the PES
+    cutting script has the flag 'is_entry_point' in field 'frame_prop_flags'
+    is set to 0b1.                                                           */
+
   double bitrate;                     /**< Stream nominal max bitrate in bits
     per second.                                                              */
   double nb_pes_per_sec;              /**< Constant number of PES frames per

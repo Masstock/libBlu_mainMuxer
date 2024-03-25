@@ -521,6 +521,12 @@ static int _buildNextPesPacket(
       );
       if (ret < 0)
         return -1;
+
+      if (!es->prop.has_entry_points && esms_pes_packet->prop.is_entry_point)
+        LIBBLU_ERROR_RETURN(
+          "Unexpected entry point in a script marked without entry points "
+          "('has_entry_points' == 0b0, 'is_entry_point' == 0b1).\n"
+        );
     }
 
     if (isEndReachedESPesCuttingEsms(es->script.bs_handle))

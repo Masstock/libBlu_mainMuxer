@@ -2796,6 +2796,10 @@ int _insertSegmentInScript(
 
   assert(NULL != ctx);
 
+  assert(0 == (pts >> 33));
+  if (initHDMVPesPacketEsmsHandler(ctx->output.script_hdl, pts) < 0)
+    return -1;
+
   bool dts_present = (
     seg.desc.segment_type == HDMV_SEGMENT_TYPE_ODS
     || seg.desc.segment_type == HDMV_SEGMENT_TYPE_PCS
@@ -2803,11 +2807,11 @@ int _insertSegmentInScript(
     || seg.desc.segment_type == HDMV_SEGMENT_TYPE_ICS
   );
 
-  assert(0 == (pts >> 33));
-  assert(!dts_present || 0 == (dts >> 33));
-
-  if (initHDMVPesPacketEsmsHandler(ctx->output.script_hdl, dts_present, pts, dts) < 0)
-    return -1;
+  if (dts_present) {
+    assert(0 == (dts >> 33));
+    if (setDecodingTimeStampPesPacketEsmsHandler(ctx->output.script_hdl, dts) < 0)
+      return -1;
+  }
 
   int ret = appendAddPesPayloadCommandEsmsHandler(
     ctx->output.script_hdl,

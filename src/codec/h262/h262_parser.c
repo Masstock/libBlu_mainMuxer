@@ -2192,7 +2192,7 @@ int analyzeH262(
   BitstreamWriterPtr essOutput = NULL;
 
   size_t frameOff, ignoredBytes;
-  uint64_t gopPts = 0, startPts = 0, h262Pts = 0, h262Dts = 0;
+  uint64_t gopPts = 0, startPts = 0;
   float frameDuration = 0;
 
   unsigned maxPictPerGop;
@@ -2425,40 +2425,42 @@ int analyzeH262(
           ignoredBytes = 4; /* If not end of file, ignore useless SEQUENCE_END_CODE. */
       }
 
-      h262Pts = gopPts + pictureHeader.temporal_reference *frameDuration;
-
-      /* LIBBLU_WARNING("#PTS: %" PRIu64 "\n", h262Pts); */
-
-      if (
-        H262_PIC_CODING_TYPE_I == pictureHeader.picture_coding_type
-        || H262_PIC_CODING_TYPE_P == pictureHeader.picture_coding_type
-      ) {
-        if (!gopPictIdx)
-          h262Dts = gopPts - frameDuration;
-        else
-          h262Dts = gopPts + (gopPictIdx - 1) * frameDuration;
-
-        /* LIBBLU_WARNING("#DTS: %" PRIu64 "\n", h262Dts); */
-      }
-      else
-        h262Dts = 0;
+      uint64_t h262Pts = gopPts + pictureHeader.temporal_reference * frameDuration;
 
       if (
         initVideoPesPacketEsmsHandler(
           h262Infos,
           pictureHeader.picture_coding_type,
-          H262_PIC_CODING_TYPE_I == pictureHeader.picture_coding_type
-          || H262_PIC_CODING_TYPE_P == pictureHeader.picture_coding_type,
-          h262Pts / 300,
-          h262Dts / 300
+          h262Pts / 300
         ) < 0
+      ) {
+        return -1;
+      }
 
-        || appendAddPesPayloadCommandEsmsHandler(
+      bool dts_present = (
+        H262_PIC_CODING_TYPE_I == pictureHeader.picture_coding_type
+        || H262_PIC_CODING_TYPE_P == pictureHeader.picture_coding_type
+      );
+
+      if (dts_present) {
+        uint64_t dts_value = (
+          (0 == gopPictIdx)
+          ? gopPts - frameDuration
+          : gopPts + (gopPictIdx - 1) * frameDuration
+        );
+
+        if (setDecodingTimeStampPesPacketEsmsHandler(h262Infos, dts_value) < 0)
+          return -1;
+      }
+
+      if (
+        appendAddPesPayloadCommandEsmsHandler(
           h262Infos, h262SourceFileIdx, 0x0, frameOff,
           tellPos(m2vInput) - frameOff - ignoredBytes
         ) < 0
-      )
+      ) {
         return -1;
+      }
 
       if (writePesPacketEsmsHandler(essOutput, h262Infos) < 0)
         return -1;

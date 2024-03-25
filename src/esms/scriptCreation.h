@@ -262,19 +262,14 @@ int updateDataBlockEsmsHandler(
  *
  * \param esms_hdl Used ESMS script handle.
  * \param picture_type Type of the picture (if stream is of video type).
- * \param dts_present Is the DTS field is used.
  * \param pts Presentation Time Stamp (in 90kHz clock ticks).
- * \param dts Decoding Time Stamp (in 90kHz clock ticks), only used if
- * dts_present value is true.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
 int initVideoPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   uint8_t picture_type,
-  bool dts_present,
-  uint64_t pts,
-  uint64_t dts
+  uint64_t pts
 );
 
 /** \~english
@@ -282,36 +277,41 @@ int initVideoPesPacketEsmsHandler(
  *
  * \param esms_hdl Used ESMS script handle.
  * \param extension_frame Is the frame a extension audio frame.
- * \param dts_present Is the DTS field is used.
  * \param pts Presentation Time Stamp (in 90kHz clock ticks).
- * \param dts Decoding Time Stamp (in 90kHz clock ticks), only used if
- * dts_present value is true.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
 int initAudioPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   bool extension_frame,
-  bool dts_present,
-  uint64_t pts,
-  uint64_t dts
+  uint64_t pts
 );
 
 /** \~english
  * \brief Initialize a new HDMV ESMS PES frame on the pipeline.
  *
  * \param esms_hdl Used ESMS script handle.
- * \param dts_present Is the DTS field is used.
  * \param pts Presentation Time Stamp (in 90kHz clock ticks).
- * \param dts Decoding Time Stamp (in 90kHz clock ticks), only used if
- * dts_present value is true.
  * \return int On success, a zero value is returned. Otherwise, a negative
  * value is returned.
  */
 int initHDMVPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
-  bool dts_present,
-  uint64_t pts,
+  uint64_t pts
+);
+
+/** \~english
+ * \brief Set the Decode Time Stamp of the pending ESMS PES frame in the
+ * pipeline. This value MUST be different from the Presentation Time Stamp
+ * value.
+ *
+ * \param esms_hdl Used ESMS script handle.
+ * \param dts Decoding Time Stamp (in 90kHz clock ticks).
+ * \return int On success, a zero value is returned. Otherwise, a negative
+ * value is returned.
+ */
+int setDecodingTimeStampPesPacketEsmsHandler(
+  EsmsHandlerPtr esms_hdl,
   uint64_t dts
 );
 
@@ -321,10 +321,23 @@ int initHDMVPesPacketEsmsHandler(
  *
  * \param esms_hdl Used ESMS script handle.
  * \param data Attached extension data.
+ * \return int On success, a zero value is returned. Otherwise, a negative
+ * value is returned.
  */
 int setExtensionDataPesPacketEsmsHandler(
   EsmsHandlerPtr esms_hdl,
   EsmsPesPacketExtData data
+);
+
+/** \~english
+ * \brief Mark pending ESMS PES frame in pipeline as an access point.
+ *
+ * \param esms_hdl Used ESMS script handle.
+ * \return int On success, a zero value is returned. Otherwise, a negative
+ * value is returned.
+ */
+int markAsEntryPointPesPacketEsmsHandler(
+  EsmsHandlerPtr esms_hdl
 );
 
 /** \~english

@@ -779,9 +779,7 @@ int analyzeLpcm(
     int64_t start_off = tellPos(waveInput);
 
     if (
-      initAudioPesPacketEsmsHandler(
-        esms, false, false, pts, 0
-      ) < 0
+      initAudioPesPacketEsmsHandler(esms, false, pts) < 0
 
       || appendAddDataBlockCommandEsmsHandler(
         esms, 0x0, INSERTION_MODE_OVERWRITE, pes_hdr_blk_idx

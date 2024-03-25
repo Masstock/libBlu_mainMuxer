@@ -96,14 +96,20 @@ int parseESPropertiesHeaderEsms(
       libbluESTypeStr(dst->type)
     );
 
-  /* [b1 PTS_reference_33bit] [b1 PTS_final_33bit] [v6 reserved] */
-  uint8_t PTS_ext_byte;
-  READ_VALUE(esms_bs, 1, &PTS_ext_byte, return -1);
+  /** [v8 ES_properties_flags]
+   * -> b1: PTS_reference_32bit
+   * -> b1: PTS_final_32bit
+   * -> b1: has_entry_points
+   * -> v5: reserved
+   */
+  uint8_t ES_properties_flags;
+  READ_VALUE(esms_bs, 1, &ES_properties_flags, return -1);
+  dst->has_entry_points = (ES_properties_flags & 0x20);
 
   /* [u32 PTS_reference] */
   uint64_t PTS_reference;
   READ_VALUE(esms_bs, 4, &PTS_reference, return -1);
-  PTS_reference += (PTS_ext_byte & 0x80) ? 0x100000000ull : 0;
+  PTS_reference += (ES_properties_flags & 0x80) ? 0x100000000ull : 0;
 
   LIBBLU_SCRIPTR_DEBUG(
     " Presentation Time Stamp reference (PTS_reference): "
@@ -115,7 +121,7 @@ int parseESPropertiesHeaderEsms(
   /* [u32 PTS_final] */
   uint64_t PTS_final;
   READ_VALUE(esms_bs, 4, &PTS_final, return -1);
-  PTS_final     += (PTS_ext_byte & 0x40) ? 0x100000000ull : 0;
+  PTS_final     += (ES_properties_flags & 0x40) ? 0x100000000ull : 0;
 
   LIBBLU_SCRIPTR_DEBUG(
     " Last Presentation Time Stamp (PTS_final): "
@@ -761,34 +767,37 @@ static int _parseEsmsPesPacketProperties(
   }
 
   /** [v8 frame_prop_flags]
-   * -> b1  : pts_33bit
-   * -> b1  : dts_present
-   * -> b1  : dts_long_field
-   * -> b1  : size_long_field
-   * -> b1  : ext_data_present
-   * -> v3  : reserved
+   * -> b1: pts_32bit
+   * -> b1: dts_present
+   * -> b1: dts_32bit
+   * -> b1: size_long_field
+   * -> b1: ext_data_present
+   * -> b1: is_entry_point
+   * -> v2: reserved
    */
-  dst_prop->pts_33bit        = (frame_prop_word & 0x80);
+  dst_prop->pts_32bit        = (frame_prop_word & 0x80);
   dst_prop->dts_present      = (frame_prop_word & 0x40);
-  dst_prop->dts_33bit        = (frame_prop_word & 0x20);
+  dst_prop->dts_32bit        = (frame_prop_word & 0x20);
   dst_prop->size_long_field  = (frame_prop_word & 0x10);
   dst_prop->ext_data_present = (frame_prop_word & 0x08);
+  dst_prop->is_entry_point   = (frame_prop_word & 0x04);
 
   LIBBLU_SCRIPTR_DEBUG(
     "   Flags properties flags (frame_prop_flags): 0x%02" PRIX16 ".\n",
     frame_prop_word & 0xFF
   );
 #define _P(s, v)  LIBBLU_SCRIPTR_DEBUG("    " s ": %s;\n", BOOL_STR(v))
-  _P("PTS 33rd bit value", dst_prop->pts_33bit);
-  _P("DTS field presence", dst_prop->dts_present);
-  _P("DTS 33rd bit value", dst_prop->dts_33bit);
-  _P("Long size field", dst_prop->size_long_field);
+  _P("PTS 33rd bit value     ", dst_prop->pts_32bit);
+  _P("DTS field presence     ", dst_prop->dts_present);
+  _P("DTS 33rd bit value     ", dst_prop->dts_32bit);
+  _P("Long size field        ", dst_prop->size_long_field);
   _P("Extension data presence", dst_prop->ext_data_present);
+  _P("Is an entry point      ", dst_prop->ext_data_present);
 #undef _P
 
   /* [u32 pts] */
   READ_VALUE(esms_bs, 4, &dst->pts, return -1);
-  dst->pts += dst_prop->pts_33bit ? 0x100000000ull : 0;
+  dst->pts += dst_prop->pts_32bit ? 0x100000000ull : 0;
   dst->dts = dst->pts;
 
   LIBBLU_SCRIPTR_DEBUG(
@@ -800,7 +809,7 @@ static int _parseEsmsPesPacketProperties(
   if (dst_prop->dts_present) {
     /* [u32 dts] */
     READ_VALUE(esms_bs, 4, &dst->dts, return -1);
-    dst->dts += dst_prop->dts_33bit ? 0x100000000ull : 0;
+    dst->dts += dst_prop->dts_32bit ? 0x100000000ull : 0;
 
     LIBBLU_SCRIPTR_DEBUG(
       "   DTS (dts): %" PRIu64 " (0x%08" PRIX64 ").\n",

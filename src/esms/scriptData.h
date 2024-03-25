@@ -649,11 +649,12 @@ typedef struct {
     EsmsPesPacketPropAudio audio;
   } prefix;
 
-  bool pts_33bit;
+  bool pts_32bit;
   bool dts_present;
-  bool dts_33bit;
+  bool dts_32bit;
   bool size_long_field;
   bool ext_data_present;
+  bool is_entry_point;
 } EsmsPesPacketProp;
 
 /** \~english

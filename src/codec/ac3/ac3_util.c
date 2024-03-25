@@ -294,21 +294,21 @@ int completeFrameAc3Context(
 
   switch (au->type) {
   case AC3_CORE:
-    if (initAudioPesPacketEsmsHandler(ctx->script, false, false, ctx->core.pts, 0) < 0)
+    if (initAudioPesPacketEsmsHandler(ctx->script, false, ctx->core.pts) < 0)
       return -1;
     break;
 
   case AC3_EAC3:
     if (ctx->skip_ext)
       return 0; // Skip extensions.
-    if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->eac3.pts, 0) < 0)
+    if (initAudioPesPacketEsmsHandler(ctx->script, true, ctx->eac3.pts) < 0)
       return -1;
     break;
 
   case AC3_TRUEHD:
     if (ctx->skip_ext)
       return 0; // Skip extensions.
-    if (initAudioPesPacketEsmsHandler(ctx->script, true, false, ctx->mlp.pts, 0) < 0)
+    if (initAudioPesPacketEsmsHandler(ctx->script, true, ctx->mlp.pts) < 0)
       return -1;
     break;
   }

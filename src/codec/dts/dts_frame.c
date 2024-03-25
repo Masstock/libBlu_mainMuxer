@@ -292,7 +292,7 @@ int processCompleteFrameDtsAUFrame(
     LIBBLU_DTS_ERROR_RETURN("Unexpected AU content.\n");
   }
 
-  if (initAudioPesPacketEsmsHandler(script, is_ext, false, pts, 0) < 0)
+  if (initAudioPesPacketEsmsHandler(script, is_ext, pts) < 0)
     return -1;
 
   LIBBLU_DTS_DEBUG(" Adding %u cells:\n", frm->nbUsedContentCells);
