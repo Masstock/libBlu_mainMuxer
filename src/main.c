@@ -549,12 +549,12 @@ int main(
     case CONFIG_FILE:
 #if !defined(DISABLE_INI)
       if (NULL == optarg)
-        LIBBLU_ERROR_RETURN("Expect a configuration filename after '-c'.\n");
+        ERROR_RETURN("Expect a configuration filename after '-c'.\n");
       conf_fp = _getoptarg();
       if (NULL == conf_fp)
         return EXIT_FAILURE;
 #else
-      LIBBLU_ERROR_RETURN("Configuration file unsupported in this build.\n");
+      ERROR_RETURN("Configuration file unsupported in this build.\n");
 #endif
       break;
 
@@ -577,7 +577,7 @@ int main(
 
     case INPUT:
       if (NULL == optarg)
-        LIBBLU_ERROR_RETURN("Expect a META filename after '-i'.\n");
+        ERROR_RETURN("Expect a META filename after '-i'.\n");
       input_fp = _getoptarg();
       if (NULL == input_fp)
         return EXIT_FAILURE;
@@ -585,7 +585,7 @@ int main(
 
     case OUTPUT:
       if (NULL == optarg)
-        LIBBLU_ERROR_RETURN("Expect a output filename after '-o'.\n");
+        ERROR_RETURN("Expect a output filename after '-o'.\n");
       output_fp = _getoptarg();
       if (NULL == output_fp)
         return EXIT_FAILURE;
@@ -597,7 +597,7 @@ int main(
 
     case LOG_FILE:
       if (NULL == optarg)
-        LIBBLU_ERROR_RETURN("Expect a log filename after '--log'.\n");
+        ERROR_RETURN("Expect a log filename after '--log'.\n");
       const lbc *log_filepath = _getoptarg();
       if (NULL == log_filepath)
         return EXIT_FAILURE;
@@ -607,7 +607,7 @@ int main(
       break;
 
     default:
-      LIBBLU_ERROR_RETURN(
+      ERROR_RETURN(
         "Unknown option '%s', type -h/--help to get full list.\n",
         argv[optind-1]
       );
@@ -638,14 +638,12 @@ int main(
 #endif
 
   if (NULL == input_fp) // TODO: Enable input from stdin
-    LIBBLU_ERROR_FRETURN(
-      "Expect a input META filename (see -h/--help).\n"
-    );
+    ERROR_RETURN("Expect a input META filename (see -h/--help).\n");
 
   /* Init options according to configuration file */
   LibbluMuxingOptions mux_options = {0};
   if (initLibbluMuxingOptions(&mux_options, conf_file) < 0)
-    goto free_return;
+    return EXIT_FAILURE;
 
   /* Apply options passed by command line */
   mux_options.force_script_generation |= force_script_regen;

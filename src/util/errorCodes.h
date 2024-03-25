@@ -96,8 +96,8 @@
 #define LIBBLU_ERROR_GRETURN(label, format, ...)                              \
   __LIBBLU_ERROR_INSTR_(goto label, format, ##__VA_ARGS__)
 
-#define LIBBLU_ERROR_VRETURN(format, ...)                                     \
-  __LIBBLU_ERROR_INSTR_(return, format, ##__VA_ARGS__)
+#define LIBBLU_ERROR_VRETURN(value, format, ...)                              \
+  __LIBBLU_ERROR_INSTR_(return value, format, ##__VA_ARGS__)
 
 
 #define __LIBBLU_WCOND(warn_expr, format, ...)                                \
