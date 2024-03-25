@@ -39,7 +39,8 @@ static inline void cleanLibbluEntryPointList(
   LibbluEntryPointList list
 )
 {
-  sizeof(LibbluEntryPoint);
+  // TODO
+  free(list.tracked_streams);
 }
 
 #endif
