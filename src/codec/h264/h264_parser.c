@@ -534,12 +534,12 @@ static int64_t _computeDtsIncrement(
 
 static void setEsmsPtsRef(
   EsmsHandlerPtr script,
-  const H264CurrentProgressParam *curProgParam
+  const H264CurrentProgressParam *cur_prog
 )
 {
   uint64_t reference = (uint64_t) (
-    curProgParam->init_dec_pic_nb_cnt_shift
-    * curProgParam->frameDuration
+    cur_prog->init_dec_pic_nb_cnt_shift
+    * cur_prog->frameDuration
   );
 
   script->PTS_reference = DIV_ROUND_UP(reference, 300ull);
@@ -549,8 +549,8 @@ static void setEsmsPtsRef(
     "(init_dec_pic_nb_cnt_shift=%" PRIu64 ", frame duration=%" PRIu64 ").\n",
     script->PTS_reference,
     reference,
-    curProgParam->init_dec_pic_nb_cnt_shift,
-    curProgParam->frameDuration
+    cur_prog->init_dec_pic_nb_cnt_shift,
+    cur_prog->frameDuration
   );
 }
 
@@ -586,18 +586,18 @@ static int64_t _computeStreamPicOrderCnt(
 
 static int _initProperties(
   EsmsHandlerPtr esms,
-  H264CurrentProgressParam *curProgParam,
+  H264CurrentProgressParam *cur_prog,
   const H264SPSDataParameters *sps,
   H264ConstraintsParam constraints
 )
 {
   /* Convert to BDAV syntax. */
-  HdmvVideoFormat videoFormat = getHdmvVideoFormat(
+  HdmvVideoFormat video_format = getHdmvVideoFormat(
     sps->FrameWidth,
     sps->FrameHeight,
     !sps->frame_mbs_only_flag
   );
-  if (!videoFormat)
+  if (!video_format)
     LIBBLU_H264_CK_FAIL_RETURN(
       "Resolution %ux%u%c is unsupported.\n",
       sps->FrameWidth,
@@ -605,30 +605,31 @@ static int _initProperties(
       (sps->frame_mbs_only_flag) ? "p" : "i"
     );
 
-  if (curProgParam->frameRate < 0)
+  if (cur_prog->frameRate < 0)
     LIBBLU_H264_ERROR_RETURN("Missing Frame-rate information (not present in bitstream).\n");
 
-  HdmvFrameRateCode frameRate = getHdmvFrameRateCode(curProgParam->frameRate);
-  if (!frameRate)
+  HdmvFrameRateCode frame_rate_code = getHdmvFrameRateCode(cur_prog->frameRate);
+  if (!frame_rate_code)
     LIBBLU_H264_CK_FAIL_RETURN(
       "Frame-rate %.3f is unsupported.\n",
-      curProgParam->frameRate
+      cur_prog->frameRate
     );
 
   esms->prop = (LibbluESProperties) {
     .coding_type   = STREAM_CODING_TYPE_AVC,
-    .video_format  = videoFormat,
-    .frame_rate    = frameRate,
+    .video_format  = video_format,
+    .frame_rate    = frame_rate_code,
     .profile_IDC   = sps->profile_idc,
     .level_IDC     = sps->level_idc
   };
 
-  LibbluESH264SpecProperties *param = esms->fmt_prop.h264;
-  param->constraint_flags = valueH264ContraintFlags(sps->constraint_set_flags);
+  LibbluESH264SpecProperties *h264_fmt_prop = esms->fmt_prop.h264;
+  h264_fmt_prop->constraint_flags = valueH264ContraintFlags(sps->constraint_set_flags);
   if (sps->NalHrdBpPresentFlag) {
     const H264HrdParameters *hrd = &sps->vui_parameters.nal_hrd_parameters;
-    param->CpbSize = hrd->SchedSel[hrd->cpb_cnt_minus1].CpbSize;
-    param->BitRate = hrd->SchedSel[hrd->cpb_cnt_minus1].BitRate;
+    h264_fmt_prop->CpbSize = hrd->SchedSel[hrd->cpb_cnt_minus1].CpbSize;
+    h264_fmt_prop->BitRate = hrd->SchedSel[hrd->cpb_cnt_minus1].BitRate;
+
     esms->bitrate  = hrd->SchedSel[hrd->cpb_cnt_minus1].BitRate;
   }
   else {
@@ -640,15 +641,16 @@ static int _initProperties(
      * BitRate[SchedSelIdx] based on profile and level defined in Rec. ITU-T
      * H.264 Annex E.
      */
-    param->CpbSize = 1200 * constraints.MaxCPB;
-    param->BitRate = constraints.max_bit_rate;
+    h264_fmt_prop->CpbSize = 1200 * constraints.MaxCPB;
+    h264_fmt_prop->BitRate = constraints.max_bit_rate;
+
     esms->bitrate  = constraints.max_bit_rate;
   }
 
-  curProgParam->frameDuration = MAIN_CLOCK_27MHZ / curProgParam->frameRate;
-  curProgParam->fieldDuration = curProgParam->frameDuration / 2;
+  cur_prog->frameDuration = MAIN_CLOCK_27MHZ / cur_prog->frameRate;
+  cur_prog->fieldDuration = cur_prog->frameDuration / 2;
 
-  setEsmsPtsRef(esms, curProgParam);
+  setEsmsPtsRef(esms, cur_prog);
   return 0;
 }
 
@@ -656,94 +658,94 @@ static int _registerAccessUnitNALUs(
   H264ParametersHandlerPtr handle
 )
 {
-  H264CurrentProgressParam *curProgParam = &handle->cur_prog_param;
+  H264CurrentProgressParam *cur_prog = &handle->cur_prog_param;
 
-  if (!curProgParam->cur_access_unit.nb_used_NALUs)
+  if (!cur_prog->cur_access_unit.nb_used_NALUs)
     LIBBLU_H264_ERROR_RETURN(
       "Unexpected empty access unit, no NALU received.\n"
     );
 
-  size_t curInsertingOffset = 0;
-  for (unsigned idx = 0; idx < curProgParam->cur_access_unit.nb_used_NALUs; idx++) {
-    const H264AUNalUnitPtr auNalUnitCell = &curProgParam->cur_access_unit.NALUs[idx];
+  size_t cur_PES_frame_offset = 0;
+  for (unsigned NALU_idx = 0; NALU_idx < cur_prog->cur_access_unit.nb_used_NALUs; NALU_idx++) {
+    const H264AUNalUnitPtr au_NALU_cell = &cur_prog->cur_access_unit.NALUs[NALU_idx];
 
-    if (auNalUnitCell->replace) {
-      size_t writtenBytes = 0;
+    if (au_NALU_cell->replace) {
+      size_t written_bytes = 0;
 
-      switch (auNalUnitCell->nal_unit_type) {
+      switch (au_NALU_cell->nal_unit_type) {
 #if 0
       case NAL_UNIT_TYPE_SUPPLEMENTAL_ENHANCEMENT_INFORMATION:
         if (
           isH264SeiBufferingPeriodPatchMessage(
-            (H264SeiRbspParameters *) auNalUnitCell->replacementParam
+            (H264SeiRbspParameters *) au_NALU_cell->replacementParam
           )
         ) {
-          writtenBytes = appendH264SeiBufferingPeriodPlaceHolder(
+          written_bytes = appendH264SeiBufferingPeriodPlaceHolder(
             handle,
-            curInsertingOffset,
-            (H264SeiRbspParameters *) auNalUnitCell->replacementParam
+            cur_PES_frame_offset,
+            (H264SeiRbspParameters *) au_NALU_cell->replacementParam
           );
           break;
         }
 
-        writtenBytes = appendH264Sei(
+        written_bytes = appendH264Sei(
           handle,
-            curInsertingOffset,
-          (H264SeiRbspParameters *) auNalUnitCell->replacementParam
+            cur_PES_frame_offset,
+          (H264SeiRbspParameters *) au_NALU_cell->replacementParam
         );
         break;
 #endif
 
       case NAL_UNIT_TYPE_SEQUENCE_PARAMETER_SET:
         /* Update SPS */
-        writtenBytes = appendH264SequenceParametersSet(
+        written_bytes = appendH264SequenceParametersSet(
           handle,
-          curInsertingOffset,
-          &auNalUnitCell->replacementParameters.sps
+          cur_PES_frame_offset,
+          &au_NALU_cell->replacementParameters.sps
         );
         break;
 
       default:
         LIBBLU_H264_ERROR_RETURN(
           "Unknown replacementParameters NAL unit type code: 0x%" PRIx8 ".\n",
-          auNalUnitCell->nal_unit_type
+          au_NALU_cell->nal_unit_type
         );
       }
 
-      if (0 == writtenBytes)
+      if (0 == written_bytes)
         return -1; /* Zero byte written = Error. */
 
       /* TODO */
-      curInsertingOffset += writtenBytes /* written bytes */;
+      cur_PES_frame_offset += written_bytes /* written bytes */;
     }
     else {
-      assert(curInsertingOffset <= UINT32_MAX);
+      assert(cur_PES_frame_offset <= UINT32_MAX);
 
       int ret = appendAddPesPayloadCommandEsmsHandler(
         handle->script,
         handle->script_src_file_idx,
-        curInsertingOffset,
-        auNalUnitCell->startOffset,
-        auNalUnitCell->length
+        cur_PES_frame_offset,
+        au_NALU_cell->startOffset,
+        au_NALU_cell->length
       );
       if (ret < 0)
         return -1;
 
-      curInsertingOffset += auNalUnitCell->length;
+      cur_PES_frame_offset += au_NALU_cell->length;
     }
   }
 
   /* Saving biggest picture AU size (for CPB computations): */
-  if (curProgParam->largestAUSize < curInsertingOffset) {
+  if (cur_prog->largestAUSize < cur_PES_frame_offset) {
     /* Biggest I picture AU. */
     if (is_I_H264SliceTypeValue(handle->slice.header.slice_type))
-      curProgParam->largestIPicAUSize = MAX(
-        curProgParam->largestIPicAUSize,
-        curInsertingOffset
+      cur_prog->largestIPicAUSize = MAX(
+        cur_prog->largestIPicAUSize,
+        cur_PES_frame_offset
       );
 
     /* Biggest picture AU. */
-    curProgParam->largestAUSize = curInsertingOffset;
+    cur_prog->largestAUSize = cur_PES_frame_offset;
   }
 
   return 0;
@@ -834,13 +836,28 @@ static int _processPESFrame(
   if (ret < 0)
     return -1;
 
+  // Decoding Time Stamp
   if (pts_90kHz != dts_90kHz) {
     if (setDecodingTimeStampPesPacketEsmsHandler(handle->script, dts_90kHz) < 0)
       return -1;
   }
 
+  // Entry point
+  bool is_GOP_start = (
+    is_I_H264SliceTypeValue(handle->slice.header.slice_type)
+    && handle->sequence_parameter_set_valid
+  );
+
+  if (is_GOP_start) {
+    LIBBLU_H264_DEBUG_AU_PROCESSING(" -> Access unit is marked as an entry point.\n");
+    if (markAsEntryPointPesPacketEsmsHandler(handle->script) < 0)
+      return -1;
+  }
+
+  // H.264 Extension Data
   if (_setBufferingInformationsAccessUnit(handle, options, pts_90kHz, dts_90kHz) < 0)
     return -1;
+
 
   if (_registerAccessUnitNALUs(handle) < 0)
     return -1;
@@ -2417,7 +2434,7 @@ static int _parseH264SeiPicTiming(
       LIBBLU_H264_READING_FAIL_RETURN();
     param->pic_struct = value;
 
-    // handle->curProgParam.lastPicStruct = param->pic_struct;
+    // handle->cur_prog.lastPicStruct = param->pic_struct;
 
     switch (param->pic_struct) {
     case H264_PIC_STRUCT_FRAME:

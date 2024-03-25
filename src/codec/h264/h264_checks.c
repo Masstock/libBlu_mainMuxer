@@ -3414,25 +3414,8 @@ static int _checkH264SliceHeaderCompliance(
         "Missing a valid SPS NALU before slice header.\n"
       );
   }
-  else {
-    if (handle->constraints.forbiddenArbitrarySliceOrder || !sps->separate_colour_plane_flag) {
-      if (param.first_mb_in_slice <= cur->last_pic.first_mb_in_slice)
-        LIBBLU_H264_CK_ERROR_RETURN(
-          "Broken slices order according to macroblocks addresses, "
-          "arbitrary slice order is forbidden for bitstream profile "
-          "conformance.\n"
-        );
-    }
-    else {
-      /* TODO: Add support of arbitrary slice order. */
-      LIBBLU_TODO_MSG(
-        "Arbitrary ordered slices structure is not supported.\n"
-      );
-    }
-
+  else
     cur->nb_slices_in_picture++;
-  }
-  cur->last_pic.first_mb_in_slice = param.first_mb_in_slice;
 
   LIBBLU_H264_DEBUG_SLICE(
     "   Slice type (slice_type): %s (0x%X).\n",
@@ -3446,7 +3429,22 @@ static int _checkH264SliceHeaderCompliance(
       param.slice_type
     );
 
-  /* Check if slice type is allowed according to Profile/Level constraints */
+  if (param.is_IDR_pic && !is_I_H264SliceTypeValue(param.slice_type))
+    LIBBLU_H264_CK_ERROR_RETURN(
+      "Non I-slice type value 'slice_type' == %u in use in an IDR picture "
+      "('slice_type' == %u).\n",
+      param.slice_type
+    );
+
+  if (0 == sps->max_num_ref_frames && !is_I_H264SliceTypeValue(param.slice_type))
+    LIBBLU_H264_CK_ERROR_RETURN(
+      "Unexpected non I-slice type whereas the maximum number of reference "
+      "pictures in Sequence Parameter Set is set to 0 "
+      "('max_num_ref_frames' == 0b0, 'slice_type' == %u).\n",
+      param.slice_type
+    );
+
+  // Check if slice type is allowed according to Profile/Level constraints
   const H264PrimaryPictureType constraints_allowed_slice_types =
     handle->constraints.allowed_slice_types
   ;
@@ -3456,11 +3454,6 @@ static int _checkH264SliceHeaderCompliance(
       "Unallowed 'slice_type' == %u in use for bitstream profile "
       "conformance.\n",
       param.slice_type
-    );
-
-  if (param.is_IDR_pic && !is_I_H264SliceTypeValue(param.slice_type))
-    LIBBLU_H264_CK_ERROR_RETURN(
-      "Non I-slice type value 'slice_type' == %u in use in an IDR picture.\n"
     );
 
   /* Check if slice type is allowed according AUD primary_pic_type */
@@ -3538,8 +3531,6 @@ static int _checkH264SliceHeaderCompliance(
     );
 
   if (is_first_VCL_NALU) {
-    // Checks of
-
     if (param.is_IDR_pic) {
       /* IDR picture */
       LIBBLU_H264_DEBUG_SLICE("    -> IDR Picture: 'frame_num' shall be 0.\n");
@@ -3981,8 +3972,45 @@ static int _checkH264SliceHeaderChangeCompliance(
   if (invalid)
     LIBBLU_H264_CK_FAIL_RETURN(
       "The following fields should have remained identical between two "
-      "slice headers of the same coded picture.\n"
+      "slice headers of the same coded picture: %s.\n",
+      different_fields
     );
+
+  /* Field specific checks */
+  const H264SPSDataParameters *sps = &handle->sequence_parameter_set.data;
+  H264CurrentProgressParam *cur_prog = &handle->cur_prog_param;
+
+  // slice_type
+  if ((first.slice_type % 5) != (second.slice_type % 5))
+    cur_prog->cur_pic_has_diff_slice_types = true;
+
+  if (5 <= second.slice_type && second.slice_type <= 9) {
+    // Restrictive slice_type
+    if (cur_prog->cur_pic_has_diff_slice_types)
+      LIBBLU_H264_CK_ERROR_RETURN(
+        "Slice type is restrictive but other slices of the same coded picture "
+        "have a different slice type "
+        "('slice_type' == %u).\n",
+        second.slice_type
+      );
+  }
+
+  // frame_num
+  if (handle->constraints.forbiddenArbitrarySliceOrder || !sps->separate_colour_plane_flag) {
+    if (second.first_mb_in_slice <= first.first_mb_in_slice)
+      LIBBLU_H264_CK_ERROR_RETURN(
+        "Broken slices order according to macroblocks addresses, "
+        "arbitrary slice order is forbidden for bitstream profile "
+        "conformance.\n"
+      );
+  }
+  else {
+    /* TODO: Add support of arbitrary slice order. */
+    LIBBLU_TODO_MSG(
+      "Arbitrary ordered slices structure is not supported.\n"
+    );
+  }
+
 
   return 0;
 }

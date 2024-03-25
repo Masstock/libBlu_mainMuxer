@@ -1781,8 +1781,6 @@ typedef struct {
     memory_management_control_operation equal to 5 in slice header.          */
   bool bottom_field_flag;            /**< Is a bottom field.                     */
 
-  uint32_t first_mb_in_slice;    /**< Slice header first_mb_in_slice field.  */
-
   int32_t PicOrderCnt;           /**< Computed PicOrderCnt value.            */
 
   struct {
@@ -1826,6 +1824,7 @@ typedef struct {
   unsigned nb_consecutive_B_frames;  /**< Current number of consecutive B-pictures. */
 
   unsigned nb_slices_in_picture;  /**< Current number of slices in current parsed picture. */
+  bool cur_pic_has_diff_slice_types;
 
   double frameRate;  /**< Video frame-rate. */
   int64_t frameDuration;  /**< Duration of one video frame in #MAIN_CLOCK_27MHZ ticks. */
