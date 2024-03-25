@@ -111,7 +111,7 @@ void updateH264BDConstraints(
 );
 
 /* Handling functions : */
-H264ParametersHandlerPtr initH264ParametersHandler(
+H264ParametersHandlerPtr createH264ParametersHandler(
   const LibbluESParsingSettings *settings
 );
 

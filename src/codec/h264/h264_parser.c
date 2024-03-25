@@ -3957,7 +3957,7 @@ int analyzeH264(
 {
   assert(NULL != settings);
 
-  H264ParametersHandlerPtr handle = initH264ParametersHandler(settings);
+  H264ParametersHandlerPtr handle = createH264ParametersHandler(settings);
   if (NULL == handle)
     return -1;
 

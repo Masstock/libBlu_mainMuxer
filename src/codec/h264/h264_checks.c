@@ -391,7 +391,6 @@ static int _checkAspectRatioInfoH264VuiParametersCompliance(
 
 static int _checkVideoFormatH264VuiParametersCompliance(
   const H264ParametersHandlerPtr handle,
-  H264SPSDataParameters sps,
   H264VuiParameters vui
 )
 {
@@ -402,11 +401,11 @@ static int _checkVideoFormatH264VuiParametersCompliance(
   if (expected != vui.video_format) {
     LIBBLU_H264_CK_BD_WCOND_WARNING(
       LIBBLU_WARN_COUNT_CHECK_INC(&handle->warning_flags, VUI_wrong_video_format),
-      "Video Format in SPS VUI parameters for %ux%u, should be '%s' for this "
-      "resolution, not '%s' ('video_format' == %d).\n",
-      sps.FrameWidth, sps.FrameHeight,
-      H264VideoFormatValueStr(expected),
+      "Unexpected video format '%s' with frame rate of %.3f, shall be '%s'"
+      "('video_format' == %u).\n",
       H264VideoFormatValueStr(vui.video_format),
+      vui.FrameRate,
+      H264VideoFormatValueStr(expected),
       vui.video_format
     );
 
@@ -650,7 +649,7 @@ static int _checkH264VuiParametersCompliance(
         vui.video_format
       );
 
-    if (_checkVideoFormatH264VuiParametersCompliance(handle, sps, vui) < 0)
+    if (_checkVideoFormatH264VuiParametersCompliance(handle, vui) < 0)
       return -1;
 
     LIBBLU_H264_DEBUG_VUI(

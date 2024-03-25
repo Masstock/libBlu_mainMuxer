@@ -236,29 +236,31 @@ static int initOutputFileH264ParametersHandle(
   return 0;
 }
 
-H264ParametersHandlerPtr initH264ParametersHandler(
+H264ParametersHandlerPtr createH264ParametersHandler(
   const LibbluESParsingSettings *settings
 )
 {
-  H264ParametersHandlerPtr handle;
-
   assert(NULL != settings);
 
   LIBBLU_H264_DEBUG(
-    "Allocate the %u bytes context.\n",
+    "Allocate the %zu bytes context.\n",
     sizeof(H264ParametersHandler)
   );
 
-  handle = (H264ParametersHandlerPtr) calloc(1, sizeof(H264ParametersHandler));
+  H264ParametersHandlerPtr handle = calloc(
+    1, sizeof(H264ParametersHandler)
+  );
   if (NULL == handle)
     goto free_return;
 
   handle->cur_prog_param = (H264CurrentProgressParam) {
-    .update_VUI =
+    .update_VUI = (
       0x00 != settings->options.fps_mod
       || isUsedLibbluAspectRatioMod(settings->options.ar_mod)
       || 0x00 != settings->options.level_mod
+    ) // Update VUI if any patch is to be applied
   };
+  // handle->warning_flags.max_amount = 1;
 
   if (initInputFileH264ParametersHandle(handle, settings) < 0)
     goto free_return;

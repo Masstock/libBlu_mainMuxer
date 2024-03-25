@@ -193,22 +193,25 @@ void destroyLibbluMetaFileTrack(
   free(track);
 }
 
-static LibbluMetaFileTrack * _parseTrackMetaFileStructure(
-  const lbc *line
+static int _parseTrackMetaFileStructure(
+  const lbc *line,
+  LibbluMetaFileTrack **track_ret
 )
 {
   const lbc *rp = line;
+
+  assert(NULL != track_ret);
 
   LIBBLU_DEBUG_COM("Parsing track line '%s'.\n", line);
 
   _skipWhiteSpace(&rp);
   if (_isEndOfLine(rp))
-    return 0;
+    return 0; // End of line/commentary
 
   lbc track_type[64];
   unsigned track_type_size = 0;
   if (lbc_sscanf(rp, lbc_str(" %63[^, ]%n"), track_type, &track_type_size) <= 0)
-    LIBBLU_ERROR_NRETURN("Invalid META file, missing track type.\n");
+    LIBBLU_ERROR_RETURN("Invalid META file, missing track type.\n");
   rp += track_type_size;
 
   LIBBLU_DEBUG_COM(" Track type: '%s' (%u).\n", track_type, track_type_size);
@@ -216,25 +219,27 @@ static LibbluMetaFileTrack * _parseTrackMetaFileStructure(
   char sep;
   unsigned sep_space = 0;
   if (lbc_sscanf(rp, lbc_str(" %c%n"), &sep, &sep_space) <= 0)
-    LIBBLU_ERROR_NRETURN("Invalid META file, missing track argument (missing separator).\n");
+    LIBBLU_ERROR_RETURN("Invalid META file, missing track argument (missing separator).\n");
   if (sep != ',')
-    LIBBLU_ERROR_NRETURN("Invalid META file, missing track argument (wrong separator).\n");
+    LIBBLU_ERROR_RETURN("Invalid META file, missing track argument (wrong separator).\n");
   rp += sep_space;
   _skipWhiteSpace(&rp);
 
   lbc track_argument[4096];
   if (_parseString(track_argument, 4096, &rp, lbc_str("")) < 0)
-    LIBBLU_ERROR_NRETURN("Invalid META file, invalid track argument '%s'.\n", track_argument);
+    LIBBLU_ERROR_RETURN("Invalid META file, invalid track argument '%s'.\n", track_argument);
 
   LIBBLU_DEBUG_COM(" Track argument: '%s'.\n", track_argument);
 
   LibbluMetaFileTrack *track = createLibbluMetaFileTrack(track_type, track_argument);
   if (NULL == track)
-    return NULL;
+    return -1;
 
   if (_parseOptionsMetaFileStructure(rp, &track->options) < 0)
-    return NULL;
-  return track;
+    return -1;
+
+  *track_ret = track;
+  return 1;
 }
 
 /* ### META File section : ################################################# */
@@ -389,15 +394,18 @@ LibbluMetaFileStructPtr parseMetaFileStructure(
     }
     else {
       /* Track of current section */
-      LibbluMetaFileTrack *track = _parseTrackMetaFileStructure(line);
-      if (NULL == track)
+      LibbluMetaFileTrack *track;
+      int ret = _parseTrackMetaFileStructure(line, &track);
+      if (ret < 0)
         goto free_return;
 
-      if (NULL == cur_section_last_track)
-        cur_section->tracks = track;
-      else
-        cur_section_last_track->next = track;
-      cur_section_last_track = track;
+      if (0 < ret) {
+        if (NULL == cur_section_last_track)
+          cur_section->tracks = track;
+        else
+          cur_section_last_track->next = track;
+        cur_section_last_track = track;
+      }
     }
   } while (!feof(input_fd));
 
