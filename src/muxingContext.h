@@ -19,13 +19,15 @@
 #define __LIBBLU_MUXER__MUXING_CONTEXT_H__
 
 #include "util.h"
-#include "muxingSettings.h"
+
+#include "codecsUtilities.h"
 #include "elementaryStream.h"
-#include "systemStream.h"
+#include "entryPointList.h"
+#include "muxingSettings.h"
+#include "packetIdentifier.h"
 #include "stream.h"
 #include "streamHeap.h"
-#include "packetIdentifier.h"
-#include "codecsUtilities.h"
+#include "systemStream.h"
 #include "tsPackets.h"
 #include "tStdVerifier/bdavStd.h"
 
@@ -94,11 +96,14 @@ typedef struct {
   size_t nb_bytes_written;
   double progress;          /**< Progression state between 0 and 1.          */
 
+  /* Results */
   uint64_t STC_start;  /**< Initial STC value (@27MHz).                      */
   uint64_t STC_end;    /**< Final STC value (@27MHz).                        */
   uint64_t PTS_start;  /**< First video Presentation Unit PTS (@27MHz).      */
   uint64_t PTS_end;    /**< Last video Presentation Unit PTS (@27MHz).       */
   uint64_t PU_dur;     /**< Duration of the last video PU (@27MHz).          */
+
+  LibbluEntryPointList entry_points;  /**< Stream entry points.              */
 } LibbluMuxingContext;
 
 /** \~english
