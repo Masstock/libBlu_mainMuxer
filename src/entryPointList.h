@@ -25,10 +25,17 @@ typedef struct {
   LibbluEntryPointListStreamType stream_type;
   LibbluStreamPtr linked_stream_ptr;
 
-  LibbluEntryPoint entry_points;
+  LibbluEntryPoint *entry_points;
   size_t entry_points_allocated_size;
   size_t entry_points_used_size;
 } LibbluEntryPointListStream;
+
+static inline void cleanLibbluEntryPointListStream(
+  LibbluEntryPointListStream stream
+)
+{
+  free(stream.entry_points);
+}
 
 typedef struct {
   LibbluEntryPointListStream *tracked_streams;
@@ -39,8 +46,22 @@ static inline void cleanLibbluEntryPointList(
   LibbluEntryPointList list
 )
 {
-  // TODO
+  for (unsigned i = 0; i < list.nb_tracked_streams; i++)
+    cleanLibbluEntryPointListStream(list.tracked_streams[i]);
   free(list.tracked_streams);
 }
+
+int declareStreamLibbluEntryPointList(
+  LibbluEntryPointListStream *list,
+  unsigned *stream_id_ret,
+  LibbluEntryPointListStreamType stream_type,
+  LibbluStreamPtr stream
+);
+
+int addEntryPointLibbluEntryPointList(
+  LibbluEntryPointListStream *list,
+  unsigned stream_id,
+  LibbluEntryPoint entry_point
+);
 
 #endif
