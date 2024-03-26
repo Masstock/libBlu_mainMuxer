@@ -419,6 +419,7 @@ static void printDebugOptions(
 static int argc_wchar;
 static LPWSTR *argv_wchar;
 static lbc *optarg_buf;
+static int optind_buf = -1;
 
 static void _unloadWin32CommandLineArguments(
   void
@@ -432,6 +433,9 @@ static const lbc * _getoptarg(
   void
 )
 {
+  if (optind_buf == optind)
+    return optarg_buf; // Already in the buffer
+
   if (0 == argc_wchar) {
     /* Load Windows API Unicode command line arguments */
     argv_wchar = CommandLineToArgvW(
@@ -447,9 +451,10 @@ static const lbc * _getoptarg(
   if (NULL == converted_string)
     return NULL;
 
-  /* Update optarg buffer */
+  /* Update optarg/optind buffer */
   free(optarg_buf);
   optarg_buf = converted_string;
+  optind_buf = optind;
 
   return optarg_buf; // Return the buffer
 }
@@ -467,7 +472,7 @@ static const lbc * _getoptarg(
   void
 )
 {
-  return (lbc *) optarg;
+  return lbc_strdup((lbc *) optarg);
 }
 
 #endif
@@ -548,9 +553,9 @@ int main(
     switch (opt) {
     case CONFIG_FILE:
 #if !defined(DISABLE_INI)
-      if (NULL == optarg)
+      if (NULL == _getoptarg())
         ERROR_RETURN("Expect a configuration filename after '-c'.\n");
-      conf_fp = _getoptarg();
+      conf_fp = lbc_strdup(_getoptarg());
       if (NULL == conf_fp)
         return EXIT_FAILURE;
 #else
@@ -576,17 +581,17 @@ int main(
       return EXIT_SUCCESS;
 
     case INPUT:
-      if (NULL == optarg)
+      if (NULL == _getoptarg())
         ERROR_RETURN("Expect a META filename after '-i'.\n");
-      input_fp = _getoptarg();
+      input_fp = lbc_strdup(_getoptarg());
       if (NULL == input_fp)
         return EXIT_FAILURE;
       break;
 
     case OUTPUT:
-      if (NULL == optarg)
+      if (NULL == _getoptarg())
         ERROR_RETURN("Expect a output filename after '-o'.\n");
-      output_fp = _getoptarg();
+      output_fp = lbc_strdup(_getoptarg());
       if (NULL == output_fp)
         return EXIT_FAILURE;
       break;
@@ -596,7 +601,7 @@ int main(
       return EXIT_SUCCESS;
 
     case LOG_FILE:
-      if (NULL == optarg)
+      if (NULL == _getoptarg())
         ERROR_RETURN("Expect a log filename after '--log'.\n");
       const lbc *log_filepath = _getoptarg();
       if (NULL == log_filepath)
