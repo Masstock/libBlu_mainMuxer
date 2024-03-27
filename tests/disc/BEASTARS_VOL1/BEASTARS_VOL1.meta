@@ -1,0 +1,5 @@
+DISCOPT --test
+CLPINFO --a 00005 --test
+V_MPEG4/ISO/AVC, "00005.track_4113.264" --test
+A_LPCM, "00005.track_4352.wav"
+

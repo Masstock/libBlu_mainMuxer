@@ -7,10 +7,10 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "metaFiles.h"
+#include "meta_reader.h"
 
-#include "metaReader.h"
-#include "metaFilesData.h"
+#include "meta_parser.h"
+#include "meta_data.h"
 
 static int parseCodecNameMetaFile(
   const lbc *string,
@@ -247,7 +247,7 @@ static int _parseMUXOPTSectionTrack(
   return 0;
 }
 
-static int _parseMUXOPTSection(
+static int _analyzeMUXOPTSection(
   LibbluMuxingSettings *dst,
   const LibbluMetaFileSection *header_section,
   const lbc *meta_filepath
@@ -392,7 +392,21 @@ static int _parseMUXOPTSection(
   return 0;
 }
 
-int parseMetaFile(
+
+static int _analyzeCLPINFOSection(
+  LibbluDiscProjectSettings *dst,
+  const LibbluMetaFileSection *header_section,
+  const lbc *meta_filepath
+)
+{
+  (void) dst;
+  (void) header_section;
+  (void) meta_filepath;
+  LIBBLU_TODO();
+}
+
+
+int readMetaFile(
   LibbluProjectSettings *dst,
   const lbc *meta_filepath,
   const lbc *output_filepath,
@@ -422,17 +436,24 @@ int parseMetaFile(
       return -1;
 
     /* MUXOPT header, main mux and common options */
-    if (_parseMUXOPTSection(&dst->single_mux_settings, header_section, meta_filepath) < 0)
+    if (_analyzeMUXOPTSection(&dst->single_mux_settings, header_section, meta_filepath) < 0)
       goto free_return;
 
     dst->type = LIBBLU_SINGLE_MUX;
   }
   else {
     assert(LBMETA_DISCOPT == meta->type);
-    // const LibbluMetaFileSection *header_section = &meta->sections[LBMETA_HEADER];
+    const LibbluMetaFileSection *header_section = &meta->sections[LBMETA_HEADER];
 
     /* DISCOPT header, main mux and common options */
     dst->disc_project_settings.shared_mux_options = mux_options;
+    // if (_analyzeDISCOPTSection(&dst->disc_project_settings, header_section, meta_filepath) < 0)
+    //   goto free_return;
+
+    /* CLPINFO header, clip definitions */
+    if (_analyzeCLPINFOSection(&dst->disc_project_settings, header_section, meta_filepath) < 0)
+      goto free_return;
+
     LIBBLU_TODO();
     dst->type = LIBBLU_DISC_PROJECT;
   }

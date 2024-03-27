@@ -1,9 +1,11 @@
 
 
-#ifndef __LIBBLU_MUXER__INPUT__META__READER_H__
-#define __LIBBLU_MUXER__INPUT__META__READER_H__
+#ifndef __LIBBLU_MUXER__INPUT__META__PARSER_H__
+#define __LIBBLU_MUXER__INPUT__META__PARSER_H__
 
 #include "../../util.h"
+
+#include "meta_error.h"
 
 /* ### META File header : ################################################## */
 
@@ -56,6 +58,7 @@ typedef struct LibbluMetaFileTrack {
   lbc *argument;
 
   LibbluMetaFileOption *options;
+  unsigned line;
 } LibbluMetaFileTrack;
 
 LibbluMetaFileTrack * createLibbluMetaFileTrack(
@@ -70,17 +73,22 @@ void destroyLibbluMetaFileTrack(
 /* ### META File section : ################################################# */
 
 typedef enum {
-  LBMETA_HEADER
+  LBMETA_HEADER,  /**< DISCOPT/MUXOPT header section */
+
+  LBMETA_CLPINFO  /**< Clip definitions section */
 } LibbluMetaFileSectionType;
 
-#define LBMETA_NB_SECTIONS  1
+#define LBMETA_CLPINFO_HEADER  lbc_str("CLPINFO")
+
+#define LBMETA_NB_SECTIONS  2
 
 inline static const char * LibbluMetaFileSectionTypeStr(
   LibbluMetaFileSectionType section_type
 )
 {
   static const char *strings[] = {
-    "header"
+    "header",
+    "Clip definitions"
   };
 
   if (ARRAY_SIZE(strings) <= section_type)
@@ -89,8 +97,10 @@ inline static const char * LibbluMetaFileSectionTypeStr(
 }
 
 typedef struct {
+  lbc *name;
   LibbluMetaFileOption *common_options;
   LibbluMetaFileTrack *tracks;
+  unsigned line;
 } LibbluMetaFileSection;
 
 /* ### META File structure : ############################################### */

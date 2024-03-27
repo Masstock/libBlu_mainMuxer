@@ -1,11 +1,11 @@
 
 
-#ifndef __LIBBLU_MUXER__INPUT__META_FILES_DATA_H__
-#define __LIBBLU_MUXER__INPUT__META_FILES_DATA_H__
+#ifndef __LIBBLU_MUXER__INPUT__META__DATA_H__
+#define __LIBBLU_MUXER__INPUT__META__DATA_H__
 
 #include "../../util.h"
 #include "../../streamCodingType.h"
-#include "metaReader.h"
+#include "meta_parser.h"
 
 typedef enum {
   LBMETA_OPT__INVALID          = -1,
@@ -43,7 +43,7 @@ typedef enum {
 } LibbluMetaOptionId;
 
 typedef enum {
-  LBMETA_OPTARG_NO_ARG  = 0,
+  LBMETA_OPTARG_NO_ARG,
 
   LBMETA_OPTARG_UINT64,
   LBMETA_OPTARG_STRING
@@ -52,9 +52,8 @@ typedef enum {
 typedef struct {
   LibbluMetaOptionId id;
   const lbc *name;
-  size_t nameSize;
-  LibbluMetaOptionArgType arg;
-  const LibbluStreamCodingType *compatibleCodingTypes;
+  LibbluMetaOptionArgType arg_type;
+  const LibbluStreamCodingType *compat_coding_types;
 } LibbluMetaOption;
 
 typedef union {
@@ -64,9 +63,9 @@ typedef union {
 
 LibbluMetaOptionId parseLibbluMetaOption(
   const LibbluMetaFileOption *node,
-  LibbluMetaOption *option,
-  LibbluMetaOptionArgValue *argument,
-  LibbluStreamCodingType trackCodingType
+  LibbluMetaOption *option_ret,
+  LibbluMetaOptionArgValue *argument_ret,
+  LibbluStreamCodingType track_coding_type
 );
 
 static inline void cleanLibbluMetaOptionArgValue(
@@ -74,13 +73,8 @@ static inline void cleanLibbluMetaOptionArgValue(
   LibbluMetaOptionArgValue arg
 )
 {
-  if (opt.arg == LBMETA_OPTARG_STRING)
+  if (opt.arg_type == LBMETA_OPTARG_STRING)
     free(arg.str);
 }
-
-int parseLibbluMetaOptionUint64Argument(
-  const lbc *str,
-  uint64_t *val
-);
 
 #endif

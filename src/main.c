@@ -10,7 +10,7 @@
 #include "util.h"
 #include "muxingSettings.h"
 #include "ini/iniHandler.h"
-#include "input/meta/metaFiles.h"
+#include "input/meta/meta_reader.h"
 #include "mainMuxer.h"
 
 #if defined(ARCH_WIN32)
@@ -656,7 +656,7 @@ static int _mainProgram(
   mux_options.disable_buffering_model |= cl_arg.script_gen_mode_only;
 
   /* Parse input configuration file */
-  if (parseMetaFile(&project_settings, cl_arg.input_fp, cl_arg.output_fp, mux_options) < 0)
+  if (readMetaFile(&project_settings, cl_arg.input_fp, cl_arg.output_fp, mux_options) < 0)
     goto free_return;
 
   if (!cl_arg.script_gen_mode_only) {
