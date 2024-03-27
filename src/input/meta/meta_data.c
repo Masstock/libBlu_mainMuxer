@@ -23,14 +23,16 @@
 
 
 static const LibbluMetaOption options[] = {
-  /*  */
+  /* DISCOPT/MUXOPT headers common options : */
+  HEADER_OPT(     "--force-esms",      LBMETA_OPT__FORCE_ESMS, LBMETA_OPTARG_NO_ARG),
+
+  /* DISCOPT header options : */
 
   /* MUXOPT header options : */
   HEADER_OPT("--no-extra-header", LBMETA_OPT__NO_EXTRA_HEADER, LBMETA_OPTARG_NO_ARG),
   HEADER_OPT(            "--cbr",         LBMETA_OPT__CBR_MUX, LBMETA_OPTARG_NO_ARG),
-  HEADER_OPT(     "--force-esms",      LBMETA_OPT__FORCE_ESMS, LBMETA_OPTARG_NO_ARG),
-  HEADER_OPT(   "--disable-tstd",   LBMETA_OPT__DISABLE_T_STD, LBMETA_OPTARG_NO_ARG),
 
+  HEADER_OPT(   "--disable-tstd",   LBMETA_OPT__DISABLE_T_STD, LBMETA_OPTARG_NO_ARG),
   HEADER_OPT(     "--start-time",      LBMETA_OPT__START_TIME, LBMETA_OPTARG_UINT64),
   HEADER_OPT(       "--mux-rate",        LBMETA_OPT__MUX_RATE, LBMETA_OPTARG_UINT64),
   HEADER_OPT(      "--dvd-media",       LBMETA_OPT__DVD_MEDIA, LBMETA_OPTARG_NO_ARG),
@@ -38,7 +40,7 @@ static const LibbluMetaOption options[] = {
   /* MUXOPT track options : */
   TRACK_OPT(     "--force-esms",      LBMETA_OPT__FORCE_ESMS, LBMETA_OPTARG_NO_ARG,
     ANY_CODING_TYPE),
-  TRACK_OPT(      "--dvd-media",       LBMETA_OPT__DVD_MEDIA, LBMETA_OPTARG_NO_ARG,
+  TRACK_OPT(           "--esms",            LBMETA_OPT__ESMS, LBMETA_OPTARG_STRING,
     ANY_CODING_TYPE),
 
   TRACK_OPT(      "--secondary",       LBMETA_OPT__SECONDARY, LBMETA_OPTARG_NO_ARG,
@@ -70,11 +72,19 @@ static const LibbluMetaOption options[] = {
   TRACK_OPT(            "--pbr",        LBMETA_OPT__PBR_FILE, LBMETA_OPTARG_STRING,
     CODING_TYPES(STREAM_CODING_TYPE_DTS)),
 
-  // HDMV tracks only :
+  // HDMV PG/IG tracks only :
 #define CT  CODING_TYPES(STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)
   TRACK_OPT("--hdmv-initial-timestamp",     LBMETA_OPT__HDMV_INITIAL_TS, LBMETA_OPTARG_UINT64, CT),
   TRACK_OPT(   "--hdmv-force-retiming", LBMETA_OPT__HDMV_FORCE_RETIMING, LBMETA_OPTARG_NO_ARG, CT),
 #undef CT
+
+  // HDMV IG tracks only:
+  TRACK_OPT(        "--hdmv-xml-input", LBMETA_OPT__HDMV_XML_INPUT, LBMETA_OPTARG_NO_ARG,
+    CODING_TYPES(STREAM_CODING_TYPE_IG)),
+
+  // HDMV PG tracks only:
+  TRACK_OPT(        "--hdmv-ass-input", LBMETA_OPT__HDMV_ASS_INPUT, LBMETA_OPTARG_NO_ARG,
+    CODING_TYPES(STREAM_CODING_TYPE_PG)),
 };
 
 static int _parseOptionArgument(

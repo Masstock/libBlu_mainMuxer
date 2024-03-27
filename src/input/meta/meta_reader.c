@@ -127,6 +127,16 @@ static int _parseMUXOPTSectionTrack(
       LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, force_script_generation, true);
       break;
 
+    case LBMETA_OPT__ESMS:
+      if (setScriptFilepathLibbluESSettings(es_settings, argument.str, meta_filepath) < 0)
+        LIBBLU_ERROR_RETURN(
+          "Invalid '%s' option value, "
+          "unable to set '%s' as script filepath.\n",
+          option.name,
+          argument.str
+        );
+      break;
+
     case LBMETA_OPT__SECONDARY:
       LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, secondary, true);
       break;
@@ -134,18 +144,6 @@ static int _parseMUXOPTSectionTrack(
     case LBMETA_OPT__DISABLE_FIXES:
       LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, disable_fixes, true);
       break;
-
-    case LBMETA_OPT__EXTRACT_CORE:
-      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, extract_core, true);
-      break;
-
-    case LBMETA_OPT__PBR_FILE: {
-      lbc *path;
-      if (lb_gen_anchor_absolute_fp(&path, meta_filepath, argument.str) < 0)
-        return -1;
-      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, pbr_filepath, path);
-      break;
-    }
 
     case LBMETA_OPT__SET_FPS:
       if (setFpsChangeLibbluESSettings(es_settings, argument.str) < 0)
@@ -201,6 +199,18 @@ static int _parseMUXOPTSectionTrack(
       break;
     }
 
+    case LBMETA_OPT__EXTRACT_CORE:
+      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, extract_core, true);
+      break;
+
+    case LBMETA_OPT__PBR_FILE: {
+      lbc *path;
+      if (lb_gen_anchor_absolute_fp(&path, meta_filepath, argument.str) < 0)
+        return -1;
+      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, pbr_filepath, path);
+      break;
+    }
+
     case LBMETA_OPT__HDMV_INITIAL_TS:
       if (setHdmvInitialTimestampLibbluESSettings(es_settings, argument.u64) < 0)
         LIBBLU_ERROR_RETURN(
@@ -217,18 +227,12 @@ static int _parseMUXOPTSectionTrack(
       LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, hdmv.force_retiming, true);
       break;
 
-    case LBMETA_OPT__HDMV_ASS_INPUT:
-      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, hdmv.ass_input, true);
+    case LBMETA_OPT__HDMV_XML_INPUT:
+      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, hdmv.xml_input, true);
       break;
 
-    case LBMETA_OPT__ESMS:
-      if (setScriptFilepathLibbluESSettings(es_settings, argument.str, meta_filepath) < 0)
-        LIBBLU_ERROR_RETURN(
-          "Invalid '%s' option value, "
-          "unable to set '%s' as script filepath.\n",
-          option.name,
-          argument.str
-        );
+    case LBMETA_OPT__HDMV_ASS_INPUT:
+      LIBBLU_ES_SETTINGS_SET_OPTION(es_settings, hdmv.ass_input, true);
       break;
 
     default:

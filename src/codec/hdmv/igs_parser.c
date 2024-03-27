@@ -86,16 +86,14 @@ int analyzeIgs(
 )
 {
   HdmvTimecodes timecodes = {0};
-
-  bool compiler_mode = isIgsCompilerFile(settings->esFilepath);
   lbc *es_fp_dup = NULL;
 
+  // bool compiler_mode = isIgsCompilerFile(settings->esFilepath);
+  bool compiler_mode = settings->options.hdmv.xml_input;
+
   if (compiler_mode) {
-#if defined(DISABLE_IGS_COMPILER)
-    LIBBLU_ERROR("Igs Compiler is not available in this program build !\n");
-    return -1;
-#else
-    LIBBLU_HDMV_IGS_DEBUG("Processing input file as Igs Compiler file.\n");
+#if !defined(DISABLE_IGS_COMPILER)
+    LIBBLU_HDMV_IGS_DEBUG("Processing input file as IGS Compiler file.\n");
 
     if (processIgsCompiler(settings->esFilepath, &timecodes, settings->options.conf_hdl) < 0)
       return -1;
@@ -111,6 +109,8 @@ int analyzeIgs(
         strerror(errno),
         errno
       );
+#else
+    LIBBLU_ERROR_RETURN("IGS Compiler is not available in this program build !\n");
 #endif
   }
   else {

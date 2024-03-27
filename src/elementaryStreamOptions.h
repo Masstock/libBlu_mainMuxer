@@ -57,6 +57,7 @@ typedef struct {
   struct {
     int64_t initial_timestamp;
     bool force_retiming;
+    bool xml_input;
     bool ass_input;
   } hdmv;  /**< HDMV codecs related options. */
 } LibbluESSettingsOptions;
