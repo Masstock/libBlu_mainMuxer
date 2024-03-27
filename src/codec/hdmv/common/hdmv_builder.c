@@ -14,7 +14,7 @@ int initHdmvBuilderContext(
   assert(NULL != out_filepath);
 
   LIBBLU_HDMV_SEGBUILD_INFO(
-    "Writing output HDMV stream to '%" PRI_LBCS "'...\n",
+    "Writing output HDMV stream to '%s'...\n",
     out_filepath
   );
 
@@ -26,7 +26,7 @@ int initHdmvBuilderContext(
   FILE *output_fd = lbc_fopen(out_filepath, "wb");
   if (NULL == output_fd)
     LIBBLU_HDMV_SEGBUILD_ERROR_RETURN(
-      "Unable to open output file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to open output file '%s', %s (errno: %d).\n",
       out_filepath,
       strerror(errno),
       errno
@@ -49,7 +49,7 @@ int cleanHdmvBuilderContext(
   LIBBLU_HDMV_SEGBUILD_DEBUG("Closing output file and cleaning context.\n");
   if (EOF == fclose(builder_ctx.out_fd)) {
     LIBBLU_HDMV_SEGBUILD_ERROR(
-      "Unable to close ouput file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to close ouput file '%s', %s (errno: %d).\n",
       builder_ctx.out_fp,
       strerror(errno),
       errno

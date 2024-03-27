@@ -112,7 +112,7 @@ static int _checkScriptFile(
 
   /* Checking ESMS script file : */
   LIBBLU_SCRIPT_DEBUG(
-    "Check script filepath '%" PRI_LBCS "'.\n",
+    "Check script filepath '%s'.\n",
     script_filepath
   );
   uint64_t exp_flags = computeFlagsLibbluESSettingsOptions(es_sets->options);
@@ -133,7 +133,7 @@ static int _checkScriptFile(
 
     if (NULL == es_sets->es_filepath)
       LIBBLU_ERROR_RETURN(
-        "Unable to generate script '%" PRI_LBCS "', "
+        "Unable to generate script '%s', "
         "no source ES defined.\n",
         script_filepath
       );
@@ -145,7 +145,7 @@ static int _checkScriptFile(
       LIBBLU_SCRIPT_DEBUG("Undefined stream coding type, use guessing.\n");
       if ((exp_coding_type = guessESStreamCodingType(es_sets->es_filepath)) < 0)
         LIBBLU_ERROR_RETURN(
-          "Unable to guess stream coding type of '%" PRI_LBCS "', "
+          "Unable to guess stream coding type of '%s', "
           "file type is not recognized.\n",
           es_sets->es_filepath
         );
@@ -167,7 +167,7 @@ static int _checkScriptFile(
     );
     if (ret < 0)
       LIBBLU_ERROR_RETURN(
-        "Invalid input file '%" PRI_LBCS "', "
+        "Invalid input file '%s', "
         "unable to generate script.\n",
         es_sets->es_filepath
       );
@@ -252,7 +252,7 @@ static int _parseScriptLibbluES(
 
 free_return:
   LIBBLU_ERROR(
-    "Error happen during parsing of script \"%" PRI_LBCS "\".\n",
+    "Error happen during parsing of script \"%s\".\n",
     script_filepath
   );
   closeBitstreamReader(script_bs);
@@ -273,14 +273,14 @@ static int setPesPacketsDurationLibbluES(
   if (prop->type == ES_VIDEO) {
     if ((frame_rate = frameRateCodeToDouble(prop->frame_rate)) <= 0)
       LIBBLU_ERROR_RETURN(
-        "Broken script '%" PRI_LBCS "', unknown frame-rate.\n",
+        "Broken script '%s', unknown frame-rate.\n",
         es->script_filepath
       );
   }
   else if (prop->type == ES_AUDIO) {
     if ((sample_rate = sampleRateCodeToDouble(prop->sample_rate)) <= 0)
       LIBBLU_ERROR_RETURN(
-        "Broken script '%" PRI_LBCS "', unknown sample-rate.\n",
+        "Broken script '%s', unknown sample-rate.\n",
         es->script_filepath
       );
   }

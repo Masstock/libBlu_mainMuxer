@@ -616,7 +616,7 @@ static int _parseBitmapXmlCtx(
   }
 
   LIBBLU_HDMV_IGS_COMPL_XML_INFO(
-    "Loading picture '%" PRI_LBCS "' (line %u).\n",
+    "Loading picture '%s' (line %u).\n",
     img_path, lastParsedNodeLineXmlCtx(ctx->xml_ctx)
   );
 
@@ -662,7 +662,7 @@ static int _parseRefImg(
   );
   if (NULL == ref_bitmap_ptr)
     LIBBLU_HDMV_IGS_COMPL_XML_ERROR(
-      "No reference picture called '%" PRI_LBCS "' exits.\n",
+      "No reference picture called '%s' exits.\n",
       name
     );
   free(name);

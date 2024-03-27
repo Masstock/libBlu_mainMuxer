@@ -192,7 +192,7 @@ BitstreamReaderPtr createBitstreamReader(
 
   if (NULL == (bitStream->file = lbc_fopen(inputFilename, "rb")))
     LIBBLU_ERROR_FRETURN(
-      "Error happen during input file '%" PRI_LBCS "' opening, "
+      "Error happen during input file '%s' opening, "
       "%s (errno: %d).\n",
       inputFilename,
       strerror(errno),
@@ -266,7 +266,7 @@ BitstreamWriterPtr createBitstreamWriter(
 
   if (NULL == (bitStream->file = lbc_fopen(outputFilename, "wb")))
     LIBBLU_ERROR_NRETURN(
-      "Unable to open output file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to open output file '%s', %s (errno: %d).\n",
       outputFilename,
       strerror(errno),
       errno
@@ -845,7 +845,7 @@ int getFileSize(
   /* lbc is char on Unix */
   if (stat((char *) filename, &st) == -1)
     LIBBLU_ERROR_RETURN(
-      "Unable to get '%" PRI_LBCS "' file stats, %s (errno: %d).\n",
+      "Unable to get '%s' file stats, %s (errno: %d).\n",
       filename,
       strerror(errno),
       errno

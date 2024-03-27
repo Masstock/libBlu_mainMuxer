@@ -11,10 +11,6 @@
 typedef unsigned char lbc;
 typedef unsigned int lbc_int;
 
-#define PRI_LBC  "c"
-#define PRI_LBCS  "s"
-#define PRI_LBCP  ""
-
 #define lbc_str(s) (unsigned char *) s
 #define lbc_char(c)  c
 

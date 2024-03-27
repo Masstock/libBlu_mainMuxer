@@ -43,7 +43,7 @@ static HdmvPictureFormat _identifyFormatHdmvPictureLibraries(
 
 #define ERROR_FRETURN(msg)                                                    \
   LIBBLU_HDMV_PIC_ERROR_FRETURN(                                              \
-    msg " '%" PRI_LBCS "', %s (errno: %d).\n",                                \
+    msg " '%s', %s (errno: %d).\n",                                \
     filepath,                                                                 \
     strerror(errno),                                                          \
     errno                                                                     \

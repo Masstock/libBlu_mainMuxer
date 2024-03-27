@@ -50,9 +50,11 @@ typedef enum {
 } LibbluMetaOptionArgType;
 
 typedef struct {
-  LibbluMetaOptionId id;
   const lbc *name;
+
+  LibbluMetaOptionId id;
   LibbluMetaOptionArgType arg_type;
+
   const LibbluStreamCodingType *compat_coding_types;
 } LibbluMetaOption;
 
@@ -61,11 +63,17 @@ typedef union {
   lbc *str;
 } LibbluMetaOptionArgValue;
 
-LibbluMetaOptionId parseLibbluMetaOption(
+LibbluMetaOptionId parseLibbluMetaTrackOption(
   const LibbluMetaFileOption *node,
   LibbluMetaOption *option_ret,
   LibbluMetaOptionArgValue *argument_ret,
-  LibbluStreamCodingType track_coding_type
+  LibbluStreamCodingType compat_coding_type
+);
+
+LibbluMetaOptionId parseLibbluMetaHeaderOption(
+  const LibbluMetaFileOption *node,
+  LibbluMetaOption *option_ret,
+  LibbluMetaOptionArgValue *argument_ret
 );
 
 static inline void cleanLibbluMetaOptionArgValue(

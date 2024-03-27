@@ -81,7 +81,7 @@ free_return:
 
 #define ERROR_RETURN(msg)                                                     \
   LIBBLU_HDMV_LIBPNG_ERROR_RETURN(                                            \
-    msg " '%" PRI_LBCS "'.\n",                                                \
+    msg " '%s'.\n",                                                \
     filepath,                                                                 \
     strerror(errno),                                                          \
     errno                                                                     \
@@ -89,7 +89,7 @@ free_return:
 
 #define ERROR_NRETURN(msg)                                                    \
   LIBBLU_HDMV_LIBPNG_ERROR_NRETURN(                                           \
-    msg " '%" PRI_LBCS "', %s (errno: %d).\n",                                \
+    msg " '%s', %s (errno: %d).\n",                                \
     filepath,                                                                 \
     strerror(errno),                                                          \
     errno                                                                     \

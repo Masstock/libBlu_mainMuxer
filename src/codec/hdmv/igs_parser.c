@@ -102,7 +102,7 @@ int analyzeIgs(
 
     int ret = lbc_asprintf(
       &es_fp_dup,
-      lbc_str("%" PRI_LBCS HDMV_IGS_COMPL_OUTPUT_EXT),
+      lbc_str("%s" HDMV_IGS_COMPL_OUTPUT_EXT),
       settings->esFilepath
     );
     if (ret < 0)

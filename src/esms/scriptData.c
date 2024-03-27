@@ -42,7 +42,7 @@ static lbc * checkAndDupFilepathEsmsESSourceFiles(
   size = lbc_strlen(filepath);
   if (!size || ESMS_MAX_FILENAME_LEN <= size)
     LIBBLU_ERROR_NRETURN(
-      "Invalid source filepath size '%" PRI_LBCS "'.\n",
+      "Invalid source filepath size '%s'.\n",
       filepath
     );
 
@@ -515,14 +515,14 @@ int seekDirectoryOffset(
 
   case ESMS_DF_READ_ERROR:
     LIBBLU_ERROR_RETURN(
-      "Broken script '%" PRI_LBCS "', "
+      "Broken script '%s', "
       "reading error.\n",
       essFilename
     );
 
   case ESMS_DF_NOT_FOUND:
     LIBBLU_ERROR_RETURN(
-      "Broken script '%" PRI_LBCS "', "
+      "Broken script '%s', "
       "unable to find directory \"%s\".\n",
       essFilename,
       ESMSDirectoryIdStr(id)
@@ -530,7 +530,7 @@ int seekDirectoryOffset(
 
   case ESMS_DF_INVALID:
     LIBBLU_ERROR_RETURN(
-      "Broken script '%" PRI_LBCS "', "
+      "Broken script '%s', "
       "invalid directory \"%s\".\n",
       essFilename,
       ESMSDirectoryIdStr(id)
@@ -539,7 +539,7 @@ int seekDirectoryOffset(
 
   if (seekPos(esms_bs, dir_offset, SEEK_SET) < 0)
     LIBBLU_ERROR_RETURN(
-      "Broken script '%" PRI_LBCS "', offset pointing outside of file.\n",
+      "Broken script '%s', offset pointing outside of file.\n",
       essFilename
     );
 

@@ -85,9 +85,10 @@ static int _parseSectionName(
 
 /* ### META File option : ################################################## */
 
-LibbluMetaFileOption * createLibbluMetaFileOption(
+LibbluMetaFileOption * _createLibbluMetaFileOption(
   const lbc *name,
-  const lbc *arg
+  const lbc *arg,
+  unsigned line
 )
 {
   LibbluMetaFileOption *op;
@@ -97,7 +98,7 @@ LibbluMetaFileOption * createLibbluMetaFileOption(
     LIBBLU_META_PARSER_ERROR_NRETURN("Memory allocation error.\n");
 
   *op = (LibbluMetaFileOption) {
-    0
+    .line = line
   };
 
   if (NULL == (op->name = lbc_strdup(name)))
@@ -144,11 +145,11 @@ static int _parseOptionsMetaFileStructure(
 
     /* Option name */
     lbc opt_name[STR_BUFSIZE];
-    unsigned opt_arg_size = 0;
+    unsigned opt_name_size = 0;
 
-    if (!lbc_sscanf(rp, lbc_str(" %1023[^=\r\n ]%n"), opt_name, &opt_arg_size))
+    if (!lbc_sscanf(rp, lbc_str(" %1023[^=\r\n ]%n"), opt_name, &opt_name_size))
       break;
-    rp += opt_arg_size;
+    rp += opt_name_size;
 
     /* Option argument */
     lbc opt_arg[1024] = {'\0'};
@@ -167,7 +168,10 @@ static int _parseOptionsMetaFileStructure(
       "   Option: name='%s' argument='%s' (line %u).\n",
       opt_name, opt_arg, line_idx
     );
-    LibbluMetaFileOption *option = createLibbluMetaFileOption(opt_name, opt_arg);
+
+    LibbluMetaFileOption *option = _createLibbluMetaFileOption(
+      opt_name, opt_arg, line_idx
+    );
     if (NULL == option)
       return -1;
 

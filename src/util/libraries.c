@@ -73,7 +73,7 @@ LibbluLibraryHandlePtr loadLibbluLibrary(
     err_msg = getLastWindowsErrorString(&err_code);
 
     LIBBLU_ERROR_FRETURN(
-      "Unable to load library '%" PRI_LBCS "', %" PRI_LBCS " "
+      "Unable to load library '%s', %s "
       "(winerror: %lu).\n",
       name,
       err_msg,
@@ -119,8 +119,8 @@ void * resolveSymLibbluLibrary(
     err_msg = getLastWindowsErrorString(&err_code);
 
     LIBBLU_ERROR_FRETURN(
-      "Unable to resolve symbol '%s' from library '%" PRI_LBCS "', "
-      "%" PRI_LBCS " (winerror: %lu).\n",
+      "Unable to resolve symbol '%s' from library '%s', "
+      "%s (winerror: %lu).\n",
       name,
       handle->name,
       err_msg,
@@ -189,7 +189,7 @@ LibbluLibraryHandlePtr loadLibbluLibrary(
 
   if (NULL == (lib = dlopen((char *) name, RTLD_LAZY)))
     LIBBLU_ERROR_NRETURN(
-      "Unable to load library '%" PRI_LBCS "', %s.\n",
+      "Unable to load library '%s', %s.\n",
       name,
       dlerror()
     );
@@ -225,7 +225,7 @@ void * resolveSymLibbluLibrary(
 
   if (NULL == (sym = dlsym(handle->lib, name)))
     LIBBLU_ERROR_NRETURN(
-      "Unable to resolve symbol '%s' from library '%" PRI_LBCS "', "
+      "Unable to resolve symbol '%s' from library '%s', "
       "%s.\n",
       name,
       dlerror()

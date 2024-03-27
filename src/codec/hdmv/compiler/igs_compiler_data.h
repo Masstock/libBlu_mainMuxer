@@ -23,7 +23,7 @@
 #include "../common/hdmv_pictures_common.h"
 
 #define HDMV_IGS_COMPL_OUTPUT_EXT ".ies"
-#define HDMV_IGS_COMPL_OUTPUT_FMT  "%" PRI_LBCS HDMV_IGS_COMPL_OUTPUT_EXT
+#define HDMV_IGS_COMPL_OUTPUT_FMT  "%s" HDMV_IGS_COMPL_OUTPUT_EXT
 
 #if 0
 typedef struct {

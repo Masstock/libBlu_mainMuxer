@@ -49,7 +49,7 @@ TxtFileHandlerPtr openTxtFile(
 
   if (NULL == handler->inputFile.fd)
     LIBBLU_ERROR_FRETURN(
-      "Unable to open file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to open file '%s', %s (errno: %d).\n",
       filepath,
       strerror(errno),
       errno
@@ -75,7 +75,7 @@ void closeTxtFile(
   if (NULL != handler->inputFile.fd) {
     if (fclose(handler->inputFile.fd) < 0)
       LIBBLU_ERROR(
-        "Unable to close file '%" PRI_LBCS "', %s (errno: %d).\n",
+        "Unable to close file '%s', %s (errno: %d).\n",
         handler->inputFile.es_filepath,
         strerror(errno),
         errno
@@ -95,7 +95,7 @@ static int fillBufferTxtFile(
 
   if (handler->eof)
     LIBBLU_ERROR_RETURN(
-      "Error while reading file '%" PRI_LBCS "', prematurate end-of-file.\n",
+      "Error while reading file '%s', prematurate end-of-file.\n",
       handler->inputFile.es_filepath
     );
 
@@ -148,7 +148,7 @@ static int consumeGarbage(
 
       if ((ret = fillBufferTxtFile(handler)) < 0)
         LIBBLU_ERROR_RETURN(
-          "Error while reading file '%" PRI_LBCS "', %s (errno: %d).\n",
+          "Error while reading file '%s', %s (errno: %d).\n",
           handler->inputFile.es_filepath,
           strerror(errno),
           errno
@@ -178,7 +178,7 @@ static int consumeDelimiters(
 
       if ((ret = fillBufferTxtFile(handler)) < 0)
         LIBBLU_ERROR_RETURN(
-          "Error while reading file '%" PRI_LBCS "', %s (errno: %d).\n",
+          "Error while reading file '%s', %s (errno: %d).\n",
           handler->inputFile.es_filepath,
           strerror(errno),
           errno
@@ -186,7 +186,7 @@ static int consumeDelimiters(
 
       if (!ret)
         LIBBLU_ERROR_RETURN(
-          "Error while reading file '%" PRI_LBCS "', prematurate end-of-file.\n",
+          "Error while reading file '%s', prematurate end-of-file.\n",
           handler->inputFile.es_filepath
         );
     }

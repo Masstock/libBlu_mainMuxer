@@ -9,164 +9,221 @@
 
 #include "meta_data.h"
 
+
+#define STREAM_CODING_TYPE_ANY  0
+
+#define HEADER_OPT(name, id, arg_type)                                        \
+  (LibbluMetaOption) {lbc_str(name), id, arg_type, NULL}
+
+#define ANY_CODING_TYPE  (LibbluStreamCodingType[]) { STREAM_CODING_TYPE_ANY }
+#define CODING_TYPES(...)  (LibbluStreamCodingType[]) { __VA_ARGS__ , -1 }
+
+#define TRACK_OPT(name, id, arg_type, coding_types)                           \
+  (LibbluMetaOption) {lbc_str(name), id, arg_type, coding_types}
+
+
 static const LibbluMetaOption options[] = {
-#define A_(...)  (LibbluStreamCodingType[]) { __VA_ARGS__ , -1}
-#define D_(i, n, a, c)                                                      \
-  (LibbluMetaOption) {i, lbc_str(n), a, A_ c}
-#define HRD  STREAM_CODING_TYPE_NULL  /* Only in header */
-#define ANY  STREAM_CODING_TYPE_ANY   /* On any track type */
+  /*  */
 
-  /*             Option enum value,       option string,        argument type, */
-  /* (allowed location(s))                                                     */
-  D_(  LBMETA_OPT__NO_EXTRA_HEADER,   "--no-extra-header",  LBMETA_OPTARG_NO_ARG,
-    (HRD)),
-  D_(          LBMETA_OPT__CBR_MUX,               "--cbr",  LBMETA_OPTARG_NO_ARG,
-    (HRD)),
-  D_(        LBMETA_OPT__FORCE_ESMS,        "--force-esms", LBMETA_OPTARG_NO_ARG,
-    (ANY, HRD)),
-  D_(    LBMETA_OPT__DISABLE_T_STD,      "--disable-tstd",  LBMETA_OPTARG_NO_ARG,
-    (HRD)),
+  /* MUXOPT header options : */
+  HEADER_OPT("--no-extra-header", LBMETA_OPT__NO_EXTRA_HEADER, LBMETA_OPTARG_NO_ARG),
+  HEADER_OPT(            "--cbr",         LBMETA_OPT__CBR_MUX, LBMETA_OPTARG_NO_ARG),
+  HEADER_OPT(     "--force-esms",      LBMETA_OPT__FORCE_ESMS, LBMETA_OPTARG_NO_ARG),
+  HEADER_OPT(   "--disable-tstd",   LBMETA_OPT__DISABLE_T_STD, LBMETA_OPTARG_NO_ARG),
 
-  D_(       LBMETA_OPT__START_TIME,        "--start-time",  LBMETA_OPTARG_UINT64,
-    (HRD)),
-  D_(         LBMETA_OPT__MUX_RATE,          "--mux-rate",  LBMETA_OPTARG_UINT64,
-    (HRD)),
+  HEADER_OPT(     "--start-time",      LBMETA_OPT__START_TIME, LBMETA_OPTARG_UINT64),
+  HEADER_OPT(       "--mux-rate",        LBMETA_OPT__MUX_RATE, LBMETA_OPTARG_UINT64),
+  HEADER_OPT(      "--dvd-media",       LBMETA_OPT__DVD_MEDIA, LBMETA_OPTARG_NO_ARG),
 
-  D_(    LBMETA_OPT__DISABLE_FIXES,     "--disable-fixes",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_AVC)),
+  /* MUXOPT track options : */
+  TRACK_OPT(     "--force-esms",      LBMETA_OPT__FORCE_ESMS, LBMETA_OPTARG_NO_ARG,
+    ANY_CODING_TYPE),
+  TRACK_OPT(      "--dvd-media",       LBMETA_OPT__DVD_MEDIA, LBMETA_OPTARG_NO_ARG,
+    ANY_CODING_TYPE),
 
-  D_(        LBMETA_OPT__DVD_MEDIA,         "--dvd-media",  LBMETA_OPTARG_NO_ARG,
-    (ANY, HRD)),
+  TRACK_OPT(      "--secondary",       LBMETA_OPT__SECONDARY, LBMETA_OPTARG_NO_ARG,
+    CODING_TYPES(
+      STREAM_CODING_TYPE_H262,
+      STREAM_CODING_TYPE_AVC,
+      STREAM_CODING_TYPE_VC1,
+      STREAM_CODING_TYPE_AC3,
+      STREAM_CODING_TYPE_DTS
+    )),
 
-  D_(        LBMETA_OPT__SECONDARY,         "--secondary",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_H262, STREAM_CODING_TYPE_AVC, STREAM_CODING_TYPE_VC1,
-    STREAM_CODING_TYPE_AC3, STREAM_CODING_TYPE_DTS)),
+  // H.264/AVC video tracks only :
+#define CT  CODING_TYPES(STREAM_CODING_TYPE_AVC)
+  TRACK_OPT(    "--disable-fixes",     LBMETA_OPT__DISABLE_FIXES, LBMETA_OPTARG_NO_ARG, CT),
+  TRACK_OPT(              "--fps",           LBMETA_OPT__SET_FPS, LBMETA_OPTARG_STRING, CT),
+  TRACK_OPT(               "--ar",            LBMETA_OPT__SET_AR, LBMETA_OPTARG_STRING, CT),
+  TRACK_OPT(            "--level",         LBMETA_OPT__SET_LEVEL, LBMETA_OPTARG_STRING, CT),
+  TRACK_OPT(       "--remove-sei",        LBMETA_OPT__REMOVE_SEI, LBMETA_OPTARG_NO_ARG, CT),
+  TRACK_OPT("--disable-hrd-verif", LBMETA_OPT__DISABLE_HRD_VERIF, LBMETA_OPTARG_NO_ARG, CT),
+  TRACK_OPT(    "--hrd-cpb-stats",     LBMETA_OPT__HRD_CPB_STATS, LBMETA_OPTARG_STRING, CT),
+  TRACK_OPT(    "--hrd-dpb-stats",     LBMETA_OPT__HRD_DPB_STATS, LBMETA_OPTARG_STRING, CT),
+#undef CT
 
-  D_(     LBMETA_OPT__EXTRACT_CORE,              "--core",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_AC3, STREAM_CODING_TYPE_DTS)),
+  // AC3/DTS audio tracks only :
+  TRACK_OPT(           "--core",    LBMETA_OPT__EXTRACT_CORE, LBMETA_OPTARG_NO_ARG,
+    CODING_TYPES(STREAM_CODING_TYPE_AC3, STREAM_CODING_TYPE_DTS)),
 
-  D_(         LBMETA_OPT__PBR_FILE,               "--pbr",  LBMETA_OPTARG_STRING,
-    (STREAM_CODING_TYPE_DTS)),
+  // DTS audio tracks only :
+  TRACK_OPT(            "--pbr",        LBMETA_OPT__PBR_FILE, LBMETA_OPTARG_STRING,
+    CODING_TYPES(STREAM_CODING_TYPE_DTS)),
 
-  D_(          LBMETA_OPT__SET_FPS,               "--fps",  LBMETA_OPTARG_STRING,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(           LBMETA_OPT__SET_AR,                "--ar",  LBMETA_OPTARG_STRING,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(        LBMETA_OPT__SET_LEVEL,             "--level",  LBMETA_OPTARG_STRING,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(       LBMETA_OPT__REMOVE_SEI,        "--remove-sei",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(LBMETA_OPT__DISABLE_HRD_VERIF, "--disable-hrd-verif",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(    LBMETA_OPT__HRD_CPB_STATS,     "--hrd-cpb-stats",  LBMETA_OPTARG_STRING,
-    (STREAM_CODING_TYPE_AVC)),
-  D_(    LBMETA_OPT__HRD_DPB_STATS,     "--hrd-dpb-stats",  LBMETA_OPTARG_STRING,
-    (STREAM_CODING_TYPE_AVC)),
-
-  D_(  LBMETA_OPT__HDMV_INITIAL_TS, "--hdmv-initial-timestamp", LBMETA_OPTARG_UINT64,
-    (STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)),
-  D_(LBMETA_OPT__HDMV_FORCE_RETIMING, "--hdmv-force-retiming",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)),
-
-  D_(LBMETA_OPT__HDMV_ASS_INPUT,            "--ass-input",  LBMETA_OPTARG_NO_ARG,
-    (STREAM_CODING_TYPE_PG)),
-
-  D_(             LBMETA_OPT__ESMS,              "--esms",  LBMETA_OPTARG_STRING,
-    (ANY))
-
-#undef A_
-#undef D_
-#undef HDR
+  // HDMV tracks only :
+#define CT  CODING_TYPES(STREAM_CODING_TYPE_PG, STREAM_CODING_TYPE_IG)
+  TRACK_OPT("--hdmv-initial-timestamp",     LBMETA_OPT__HDMV_INITIAL_TS, LBMETA_OPTARG_UINT64, CT),
+  TRACK_OPT(   "--hdmv-force-retiming", LBMETA_OPT__HDMV_FORCE_RETIMING, LBMETA_OPTARG_NO_ARG, CT),
+#undef CT
 };
 
-static int parseLibbluMetaOptionArg(
+static int _parseOptionArgument(
+  LibbluMetaOptionArgValue *arg_value_ret,
   const lbc *string,
-  LibbluMetaOptionArgType expectedType,
-  LibbluMetaOptionArgValue *value
+  LibbluMetaOptionArgType expected_arg_type
 )
 {
-  LibbluMetaOptionArgValue argVal;
+  LibbluMetaOptionArgValue arg_value;
 
-  switch (expectedType) {
+  switch (expected_arg_type) {
   case LBMETA_OPTARG_NO_ARG:
     LIBBLU_ERROR_RETURN("No argument expected.\n");
 
   case LBMETA_OPTARG_UINT64:
-    if (!lbc_sscanf(string, lbc_str("%" SCNu64), &argVal.u64))
+    if (!lbc_sscanf(string, lbc_str("%" SCNu64), &arg_value.u64))
       return -1;
     break;
 
   case LBMETA_OPTARG_STRING:
-    if (NULL == (argVal.str = lbc_strdup(string)))
+    if (NULL == (arg_value.str = lbc_strdup(string)))
       LIBBLU_ERROR_RETURN("Memory allocation error.\n");
   }
 
-  if (NULL != value)
-    *value = argVal;
+  if (NULL != arg_value_ret)
+    *arg_value_ret = arg_value;
 
   return 0;
 }
 
-LibbluMetaOptionId parseLibbluMetaOption(
-  const LibbluMetaFileOption *node,
+LibbluMetaOptionId parseLibbluMetaTrackOption(
+  const LibbluMetaFileOption *option_node,
   LibbluMetaOption *option_ret,
   LibbluMetaOptionArgValue *argument_ret,
-  LibbluStreamCodingType track_coding_type
+  LibbluStreamCodingType compat_coding_type
 )
 {
-  const lbc *name = node->name;
-  const lbc *arg  = node->arg;
+  assert(0 < compat_coding_type);
+
+  // True if option name matches an header only option name
+  bool exists_hdr_only_option_same_name = false;
 
   for (size_t opt_idx = 0; opt_idx < ARRAY_SIZE(options); opt_idx++) {
-    if (lbc_equal(name, options[opt_idx].name)) {
+    if (lbc_equal(option_node->name, options[opt_idx].name)) {
       LibbluMetaOption selected_opt = options[opt_idx];
-      size_t opt_compat_type_idx = 0;
 
-      /* Check option location allowance */
+      if (NULL == selected_opt.compat_coding_types) {
+        exists_hdr_only_option_same_name = true;
+        continue;
+      }
+
+      unsigned opt_compat_type_idx = 0;
       for (; 0 < selected_opt.compat_coding_types[opt_compat_type_idx]; opt_compat_type_idx++) {
-        LibbluStreamCodingType opt_compat_types = selected_opt.compat_coding_types[opt_compat_type_idx];
-
-        if (opt_compat_types == STREAM_CODING_TYPE_ANY || opt_compat_types == track_coding_type) {
+        if (compat_coding_type == selected_opt.compat_coding_types[opt_compat_type_idx])
           break;
-        }
       }
 
-      if (selected_opt.compat_coding_types[opt_compat_type_idx] < 0 && 0 <= track_coding_type) {
-        if (selected_opt.compat_coding_types[0] < 0)
-          LIBBLU_META_ANALYZER_ERROR_RETURN(
-            "Option '%s' can only be used in header.\n",
-            name
-          );
-
+      if (selected_opt.compat_coding_types[opt_compat_type_idx] < 0)
         LIBBLU_META_ANALYZER_ERROR_RETURN(
-          "Option '%s' cannot be used on a %s track.\n",
-          name,
-          LibbluStreamCodingTypeStr(track_coding_type)
+          "Option '%s' cannot be used on a track with stream coding type '%s' (line %u).\n",
+          option_node->name,
+          LibbluStreamCodingTypeStr(compat_coding_type),
+          option_node->line
         );
-      }
 
       /* Option argument */
       if (LBMETA_OPTARG_NO_ARG != selected_opt.arg_type) {
-        /* Expect presence of argument. */
-        if (NULL == arg)
+        // Argument expected
+        if (NULL == option_node->arg)
           LIBBLU_META_ANALYZER_ERROR_RETURN(
-            "The option '%s' expect an argument.\n",
-            name
+            "Option '%s' expect an argument (line %u).\n",
+            option_node->name,
+            option_node->line
           );
 
-        if (parseLibbluMetaOptionArg(arg, selected_opt.arg_type, argument_ret) < 0)
+        if (_parseOptionArgument(argument_ret, option_node->arg, selected_opt.arg_type) < 0)
           LIBBLU_META_ANALYZER_ERROR_RETURN(
-            "Invalid argument '%s' for option '%s'.\n",
-            arg,
-            name
+            "Invalid argument '%s' for option '%s' (line %u).\n",
+            option_node->arg,
+            option_node->name,
+            option_node->line
           );
       }
       else {
-        /* Unexpect presence of argument. */
-        if (NULL != arg)
+        // No argument expected
+        if (NULL != option_node->arg)
           LIBBLU_META_ANALYZER_ERROR_RETURN(
-            "The option '%s' does not expect an argument.\n",
-            name
+            "Option '%s' does not expect an argument (line %u).\n",
+            option_node->name,
+            option_node->line
+          );
+      }
+
+      if (NULL != option_ret)
+        *option_ret = selected_opt;
+
+      return selected_opt.id;
+    }
+  }
+
+  if (exists_hdr_only_option_same_name)
+    LIBBLU_META_ANALYZER_ERROR_RETURN(
+      "Option '%s' cannot be used as a track option (line %u).\n",
+      option_node->name,
+      option_node->line
+    );
+
+  LIBBLU_META_ANALYZER_ERROR_RETURN(
+    "Unknown option '%s' (line %u).\n",
+    option_node->name,
+    option_node->line
+  );
+}
+
+LibbluMetaOptionId parseLibbluMetaHeaderOption(
+  const LibbluMetaFileOption *option_node,
+  LibbluMetaOption *option_ret,
+  LibbluMetaOptionArgValue *argument_ret
+)
+{
+  for (size_t opt_idx = 0; opt_idx < ARRAY_SIZE(options); opt_idx++) {
+    if (lbc_equal(option_node->name, options[opt_idx].name)) {
+      LibbluMetaOption selected_opt = options[opt_idx];
+
+      /* Option argument */
+      if (LBMETA_OPTARG_NO_ARG != selected_opt.arg_type) {
+        // Argument expected
+        if (NULL == option_node->arg)
+          LIBBLU_META_ANALYZER_ERROR_RETURN(
+            "Option '%s' expect an argument (line %u).\n",
+            option_node->name,
+            option_node->line
+          );
+
+        if (_parseOptionArgument(argument_ret, option_node->arg, selected_opt.arg_type) < 0)
+          LIBBLU_META_ANALYZER_ERROR_RETURN(
+            "Invalid argument '%s' for option '%s' (line %u).\n",
+            option_node->arg,
+            option_node->name,
+            option_node->line
+          );
+      }
+      else {
+        // No argument expected
+        if (NULL != option_node->arg)
+          LIBBLU_META_ANALYZER_ERROR_RETURN(
+            "Option '%s' does not expect an argument (line %u).\n",
+            option_node->name,
+            option_node->line
           );
       }
 
@@ -178,7 +235,8 @@ LibbluMetaOptionId parseLibbluMetaOption(
   }
 
   LIBBLU_META_ANALYZER_ERROR_RETURN(
-    "Unknown option '%s'.\n",
-    name
+    "Unknown option '%s' (line %u).\n",
+    option_node->name,
+    option_node->line
   );
 }

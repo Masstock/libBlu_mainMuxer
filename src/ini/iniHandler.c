@@ -20,7 +20,7 @@ int parseIniFile(
   FILE *fp = lbc_fopen(filepath, "r");
   if (NULL == fp)
     LIBBLU_ERROR_RETURN(
-      "Unable to open INI file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to open INI file '%s', %s (errno: %d).\n",
       filepath,
       strerror(errno),
       errno
@@ -33,7 +33,7 @@ int parseIniFile(
   yyin = fp;
   if (0 != iniparse(&ctx))
     LIBBLU_ERROR_FRETURN(
-      "Unable to parse INI file '%" PRI_LBCS "'.\n",
+      "Unable to parse INI file '%s'.\n",
       filepath
     );
 

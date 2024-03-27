@@ -380,7 +380,7 @@ lbc * getStringXmlCtx(
   XmlNodePtr node = getNodeXmlXPathObject(xpath_obj, idx);
   if (NULL == node)
     LIBBLU_ERROR_FRETURN(
-      "Unable to fetch an XML node from path '%" PRI_LBCS "'.\n",
+      "Unable to fetch an XML node from path '%s'.\n",
       path
     );
 

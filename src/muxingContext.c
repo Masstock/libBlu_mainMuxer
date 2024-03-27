@@ -708,7 +708,7 @@ int initLibbluMuxingContext(
     case 0: /* No more PES packet */
       LIBBLU_ERROR_FRETURN(
         "Empty script, unable to build a single PES packet, "
-        "'%" PRI_LBCS "'.\n",
+        "'%s'.\n",
         stream->es.script_filepath
       );
     case 1: /* Success */

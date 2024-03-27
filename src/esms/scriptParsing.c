@@ -179,7 +179,7 @@ static int _checkCrcEntryESPropertiesSourceFilesEsms(
 
   if (crc_result != prop.crc)
     LIBBLU_ERROR_RETURN(
-      "Source file '%" PRI_LBCS "' checksum error.\n",
+      "Source file '%s' checksum error.\n",
       filepath
     );
 
@@ -220,7 +220,7 @@ static int _parseEntryESPropertiesSourceFilesEsms(
   READ_BYTES(esms_bs, src_filepath_size, src_filepath, return -1);
 
   LIBBLU_SCRIPTR_DEBUG(
-    "  Filepath (src_filepath): '%" PRI_LBCS "'.\n",
+    "  Filepath (src_filepath): '%s'.\n",
     src_filepath
   );
 

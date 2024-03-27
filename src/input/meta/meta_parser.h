@@ -38,12 +38,8 @@ typedef struct LibbluMetaFileOption {
 
   lbc *name;
   lbc *arg;
+  unsigned line;
 } LibbluMetaFileOption;
-
-LibbluMetaFileOption * createLibbluMetaFileOption(
-  const lbc *name,
-  const lbc *arg
-);
 
 void destroyLibbluMetaFileOption(
   LibbluMetaFileOption *option

@@ -72,13 +72,13 @@ static int _updateIgsCompilerWorkingDirectory(
     );
 
   ctx->init_working_dir = cur_wd;
-  LIBBLU_HDMV_IGS_COMPL_DEBUG("  Saved path: '%" PRI_LBCS "'.\n", ctx->init_working_dir);
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("  Saved path: '%s'.\n", ctx->init_working_dir);
 
   /* Getting working directory based on input XML filename */
   if (_getFileWorkingDirectory(&ctx->cur_working_dir, &ctx->xml_filename, xml_filename) < 0)
     return -1;
-  LIBBLU_HDMV_IGS_COMPL_DEBUG("  New working path: '%" PRI_LBCS "'.\n", ctx->cur_working_dir);
-  LIBBLU_HDMV_IGS_COMPL_DEBUG("  XML filename: '%" PRI_LBCS "'.\n", ctx->xml_filename);
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("  New working path: '%s'.\n", ctx->cur_working_dir);
+  LIBBLU_HDMV_IGS_COMPL_DEBUG("  XML filename: '%s'.\n", ctx->xml_filename);
 
   /* Redefinition of working path */
   if (lbc_chdir(ctx->cur_working_dir) < 0)
@@ -101,7 +101,7 @@ static void _resetOriginalDirIgsCompilerContext(
       LIBBLU_WARNING("Unable to retrieve original working path.\n");
     else
       LIBBLU_HDMV_IGS_COMPL_DEBUG(
-        " Original working path restored ('%" PRI_LBCS "').\n",
+        " Original working path restored ('%s').\n",
         ctx->init_working_dir
       );
 

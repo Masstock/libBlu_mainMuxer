@@ -186,7 +186,7 @@ int appendSourceFileWithCrcEsmsHandler(
   assert(NULL != filename);
 
   LIBBLU_SCRIPTWO_DEBUG(
-    "Appending source file '%" PRI_LBCS "' "
+    "Appending source file '%s' "
     "with checksum 0x%08" PRIX32 " (%" PRIu16 " byte(s) covered).\n",
     filename,
     crc,
@@ -1545,7 +1545,7 @@ static int _writeEsmsEsPropertiesSection(
     WRITE_ARRAY(esms_bs, (uint8_t *) entry->filepath, fp_enc_size, return -1);
 
     LIBBLU_SCRIPTW_DEBUG(
-      "  Filepath (src_filepath): '%" PRI_LBCS "'.\n",
+      "  Filepath (src_filepath): '%s'.\n",
       entry->filepath
     );
 

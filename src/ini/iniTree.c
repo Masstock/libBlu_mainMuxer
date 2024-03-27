@@ -182,7 +182,7 @@ static void sub_printIniFileNode(
   switch (node->type) {
   case INI_ENTRY:
     printf(
-      "%*c'%s' = '%" PRI_LBCS "'\n", indent, '\0',
+      "%*c'%s' = '%s'\n", indent, '\0',
       node->name, node->entryValue
     );
     break;

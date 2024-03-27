@@ -467,7 +467,7 @@ static int _outputCpbStatistics(
 
   int ret = lbc_fprintf(
     ctx->debug.cpb_fd,
-    lbc_str("%" PRIu64 ";%" PRI_LBCS ";%" PRId64 ";%" PRIu64 ";\n"),
+    lbc_str("%" PRIu64 ";%s;%" PRId64 ";%" PRIu64 ";\n"),
     _uTimeH264HrdVerifierContext(ctx, initial_arrival_time, TIME_EXP),
     initial_arrival_time_str,
     _uTimeH264HrdVerifierContext(ctx, transfer_duration, TIME_EXP),
@@ -829,7 +829,7 @@ static int _outputDpbStatistics(
 
   int ret = lbc_fprintf(
     ctx->debug.dpb_fd,
-    lbc_str("%u;%" PRIu64 ";%" PRI_LBCS ";"),
+    lbc_str("%u;%" PRIu64 ";%s;"),
     au_from_cpb->AU_idx,
     clockTimeTicks,
     clockTimeExpr

@@ -58,7 +58,7 @@ static int parseCodecNameMetaFile(
   }
 
   LIBBLU_ERROR_RETURN(
-    "Unknown codec name '%" PRI_LBCS "'.\n",
+    "Unknown codec name '%s'.\n",
     string
   );
 }
@@ -119,7 +119,7 @@ static int _parseMUXOPTSectionTrack(
 
     LibbluMetaOption option;
     LibbluMetaOptionArgValue argument;
-    switch (parseLibbluMetaOption(option_node, &option, &argument, coding_type)) {
+    switch (parseLibbluMetaTrackOption(option_node, &option, &argument, coding_type)) {
     case -1:
       return -1;
 
@@ -150,7 +150,7 @@ static int _parseMUXOPTSectionTrack(
     case LBMETA_OPT__SET_FPS:
       if (setFpsChangeLibbluESSettings(es_settings, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "only standard FPS values can be used (see help).\n",
           option.name
         );
@@ -159,7 +159,7 @@ static int _parseMUXOPTSectionTrack(
     case LBMETA_OPT__SET_AR:
       if (setArChangeLibbluESSettings(es_settings, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "must be in the format 'width:height' "
           "with non-zero numeric values (or '0:0' for 'unspecified').\n",
           option.name
@@ -169,7 +169,7 @@ static int _parseMUXOPTSectionTrack(
     case LBMETA_OPT__SET_LEVEL:
       if (setLevelChangeLibbluESSettings(es_settings, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "wrong level format or unknown value. Value format must be xx "
           "or x.x with numeric values (e.g. '4' or '40' or '4.0'). "
           "See ITU-T Rec. H.264 for level values list.\n",
@@ -204,7 +204,7 @@ static int _parseMUXOPTSectionTrack(
     case LBMETA_OPT__HDMV_INITIAL_TS:
       if (setHdmvInitialTimestampLibbluESSettings(es_settings, argument.u64) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "value shall be between %" PRIu64 " and %" PRIu64 " "
           "(inclusive).\n",
           option.name,
@@ -224,8 +224,8 @@ static int _parseMUXOPTSectionTrack(
     case LBMETA_OPT__ESMS:
       if (setScriptFilepathLibbluESSettings(es_settings, argument.str, meta_filepath) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
-          "unable to set '%" PRI_LBCS "' as script filepath.\n",
+          "Invalid '%s' option value, "
+          "unable to set '%s' as script filepath.\n",
           option.name,
           argument.str
         );
@@ -233,7 +233,7 @@ static int _parseMUXOPTSectionTrack(
 
     default:
       LIBBLU_ERROR_RETURN(
-        "Unexpected option '%" PRI_LBCS "', cannot be used on a %s track.\n",
+        "Unexpected option '%s', cannot be used on a %s track.\n",
         option_node->name,
         coding_type_name
       );
@@ -261,7 +261,7 @@ static int _analyzeMUXOPTSection(
     LibbluMetaOption option;
     LibbluMetaOptionArgValue argument;
 
-    switch (parseLibbluMetaOption(option_node, &option, &argument, -1)) {
+    switch (parseLibbluMetaHeaderOption(option_node, &option, &argument)) {
     case -1: /* Invalid option */
       return -1;
 
@@ -284,7 +284,7 @@ static int _analyzeMUXOPTSection(
     case LBMETA_OPT__START_TIME:
       if (setInitPresTimeLibbluMuxingSettings(dst, argument.u64) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "expect a value between %" PRIu64 " (inclusive) "
           "and %" PRIu64 " (non-inclusive).\n",
           option.name,
@@ -296,7 +296,7 @@ static int _analyzeMUXOPTSection(
     case LBMETA_OPT__MUX_RATE:
       if (setTargetMuxRateLibbluMuxingSettings(dst, argument.u64) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "expect a value between %" PRIu64 " (inclusive) "
           "and %" PRIu64 " (non-inclusive).\n",
           option.name,
@@ -320,7 +320,7 @@ static int _analyzeMUXOPTSection(
     case LBMETA_OPT__SET_FPS:
       if (setFpsChangeLibbluMuxingSettings(dst, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "only standard FPS values can be used (see help).\n",
           option.name
         );
@@ -329,7 +329,7 @@ static int _analyzeMUXOPTSection(
     case LBMETA_OPT__SET_AR:
       if (setArChangeLibbluMuxingSettings(dst, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "must be in the format 'width:height' "
           "with non-zero numeric values (or '0:0' for 'unspecified').\n",
           option.name
@@ -339,7 +339,7 @@ static int _analyzeMUXOPTSection(
     case LBMETA_OPT__SET_LEVEL:
       if (setLevelChangeLibbluMuxingSettings(dst, argument.str) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "wrong level format or unknown value. Value format must be xx "
           "or x.x with numeric values (e.g. '4' or '40' or '4.0'). "
           "See ITU-T Rec. H.264 for level values list.\n",
@@ -358,7 +358,7 @@ static int _analyzeMUXOPTSection(
     case LBMETA_OPT__HDMV_INITIAL_TS:
       if (setHdmvInitialTimestampLibbluMuxingSettings(dst, argument.u64) < 0)
         LIBBLU_ERROR_RETURN(
-          "Invalid '%" PRI_LBCS "' option value, "
+          "Invalid '%s' option value, "
           "value shall be between %" PRIu64 " and %" PRIu64 " "
           "(inclusive).\n",
           option.name,
@@ -373,8 +373,7 @@ static int _analyzeMUXOPTSection(
 
     default:
       LIBBLU_ERROR_RETURN(
-        "Unexpected option '%" PRI_LBCS "', "
-        "cannot be used in file header.\n",
+        "Unexpected option '%s', cannot be used in MUXOPT section header.\n",
         option_node->name
       );
     }
@@ -395,14 +394,39 @@ static int _analyzeMUXOPTSection(
 
 static int _analyzeCLPINFOSection(
   LibbluDiscProjectSettings *dst,
-  const LibbluMetaFileSection *header_section,
+  const LibbluMetaFileSection *clpinfo_section,
   const lbc *meta_filepath
 )
 {
-  (void) dst;
-  (void) header_section;
-  (void) meta_filepath;
-  LIBBLU_TODO();
+  LibbluMetaFileOption *option_node = clpinfo_section->common_options;
+  for (; NULL != option_node; option_node = option_node->next) {
+    LibbluMetaOption option;
+    LibbluMetaOptionArgValue argument;
+
+    switch (parseLibbluMetaHeaderOption(option_node, &option, &argument)) {
+    case -1: /* Invalid option */
+      return -1;
+
+    default:
+      LIBBLU_ERROR_RETURN(
+        "Unexpected option '%s', cannot be used as Clip descriptor option.\n",
+        option_node->name
+      );
+    }
+
+    cleanLibbluMetaOptionArgValue(option, argument);
+  }
+
+  /* Clip tracks, ES filepath, track specific options */
+  LibbluMetaFileTrack *track = clpinfo_section->tracks;
+  for (; NULL != track; track = track->next) {
+    // if (_parseMUXOPTSectionTrack(dst, track, meta_filepath) < 0)
+    //   return -1;
+    (void) dst;
+    (void) meta_filepath;
+  }
+
+  return 0;
 }
 
 
@@ -416,7 +440,7 @@ int readMetaFile(
   FILE *input = lbc_fopen(meta_filepath, "r");
   if (NULL == input)
     LIBBLU_ERROR_RETURN(
-      "Unable to open file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to open file '%s', %s (errno: %d).\n",
       meta_filepath,
       strerror(errno),
       errno
@@ -429,33 +453,34 @@ int readMetaFile(
 
   if (LBMETA_MUXOPT == meta->type) {
     /* Single Mux */
-    const LibbluMetaFileSection *header_section = &meta->sections[LBMETA_HEADER];
+    dst->type = LIBBLU_SINGLE_MUX;
 
     /* Default settings filename */
     if (initLibbluMuxingSettings(&dst->single_mux_settings, output_filepath, mux_options) < 0)
       return -1;
 
     /* MUXOPT header, main mux and common options */
+    const LibbluMetaFileSection *header_section = &meta->sections[LBMETA_HEADER];
     if (_analyzeMUXOPTSection(&dst->single_mux_settings, header_section, meta_filepath) < 0)
       goto free_return;
-
-    dst->type = LIBBLU_SINGLE_MUX;
   }
   else {
     assert(LBMETA_DISCOPT == meta->type);
-    const LibbluMetaFileSection *header_section = &meta->sections[LBMETA_HEADER];
+    /* Disc project */
+    dst->type = LIBBLU_DISC_PROJECT;
+    dst->disc_project_settings.shared_mux_options = mux_options;
 
     /* DISCOPT header, main mux and common options */
-    dst->disc_project_settings.shared_mux_options = mux_options;
+    // const LibbluMetaFileSection *header_section = &meta->sections[LBMETA_HEADER];
     // if (_analyzeDISCOPTSection(&dst->disc_project_settings, header_section, meta_filepath) < 0)
     //   goto free_return;
 
     /* CLPINFO header, clip definitions */
-    if (_analyzeCLPINFOSection(&dst->disc_project_settings, header_section, meta_filepath) < 0)
+    const LibbluMetaFileSection *clpinfo_section = &meta->sections[LBMETA_CLPINFO];
+    if (_analyzeCLPINFOSection(&dst->disc_project_settings, clpinfo_section, meta_filepath) < 0)
       goto free_return;
 
     LIBBLU_TODO();
-    dst->type = LIBBLU_DISC_PROJECT;
   }
 
   destroyLibbluMetaFileStruct(meta);

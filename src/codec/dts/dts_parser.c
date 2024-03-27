@@ -223,7 +223,7 @@ static void _printHeaderDcaCoreSS(
 
   int64_t startOff = tellPos(ctx->bs);
   LIBBLU_DTS_DEBUG(
-    "0x%08" PRIX64 " === DCA Core Substream Frame %u - %" PRI_LBCS " ===\n",
+    "0x%08" PRIX64 " === DCA Core Substream Frame %u - %s ===\n",
     startOff, nb_frames, frame_time
   );
 }
@@ -1371,7 +1371,7 @@ static int _decodeDcaExtSS(
   );
 
   LIBBLU_DTS_DEBUG(
-    "0x%08" PRIX64 " === DCA Extension Substream Frame %u - %" PRI_LBCS " ===\n",
+    "0x%08" PRIX64 " === DCA Extension Substream Frame %u - %s ===\n",
     frame_offset,
     (ctx->ext_ss_pres) ? ctx->ext_ss.nbFrames : 0,
     frame_time

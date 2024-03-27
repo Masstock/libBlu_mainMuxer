@@ -74,29 +74,29 @@ int lb_get_relative_fp_from_anchor(
   const lbc *anchor
 )
 {
-  size_t anchorDirectorySize;
-  lbc anchorDirectory[PATH_BUFSIZE];
+  size_t anchor_dir_size;
+  lbc anchor_dir[PATH_BUFSIZE];
 
   /* Check if path is already absolute */
   if (lbc_cwk_path_is_absolute(filepath))
     return BOOL_TO_INT_RET(
-      lbc_snprintf(buf, size, lbc_str("%" PRI_LBCS), filepath)
+      lbc_snprintf(buf, size, lbc_str("%s"), filepath)
       < (int) size
     );
 
-  lbc_cwk_path_get_dirname(anchor, &anchorDirectorySize);
-  if (PATH_BUFSIZE <= anchorDirectorySize)
+  lbc_cwk_path_get_dirname(anchor, &anchor_dir_size);
+  if (PATH_BUFSIZE <= anchor_dir_size)
     return 0;
-  if (!anchorDirectorySize)
+  if (!anchor_dir_size)
     return BOOL_TO_INT_RET(
-      lbc_snprintf(buf, size, lbc_str("%" PRI_LBCS), filepath)
+      lbc_snprintf(buf, size, lbc_str("%s"), filepath)
       < (int) size
     );
 
-  lbc_snprintf(anchorDirectory, anchorDirectorySize, lbc_str("%" PRI_LBCS), anchor);
+  lbc_snprintf(anchor_dir, anchor_dir_size, lbc_str("%s"), anchor);
   return BOOL_TO_INT_RET(
     lbc_snprintf(
-      buf, size, lbc_str("%" PRI_LBCS "/%" PRI_LBCS), anchorDirectory, filepath
+      buf, size, lbc_str("%s/%s"), anchor_dir, filepath
     ) < (int) size
   );
 }

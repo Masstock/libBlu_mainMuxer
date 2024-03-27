@@ -273,13 +273,13 @@ int initPbrFileHandler(
   assert(NULL != dtspbr_filename);
 
   LIBBLU_DTS_DEBUG_PBRFILE(
-    "Opening DTS PBR Statistics file '%" PRI_LBCS "'.\n",
+    "Opening DTS PBR Statistics file '%s'.\n",
     dtspbr_filename
   );
 
   if (NULL == (dtspbr_handle.file = lbc_fopen(dtspbr_filename, "r")))
     LIBBLU_DTS_ERROR_RETURN(
-      "Unable to open specified PBR database file '%" PRI_LBCS "', "
+      "Unable to open specified PBR database file '%s', "
       "%s (errno: %d).\n",
       dtspbr_filename,
       strerror(errno),

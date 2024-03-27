@@ -18,9 +18,6 @@
  * Codec identifiers.
  */
 typedef enum {
-  STREAM_CODING_TYPE_NULL      =    -1,
-  STREAM_CODING_TYPE_ANY       =  0xFF,
-
   STREAM_CODING_TYPE_MPEG1     =  0x01,  /**< MPEG-1 video.                  */
   STREAM_CODING_TYPE_H262      =  0x02,  /**< MPEG-2 video.                  */
   STREAM_CODING_TYPE_AVC       =  0x1B,  /**< H.264/AVC video.               */

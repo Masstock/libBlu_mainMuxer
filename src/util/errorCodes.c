@@ -99,6 +99,29 @@ static const struct {
   ),
 
   DECLARE_OPTION(
+    LIBBLU_DEBUG_META,
+    "META instruction files management",
+    "meta_operations"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_META_PARSER,
+    "META instruction files lexer/parser",
+    "meta_parser"
+  ),
+  DECLARE_OPTION(
+    LIBBLU_DEBUG_META_ANALYZER,
+    "META instruction files analysis",
+    "meta_analyzer"
+  ),
+  DECLARE_RANGE(
+    "META instruction files management, reading and analysis",
+    "meta",
+    LIBBLU_DEBUG_META,
+    LIBBLU_DEBUG_META_PARSER,
+    LIBBLU_DEBUG_META_ANALYZER
+  ),
+
+  DECLARE_OPTION(
     LIBBLU_DEBUG_SCRIPTS,
     "Muxer scripts management",
     "esms_operations"
@@ -614,13 +637,13 @@ int initDebugLogFile(
   FILE *fd = lbc_fopen(log_filepath, "w");
   if (NULL == fd)
     LIBBLU_ERROR_RETURN(
-      "Unable to create output log file '%" PRI_LBCS "', %s (errno: %d).\n",
+      "Unable to create output log file '%s', %s (errno: %d).\n",
       log_filepath,
       strerror(errno),
       errno
     );
 
-  LIBBLU_DEBUG_COM("Set output log file to '%" PRI_LBCS "'.\n", log_filepath);
+  LIBBLU_DEBUG_COM("Set output log file to '%s'.\n", log_filepath);
   debugging_fd = fd;
   return 0;
 }
